@@ -238,6 +238,7 @@ function updateCoupling(windRows,magRows){
  draw("couplingChart",[{data:paired.slice(-180).map(p=>({x:new Date(p.t).toISOString(),y:p.e})),color:"#ffbd6b"}]);
 }
 async function refresh(){
+ try{
  const failures=[];
  const results=await Promise.allSettled([get(U.wind),get(U.mag),get(U.kp),get(U.xray),get(U.dst)]);
  const names=["sluneční vítr","magnetické pole","Kp","GOES X-ray","Dst"];
@@ -280,6 +281,12 @@ async function refresh(){
  $("stav").textContent=failures.length?"Některé zdroje nejsou dostupné: "+failures.join(" · "):"Spojení s datovými zdroji NOAA bylo úspěšné.";
  $("stav").className="status "+(failures.length?"warn":"good");
  $("updated").textContent="Poslední kontrola: "+new Date().toISOString().replace("T"," ").slice(0,19)+" UTC · automatická aktualizace každých 60 sekund";
+ }catch(e){
+  $("stav").textContent="Chyba aktualizace: "+(e&&e.message?e.message:String(e));
+  $("stav").className="status bad";
+  $("updated").textContent="Aktualizace selhala · "+new Date().toISOString();
+  console.error(e);
+ }
 }
 refresh();setInterval(refresh,60000);
 async function refreshAce(){
