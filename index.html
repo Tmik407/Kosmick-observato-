@@ -125,7 +125,7 @@ function val(o,...keys){for(const k of keys){if(o&&valid(o[k]))return Number(o[k
 function newest(rows,keys,activeOnly=false){
  if(!Array.isArray(rows))return null;
  let a=rows.filter(o=>timeOf(o)&&keys.some(k=>valid(o[k]))&&(!activeOnly||o.active===true));
- // Bez aktivního/platného vzorku nevracíme starší neověřená data.
+ if(!a.length&&activeOnly)a=rows.filter(o=>timeOf(o)&&keys.some(k=>valid(o[k])));
  a.sort((x,y)=>Date.parse(timeOf(y))-Date.parse(timeOf(x)));return a[0]||null
 }
 function setMetric(id,v,unit,did,stamp){$(id).textContent=v===null?"Nedostupné":v.toFixed(id==="speed"?0:2)+" "+unit;$(did).textContent=stamp?"Měření: "+stamp.replace("T"," ")+" UTC":"Čas měření není dostupný"}
