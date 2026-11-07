@@ -1,6 +1,10 @@
 name: Aktualizace archivu ACE MAG
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/ace-mag-archive.yml"
   schedule:
     - cron: "7 * * * *"
   workflow_dispatch:
