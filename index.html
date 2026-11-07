@@ -789,25 +789,31 @@ refreshAceComparison();setInterval(refreshAceComparison,60000);
 </script>
 
 <section class="panel" id="auroraPanel">
- <h2>Polární záře – Aurora | NOAA OVATION</h2>
- <div class="small">Samostatné sledování aurorálního oválu a orientačního signálu pro Ústecký kraj. Model NOAA OVATION poskytuje krátkodobou předpověď polární záře přibližně 30–90 minut dopředu; nejde o potvrzení pozorovatelnosti z konkrétního místa.</div>
+ <h2>Polární záře – globální model Aurora X-5</h2>
+ <div class="small">Vlastní vizualizace globální aurorální aktivity podle aktuální mřížky NOAA OVATION. Bez lokálního zaměření: model zobrazuje severní i jižní polokouli a souhrnné hodnoty pro Zemi.</div>
  <div class="grid" style="margin-top:12px">
-  <div><div class="small">Čas pozorování modelu</div><div id="auroraObs" class="metric">—</div></div>
-  <div><div class="small">Čas předpovědi</div><div id="auroraForecast" class="metric">—</div></div>
-  <div><div class="small">Nejvyšší intenzita v severní polokouli</div><div id="auroraMax" class="metric">—</div></div>
-  <div><div class="small">Nejbližší bod k Mostu (50,50° N; 13,63° E)</div><div id="auroraLocal" class="metric">—</div></div>
-  <div><div class="small">Kp – poslední dostupná hodnota</div><div id="auroraKp" class="metric">—</div></div>
-  <div><div class="small">Stav dat</div><div id="auroraState" class="metric">Načítám…</div></div>
+  <div><div class="small">Čas výpočtu NOAA</div><div id="auroraObs" class="metric">—</div></div>
+  <div><div class="small">Platnost předpovědi</div><div id="auroraForecast" class="metric">—</div></div>
+  <div><div class="small">Maximum severní polokoule</div><div id="auroraMaxN" class="metric">—</div></div>
+  <div><div class="small">Maximum jižní polokoule</div><div id="auroraMaxS" class="metric">—</div></div>
+  <div><div class="small">Body s intenzitou ≥ 50 %</div><div id="auroraStrong" class="metric">—</div></div>
+  <div><div class="small">Stav datového modelu</div><div id="auroraState" class="metric">Načítám…</div></div>
  </div>
- <div class="imagegrid" style="margin-top:12px">
-  <div><h3>Oficiální mapa severní polokoule NOAA</h3><img class="space" src="https://services.swpc.noaa.gov/images/animations/ovation/north/latest.jpg" alt="NOAA OVATION – severní polokoule" loading="lazy"><div class="small">Oficiální vizualizace modelu OVATION.</div></div>
-  <div><h3>Vlastní lokální model – Česká republika</h3><canvas id="auroraLocalChart" width="900" height="360" style="height:auto;min-height:190px"></canvas><div id="auroraLocalText" class="small">Vlastní graf se vykreslí po načtení dat NOAA.</div></div>
+ <h3>Vlastní polární projekce – severní polokoule</h3>
+ <canvas id="auroraNorthMap" width="900" height="650" style="height:auto;min-height:220px"></canvas>
+ <h3>Vlastní polární projekce – jižní polokoule</h3>
+ <canvas id="auroraSouthMap" width="900" height="650" style="height:auto;min-height:220px"></canvas>
+ <h3>Infografika kosmického počasí a polární záře</h3>
+ <canvas id="auroraInfographic" width="1000" height="560" style="height:auto;min-height:240px"></canvas>
+ <div class="grid" style="margin-top:12px">
+  <div><div class="small">Planetární index Kp</div><div id="auroraKp" class="metric">—</div><div id="auroraKpTime" class="small"></div></div>
+  <div><div class="small">Rychlost slunečního větru</div><div id="auroraSpeed" class="metric">—</div><div id="auroraSpeedTime" class="small"></div></div>
+  <div><div class="small">IMF Bz (GSM)</div><div id="auroraBz" class="metric">—</div><div id="auroraBzTime" class="small"></div></div>
+  <div><div class="small">GOES rentgenový tok</div><div id="auroraXray" class="metric">—</div><div id="auroraXrayTime" class="small"></div></div>
  </div>
- <h3>Vlastní infografika – aurorální aktivita</h3>
- <canvas id="auroraInfographic" width="900" height="300" style="height:auto;min-height:180px"></canvas>
- <div id="auroraInterpretation" class="small">Vyhodnocení čeká na platná data NOAA OVATION a Kp.</div>
- <div class="small">Metodika: lokální hodnota je nejbližší bod globální mřížky OVATION k souřadnicím Mostu; doplňkově se vyhodnotí nejvyšší modelová intenzita v okolí do 300 km. Hodnota není pravděpodobností pozorování ze země. Nezahrnuje oblačnost, světelné znečištění, horizont ani počasí.</div>
- <p><a href="https://services.swpc.noaa.gov/json/ovation_aurora_latest.json" target="_blank" rel="noopener">Otevřít surová data NOAA OVATION</a> · <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noopener">Metodika NOAA – předpověď polární záře</a></p>
+ <div id="auroraInterpretation" class="small">Vyhodnocení čeká na platná data NOAA.</div>
+ <div class="small">Vysvětlení: OVATION poskytuje krátkodobou předpověď polohy a intenzity polární záře, obvykle 30–90 minut dopředu. Zobrazená procenta jsou modelový odhad, nikoli jistota pozorování. Kp, rychlost slunečního větru, Bz a GOES tok jsou samostatné kontextové ukazatele; nenahrazují OVATION.</div>
+ <p><a href="https://services.swpc.noaa.gov/json/ovation_aurora_latest.json" target="_blank" rel="noopener">Data NOAA OVATION</a> · <a href="https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json" target="_blank" rel="noopener">Kp</a> · <a href="https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json" target="_blank" rel="noopener">IMF RTSW</a> · <a href="https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json" target="_blank" rel="noopener">Sluneční vítr RTSW</a> · <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noopener">Metodika NOAA</a></p>
 </section>
 <section class="panel" id="archivePanel">
  <h2>Databáze a historické archivy kosmického počasí</h2>
@@ -821,61 +827,83 @@ refreshAceComparison();setInterval(refreshAceComparison,60000);
 </section>
 <script>
 (async function(){
- const $=id=>document.getElementById(id);
- const put=(id,value)=>{const e=$(id);if(e)e.textContent=value};
- const validNum=v=>Number.isFinite(Number(v));
- const timeFmt=v=>{const d=new Date(v);return Number.isFinite(d.getTime())?d.toISOString().replace("T"," ").slice(0,16)+" UTC":"—"};
- function drawAurora(id,points,local){
-  const c=$(id);if(!c)return;const ctx=c.getContext("2d"),w=c.width,h=c.height;
-  ctx.clearRect(0,0,w,h);ctx.fillStyle="#0b1b30";ctx.fillRect(0,0,w,h);
-  ctx.strokeStyle="#29415e";ctx.lineWidth=1;
-  for(let i=1;i<5;i++){ctx.beginPath();ctx.moveTo(24,i*h/5);ctx.lineTo(w-20,i*h/5);ctx.stroke()}
-  const max=Math.max(10,...points.map(p=>p.v));const barW=Math.max(2,(w-50)/Math.max(1,points.length)-2);
-  points.forEach((p,i)=>{const x=26+i*((w-52)/Math.max(1,points.length));const bh=(h-72)*p.v/Math.max(100,max);ctx.fillStyle=p.v>=50?"#ff806e":p.v>=20?"#ffd06e":"#55d9a5";ctx.fillRect(x,h-42-bh,barW,bh)});
-  ctx.fillStyle="#dcecff";ctx.font="bold 18px Arial";ctx.fillText("OVATION · intenzita mřížky",24,27);
-  ctx.font="13px Arial";ctx.fillStyle="#b7c9dc";ctx.fillText("Most / Ústecký kraj · nejbližší bod: "+(local?local.v.toFixed(1)+" %":"—"),24,h-15);
-  ctx.fillText("0",24,h-45);ctx.fillText("100",w-48,42);
+ const $=id=>document.getElementById(id),put=(id,v)=>{const e=$(id);if(e)e.textContent=v};
+ const fmtTime=v=>{const d=new Date(v);return Number.isFinite(d.getTime())?d.toISOString().replace("T"," ").slice(0,16)+" UTC":"—"};
+ const num=v=>v!==null&&v!==undefined&&v!==""&&Number.isFinite(Number(v))&&![ -999.9,-999,-9999].includes(Number(v));
+ async function get(url){const r=await fetch(url,{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status+" "+url);return r.json()}
+ function rows(d){return Array.isArray(d)?d:[]}
+ function getTime(o){return o.time_tag||o.time||o[0]||""}
+ function pickLatest(d,keys){let a=rows(d).filter(o=>getTime(o)&&keys.some(k=>num(o[k]))&&Number.isFinite(Date.parse(getTime(o))));a.sort((x,y)=>Date.parse(getTime(y))-Date.parse(getTime(x)));return a[0]||null}
+ function polar(id,pts,hem){
+  const c=$(id),x=c.getContext("2d"),w=c.width,h=c.height,cx=w/2,cy=h/2,rmax=Math.min(w*.43,h*.43);
+  x.clearRect(0,0,w,h);x.fillStyle="#071426";x.fillRect(0,0,w,h);
+  x.fillStyle="#102944";x.beginPath();x.arc(cx,cy,rmax,0,Math.PI*2);x.fill();
+  x.strokeStyle="#45627e";x.lineWidth=2;x.stroke();
+  [30,45,60,75].forEach(lat=>{const rr=rmax*(90-lat)/90;x.beginPath();x.arc(cx,cy,rr,0,Math.PI*2);x.strokeStyle="#29445e";x.lineWidth=1;x.stroke();x.fillStyle="#a9bfd4";x.font="13px Arial";x.fillText(lat+"°",cx+rr+4,cy-3)});
+  for(let lon=0;lon<360;lon+=30){const a=(lon-90)*Math.PI/180;x.beginPath();x.moveTo(cx,cy);x.lineTo(cx+rmax*Math.cos(a),cy+rmax*Math.sin(a));x.strokeStyle="#29445e";x.stroke()}
+  x.fillStyle="#eaf4ff";x.font="bold 20px Arial";x.fillText(hem==="N"?"SEVERNÍ POLÁRNÍ OBLAST":"JIŽNÍ POLÁRNÍ OBLAST",24,32);
+  x.font="14px Arial";x.fillStyle="#b7c9dc";x.fillText("NOAA OVATION · modelová intenzita 0–100 %",24,h-22);
+  pts.filter(p=>hem==="N"?p.lat>=0:p.lat<=0).forEach(p=>{
+   const lat=Math.abs(p.lat),rr=rmax*(90-lat)/90,ang=(p.lon-90)*Math.PI/180,px=cx+rr*Math.cos(ang),py=cy+rr*Math.sin(ang);
+   const color=p.v>=70?"#ff514f":p.v>=40?"#ff9e45":p.v>=20?"#f6dc62":p.v>=5?"#53d9a9":"#1c7892";
+   x.fillStyle=color;x.globalAlpha=.28+.72*p.v/100;x.beginPath();x.arc(px,py,Math.max(2.2,4.2*p.v/100),0,Math.PI*2);x.fill();x.globalAlpha=1;
+  });
+  const legend=[["0–4","#1c7892"],["5–19","#53d9a9"],["20–39","#f6dc62"],["40–69","#ff9e45"],["70–100","#ff514f"]];
+  legend.forEach((v,i)=>{const xx=24+i*150;x.fillStyle=v[1];x.fillRect(xx,h-58,14,14);x.fillStyle="#d5e4f3";x.font="12px Arial";x.fillText(v[0]+" %",xx+20,h-46)});
  }
- function drawInfo(id,stats){
-  const c=$(id);if(!c)return;const x=c.getContext("2d"),w=c.width,h=c.height;x.clearRect(0,0,w,h);x.fillStyle="#0b1b30";x.fillRect(0,0,w,h);
-  x.fillStyle="#eaf4ff";x.font="bold 22px Arial";x.fillText("KOSMICKÁ OBSERVATOŘ X-5 · AURORA",24,38);
-  x.fillStyle="#b8cbe0";x.font="15px Arial";x.fillText("NOAA OVATION · severní polokoule",24,66);
-  const items=[["Lokální bod",stats.local===null?"—":stats.local.toFixed(1)+" %"],["Okolí do 300 km",stats.near===null?"—":stats.near.toFixed(1)+" %"],["Maximum sever",stats.max.toFixed(1)+" %"],["Geomagnetický Kp",stats.kp===null?"—":stats.kp.toFixed(1)]];
-  items.forEach((a,i)=>{const xx=24+i*218;x.fillStyle="#142740";x.fillRect(xx,92,198,100);x.fillStyle="#b7c9dc";x.font="13px Arial";x.fillText(a[0],xx+12,119);x.fillStyle="#65dcff";x.font="bold 25px Arial";x.fillText(a[1],xx+12,158)});
-  x.fillStyle="#b7c9dc";x.font="13px Arial";x.fillText("Modelový výstup není zárukou viditelnosti. Nutná je tma, jasná obloha a vhodný výhled.",24,230);
+ function infographic(stats){
+  const c=$("auroraInfographic"),x=c.getContext("2d"),w=c.width,h=c.height;x.clearRect(0,0,w,h);
+  const g=x.createLinearGradient(0,0,w,h);g.addColorStop(0,"#071426");g.addColorStop(1,"#183653");x.fillStyle=g;x.fillRect(0,0,w,h);
+  x.fillStyle="#eaf4ff";x.font="bold 30px Arial";x.fillText("KOSMICKÁ OBSERVATOŘ X-5",30,48);
+  x.fillStyle="#77dfff";x.font="bold 21px Arial";x.fillText("POLÁRNÍ ZÁŘE · GLOBÁLNÍ MODEL AURORA",30,82);
+  x.fillStyle="#b9cde0";x.font="15px Arial";x.fillText("Zdroj: NOAA SWPC OVATION · "+stats.forecast,30,112);
+  const cards=[["MAXIMUM SEVER",stats.n.toFixed(1)+" %"],["MAXIMUM JIH",stats.s.toFixed(1)+" %"],["BODY ≥ 50 %",String(stats.strong)],["PLANETÁRNÍ Kp",stats.kp===null?"—":stats.kp.toFixed(1)],["SLUNEČNÍ VÍTR",stats.speed===null?"—":stats.speed.toFixed(0)+" km/s"],["IMF Bz",stats.bz===null?"—":stats.bz.toFixed(2)+" nT"],["GOES X-RAY",stats.xray===null?"—":stats.xray.toExponential(2)]];
+  cards.forEach((v,i)=>{const col=i%4,row=Math.floor(i/4),xx=30+col*238,yy=145+row*130;x.fillStyle="#102944";x.fillRect(xx,yy,215,102);x.fillStyle="#b9cde0";x.font="13px Arial";x.fillText(v[0],xx+14,yy+27);x.fillStyle="#65dcff";x.font="bold 25px Arial";x.fillText(v[1],xx+14,yy+67)});
+  x.fillStyle="#d8e6f4";x.font="14px Arial";x.fillText("OVATION je krátkodobá modelová předpověď, nikoli potvrzení pozorování na konkrétním místě.",30,h-36);
  }
- async function loadAurora(){
+ async function load(){
   try{
-   const [ar,kr]=await Promise.all([
-    fetch("https://services.swpc.noaa.gov/json/ovation_aurora_latest.json",{cache:"no-store"}),
-    fetch("https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",{cache:"no-store"})
-   ]);
-   if(!ar.ok)throw Error("OVATION HTTP "+ar.status);
-   const data=await ar.json(),coords=Array.isArray(data.coordinates)?data.coordinates:[];
-   const rows=coords.filter(p=>Array.isArray(p)&&p.length>=3&&validNum(p[0])&&validNum(p[1])&&validNum(p[2])&&+p[0]>=0&&+p[0]<=360&&+p[1]>=-90&&+p[1]<=90&&+p[2]>=0&&+p[2]<=100)
-    .map(p=>({lon:((+p[0]+180)%360)-180,lat:+p[1],v:+p[2]}));
-   if(rows.length<100)throw Error("Nedostatečný počet platných bodů OVATION");
-   const north=rows.filter(p=>p.lat>=0),max=Math.max(...north.map(p=>p.v));
-   const hav=(a,b)=>{const r=Math.PI/180,d1=(b.lat-a.lat)*r,d2=(b.lon-a.lon)*r;const q=Math.sin(d1/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(d2/2)**2;return 6371*2*Math.asin(Math.sqrt(q))};
-   const place={lat:50.50,lon:13.63},rank=north.map(p=>({...p,dist:hav(place,p)})).sort((a,b)=>a.dist-b.dist);
-   const nearest=rank[0],near=rank.filter(p=>p.dist<=300),nearMax=near.length?Math.max(...near.map(p=>p.v)):null;
-   let kp=null;
-   if(kr.ok){const k=await kr.json();const h=Array.isArray(k)?k.slice(1):[];for(let i=h.length-1;i>=0;i--){const v=Number(h[i][1]);if(Number.isFinite(v)&&v>=0&&v<=9){kp=v;break}}}
-   put("auroraObs",timeFmt(data["Observation Time"]));put("auroraForecast",timeFmt(data["Forecast Time"]));
-   put("auroraMax",max.toFixed(1)+" %");put("auroraLocal",nearest.v.toFixed(1)+" %");
-   put("auroraKp",kp===null?"nedostupné":kp.toFixed(1));put("auroraState","Platná data · "+rows.length+" bodů");
-   const selected=rank.slice(0,40).reverse();drawAurora("auroraLocalChart",selected,nearest);
-   put("auroraLocalText","Nejbližší mřížkový bod leží přibližně "+nearest.dist.toFixed(0)+" km od Mostu. Maximum v okruhu 300 km: "+(nearMax===null?"—":nearMax.toFixed(1)+" %")+".");
-   drawInfo("auroraInfographic",{local:nearest.v,near:nearMax,max,kp});
-   let text="OVATION modeluje aurorální aktivitu. ";
-   if(nearest.v>=20)text+="V okolí Mostu je v modelové mřížce zvýšený signál; to samo o sobě nepotvrzuje viditelnost.";
-   else text+="V okolí Mostu je modelový signál slabý. Polární záře může být výraznější ve vyšších zeměpisných šířkách.";
-   if(kp!==null)text+=" Aktuální dostupná hodnota Kp: "+kp.toFixed(1)+".";
-   text+=" Pro pozorování je nutné ověřit oblačnost, světelné znečištění a skutečnou tmu.";
-   put("auroraInterpretation",text);
-  }catch(e){put("auroraState","Data nedostupná");put("auroraInterpretation","Načtení NOAA OVATION se nezdařilo: "+e.message+". Zobrazená oficiální mapa může být dostupná samostatně.");}
+   const urls=[
+    "https://services.swpc.noaa.gov/json/ovation_aurora_latest.json",
+    "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",
+    "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+    "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json",
+    "https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json"
+   ];
+   const results=await Promise.allSettled(urls.map(get));
+   if(results[0].status!=="fulfilled")throw results[0].reason;
+   const d=results[0].value,coords=Array.isArray(d.coordinates)?d.coordinates:[];
+   const pts=coords.filter(p=>Array.isArray(p)&&p.length>=3&&num(p[0])&&num(p[1])&&num(p[2])&&+p[0]>=0&&+p[0]<=360&&+p[1]>=-90&&+p[1]<=90&&+p[2]>=0&&+p[2]<=100).map(p=>({lon:((+p[0]+180)%360)-180,lat:+p[1],v:+p[2]}));
+   if(pts.length<100)throw Error("OVATION: nedostatečný počet platných bodů");
+   const north=pts.filter(p=>p.lat>=0),south=pts.filter(p=>p.lat<=0),maxN=Math.max(...north.map(p=>p.v)),maxS=Math.max(...south.map(p=>p.v)),strong=pts.filter(p=>p.v>=50).length;
+   const kpData=results[1].status==="fulfilled"?results[1].value:null;
+   let kpRow=pickLatest(kpData,["Kp","kp","estimated_kp"]);
+   if(!kpRow&&Array.isArray(kpData)&&kpData.length>1&&Array.isArray(kpData[0])){const ix=kpData[0].indexOf("Kp");for(let i=kpData.length-1;i>0;i--)if(ix>=0&&num(kpData[i][ix])){kpRow={time_tag:kpData[i][0],Kp:kpData[i][ix]};break}}
+   const kp=kpRow?Number(kpRow.Kp??kpRow.kp??kpRow.estimated_kp):null;
+   const wind=results[2].status==="fulfilled"?pickLatest(results[2].value,["speed"]):null;
+   const mag=results[3].status==="fulfilled"?pickLatest(results[3].value,["bz_gsm","bz"]):null;
+   let xray=null,xrayTime="";
+   if(results[4].status==="fulfilled"){
+    const xr=rows(results[4].value).filter(o=>String(o.energy||o.energy_band||"").toLowerCase().includes("0.1-0.8")&&num(o.flux)&&getTime(o));
+    xr.sort((a,b)=>Date.parse(getTime(b))-Date.parse(getTime(a)));
+    if(xr.length){xray=Number(xr[0].flux);xrayTime=getTime(xr[0])}
+   }
+   put("auroraObs",fmtTime(d["Observation Time"]));put("auroraForecast",fmtTime(d["Forecast Time"]));put("auroraMaxN",maxN.toFixed(1)+" %");put("auroraMaxS",maxS.toFixed(1)+" %");put("auroraStrong",String(strong));put("auroraState","OVATION OK · "+pts.length.toLocaleString("cs-CZ")+" bodů");
+   polar("auroraNorthMap",pts,"N");polar("auroraSouthMap",pts,"S");
+   put("auroraKp",kp===null?"Nedostupné":kp.toFixed(1));put("auroraKpTime",kpRow?"Čas: "+fmtTime(getTime(kpRow)):"Zdroj Kp není dostupný");
+   const speed=wind&&num(wind.speed)?Number(wind.speed):null,bz=mag&&num(mag.bz_gsm??mag.bz)?Number(mag.bz_gsm??mag.bz):null;
+   put("auroraSpeed",speed===null?"Nedostupné":speed.toFixed(0)+" km/s");put("auroraSpeedTime",wind?"Čas: "+fmtTime(getTime(wind)):"RTSW nedostupné");
+   put("auroraBz",bz===null?"Nedostupné":bz.toFixed(2)+" nT");put("auroraBzTime",mag?"Čas: "+fmtTime(getTime(mag)):"RTSW nedostupné");
+   put("auroraXray",xray===null?"Nedostupné":xray.toExponential(2)+" W/m²");put("auroraXrayTime",xrayTime?"Čas: "+fmtTime(xrayTime):"GOES X-ray nedostupné");
+   infographic({n:maxN,s:maxS,strong,kp,speed,bz,xray,forecast:fmtTime(d["Forecast Time"])});
+   let msg="Globální OVATION mřížka načtena: "+pts.length.toLocaleString("cs-CZ")+" platných bodů. ";
+   msg+="Maximum severní polokoule "+maxN.toFixed(1)+" %, jižní "+maxS.toFixed(1)+" %. ";
+   msg+=strong+" bodů dosahuje intenzity alespoň 50 %. ";
+   msg+="Kp, sluneční vítr, Bz a GOES jsou samostatné kontextové veličiny; jejich časová razítka se mohou lišit.";
+   put("auroraInterpretation",msg);
+  }catch(e){put("auroraState","Chyba načtení");put("auroraInterpretation","Aktualizace modelu se nezdařila: "+e.message+". Neplatná data nejsou nahrazována odhadem.");}
  }
- loadAurora();setInterval(loadAurora,5*60*1000);
+ load();setInterval(load,5*60*1000);
 })();
 </script>
 
