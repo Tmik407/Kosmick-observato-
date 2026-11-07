@@ -206,23 +206,34 @@ async function refreshAce(){
    return Date.parse(goodRows[goodRows.length-1].stamp)-Date.parse(goodRows[start].stamp);
   };
   const current=goodRows[goodRows.length-1];
+  const latestIsGood=last.statusFlag===0&&[last.bx,last.by,last.bz,last.bt].every(validValue);
   const south=runDuration(r=>r.bz<0);
   const s5=runDuration(r=>r.bz<=-5);
   const s10=runDuration(r=>r.bz<=-10);
   const southEl=$("southStatus");
   if(current){
-   if(current.bz<0){
+   if(!latestIsGood){
+    southEl.textContent="AKTUÁLNÍ STAV NEPLATNÝ";
+    southEl.className="metric bad";
+    $("southDuration").textContent="Nelze potvrdit aktuální severní ani jižní orientaci Bz.";
+    $("southThreshold5").textContent="Bz ≤ −5 nT: aktuálně nelze určit";
+    $("southThreshold10").textContent="Bz ≤ −10 nT: aktuálně nelze určit";
+    $("southNote").textContent="Poslední záznam ACE MAG má stavový příznak S: "+last.statusFlag+" ("+last.stamp.replace("T"," ")+" UTC). Poslední platná hodnota byla Bz "+current.bz.toFixed(2)+" nT v "+current.stamp.replace("T"," ")+" UTC; jde pouze o historický vzorek.";
+   }else if(current.bz<0){
     southEl.textContent="JIŽNÍ Bz · "+current.bz.toFixed(2)+" nT";
     southEl.className="metric warn";
     $("southDuration").textContent="Nepřetržitá jižní orientace: "+fmtDuration(south);
+    $("southThreshold5").textContent="Bz ≤ −5 nT: "+(s5===null?"aktuálně nesplněno":"souvisle "+fmtDuration(s5));
+    $("southThreshold10").textContent="Bz ≤ −10 nT: "+(s10===null?"aktuálně nesplněno":"souvisle "+fmtDuration(s10));
+    $("southNote").textContent="Poslední platný vzorek: "+current.stamp.replace("T"," ")+" UTC. Délka je rozdíl mezi prvním a posledním vzorkem; mezery delší než přibližně 2,5× běžný interval přeruší úsek.";
    }else{
     southEl.textContent="SEVERNÍ Bz · "+current.bz.toFixed(2)+" nT";
     southEl.className="metric good";
     $("southDuration").textContent="Aktuální jižní interval neběží.";
+    $("southThreshold5").textContent="Bz ≤ −5 nT: aktuálně nesplněno";
+    $("southThreshold10").textContent="Bz ≤ −10 nT: aktuálně nesplněno";
+    $("southNote").textContent="Poslední platný vzorek: "+current.stamp.replace("T"," ")+" UTC. Délka je rozdíl mezi prvním a posledním vzorkem; mezery delší než přibližně 2,5× běžný interval přeruší úsek.";
    }
-   $("southThreshold5").textContent="Bz ≤ −5 nT: "+(s5===null?"aktuálně nesplněno":"souvisle "+fmtDuration(s5));
-   $("southThreshold10").textContent="Bz ≤ −10 nT: "+(s10===null?"aktuálně nesplněno":"souvisle "+fmtDuration(s10));
-   $("southNote").textContent="Poslední platný vzorek: "+current.stamp.replace("T"," ")+" UTC. Délka je rozdíl mezi prvním a posledním vzorkem; mezery delší než přibližně 2,5× běžný interval přeruší úsek.";
   }else{
    southEl.textContent="Nedostupné";southEl.className="metric bad";
    $("southDuration").textContent="Nelze určit délku jižního Bz.";
