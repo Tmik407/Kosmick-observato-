@@ -1,30 +1,20 @@
-
 <!DOCTYPE html>
 <html lang="cs">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#081426">
   <title>Kosmická observatoř X-5</title>
   <style>
-    body {
-      background: #081426;
-      color: white;
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 24px;
-    }
-    .panel {
-      background: #142740;
-      border-radius: 14px;
-      padding: 20px;
-      margin: 16px auto;
-      max-width: 550px;
-    }
-    .hodnota {
-      color: #5fe2ff;
-      font-size: 30px;
-      font-weight: bold;
-    }
+    body { background:#081426; color:white; font-family:Arial,sans-serif; text-align:center; padding:24px; margin:0; }
+    h1 { font-size:clamp(25px,5vw,36px); }
+    .panel { background:#142740; border-radius:14px; padding:20px; margin:16px auto; max-width:550px; }
+    .hodnota { color:#5fe2ff; font-size:30px; font-weight:bold; }
+    .detail { color:#c5d3e4; font-size:14px; margin-top:10px; }
+    #stav { margin:18px auto; max-width:600px; line-height:1.5; }
+    .chyba { color:#ffb4a9; }
+    .ok { color:#a8e6bd; }
+    .zdroj { color:#aebed0; font-size:13px; }
   </style>
 </head>
 <body>
@@ -34,46 +24,109 @@
   <div class="panel">
     <h2>Rychlost slunečního větru</h2>
     <div id="rychlost" class="hodnota">Načítání…</div>
+    <div id="plasma-detail" class="detail"></div>
   </div>
 
   <div class="panel">
-    <h2>Magnetické pole IMF – Bz</h2>
+    <h2>Magnetické pole IMF – Bz (GSM)</h2>
     <div id="bz" class="hodnota">Načítání…</div>
+    <div id="mag-detail" class="detail"></div>
   </div>
 
-  <p id="aktualizace"></p>
-  <p>Zdroj dat: NOAA SWPC</p>
+  <p id="stav">Navazuji spojení s daty NOAA SWPC…</p>
+  <p id="aktualizace" class="detail"></p>
+  <p class="zdroj">Zdroj: NOAA SWPC – Real-Time Solar Wind (RTSW)</p>
 
   <script>
+    const WIND_URL = "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json";
+    const MAG_URL = "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json";
+
+    function cisloJePlatne(hodnota) {
+      if (hodnota === null || hodnota === undefined || hodnota === "") return false;
+      const n = Number(hodnota);
+      return Number.isFinite(n) && n !== -9999 && n !== -999.9;
+    }
+
+    function nejcerstvejsiAktivni(zaznamy, pole) {
+      if (!Array.isArray(zaznamy)) return null;
+      const platne = zaznamy.filter(z =>
+        z && z.active === true && cisloJePlatne(z[pole]) && z.time_tag
+      );
+      platne.sort((a,b) => Date.parse(b.time_tag) - Date.parse(a.time_tag));
+      if (platne.length) return platne[0];
+
+      // Záložní možnost: nejnovější platný záznam, pokud NOAA právě neoznačila aktivní zdroj.
+      const zaloha = zaznamy.filter(z =>
+        z && cisloJePlatne(z[pole]) && z.time_tag
+      );
+      zaloha.sort((a,b) => Date.parse(b.time_tag) - Date.parse(a.time_tag));
+      return zaloha.length ? zaloha[0] : null;
+    }
+
+    async function nactiJson(url) {
+      const odpoved = await fetch(url, { cache: "no-store" });
+      if (!odpoved.ok) throw new Error("HTTP " + odpoved.status + " – " + url);
+      return odpoved.json();
+    }
+
+    function zobrazCas(zaznam) {
+      if (!zaznam || !zaznam.time_tag) return "čas není dostupný";
+      return zaznam.time_tag.replace("T", " ") + " UTC";
+    }
+
     async function nactiData() {
-      try {
-        const url = "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json";
-        const bzUrl = "https://services.swpc.noaa.gov/products/solar-wind/mag-1-day.json";
+      const stav = document.getElementById("stav");
+      stav.textContent = "Aktualizuji měření NOAA…";
+      stav.className = "";
 
-        const [plasma, mag] = await Promise.all([
-          fetch(url).then(r => r.json()),
-          fetch(bzUrl).then(r => r.json())
-        ]);
+      const vysledky = await Promise.allSettled([
+        nactiJson(WIND_URL),
+        nactiJson(MAG_URL)
+      ]);
 
-        const p = plasma.slice(1).reverse().find(
-          r => r[2] !== null && Number.isFinite(Number(r[2]))
-        );
-        const m = mag.slice(1).reverse().find(
-          r => r[3] !== null && Number.isFinite(Number(r[3]))
-        );
+      let chyba = false;
 
-        document.getElementById("rychlost").textContent =
-          p ? Number(p[2]).toFixed(0) + " km/s" : "Data nejsou dostupná";
-
-        document.getElementById("bz").textContent =
-          m ? Number(m[3]).toFixed(2) + " nT" : "Data nejsou dostupná";
-
-        document.getElementById("aktualizace").textContent =
-          "Poslední měření UTC: " + (m ? m[0] : "neznámé");
-      } catch (chyba) {
-        document.getElementById("aktualizace").textContent =
-          "Data NOAA se nepodařilo načíst.";
+      if (vysledky[0].status === "fulfilled") {
+        const p = nejcerstvejsiAktivni(vysledky[0].value, "proton_speed");
+        if (p) {
+          document.getElementById("rychlost").textContent = Number(p.proton_speed).toFixed(0) + " km/s";
+          document.getElementById("plasma-detail").textContent =
+            "Zdroj: " + (p.source || "neznámý") + " · " + zobrazCas(p);
+        } else {
+          document.getElementById("rychlost").textContent = "Data nejsou dostupná";
+          document.getElementById("plasma-detail").textContent = "V datech není platná rychlost slunečního větru.";
+          chyba = true;
+        }
+      } else {
+        document.getElementById("rychlost").textContent = "Chyba načítání";
+        document.getElementById("plasma-detail").textContent = String(vysledky[0].reason);
+        chyba = true;
       }
+
+      if (vysledky[1].status === "fulfilled") {
+        const m = nejcerstvejsiAktivni(vysledky[1].value, "bz_gsm");
+        if (m) {
+          document.getElementById("bz").textContent = Number(m.bz_gsm).toFixed(2) + " nT";
+          document.getElementById("mag-detail").textContent =
+            "Zdroj: " + (m.source || "neznámý") + " · " + zobrazCas(m);
+        } else {
+          document.getElementById("bz").textContent = "Data nejsou dostupná";
+          document.getElementById("mag-detail").textContent = "V datech není platná složka Bz GSM.";
+          chyba = true;
+        }
+      } else {
+        document.getElementById("bz").textContent = "Chyba načítání";
+        document.getElementById("mag-detail").textContent = String(vysledky[1].reason);
+        chyba = true;
+      }
+
+      const ted = new Date();
+      document.getElementById("aktualizace").textContent =
+        "Kontrola stránky: " + ted.toISOString().replace("T", " ").slice(0,19) + " UTC";
+      stav.textContent = chyba
+        ? "Některá data se nepodařilo načíst. Zkusím to znovu za 60 sekund."
+        : "Spojení s NOAA funguje – hodnoty se automaticky obnovují každou minutu.";
+      stav.className = chyba ? "chyba" : "ok";
     }
 
     nactiData();
