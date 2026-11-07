@@ -144,7 +144,19 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
 <div><div class="small">ACE MAG – poslední platný Bz</div><div id="cmpAceBz" class="metric">—</div><div id="cmpAceTime" class="small"></div></div>
 <div><div class="small">RTSW – časově nejbližší Bz</div><div id="cmpRtswBz" class="metric">—</div><div id="cmpRtswTime" class="small"></div></div>
 <div><div class="small">Rozdíl ACE − RTSW</div><div id="cmpDelta" class="metric">—</div><div id="cmpDeltaTime" class="small">Párovací limit: 90 sekund</div></div></div>
-<div id="cmpStatus" class="small">Čekám na oba zdroje…</div><canvas id="aceCompareChart" width="900" height="220"></canvas>
+<div id="cmpStatus" class="small">Čekám na oba zdroje…</div>
+<div class="grid" style="margin-top:14px">
+<div><div class="small">Počet spárovaných vzorků</div><div id="cmpCount" class="metric">—</div></div>
+<div><div class="small">Průměrný rozdíl Bz</div><div id="cmpMean" class="metric">—</div></div>
+<div><div class="small">Medián rozdílu Bz</div><div id="cmpMedian" class="metric">—</div></div>
+<div><div class="small">Největší kladná odchylka</div><div id="cmpMax" class="metric">—</div></div>
+<div><div class="small">Největší záporná odchylka</div><div id="cmpMin" class="metric">—</div></div>
+<div><div class="small">Směrodatná odchylka</div><div id="cmpStd" class="metric">—</div></div>
+</div>
+<canvas id="aceCompareChart" width="900" height="220"></canvas>
+<div class="small">Časový průběh Bz: ACE MAG (oranžově) a RTSW (modře).</div>
+<h3>Rozdíl Bz v čase (ACE − RTSW)</h3><canvas id="aceDeltaChart" width="900" height="220"></canvas>
+<div class="small">Statistika používá jedinečné páry platných vzorků s časovým rozdílem nejvýše 90 sekund v posledních 6 hodinách. Jeden vzorek RTSW se nepoužije opakovaně. Směrodatná odchylka je výběrová.</div>
 <div class="small">Porovnávají se pouze platné vzorky: ACE MAG se stavovým příznakem S = 0 a bez hodnot −999.9; RTSW pouze s aktivním záznamem. Časový rozdíl páru musí být nejvýše 90 sekund. Rozdíl zdrojů nemusí znamenat chybu – může souviset s časem zpracování a polohou sond.</div></section>
 <section class="panel"><h2>Datové zdroje a metodika</h2><div class="small">
 RTSW: NOAA SWPC, minutová měření slunečního větru a IMF u L1. Kp: planetární index, tříhodinová/odhadovaná data. GOES: rentgenový tok v pásmu 0,1–0,8 nm. Dst: hodinový index, může mít zpoždění.<br>
@@ -627,26 +639,26 @@ async function refreshAceComparison(){
   if(!aa.length||!rrr.length)throw Error("V posledních 6 hodinách chybí platná data jednoho zdroje.");
   const tm=t=>new Date(t).toISOString().replace("T"," ").slice(0,19)+" UTC";
   let best=null,nearest=null;
-  for(const a of aa)for(const b of rrr){
-   const dt=Math.abs(a.t-b.t);
-   if(!nearest||dt<nearest.dt)nearest={a,b,dt};
-   if(dt<=90000&&(!best||Math.max(a.t,b.t)>Math.max(best.a.t,best.b.t)))best={a,b,dt};
-  }
-  if(best){
-   const d=best.a.bz-best.b.bz;
-   put("cmpAceBz",best.a.bz.toFixed(2)+" nT");put("cmpAceTime",tm(best.a.t));
-   put("cmpRtswBz",best.b.bz.toFixed(2)+" nT");put("cmpRtswTime",tm(best.b.t));
-   put("cmpDelta",(d>0?"+":"")+d.toFixed(2)+" nT");
-   put("cmpDeltaTime","Časový rozdíl: "+Math.round(best.dt/1000)+" s · nejnovější společný pár z posledních 6 hodin");
-   put("cmpStatus","PÁR POTVRZEN · nejnovější časově spárované měření v limitu 90 sekund.");
-  }else{
-   put("cmpAceBz",nearest.a.bz.toFixed(2)+" nT");put("cmpAceTime",tm(nearest.a.t));
-   put("cmpRtswBz","Bez časového páru");put("cmpRtswTime",tm(nearest.b.t));
-   put("cmpDelta","—");put("cmpDeltaTime","Nejbližší rozdíl v posledních 6 hodinách: "+Math.round(nearest.dt/1000)+" s");
-   put("cmpStatus","V posledních 6 hodinách nebyl nalezen pár s rozdílem do 90 sekund. Rozdíl Bz se proto nepočítá.");
-  }
+  for(const a of aa)for(const b of rrr){const dt=Math.abs(a.t-b.t);if(!nearest||dt<nearest.dt)nearest={a,b,dt};if(dt<=90000&&(!best||Math.max(a.t,b.t)>Math.max(best.a.t,best.b.t)))best={a,b,dt}}
+  if(best){const d=best.a.bz-best.b.bz;put("cmpAceBz",best.a.bz.toFixed(2)+" nT");put("cmpAceTime",tm(best.a.t));put("cmpRtswBz",best.b.bz.toFixed(2)+" nT");put("cmpRtswTime",tm(best.b.t));put("cmpDelta",(d>0?"+":"")+d.toFixed(2)+" nT");put("cmpDeltaTime","Časový rozdíl: "+Math.round(best.dt/1000)+" s · nejnovější společný pár z posledních 6 hodin");put("cmpStatus","PÁR POTVRZEN · nejnovější časově spárované měření v limitu 90 sekund.")}
+  else{put("cmpAceBz",nearest.a.bz.toFixed(2)+" nT");put("cmpAceTime",tm(nearest.a.t));put("cmpRtswBz","Bez časového páru");put("cmpRtswTime",tm(nearest.b.t));put("cmpDelta","—");put("cmpDeltaTime","Nejbližší rozdíl v posledních 6 hodinách: "+Math.round(nearest.dt/1000)+" s");put("cmpStatus","V posledních 6 hodinách nebyl nalezen pár s rozdílem do 90 sekund.")}
+  // Create unique one-to-one pairs: closest time differences are assigned first.
+  const candidates=[];
+  for(let i=0;i<aa.length;i++)for(let j=0;j<rrr.length;j++){const dt=Math.abs(aa[i].t-rrr[j].t);if(dt<=90000)candidates.push({i,j,dt,d:aa[i].bz-rrr[j].bz,t:Math.round((aa[i].t+rrr[j].t)/2)})}
+  candidates.sort((x,y)=>x.dt-y.dt);
+  const usedA=new Set(),usedR=new Set(),pairs=[];
+  for(const c of candidates)if(!usedA.has(c.i)&&!usedR.has(c.j)){usedA.add(c.i);usedR.add(c.j);pairs.push(c)}
+  pairs.sort((a,b)=>a.t-b.t);
+  if(pairs.length){
+   const ds=pairs.map(p=>p.d),sorted=[...ds].sort((a,b)=>a-b),mean=ds.reduce((a,b)=>a+b,0)/ds.length;
+   const median=sorted.length%2?sorted[(sorted.length-1)/2]:(sorted[sorted.length/2-1]+sorted[sorted.length/2])/2;
+   const std=ds.length>1?Math.sqrt(ds.reduce((z,x)=>z+(x-mean)**2,0)/(ds.length-1)):0;
+   const fmt=x=>(x>0?"+":"")+x.toFixed(2)+" nT";
+   put("cmpCount",String(pairs.length));put("cmpMean",fmt(mean));put("cmpMedian",fmt(median));put("cmpMax",fmt(Math.max(...ds)));put("cmpMin",fmt(Math.min(...ds)));put("cmpStd",std.toFixed(2)+" nT");
+   draw("aceDeltaChart",[{data:pairs.map(p=>({x:tm(p.t),y:p.d})),color:"#b58cff"}]);
+  }else{for(const id of ["cmpCount","cmpMean","cmpMedian","cmpMax","cmpMin","cmpStd"])put(id,"—");put("cmpStatus","Žádné jedinečné časové páry v limitu 90 sekund.");}
   draw("aceCompareChart",[{data:aa.slice(-360).map(p=>({x:tm(p.t),y:p.bz})),color:"#ffbd6b"},{data:rrr.slice(-360).map(p=>({x:tm(p.t),y:p.bz})),color:"#65dcff"}]);
- }catch(e){put("cmpStatus","Porovnání není dostupné: "+e.message);put("cmpAceBz","—");put("cmpRtswBz","—");put("cmpDelta","—");}
+ }catch(e){put("cmpStatus","Porovnání není dostupné: "+e.message);for(const id of ["cmpAceBz","cmpRtswBz","cmpDelta","cmpCount","cmpMean","cmpMedian","cmpMax","cmpMin","cmpStd"])put(id,"—");}
 }
 refreshAceComparison();setInterval(refreshAceComparison,60000);
 
