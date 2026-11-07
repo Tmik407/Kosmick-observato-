@@ -167,7 +167,7 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
 <div><div class="small">Korelace ACE–RTSW (r)</div><div id="cmpCorr" class="metric">—</div></div>
 <div><div class="small">Počet rozdílů nad ±5 nT</div><div id="cmpOutliers" class="metric">—</div></div>
 </div>
-<h3>Rozdělení rozdílů Bz – histogram</h3><canvas id="aceHistChart" width="900" height="220"></canvas>
+<div class="panel" id="lagAnalysisPanel" style="background:#10233a;margin:12px 0"><h3 style="margin:0 0 10px">Časová korelační analýza ACE MAG ↔ NOAA RTSW</h3><div class="grid"><div><div class="small">Korelace při nulovém posunu</div><div id="lagZeroR" class="metric">—</div></div><div><div class="small">Nejlepší korelace v rozsahu ±10 min</div><div id="lagBestR" class="metric">—</div></div><div><div class="small">Optimální časový posun</div><div id="lagBestShift" class="metric">—</div></div><div><div class="small">Počet párů při optimálním posunu</div><div id="lagBestN" class="metric">—</div></div><div><div class="small">RMSE při nulovém posunu</div><div id="lagZeroRmse" class="metric">—</div></div><div><div class="small">RMSE při optimálním posunu</div><div id="lagBestRmse" class="metric">—</div></div></div><canvas id="lagChart" width="900" height="220"></canvas><div id="lagInterpretation" class="small">Čekám na dostatek časově odpovídajících měření.</div><div class="small">Metoda: Pearsonova korelace ACE Bz(t) proti RTSW Bz(t + posun), −10 až +10 minut po 1 minutě. Každý vzorek RTSW lze použít pouze jednou; nejbližší časová značka musí být do 75 sekund. Kladný posun znamená, že RTSW je porovnáván v pozdějším čase. Výsledek je statistická časová shoda, nikoli důkaz fyzického zpoždění.</div></div><h3>Rozdělení rozdílů Bz – histogram</h3><canvas id="aceHistChart" width="900" height="220"></canvas>
 <div class="small">Histogram ukazuje četnost rozdílů ACE − RTSW v intervalech po 2 nT. Kladné hodnoty znamenají vyšší Bz u ACE.</div>
 <h3>Průměrná odchylka podle hodin</h3><div id="cmpHourly" class="small">Čekám na data…</div>
 <canvas id="aceCompareChart" width="900" height="220"></canvas>
@@ -692,6 +692,27 @@ async function refreshAceComparison(){
   const usedA=new Set(),usedR=new Set(),pairs=[];
   for(const c of candidates)if(!usedA.has(c.i)&&!usedR.has(c.j)){usedA.add(c.i);usedR.add(c.j);pairs.push(c)}
   pairs.sort((a,b)=>a.t-b.t);
+  // Časová korelační analýza: ACE(t) proti RTSW(t + posun), −10…+10 min.
+  const lagStats=[];
+  for(let lag=-10;lag<=10;lag++){
+   const cand=[];
+   for(let i=0;i<aa.length;i++)for(let j=0;j<rrr.length;j++){const dt=Math.abs(rrr[j].t-(aa[i].t+lag*60000));if(dt<=75000)cand.push({i,j,dt})}
+   cand.sort((x,y)=>x.dt-y.dt);const ua=new Set(),ur=new Set(),xs=[],ys=[];
+   for(const c of cand)if(!ua.has(c.i)&&!ur.has(c.j)){ua.add(c.i);ur.add(c.j);xs.push(aa[c.i].bz);ys.push(rrr[c.j].bz)}
+   if(xs.length<30){lagStats.push({lag,n:xs.length,r:null,rmse:null});continue}
+   const mx=xs.reduce((a,b)=>a+b,0)/xs.length,my=ys.reduce((a,b)=>a+b,0)/ys.length;
+   const cov=xs.reduce((z,x,i)=>z+(x-mx)*(ys[i]-my),0),den=Math.sqrt(xs.reduce((z,x)=>z+(x-mx)**2,0)*ys.reduce((z,y)=>z+(y-my)**2,0));
+   const dif=xs.map((x,i)=>x-ys[i]);lagStats.push({lag,n:xs.length,r:den?cov/den:null,rmse:Math.sqrt(dif.reduce((z,x)=>z+x*x,0)/dif.length)});
+  }
+  const lagZero=lagStats.find(x=>x.lag===0),lagValid=lagStats.filter(x=>x.r!==null);
+  const lagBest=lagValid.sort((a,b)=>b.r-a.r||Math.abs(a.lag)-Math.abs(b.lag))[0];
+  const lp=(id,v)=>{const e=$(id);if(e)e.textContent=v};
+  if(lagZero&&lagBest){
+   lp("lagZeroR",lagZero.r===null?"Nedostatek párů":lagZero.r.toFixed(3));lp("lagBestR",lagBest.r.toFixed(3));lp("lagBestShift",(lagBest.lag>0?"+":"")+lagBest.lag+" min");lp("lagBestN",String(lagBest.n));lp("lagZeroRmse",lagZero.rmse===null?"—":lagZero.rmse.toFixed(2)+" nT");lp("lagBestRmse",lagBest.rmse.toFixed(2)+" nT");
+   draw("lagChart",[{data:lagStats.map(x=>({x:String(x.lag),y:x.r===null?NaN:x.r})),color:"#b58cff"}]);
+   const gain=lagBest.r-(lagZero.r??0);
+   lp("lagInterpretation",(lagBest.n<120?"Počet vzorků je omezený; opatrná interpretace. ":"")+(lagBest.lag===0?"Nejvyšší korelace vychází při nulovém posunu. ":"Nejvyšší korelace vychází při posunu "+(lagBest.lag>0?"+":"")+lagBest.lag+" min. ")+"Korelace: "+(lagZero.r===null?"nelze určit":lagZero.r.toFixed(3))+" → "+lagBest.r.toFixed(3)+" (změna "+(gain>0?"+":"")+gain.toFixed(3)+"). RMSE: "+(lagZero.rmse===null?"—":lagZero.rmse.toFixed(2))+" → "+lagBest.rmse.toFixed(2)+" nT. "+(lagBest.r<0.3?"Ani po posunu není lineární shoda silná.":lagBest.r<0.6?"Po posunu je shoda slabá až střední.":"Po posunu je shoda výraznější; samo o sobě to nedokazuje fyzické zpoždění."));
+  }else{for(const id of ["lagZeroR","lagBestR","lagBestShift","lagBestN","lagZeroRmse","lagBestRmse"])lp(id,"Nedostatek dat");lp("lagInterpretation","Pro analýzu je potřeba alespoň 30 platných párů.")}
   // Pokrytí: počty platných záznamů a jedinečných párů po hodinách UTC.
   const windowStart=Date.now()-24*3600000, windowEnd=Date.now();
   const hourStart=Math.floor(windowStart/3600000)*3600000;
