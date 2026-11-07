@@ -618,18 +618,34 @@ async function refreshAceComparison(){
   const ace=[];
   for(const line of raw.split(/\r?\n/)){const t=line.trim().split(/\s+/);if(!t[0]||t[0].startsWith("#")||t.length<11)continue;
    const y=+t[0],m=+t[1],d=+t[2],sec=+t[5],flag=+t[6],bz=+t[9];
-   if(!Number.isInteger(y)||!Number.isInteger(m)||!Number.isInteger(d)||flag!==0||!good(bz)||m<1||m>12||d<1||d>31)continue;
-   const stamp=Date.UTC(y,m-1,d)+((Number.isFinite(sec)&&sec>=0&&sec<86400)?Math.floor(sec)*1000:0);ace.push({t:stamp,bz});
+   if(!Number.isInteger(y)||!Number.isInteger(m)||!Number.isInteger(d)||flag!==0||!good(bz)||m<1||m>12||d<1||d>31||!Number.isFinite(sec)||sec<0||sec>=86400)continue;
+   ace.push({t:Date.UTC(y,m-1,d)+Math.floor(sec)*1000,bz});
   }
-  const rt=(Array.isArray(data)?data:[]).filter(o=>o.active===true&&timeOf(o)&&good(o.bz_gsm)).map(o=>({t:Date.parse(timeOf(o)),bz:+o.bz_gsm})).filter(p=>Number.isFinite(p.t)).sort((a,b)=>a.t-b.t);
-  ace.sort((a,b)=>a.t-b.t);if(!ace.length||!rt.length)throw Error("Chybí platná data jednoho zdroje.");
-  const a=ace[ace.length-1];let b=null,dt=Infinity;for(const p of rt){const q=Math.abs(p.t-a.t);if(q<dt){dt=q;b=p}}
-  const tm=t=>new Date(t).toISOString().replace("T"," ").slice(0,19)+" UTC";
-  put("cmpAceBz",a.bz.toFixed(2)+" nT");put("cmpAceTime",tm(a.t));
-  if(b&&dt<=90000){put("cmpRtswBz",b.bz.toFixed(2)+" nT");put("cmpRtswTime",tm(b.t));const d=a.bz-b.bz;put("cmpDelta",(d>0?"+":"")+d.toFixed(2)+" nT");put("cmpDeltaTime","Časový rozdíl: "+Math.round(dt/1000)+" s");put("cmpStatus","PÁR POTVRZEN · oba zdroje jsou v limitu 90 sekund.");}
-  else{put("cmpRtswBz","Bez časového páru");put("cmpRtswTime",b?tm(b.t):"");put("cmpDelta","—");put("cmpDeltaTime","Nejbližší rozdíl: "+(b?Math.round(dt/1000)+" s":"nedostupný"));put("cmpStatus","Nelze bezpečně porovnat: časový rozdíl přesahuje 90 sekund.");}
+  const rt=(Array.isArray(data)?data:[]).filter(o=>o.active===true&&timeOf(o)&&good(o.bz_gsm)).map(o=>({t:Date.parse(timeOf(o)),bz:+o.bz_gsm})).filter(p=>Number.isFinite(p.t));
   const since=Date.now()-6*3600000;
-  draw("aceCompareChart",[{data:ace.filter(p=>p.t>=since).slice(-180).map(p=>({x:tm(p.t),y:p.bz})),color:"#ffbd6b"},{data:rt.filter(p=>p.t>=since).slice(-180).map(p=>({x:tm(p.t),y:p.bz})),color:"#65dcff"}]);
+  const aa=ace.filter(p=>p.t>=since).sort((a,b)=>a.t-b.t),rrr=rt.filter(p=>p.t>=since).sort((a,b)=>a.t-b.t);
+  if(!aa.length||!rrr.length)throw Error("V posledních 6 hodinách chybí platná data jednoho zdroje.");
+  const tm=t=>new Date(t).toISOString().replace("T"," ").slice(0,19)+" UTC";
+  let best=null,nearest=null;
+  for(const a of aa)for(const b of rrr){
+   const dt=Math.abs(a.t-b.t);
+   if(!nearest||dt<nearest.dt)nearest={a,b,dt};
+   if(dt<=90000&&(!best||Math.max(a.t,b.t)>Math.max(best.a.t,best.b.t)))best={a,b,dt};
+  }
+  if(best){
+   const d=best.a.bz-best.b.bz;
+   put("cmpAceBz",best.a.bz.toFixed(2)+" nT");put("cmpAceTime",tm(best.a.t));
+   put("cmpRtswBz",best.b.bz.toFixed(2)+" nT");put("cmpRtswTime",tm(best.b.t));
+   put("cmpDelta",(d>0?"+":"")+d.toFixed(2)+" nT");
+   put("cmpDeltaTime","Časový rozdíl: "+Math.round(best.dt/1000)+" s · nejnovější společný pár z posledních 6 hodin");
+   put("cmpStatus","PÁR POTVRZEN · nejnovější časově spárované měření v limitu 90 sekund.");
+  }else{
+   put("cmpAceBz",nearest.a.bz.toFixed(2)+" nT");put("cmpAceTime",tm(nearest.a.t));
+   put("cmpRtswBz","Bez časového páru");put("cmpRtswTime",tm(nearest.b.t));
+   put("cmpDelta","—");put("cmpDeltaTime","Nejbližší rozdíl v posledních 6 hodinách: "+Math.round(nearest.dt/1000)+" s");
+   put("cmpStatus","V posledních 6 hodinách nebyl nalezen pár s rozdílem do 90 sekund. Rozdíl Bz se proto nepočítá.");
+  }
+  draw("aceCompareChart",[{data:aa.slice(-360).map(p=>({x:tm(p.t),y:p.bz})),color:"#ffbd6b"},{data:rrr.slice(-360).map(p=>({x:tm(p.t),y:p.bz})),color:"#65dcff"}]);
  }catch(e){put("cmpStatus","Porovnání není dostupné: "+e.message);put("cmpAceBz","—");put("cmpRtswBz","—");put("cmpDelta","—");}
 }
 refreshAceComparison();setInterval(refreshAceComparison,60000);
