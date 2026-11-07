@@ -146,16 +146,16 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
 <div><div class="small">Rozdíl ACE − RTSW</div><div id="cmpDelta" class="metric">—</div><div id="cmpDeltaTime" class="small">Párovací limit: 90 sekund</div></div></div>
 <div id="cmpStatus" class="small">Čekám na oba zdroje…</div>
 <div class="panel" id="coverage24Panel" style="background:#10233a;margin:12px 0">
- <h3 style="margin:0 0 10px">Pokrytí dat za posledních 24 hodin</h3>
+ <h3 style="margin:0 0 10px">Dostupnost ACE MAG v 24hodinovém okně</h3>
  <div class="grid">
   <div><div class="small">Platné vzorky ACE MAG</div><div id="covAce" class="metric">—</div></div>
   <div><div class="small">Platné vzorky NOAA RTSW</div><div id="covRtsw" class="metric">—</div></div>
   <div><div class="small">Spárované minuty</div><div id="covPairs" class="metric">—</div></div>
-  <div><div class="small">Pokrytí 1 440 očekávaných minut</div><div id="covPercent" class="metric">—</div></div>
+  <div><div class="small">Spárované minuty z 1 440</div><div id="covPercent" class="metric">—</div></div>
  </div>
  <h3>Pokrytí po jednotlivých hodinách (UTC)</h3>
  <div id="covHourly" class="small">Čekám na data…</div>
- <div id="covSummary" class="small">Počítá se z platných, jedinečných párů s časovým rozdílem nejvýše 90 sekund. Chybějící hodiny se zobrazují jako nulové; procento vychází z minutového intervalu za celé klouzavé 24hodinové okno.</div>
+ <div id="covSummary" class="small">Pozor: živý textový stream ACE MAG nemusí obsahovat celé 24hodinové období. Nízké procento vyjadřuje dostupnost záznamů v načteném živém souboru, nikoli dobu bez slunečního větru nebo výpadek sondy. Pro skutečné 24hodinové srovnání je nutné doplnit historický archiv ACE.</div>
 </div>
 <div class="grid" style="margin-top:14px">
 <div><div class="small">Počet spárovaných vzorků</div><div id="cmpCount" class="metric">—</div></div>
@@ -173,7 +173,7 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
 <canvas id="aceCompareChart" width="900" height="220"></canvas>
 <div class="small">Časový průběh Bz: ACE MAG (oranžově) a RTSW (modře).</div>
 <h3>Rozdíl Bz v čase (ACE − RTSW)</h3><canvas id="aceDeltaChart" width="900" height="220"></canvas>
-<div class="small">Statistika používá jedinečné páry platných vzorků z posledních 24 hodin s časovým rozdílem nejvýše 90 sekund. Jeden vzorek RTSW se nepoužije opakovaně. Směrodatná odchylka je výběrová.</div>
+<div class="small">Statistika používá jedinečné páry platných vzorků dostupných v načteném ACE MAG a RTSW streamu, nejvýše za posledních 24 hodin, s časovým rozdílem nejvýše 90 sekund. NOAA uvádí, že 1minutová a 5minutová historická ACE data jsou dostupná v archivu SWPC až za posledních 30 dní; tento archiv zatím není do živého porovnání zapojen. Směrodatná odchylka je výběrová.</div>
 <div class="small">Porovnávají se pouze platné vzorky: ACE MAG se stavovým příznakem S = 0 a bez hodnot −999.9; RTSW pouze s aktivním záznamem. Časový rozdíl páru musí být nejvýše 90 sekund. Rozdíl zdrojů nemusí znamenat chybu – může souviset s časem zpracování a polohou sond.</div></section>
 <section class="panel"><h2>Datové zdroje a metodika</h2><div class="small">
 RTSW: NOAA SWPC, minutová měření slunečního větru a IMF u L1. Kp: planetární index, tříhodinová/odhadovaná data. GOES: rentgenový tok v pásmu 0,1–0,8 nm. Dst: hodinový index, může mít zpoždění.<br>
@@ -701,7 +701,7 @@ async function refreshAceComparison(){
   put("covHourly",hourLines.join(" · "));
   const emptyHours=hourKeys.filter(h=>hourCounts.get(h)===0).length;
   const lowHours=hourKeys.filter(h=>hourCounts.get(h)>0&&hourCounts.get(h)<30).length;
-  put("covSummary","Okno: "+new Date(windowStart).toISOString().replace("T"," ").slice(0,19)+" až "+new Date(windowEnd).toISOString().replace("T"," ").slice(0,19)+" UTC. Bez jediného páru: "+emptyHours+" hodin; méně než 30 párů: "+lowHours+" hodin. Celkové pokrytí: "+pairCount+" / 1 440 minut. Jde o počet minutových párů, nikoli o souvislé pokrytí.");
+  put("covSummary","Okno: "+new Date(windowStart).toISOString().replace("T"," ").slice(0,19)+" až "+new Date(windowEnd).toISOString().replace("T"," ").slice(0,19)+" UTC. Bez jediného páru: "+emptyHours+" hodin; méně než 30 párů: "+lowHours+" hodin. Celkové pokrytí: "+pairCount+" / 1 440 minut. Jde o počet minutových párů v aktuálně načteném streamu. Pokud ACE stream pokrývá jen poslední přibližně 2 hodiny, zbývající část dne nelze vyhodnotit bez historického archivu.");
   const covPercentEl=$("covPercent");
   if(covPercentEl)covPercentEl.className="metric "+(coverage>=80?"good":coverage>=40?"warn":"bad");
   const covPairsEl=$("covPairs");
