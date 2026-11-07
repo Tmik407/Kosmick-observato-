@@ -37,11 +37,11 @@ jobs:
                           continue
                       try:
                           y,m,d,sec,flag = int(t[0]),int(t[1]),int(t[2]),int(float(t[5])),int(t[6])
-                          bz = float(t[9])
-                          if flag != 0 or bz in (-999.9,-999.0,-9999.0) or not (-100 < bz < 100):
+                          bx, by, bz = float(t[7]), float(t[8]), float(t[9])
+                          if flag != 0 or any(v in (-999.9,-999.0,-9999.0) or not (-100 < v < 100) for v in (bx,by,bz)):
                               continue
                           stamp = datetime.datetime(y,m,d,tzinfo=datetime.timezone.utc) + datetime.timedelta(seconds=sec)
-                          rows.append({"t":int(stamp.timestamp()*1000),"bz":bz})
+                          rows.append({"t":int(stamp.timestamp()*1000),"bx":bx,"by":by,"bz":bz})
                       except (ValueError, IndexError, OverflowError):
                           continue
                   print("Downloaded", name, "valid rows:", len(rows))
