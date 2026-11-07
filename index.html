@@ -29,6 +29,7 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
 <div class="grid">
  <section class="panel"><h2>Rychlost slunečního větru</h2><div id="speed" class="metric">—</div><div id="speedtime" class="small"></div></section>
  <section class="panel"><h2>Hustota protonů</h2><div id="density" class="metric">—</div><div id="densitytime" class="small"></div></section>
+ <section class="panel"><h2>Dynamický tlak slunečního větru</h2><div id="pressure" class="metric">—</div><div id="pressuretime" class="small">Čekám na časově spárovaná data</div></section>
  <section class="panel"><h2>IMF Bz (GSM)</h2><div id="bz" class="metric">—</div><div id="bztime" class="small"></div></section>
  <section class="panel"><h2>IMF Bt – celková intenzita</h2><div id="bt" class="metric">—</div><div id="bttime" class="small"></div></section>
  <section class="panel"><h2>IMF Bx (GSM)</h2><div id="bx" class="metric">—</div><div id="bxtime" class="small"></div></section>
@@ -38,6 +39,7 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
  <section class="panel"><h2>Dst index</h2><div id="dst" class="metric">—</div><div id="dsttime" class="small">Hodinová hodnota, pokud je dostupná</div></section>
 </div>
 <section class="panel"><h2>Průběh slunečního větru – poslední dostupné záznamy</h2><canvas id="speedChart" width="900" height="220"></canvas><div class="small">Rychlost v km/s · čas UTC · mezery v datech se nepovažují za nulové hodnoty.</div></section>
+<section class="panel"><h2>Dynamický tlak slunečního větru – časový průběh</h2><canvas id="pressureChart" width="900" height="220"></canvas><div class="small">Pdyn = 1,6726 × 10⁻⁶ × n × V² (nPa), kde n je hustota protonů v cm⁻³ a V rychlost v km/s. Výpočet používá pouze časově spárovaná měření do 90 sekund.</div></section>
 <section class="panel"><h2>Meziplanetární magnetické pole – Bz a Bt</h2><canvas id="magChart" width="900" height="220"></canvas><div class="small">Bz v GSM (nT) a celková intenzita Bt (nT). Záporné Bz znamená jižní orientaci.</div></section>
 <section class="panel"><h2>Sluneční rentgenový tok GOES – pásmo 0,1–0,8 nm</h2><canvas id="xrayChart" width="900" height="220"></canvas><div class="small">Logaritmická osa toku; orientační hranice tříd C, M a X.</div></section>
 <h2>Aktuální snímky a pozorování</h2>
@@ -121,6 +123,24 @@ function draw(id,series,log=false){
 }
 function series(rows,key){return rows.filter(o=>valid(o[key])).slice(-180).map(o=>({x:timeOf(o),y:Number(o[key])}))}
 function getXray(rows){let a=rows.filter(o=>valid(o.flux)&&timeOf(o));a.sort((x,y)=>Date.parse(timeOf(y))-Date.parse(timeOf(x)));return a[0]||null}
+function updateDynamicPressure(rows){
+ const validRows=rows.filter(r=>timeOf(r)&&valid(r.proton_speed)&&valid(r.proton_density))
+  .map(r=>({t:Date.parse(timeOf(r)),speed:Number(r.proton_speed),density:Number(r.proton_density)}))
+  .filter(r=>Number.isFinite(r.t)&&r.speed>0&&r.density>=0)
+  .sort((a,b)=>a.t-b.t);
+ const pressureRows=validRows.map(r=>({...r,pressure:1.6726e-6*r.density*r.speed*r.speed}));
+ const latest=pressureRows[pressureRows.length-1];
+ if(!latest){
+  $("pressure").textContent="Nedostupné";
+  $("pressuretime").textContent="Chybí současně platná rychlost a hustota protonů.";
+  draw("pressureChart",[{data:[],color:"#ffbd6b"}]);
+  return;
+ }
+ $("pressure").textContent=latest.pressure.toFixed(2)+" nPa";
+ $("pressuretime").textContent="Měření: "+new Date(latest.t).toISOString().replace("T"," ").slice(0,19)+
+  " UTC · V "+latest.speed.toFixed(0)+" km/s · n "+latest.density.toFixed(2)+" cm⁻³";
+ draw("pressureChart",[{data:pressureRows.slice(-180).map(r=>({x:new Date(r.t).toISOString(),y:r.pressure})),color:"#ffbd6b"}]);
+}
 function updateCoupling(windRows,magRows){
  const out=$("couplingNow"),status=$("couplingStatus");
  const winds=windRows.filter(r=>timeOf(r)&&valid(r.proton_speed))
@@ -196,6 +216,7 @@ async function refresh(){
  draw("speedChart",[{data:speedSeries,color:"#65dcff"}]);
  draw("magChart",[{data:series(mag,"bz_gsm"),color:"#65dcff"},{data:series(mag,"bt"),color:"#ffbd6b"}]);
  draw("xrayChart",[{data:series(xr,"flux"),color:"#ff8d9a"}],true);
+ updateDynamicPressure(wind);
  updateCoupling(wind,mag);
  $("stav").textContent=failures.length?"Některé zdroje nejsou dostupné: "+failures.join(" · "):"Spojení s datovými zdroji NOAA bylo úspěšné.";
  $("stav").className="status "+(failures.length?"warn":"good");
