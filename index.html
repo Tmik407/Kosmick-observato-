@@ -123,7 +123,15 @@ async function refresh(){
  setMetric("kp",k?val(k,"kp","Kp"):null,"","kptime",k&&timeOf(k));
  if(x){const flux=Number(x.flux);let cls=flux>=1e-4?"X":flux>=1e-5?"M":flux>=1e-6?"C":flux>=1e-7?"B":"A";$("xray").textContent=cls+" ("+flux.toExponential(2)+" W/m²)";$("xraytime").textContent="Měření: "+timeOf(x).replace("T"," ")+" UTC"}else{$("xray").textContent="Nedostupné"}
  if(z){let dz=val(z,"dst","Dst",1);$("dst").textContent=dz===null?"Nedostupné":dz.toFixed(0)+" nT";$("dsttime").textContent="Čas: "+timeOf(z).replace("T"," ")+" UTC · ověřit interval"}else $("dst").textContent="Nedostupné";
- draw("speedChart",[{data:series(wind,"proton_speed"),color:"#65dcff"}]);
+ // Graf používá stejný poslední platný záznam jako karta rychlosti.
+ const speedSeries=series(wind,"proton_speed");
+ if(p){
+  const latestSpeed={x:timeOf(p),y:val(p,"proton_speed")};
+  const existing=speedSeries.findIndex(point=>point.x===latestSpeed.x);
+  if(existing>=0)speedSeries[existing]=latestSpeed;
+  else speedSeries.push(latestSpeed);
+ }
+ draw("speedChart",[{data:speedSeries,color:"#65dcff"}]);
  draw("magChart",[{data:series(mag,"bz_gsm"),color:"#65dcff"},{data:series(mag,"bt"),color:"#ffbd6b"}]);
  draw("xrayChart",[{data:series(xr,"flux"),color:"#ff8d9a"}],true);
  $("stav").textContent=failures.length?"Některé zdroje nejsou dostupné: "+failures.join(" · "):"Spojení s datovými zdroji NOAA bylo úspěšné.";
