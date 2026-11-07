@@ -115,6 +115,7 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
  <div><div class="small">Bt – celková intenzita</div><div id="aceBt" class="metric">—</div></div>
 </div>
 <div id="aceInfo" class="small">Zdroj: NOAA ACE Magnetometer · čekám na data…</div>
+<div id="aceVectorCheck" class="small">Kontrola vektorové velikosti Bt: čekám na platná data.</div>
 <div class="panel" style="background:#10233a;margin:12px 0">
  <h3 style="margin:0 0 10px">Automatické vyhodnocení jižního Bz</h3>
  <div id="southStatus" class="metric">Čekám na data…</div>
@@ -166,7 +167,7 @@ function val(o,...keys){for(const k of keys){if(o&&valid(o[k]))return Number(o[k
 function newest(rows,keys,activeOnly=false){
  if(!Array.isArray(rows))return null;
  let a=rows.filter(o=>timeOf(o)&&keys.some(k=>valid(o[k]))&&(!activeOnly||o.active===true));
- if(!a.length&&activeOnly)a=rows.filter(o=>timeOf(o)&&keys.some(k=>valid(o[k])));
+ a=a.filter(o=>Number.isFinite(Date.parse(timeOf(o))));
  a.sort((x,y)=>Date.parse(timeOf(y))-Date.parse(timeOf(x)));return a[0]||null
 }
 function setMetric(id,v,unit,did,stamp){$(id).textContent=v===null?"Nedostupné":v.toFixed(id==="speed"?0:2)+" "+unit;$(did).textContent=stamp?"Měření: "+stamp.replace("T"," ")+" UTC":"Čas měření není dostupný"}
@@ -230,7 +231,7 @@ function updateRisk(k,b,p,d){
  $("riskNote").textContent="Indikátory: "+(cues.join(" · ")||"nedostatek platných dat")+". G1–G5 se zobrazí pouze při dostupném Kp. Prahy: G1 Kp 5, G2 Kp 6, G3 Kp 7, G4 Kp 8, G5 Kp 9.";
 }
 function updateDynamicPressure(rows){
- const validRows=rows.filter(r=>timeOf(r)&&valid(r.proton_speed)&&valid(r.proton_density))
+ const validRows=rows.filter(r=>r.active===true&&timeOf(r)&&valid(r.proton_speed)&&valid(r.proton_density))
   .map(r=>({t:Date.parse(timeOf(r)),speed:Number(r.proton_speed),density:Number(r.proton_density)}))
   .filter(r=>Number.isFinite(r.t)&&r.speed>0&&r.density>=0)
   .sort((a,b)=>a.t-b.t);
@@ -249,10 +250,10 @@ function updateDynamicPressure(rows){
 }
 function updateCoupling(windRows,magRows){
  const out=$("couplingNow"),status=$("couplingStatus");
- const winds=windRows.filter(r=>timeOf(r)&&valid(r.proton_speed))
+ const winds=windRows.filter(r=>r.active===true&&timeOf(r)&&valid(r.proton_speed))
   .map(r=>({t:Date.parse(timeOf(r)),v:Number(r.proton_speed)}))
   .filter(r=>Number.isFinite(r.t)&&r.v>0).sort((a,b)=>a.t-b.t);
- const mags=magRows.filter(r=>timeOf(r)&&valid(r.bz_gsm))
+ const mags=magRows.filter(r=>r.active===true&&timeOf(r)&&valid(r.bz_gsm))
   .map(r=>({t:Date.parse(timeOf(r)),bz:Number(r.bz_gsm)}))
   .filter(r=>Number.isFinite(r.t)&&r.bz!==-999.9&&r.bz!==-9999)
   .sort((a,b)=>a.t-b.t);
@@ -409,7 +410,7 @@ function updateAlerts(windRows,magRows,kpRows){
 function updateQuality(windRows,cleaned,aceLatest,couplingCount){
  const pairEl=$("qualityWindPair"),spikeEl=$("qualitySpikes"),gapEl=$("qualityGaps");
  const note=$("qualityNote");
- const paired=windRows.filter(r=>timeOf(r)&&valid(r.proton_speed)&&valid(r.proton_density))
+ const paired=windRows.filter(r=>r.active===true&&timeOf(r)&&valid(r.proton_speed)&&valid(r.proton_density))
   .map(r=>({t:Date.parse(timeOf(r))})).filter(r=>Number.isFinite(r.t)).sort((a,b)=>a.t-b.t);
  let maxGap=0,gaps=0;
  for(let i=1;i<paired.length;i++){const dt=paired[i].t-paired[i-1].t;if(dt>90000){gaps++;maxGap=Math.max(maxGap,dt)}}
@@ -523,6 +524,18 @@ async function refreshAce(){
   $("aceBz").textContent=fmt(last.bz);$("aceBt").textContent=fmt(last.bt);
   info.textContent="Poslední záznam: "+last.stamp.replace("T"," ")+" UTC · stavový příznak S: "+last.statusFlag+
    " · "+(good?"záznam označen jako dobrý":"kvalita není potvrzena; interpretovat opatrně");
+  const vectorEl=$("aceVectorCheck");
+  if(recordValid){
+   const btCalc=Math.hypot(last.bx,last.by,last.bz),btDelta=last.bt-btCalc;
+   const vectorOK=Math.abs(btDelta)<=0.20;
+   vectorEl.textContent="Kontrola Bt = √(Bx² + By² + Bz²): vypočteno "+btCalc.toFixed(2)+
+    " nT · NOAA Bt "+last.bt.toFixed(2)+" nT · rozdíl "+(btDelta>0?"+":"")+btDelta.toFixed(2)+
+    " nT · "+(vectorOK?"shoda v toleranci 0,20 nT":"rozdíl nad tolerancí – ověřit souřadnice / vzorek");
+   vectorEl.className="small "+(vectorOK?"good":"warn");
+  }else{
+   vectorEl.textContent="Kontrola Bt: nelze provést, protože poslední záznam nemá všechny platné složky a příznak S = 0.";
+   vectorEl.className="small warn";
+  }
   const goodRows=parsed.filter(r=>r.statusFlag===0&&[r.bx,r.by,r.bz].every(validValue)).slice(-180);
   // Doba jižního Bz: počítáme souvislý úsek do posledního platného záznamu.
   const fmtDuration=ms=>{
@@ -588,6 +601,8 @@ async function refreshAce(){
   window.__aceLatestQuality=null;
   status.textContent="Nedostupné";status.className="metric bad";
   info.textContent="ACE MAG se nepodařilo načíst: "+e.message;
+  $("aceVectorCheck").textContent="Kontrola Bt není dostupná – zdroj ACE MAG se nepodařilo načíst.";
+  $("aceVectorCheck").className="small bad";
   $("qualityAce").textContent="nedostupné";$("qualityAce").className="metric bad";
  }
 }
