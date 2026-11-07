@@ -139,6 +139,12 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
 <div class="small">Graf složek Bx, By a Bz v soustavě GSM (nT). Platnost se kontroluje podle stavového příznaku a hodnot -999.9.</div>
 <p><a href="https://services.swpc.noaa.gov/text/ace-magnetometer.txt" target="_blank" rel="noopener">Otevřít surová data ACE MAG (NOAA)</a></p>
 </section>
+<section class="panel" id="aceComparePanel"><h2>Porovnání ACE MAG a NOAA RTSW – Bz (GSM)</h2><div class="grid">
+<div><div class="small">ACE MAG – poslední platný Bz</div><div id="cmpAceBz" class="metric">—</div><div id="cmpAceTime" class="small"></div></div>
+<div><div class="small">RTSW – časově nejbližší Bz</div><div id="cmpRtswBz" class="metric">—</div><div id="cmpRtswTime" class="small"></div></div>
+<div><div class="small">Rozdíl ACE − RTSW</div><div id="cmpDelta" class="metric">—</div><div id="cmpDeltaTime" class="small">Párovací limit: 90 sekund</div></div></div>
+<div id="cmpStatus" class="small">Čekám na oba zdroje…</div><canvas id="aceCompareChart" width="900" height="220"></canvas>
+<div class="small">Porovnávají se pouze platné vzorky: ACE MAG se stavovým příznakem S = 0 a bez hodnot −999.9; RTSW pouze s aktivním záznamem. Časový rozdíl páru musí být nejvýše 90 sekund. Rozdíl zdrojů nemusí znamenat chybu – může souviset s časem zpracování a polohou sond.</div></section>
 <section class="panel"><h2>Datové zdroje a metodika</h2><div class="small">
 RTSW: NOAA SWPC, minutová měření slunečního větru a IMF u L1. Kp: planetární index, tříhodinová/odhadovaná data. GOES: rentgenový tok v pásmu 0,1–0,8 nm. Dst: hodinový index, může mít zpoždění.<br>
 Data v reálném čase jsou předběžná a mohou být později revidována. Čas měření je uváděn v UTC. Neplatné a chybějící hodnoty jsou vynechány.
@@ -586,6 +592,33 @@ async function refreshAce(){
  }
 }
 refreshAce();setInterval(refreshAce,60000);
+
+async function refreshAceComparison(){
+ const put=(id,v)=>{const e=$(id);if(e)e.textContent=v};
+ try{
+  const [ar,rr]=await Promise.all([fetch("https://services.swpc.noaa.gov/text/ace-magnetometer.txt",{cache:"no-store"}),fetch(U.mag,{cache:"no-store"})]);
+  if(!ar.ok||!rr.ok)throw Error("HTTP "+(!ar.ok?ar.status:rr.status));
+  const [raw,data]=await Promise.all([ar.text(),rr.json()]);
+  const good=v=>Number.isFinite(Number(v))&&![ -999.9,-999,-9999].includes(Number(v));
+  const ace=[];
+  for(const line of raw.split(/\r?\n/)){const t=line.trim().split(/\s+/);if(!t[0]||t[0].startsWith("#")||t.length<11)continue;
+   const y=+t[0],m=+t[1],d=+t[2],sec=+t[5],flag=+t[6],bz=+t[9];
+   if(!Number.isInteger(y)||!Number.isInteger(m)||!Number.isInteger(d)||flag!==0||!good(bz)||m<1||m>12||d<1||d>31)continue;
+   const stamp=Date.UTC(y,m-1,d)+((Number.isFinite(sec)&&sec>=0&&sec<86400)?Math.floor(sec)*1000:0);ace.push({t:stamp,bz});
+  }
+  const rt=(Array.isArray(data)?data:[]).filter(o=>o.active===true&&timeOf(o)&&good(o.bz_gsm)).map(o=>({t:Date.parse(timeOf(o)),bz:+o.bz_gsm})).filter(p=>Number.isFinite(p.t)).sort((a,b)=>a.t-b.t);
+  ace.sort((a,b)=>a.t-b.t);if(!ace.length||!rt.length)throw Error("Chybí platná data jednoho zdroje.");
+  const a=ace[ace.length-1];let b=null,dt=Infinity;for(const p of rt){const q=Math.abs(p.t-a.t);if(q<dt){dt=q;b=p}}
+  const tm=t=>new Date(t).toISOString().replace("T"," ").slice(0,19)+" UTC";
+  put("cmpAceBz",a.bz.toFixed(2)+" nT");put("cmpAceTime",tm(a.t));
+  if(b&&dt<=90000){put("cmpRtswBz",b.bz.toFixed(2)+" nT");put("cmpRtswTime",tm(b.t));const d=a.bz-b.bz;put("cmpDelta",(d>0?"+":"")+d.toFixed(2)+" nT");put("cmpDeltaTime","Časový rozdíl: "+Math.round(dt/1000)+" s");put("cmpStatus","PÁR POTVRZEN · oba zdroje jsou v limitu 90 sekund.");}
+  else{put("cmpRtswBz","Bez časového páru");put("cmpRtswTime",b?tm(b.t):"");put("cmpDelta","—");put("cmpDeltaTime","Nejbližší rozdíl: "+(b?Math.round(dt/1000)+" s":"nedostupný"));put("cmpStatus","Nelze bezpečně porovnat: časový rozdíl přesahuje 90 sekund.");}
+  const since=Date.now()-6*3600000;
+  draw("aceCompareChart",[{data:ace.filter(p=>p.t>=since).slice(-180).map(p=>({x:tm(p.t),y:p.bz})),color:"#ffbd6b"},{data:rt.filter(p=>p.t>=since).slice(-180).map(p=>({x:tm(p.t),y:p.bz})),color:"#65dcff"}]);
+ }catch(e){put("cmpStatus","Porovnání není dostupné: "+e.message);put("cmpAceBz","—");put("cmpRtswBz","—");put("cmpDelta","—");}
+}
+refreshAceComparison();setInterval(refreshAceComparison,60000);
+
 
 </script>
 </body></html>
