@@ -805,6 +805,11 @@ refreshAceComparison();setInterval(refreshAceComparison,60000);
  <canvas id="auroraSouthMap" width="900" height="650" style="height:auto;min-height:220px"></canvas>
  <h3>Infografika kosmického počasí a polární záře</h3>
  <canvas id="auroraInfographic" width="1000" height="560" style="height:auto;min-height:240px"></canvas>
+ <h3>Historický vývoj polární záře – posledních 90 dní</h3>
+ <div class="small">Archiv vlastních časových snímků NOAA OVATION. Záznamy se ukládají automaticky přibližně každých 15 minut; graf začne růst po prvních úspěšných bězích archivační úlohy.</div>
+ <canvas id="auroraHistoryChart" width="1000" height="390" style="height:auto;min-height:210px"></canvas>
+ <div id="auroraHistoryStatus" class="small">Načítám historický archiv…</div>
+
  <div class="grid" style="margin-top:12px">
   <div><div class="small">Planetární index Kp</div><div id="auroraKp" class="metric">—</div><div id="auroraKpTime" class="small"></div></div>
   <div><div class="small">Rychlost slunečního větru</div><div id="auroraSpeed" class="metric">—</div><div id="auroraSpeedTime" class="small"></div></div>
@@ -907,4 +912,34 @@ refreshAceComparison();setInterval(refreshAceComparison,60000);
 })();
 </script>
 
+<script>
+(async function(){
+ const el=id=>document.getElementById(id);
+ function draw(rows){
+  const c=el("auroraHistoryChart");if(!c)return;const x=c.getContext("2d"),w=c.width,h=c.height,p={l:65,r:25,t:35,b:58};
+  x.clearRect(0,0,w,h);x.fillStyle="#071426";x.fillRect(0,0,w,h);
+  x.fillStyle="#eaf4ff";x.font="bold 20px Arial";x.fillText("OVATION · maximumální modelová intenzita (%)",p.l,25);
+  if(!rows.length){x.fillStyle="#b9cde0";x.font="16px Arial";x.fillText("Historie zatím čeká na první archivované předpovědi.",p.l,h/2);return}
+  const maxY=100,plotW=w-p.l-p.r,plotH=h-p.t-p.b;
+  [0,25,50,75,100].forEach(v=>{const yy=p.t+plotH*(1-v/maxY);x.strokeStyle="#29445e";x.beginPath();x.moveTo(p.l,yy);x.lineTo(w-p.r,yy);x.stroke();x.fillStyle="#b9cde0";x.font="13px Arial";x.fillText(String(v),24,yy+4)});
+  const times=rows.map(r=>Date.parse(r.forecast||r.observed)).filter(Number.isFinite);
+  const t0=Math.min(...times),t1=Math.max(...times),span=Math.max(1,t1-t0);
+  function line(key,color){x.strokeStyle=color;x.lineWidth=3;x.beginPath();let started=false;rows.forEach(r=>{const t=Date.parse(r.forecast||r.observed),v=Number(r[key]);if(!Number.isFinite(t)||!Number.isFinite(v))return;const xx=p.l+(t-t0)/span*plotW,yy=p.t+(1-Math.max(0,Math.min(100,v))/100)*plotH;if(!started){x.moveTo(xx,yy);started=true}else x.lineTo(xx,yy)});x.stroke()}
+  line("north_max","#59d8ff");line("south_max","#ffb56b");
+  x.fillStyle="#59d8ff";x.fillRect(p.l,h-30,18,4);x.fillStyle="#d9e8f6";x.font="13px Arial";x.fillText("Severní polokoule",p.l+25,h-25);
+  x.fillStyle="#ffb56b";x.fillRect(p.l+210,h-30,18,4);x.fillStyle="#d9e8f6";x.fillText("Jižní polokoule",p.l+235,h-25);
+  x.fillStyle="#b9cde0";x.font="12px Arial";x.fillText(new Date(t0).toISOString().slice(0,10),p.l,h-7);x.fillText(new Date(t1).toISOString().slice(0,10),w-p.r-80,h-7);
+ }
+ async function load(){
+  try{
+   const r=await fetch("./aurora-history.json?ts="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);
+   const d=await r.json(),rows=Array.isArray(d.rows)?d.rows:[];
+   rows.sort((a,b)=>Date.parse(a.forecast)-Date.parse(b.forecast));draw(rows);
+   const last=rows.length?rows[rows.length-1]:null;
+   el("auroraHistoryStatus").textContent=rows.length+" archivovaných předpovědí · období až 90 dní · poslední archivace: "+(d.updated||"—")+(last?" · poslední předpověď: "+last.forecast:" · čeká se na první běh GitHub Actions");
+  }catch(e){el("auroraHistoryStatus").textContent="Historický archiv zatím není dostupný: "+e.message}
+ }
+ load();setInterval(load,5*60*1000);
+})();
+</script>
 </body></html>
