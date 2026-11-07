@@ -57,6 +57,19 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
  <div id="alertList" class="small" aria-live="polite">Čekám na platná měření…</div>
  <div class="small">Pracovní prahy: skok rychlosti ≥ 100 km/s proti vzorku před 5–15 minutami; jižní Bz ≤ −5 nT a ≤ −10 nT; otočení Bz přes nulu; nárůst Bt ≥ 5 nT. Upozornění jsou indikátory, nikoli předpověď bouře. Oficiální G-stupeň se určuje z Kp.</div>
 </section>
+<section class="panel" id="history24Panel">
+ <h2>Historie slunečního větru a jižního Bz – posledních 24 hodin</h2>
+ <div class="grid">
+  <div><div class="small">Platné vzorky rychlosti</div><div id="historySpeedCount" class="metric">—</div></div>
+  <div><div class="small">Platné vzorky Bz</div><div id="historyBzCount" class="metric">—</div></div>
+  <div><div class="small">Nejnižší Bz</div><div id="historyBzMin" class="metric">—</div></div>
+  <div><div class="small">Nejdelší souvislý interval Bz ≤ −5 nT</div><div id="historySouth5" class="metric">—</div></div>
+ </div>
+ <h3>Rychlost slunečního větru (km/s)</h3><canvas id="historySpeedChart" width="900" height="220"></canvas>
+ <h3>IMF Bz (GSM, nT)</h3><canvas id="historyBzChart" width="900" height="220"></canvas>
+ <div id="history24Note" class="small">Čekám na měření. Záznamy se filtrují podle časového razítka, platnosti a aktivního zdroje.</div>
+ <div class="small">Prahy Bz −5 a −10 nT jsou orientační indikátory jižní orientace, nikoli samostatná předpověď geomagnetické bouře. Chybějící či neplatné vzorky přerušují souvislý interval.</div>
+</section>
 <section class="panel" id="qualityPanel">
  <h2>Kontrola kvality a časového souladu dat</h2>
  <div class="grid">
@@ -261,6 +274,31 @@ function updateCoupling(windRows,magRows){
  draw("couplingChart",[{data:paired.slice(-180).map(p=>({x:new Date(p.t).toISOString(),y:p.e})),color:"#ffbd6b"}]);
  return paired.length;
 }
+function updateHistory24h(windRows,magRows){
+ const now=Date.now(),since=now-24*3600000;
+ const collect=(rows,key)=>rows.filter(r=>r.active===true&&timeOf(r)&&valid(r[key]))
+  .map(r=>({t:Date.parse(timeOf(r)),v:Number(r[key])}))
+  .filter(p=>Number.isFinite(p.t)&&p.t>=since&&p.t<=now+120000)
+  .sort((a,b)=>a.t-b.t);
+ const speed=collect(windRows,"proton_speed"),bz=collect(magRows,"bz_gsm");
+ $("historySpeedCount").textContent=String(speed.length);
+ $("historyBzCount").textContent=String(bz.length);
+ $("historyBzMin").textContent=bz.length?Math.min(...bz.map(p=>p.v)).toFixed(2)+" nT":"Nedostupné";
+ const intervals=[];let start=null,prev=null;
+ for(const p of bz){
+  if(p.v<=-5){
+   if(start===null||prev===null||p.t-prev>180000){if(start!==null)intervals.push(prev-start);start=p.t}
+   prev=p.t;
+  }else if(start!==null){intervals.push(prev-start);start=null;prev=null}
+ }
+ if(start!==null)intervals.push(prev-start);
+ const longest=intervals.length?Math.max(...intervals):null;
+ const fmt=ms=>{const m=Math.floor(ms/60000),h=Math.floor(m/60);return (h?h+" h ":"")+(m%60)+" min"};
+ $("historySouth5").textContent=longest===null?"Bez souvislého intervalu":fmt(longest);
+ draw("historySpeedChart",[{data:speed.map(p=>({x:new Date(p.t).toISOString(),y:p.v})),color:"#65dcff"}]);
+ draw("historyBzChart",[{data:bz.map(p=>({x:new Date(p.t).toISOString(),y:p.v})),color:"#ff8d9a"}]);
+ $("history24Note").textContent="Období: "+new Date(since).toISOString().replace("T"," ").slice(0,16)+" až "+new Date(now).toISOString().replace("T"," ").slice(0,16)+" UTC · aktivní zdroj a platné vzorky. Bz ≤ −10 nT: "+bz.filter(p=>p.v<=-10).length+" vzorků; Bz ≤ −5 nT: "+bz.filter(p=>p.v<=-5).length+" vzorků.";
+}
 function updateAlerts(windRows,magRows,kpRows){
  const alerts=[];
  const now=Date.now();
@@ -371,6 +409,7 @@ async function refresh(){
  const couplingCount=updateCoupling(speedCheck.rows,mag);
  updateQuality(wind,speedCheck,window.__aceLatestQuality||null,couplingCount);
  updateAlerts(speedCheck.rows,mag,kp);
+ updateHistory24h(wind,mag);
  $("stav").textContent=failures.length?"Některé zdroje nejsou dostupné: "+failures.join(" · "):"Spojení s datovými zdroji NOAA bylo úspěšné.";
  $("stav").className="status "+(failures.length?"warn":"good");
  $("updated").textContent="Poslední kontrola: "+new Date().toISOString().replace("T"," ").slice(0,19)+" UTC · automatická aktualizace každých 60 sekund";
