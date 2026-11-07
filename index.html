@@ -264,7 +264,7 @@ function updateCoupling(windRows,magRows){
 function updateAlerts(windRows,magRows,kpRows){
  const alerts=[];
  const now=Date.now();
- const samples=(rows,key)=>rows.filter(r=>timeOf(r)&&valid(r[key]))
+ const samples=(rows,key)=>rows.filter(r=>r.active===true&&timeOf(r)&&valid(r[key]))
   .map(r=>({t:Date.parse(timeOf(r)),v:Number(r[key])}))
   .filter(x=>Number.isFinite(x.t)&&x.t<=now+120000&&x.t>=now-6*3600000)
   .sort((a,b)=>a.t-b.t);
@@ -292,7 +292,7 @@ function updateAlerts(windRows,magRows,kpRows){
   const old=reference(bt,b.t,5,15);
   if(old&&b.v-old.v>=5)alerts.push({level:"warn",title:"Nárůst intenzity IMF Bt",detail:"+"+(b.v-old.v).toFixed(2)+" nT · nyní "+b.v.toFixed(2)+" nT"});
  }
- const kp=kpRows.filter(r=>timeOf(r)&&valid(r.kp??r.Kp)).map(r=>({t:Date.parse(timeOf(r)),v:Number(r.kp??r.Kp)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>a.t-b.t).pop();
+ const kp=kpRows.filter(r=>timeOf(r)&&valid(r.estimated_kp??r.kp_index??r.kp??r.Kp)).map(r=>({t:Date.parse(timeOf(r)),v:Number(r.estimated_kp??r.kp_index??r.kp??r.Kp)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>a.t-b.t).pop();
  if(kp&&kp.v>=5)alerts.push({level:"bad",title:"Geomagnetická bouře podle Kp",detail:"Kp "+kp.v.toFixed(1)+" · odpovídá alespoň G1"});
  const overall=$("alertOverall"),summary=$("alertSummary"),list=$("alertList");
  const worst=alerts.some(a=>a.level==="bad")?"bad":alerts.some(a=>a.level==="warn")?"warn":"good";
@@ -301,9 +301,10 @@ function updateAlerts(windRows,magRows,kpRows){
  summary.textContent="Poslední kontrola: "+new Date().toISOString().replace("T"," ").slice(0,19)+" UTC · vyhodnocení z platných vzorků posledních 6 hodin.";
  const timeLabel=x=>new Date(x.t).toISOString().replace("T"," ").slice(0,16)+" UTC";
  const rows=[];
- if(s)rows.push("Rychlost: "+s.v.toFixed(0)+" km/s · "+timeLabel(s));
- if(z)rows.push("Bz: "+z.v.toFixed(2)+" nT · "+timeLabel(z));
- if(b)rows.push("Bt: "+b.v.toFixed(2)+" nT · "+timeLabel(b));
+ if(s)rows.push("Aktivní zdroj – rychlost: "+s.v.toFixed(0)+" km/s · "+timeLabel(s));
+ if(z)rows.push("Aktivní zdroj – Bz: "+z.v.toFixed(2)+" nT · "+timeLabel(z));
+ if(b)rows.push("Aktivní zdroj – Bt: "+b.v.toFixed(2)+" nT · "+timeLabel(b));
+ if(!s&&!z&&!b)rows.push("Nedostupné platné vzorky z aktivního zdroje; upozornění se nevytvářejí.");
  if(alerts.length)rows.push("",...alerts.map(a=>(a.level==="bad"?"🔴":a.level==="warn"?"🟠":"🔵")+" "+a.title+" — "+a.detail));
  else rows.push("Žádný z definovaných prahů nebyl v posledních platných vzorcích překročen.");
  list.textContent=rows.join("\n");
