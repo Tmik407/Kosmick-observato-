@@ -1,0 +1,56 @@
+name: Aktualizace archivu ACE MAG
+
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Stáhnout denní archiv NASA ACE
+        run: |
+          python - <<'PY'
+          import datetime, json, urllib.request
+          now = datetime.datetime.now(datetime.timezone.utc)
+          rows = []
+          for day in (now.date() - datetime.timedelta(days=1), now.date()):
+              name = day.strftime("%Y%m%d") + "_ace_mag_1m.txt"
+              url = "https://sohoftp.nascom.nasa.gov/sdb/goes/ace/daily/" + name
+              try:
+                  req = urllib.request.Request(url, headers={"User-Agent":"Projekt-X-5-AceArchive/1.0"})
+                  with urllib.request.urlopen(req, timeout=30) as response:
+                      raw = response.read().decode("ascii", "replace")
+                  for line in raw.splitlines():
+                      t = line.split()
+                      if len(t) < 11 or t[0].startswith("#"):
+                          continue
+                      try:
+                          y,m,d,sec,flag = int(t[0]),int(t[1]),int(t[2]),int(float(t[5])),int(t[6])
+                          bz = float(t[9])
+                          if flag != 0 or bz in (-999.9,-999.0,-9999.0) or not (-100 < bz < 100):
+                              continue
+                          stamp = datetime.datetime(y,m,d,tzinfo=datetime.timezone.utc) + datetime.timedelta(seconds=sec)
+                          rows.append({"t":int(stamp.timestamp()*1000),"bz":bz})
+                      except (ValueError, IndexError, OverflowError):
+                          continue
+                  print("Downloaded", name, "valid rows:", len(rows))
+              except Exception as e:
+                  print("Archive unavailable:", name, str(e))
+          rows = sorted({r["t"]:r for r in rows}.values(), key=lambda r:r["t"])
+          with open("ace-mag-archive.json","w",encoding="utf-8") as f:
+              json.dump({"updated":now.isoformat(),"source":"NASA ACE daily archive","rows":rows},f,separators=(",",":"))
+          print("Total rows:",len(rows))
+          PY
+      - name: Uložit aktualizovaný archiv
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ace-mag-archive.json
+          git diff --cached --quiet || (git commit -m "Aktualizace archivu ACE MAG" && git push)
