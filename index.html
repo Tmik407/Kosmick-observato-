@@ -662,7 +662,7 @@ async function refreshAceComparison(){
    return out;
   };
   const now=new Date(),dates=[new Date(now.getTime()-86400000),now];
-  const archiveUrls=dates.map(d=>"https://sohoftp.nascom.nasa.gov/sdb/ace/daily/"+d.toISOString().slice(0,10).replace(/-/g,"")+"_ace_mag_1m.txt");
+  const archiveUrls=dates.map(d=>"https://sohoftp.nascom.nasa.gov/sdb/goes/ace/daily/"+d.toISOString().slice(0,10).replace(/-/g,"")+"_ace_mag_1m.txt");
   const archiveResults=await Promise.allSettled(archiveUrls.map(async url=>{const r=await fetch(url,{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);return parseAceText(await r.text())}));
   const archiveRows=archiveResults.filter(x=>x.status==="fulfilled").flatMap(x=>x.value);
   const [liveResponse,rr]=await Promise.all([fetch("https://services.swpc.noaa.gov/text/ace-magnetometer.txt",{cache:"no-store"}),fetch(U.mag,{cache:"no-store"})]);
