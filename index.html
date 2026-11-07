@@ -70,6 +70,21 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
  <div id="history24Note" class="small">Čekám na měření. Záznamy se filtrují podle časového razítka, platnosti a aktivního zdroje.</div>
  <div class="small">Prahy Bz −5 a −10 nT jsou orientační indikátory jižní orientace, nikoli samostatná předpověď geomagnetické bouře. Chybějící či neplatné vzorky přerušují souvislý interval.</div>
 </section>
+<section class="panel" id="cumulativePanel">
+ <h2>Kumulativní geomagnetické zatížení – 24 hodin</h2>
+ <div class="grid">
+  <div><div class="small">Celková doba Bz ≤ −5 nT</div><div id="cumSouth5" class="metric">—</div></div>
+  <div><div class="small">Celková doba Bz ≤ −10 nT</div><div id="cumSouth10" class="metric">—</div></div>
+  <div><div class="small">Průměrné Bz</div><div id="cumBzMean" class="metric">—</div></div>
+  <div><div class="small">Průměrná jižní složka Bs</div><div id="cumBsMean" class="metric">—</div></div>
+  <div><div class="small">Maximum geoe efektivního pole E</div><div id="cumEMax" class="metric">—</div></div>
+  <div><div class="small">Kumulativní E během jižního Bz</div><div id="cumEIntegral" class="metric">—</div></div>
+ </div>
+ <h3>Časově spárovaná geoe efektivní složka E = 0,001 × V × Bs</h3>
+ <canvas id="cumEChart" width="900" height="220"></canvas>
+ <div id="cumNote" class="small">Čekám na časově spárovaná data.</div>
+ <div class="small">Doba se počítá mezi sousedními platnými vzorky; mezery delší než 180 s se nezapočítávají. E se integruje pouze při párování rychlosti a Bz s rozdílem nejvýše 90 s a při jižním Bz. Výsledek je orientační ukazatel přenosu energie, nikoli měření energie uložené v magnetosféře ani předpověď bouře.</div>
+</section>
 <section class="panel" id="qualityPanel">
  <h2>Kontrola kvality a časového souladu dat</h2>
  <div class="grid">
@@ -299,6 +314,34 @@ function updateHistory24h(windRows,magRows){
  draw("historyBzChart",[{data:bz.map(p=>({x:new Date(p.t).toISOString(),y:p.v})),color:"#ff8d9a"}]);
  $("history24Note").textContent="Období: "+new Date(since).toISOString().replace("T"," ").slice(0,16)+" až "+new Date(now).toISOString().replace("T"," ").slice(0,16)+" UTC · aktivní zdroj a platné vzorky. Bz ≤ −10 nT: "+bz.filter(p=>p.v<=-10).length+" vzorků; Bz ≤ −5 nT: "+bz.filter(p=>p.v<=-5).length+" vzorků.";
 }
+function updateCumulative24h(windRows,magRows){
+ const now=Date.now(),since=now-24*3600000,maxGap=180000;
+ const points=(rows,key)=>rows.filter(r=>r.active===true&&timeOf(r)&&valid(r[key]))
+  .map(r=>({t:Date.parse(timeOf(r)),v:Number(r[key])}))
+  .filter(p=>Number.isFinite(p.t)&&p.t>=since&&p.t<=now+120000)
+  .sort((a,b)=>a.t-b.t);
+ const bz=points(magRows,"bz_gsm"),speed=points(windRows,"proton_speed");
+ const duration=(threshold)=>{let ms=0;for(let i=1;i<bz.length;i++){const dt=bz[i].t-bz[i-1].t;if(dt>0&&dt<=maxGap&&bz[i-1].v<=threshold&&bz[i].v<=threshold)ms+=dt}return ms};
+ const fmt=ms=>{const m=Math.round(ms/60000),h=Math.floor(m/60);return (h?h+" h ":"")+(m%60)+" min"};
+ const mean=a=>a.length?a.reduce((s,p)=>s+p.v,0)/a.length:null;
+ const south=bz.filter(p=>p.v<0),mBz=mean(bz),mBs=south.length?south.reduce((s,p)=>s-p.v,0)/bz.length:0;
+ const pairs=[];let j=0;
+ for(const b of bz){
+  while(j+1<speed.length&&Math.abs(speed[j+1].t-b.t)<=Math.abs(speed[j].t-b.t))j++;
+  if(speed[j]&&Math.abs(speed[j].t-b.t)<=90000){const bs=Math.max(0,-b.v),e=.001*speed[j].v*bs;pairs.push({t:b.t,e,bs,v:speed[j].v,bz:b.v})}
+ }
+ let integral=0,maxE=0;
+ for(let i=0;i<pairs.length;i++){maxE=Math.max(maxE,pairs[i].e);if(i&&pairs[i].e>0&&pairs[i-1].e>0){const dt=pairs[i].t-pairs[i-1].t;if(dt>0&&dt<=90000)integral+=(pairs[i].e+pairs[i-1].e)/2*dt/3600000}}
+ const eSouth=pairs.filter(p=>p.bs>0);
+ $("cumSouth5").textContent=fmt(duration(-5));
+ $("cumSouth10").textContent=fmt(duration(-10));
+ $("cumBzMean").textContent=mBz===null?"Nedostupné":mBz.toFixed(2)+" nT";
+ $("cumBsMean").textContent=mBs.toFixed(2)+" nT";
+ $("cumEMax").textContent=eSouth.length?Math.max(...eSouth.map(p=>p.e)).toFixed(2)+" mV/m":"0.00 mV/m";
+ $("cumEIntegral").textContent=integral.toFixed(2)+" mV/m·h";
+ draw("cumEChart",[{data:pairs.map(p=>({x:new Date(p.t).toISOString(),y:p.e})),color:"#f2bd72"}]);
+ $("cumNote").textContent="Platné Bz: "+bz.length+" · časově spárované V/Bz: "+pairs.length+" · jižní párované vzorky: "+eSouth.length+" · nejnižší Bz: "+(bz.length?Math.min(...bz.map(p=>p.v)).toFixed(2)+" nT":"nedostupné")+" · období: "+new Date(since).toISOString().slice(0,16).replace("T"," ")+" až "+new Date(now).toISOString().slice(0,16).replace("T"," ")+" UTC.";
+}
 function updateAlerts(windRows,magRows,kpRows){
  const alerts=[];
  const now=Date.now();
@@ -410,6 +453,7 @@ async function refresh(){
  updateQuality(wind,speedCheck,window.__aceLatestQuality||null,couplingCount);
  updateAlerts(speedCheck.rows,mag,kp);
  updateHistory24h(wind,mag);
+ updateCumulative24h(wind,mag);
  $("stav").textContent=failures.length?"Některé zdroje nejsou dostupné: "+failures.join(" · "):"Spojení s datovými zdroji NOAA bylo úspěšné.";
  $("stav").className="status "+(failures.length?"warn":"good");
  $("updated").textContent="Poslední kontrola: "+new Date().toISOString().replace("T"," ").slice(0,19)+" UTC · automatická aktualizace každých 60 sekund";
