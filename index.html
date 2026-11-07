@@ -50,6 +50,17 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
  </div>
  <div id="riskNote" class="small">G1: Kp 5 · G2: Kp 6 · G3: Kp 7 · G4: Kp 8 · G5: Kp 9. Rychlost, Bz a tlak jsou doplňkové indikátory, nikoli náhrada Kp.</div>
 </section>
+<section class="panel" id="qualityPanel">
+ <h2>Kontrola kvality a časového souladu dat</h2>
+ <div class="grid">
+  <div><div class="small">RTSW – časová odchylka V / hustota</div><div id="qualityWindPair" class="metric">—</div></div>
+  <div><div class="small">ACE MAG – poslední stav</div><div id="qualityAce" class="metric">—</div></div>
+  <div><div class="small">Podezřelé špičky rychlosti</div><div id="qualitySpikes" class="metric">—</div></div>
+  <div><div class="small">Mezery v datech RTSW</div><div id="qualityGaps" class="metric">—</div></div>
+  <div><div class="small">Párování V / Bz</div><div id="qualityCoupling" class="metric">—</div></div>
+ </div>
+ <div id="qualityNote" class="small">Kontrola čeká na první platné vzorky. Časové značky jsou vyhodnocovány v UTC.</div>
+</section>
 <section class="panel"><h2>Průběh slunečního větru – poslední dostupné záznamy</h2><canvas id="speedChart" width="900" height="220"></canvas><div class="small">Rychlost v km/s · čas UTC · mezery v datech se nepovažují za nulové hodnoty.</div></section>
 <section class="panel"><h2>Dynamický tlak slunečního větru – časový průběh</h2><canvas id="pressureChart" width="900" height="220"></canvas><div class="small">Pdyn = 1,6726 × 10⁻⁶ × n × V² (nPa), kde n je hustota protonů v cm⁻³ a V rychlost v km/s. Výpočet používá pouze časově spárovaná měření do 90 sekund.</div></section>
 <section class="panel"><h2>Meziplanetární magnetické pole – Bz a Bt</h2><canvas id="magChart" width="900" height="220"></canvas><div class="small">Bz v GSM (nT) a celková intenzita Bt (nT). Záporné Bz znamená jižní orientaci.</div></section>
@@ -114,7 +125,7 @@ function val(o,...keys){for(const k of keys){if(o&&valid(o[k]))return Number(o[k
 function newest(rows,keys,activeOnly=false){
  if(!Array.isArray(rows))return null;
  let a=rows.filter(o=>timeOf(o)&&keys.some(k=>valid(o[k]))&&(!activeOnly||o.active===true));
- if(!a.length&&activeOnly)a=rows.filter(o=>timeOf(o)&&keys.some(k=>valid(o[k])));
+ // Bez aktivního/platného vzorku nevracíme starší neověřená data.
  a.sort((x,y)=>Date.parse(timeOf(y))-Date.parse(timeOf(x)));return a[0]||null
 }
 function setMetric(id,v,unit,did,stamp){$(id).textContent=v===null?"Nedostupné":v.toFixed(id==="speed"?0:2)+" "+unit;$(did).textContent=stamp?"Měření: "+stamp.replace("T"," ")+" UTC":"Čas měření není dostupný"}
@@ -208,13 +219,18 @@ function updateCoupling(windRows,magRows){
   out.textContent="Nedostupné";status.textContent="Chybí platná data rychlosti nebo Bz.";return;
  }
  const paired=[];
- let wi=0;
+ const usedWind=new Set();
  for(const m of mags){
-  while(wi+1<winds.length&&Math.abs(winds[wi+1].t-m.t)<=Math.abs(winds[wi].t-m.t))wi++;
-  const w=winds[wi],delta=Math.abs(w.t-m.t);
-  if(delta<=90000){
-   const bs=Math.max(0,-m.bz),e=.001*w.v*bs;
-   paired.push({t:m.t,v:w.v,bz:m.bz,bs,e,delta});
+  let best=-1,bestDelta=Infinity;
+  for(let i=0;i<winds.length;i++){
+   if(usedWind.has(i))continue;
+   const delta=Math.abs(winds[i].t-m.t);
+   if(delta<bestDelta){best=i;bestDelta=delta;}
+  }
+  if(best>=0&&bestDelta<=90000){
+   usedWind.add(best);
+   const w=winds[best],bs=Math.max(0,-m.bz),e=.001*w.v*bs;
+   paired.push({t:m.t,v:w.v,bz:m.bz,bs,e,delta:bestDelta});
   }
  }
  paired.sort((a,b)=>a.t-b.t);
@@ -236,6 +252,25 @@ function updateCoupling(windRows,magRows){
   "Maximum v zobrazeném souboru: "+peak.e.toFixed(2)+" mV/m ("+new Date(peak.t).toISOString().replace("T"," ").slice(0,16)+" UTC).";
  status.className="small "+(south?"warn":"good");
  draw("couplingChart",[{data:paired.slice(-180).map(p=>({x:new Date(p.t).toISOString(),y:p.e})),color:"#ffbd6b"}]);
+}
+function updateQuality(windRows,cleaned,aceLatest,couplingCount){
+ const pairEl=$("qualityWindPair"),spikeEl=$("qualitySpikes"),gapEl=$("qualityGaps");
+ const note=$("qualityNote");
+ const paired=windRows.filter(r=>timeOf(r)&&valid(r.proton_speed)&&valid(r.proton_density))
+  .map(r=>({t:Date.parse(timeOf(r))})).filter(r=>Number.isFinite(r.t)).sort((a,b)=>a.t-b.t);
+ let maxGap=0,gaps=0;
+ for(let i=1;i<paired.length;i++){const dt=paired[i].t-paired[i-1].t;if(dt>90000){gaps++;maxGap=Math.max(maxGap,dt)}}
+ pairEl.textContent=paired.length?"platné společné vzorky: "+paired.length:"nedostupné";
+ spikeEl.textContent=String(cleaned.rejected);
+ gapEl.textContent=String(gaps)+(maxGap?" · max "+Math.round(maxGap/60000)+" min":"");
+ const aceEl=$("qualityAce");
+ if(aceLatest){aceEl.textContent="S = "+aceLatest.statusFlag;aceEl.className="metric "+(aceLatest.statusFlag===0?"good":"warn")}
+ else {aceEl.textContent="nedostupné";aceEl.className="metric bad"}
+ $("qualityCoupling").textContent=String(couplingCount||0)+" spárovaných vzorků";
+ pairEl.className="metric "+(paired.length?"good":"warn");
+ spikeEl.className="metric "+(cleaned.rejected?"warn":"good");
+ gapEl.className="metric "+(gaps?"warn":"good");
+ note.textContent="RTSW: "+paired.length+" společných vzorků rychlosti a hustoty; "+gaps+" mezer delších než 90 s. Izolované špičky rychlosti vyřazeny: "+cleaned.rejected+". Párování rychlosti a Bz používá rozdíl nejvýše 90 s a jeden vzorek rychlosti nelze použít opakovaně. ACE MAG se započítává jen při S = 0 a platných hodnotách.";
 }
 async function refresh(){
  try{
@@ -278,6 +313,7 @@ async function refresh(){
  const latestPressure=latestPressureRow?1.6726e-6*Number(latestPressureRow.proton_density)*Number(latestPressureRow.proton_speed)**2:null;
  updateRisk(k,b,latestPressure, p);
  updateCoupling(speedCheck.rows,mag);
+ updateQuality(wind,speedCheck,window.__aceLatestQuality||null,0);
  $("stav").textContent=failures.length?"Některé zdroje nejsou dostupné: "+failures.join(" · "):"Spojení s datovými zdroji NOAA bylo úspěšné.";
  $("stav").className="status "+(failures.length?"warn":"good");
  $("updated").textContent="Poslední kontrola: "+new Date().toISOString().replace("T"," ").slice(0,19)+" UTC · automatická aktualizace každých 60 sekund";
@@ -309,19 +345,24 @@ async function refreshAce(){
       !/^\d{3,4}$/.test(hhmm)||!Number.isFinite(flag))continue;
    const hm=hhmm.padStart(4,"0");
    const hh=Number(hm.slice(0,2)),mm=Number(hm.slice(2,4));
-   const ss=Number.isFinite(secOfDay)?((secOfDay%60)+60)%60:0;
-   if(hh>23||mm>59)continue;
-   const stamp=year+"-"+String(month).padStart(2,"0")+"-"+String(day).padStart(2,"0")+
-    "T"+String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0")+":"+String(Math.floor(ss)).padStart(2,"0");
+   if(hh>23||mm>59||month<1||month>12||day<1||day>31)continue;
+   let stamp;
+   if(Number.isFinite(secOfDay)&&secOfDay>=0&&secOfDay<86400){
+    stamp=new Date(Date.UTC(year,month-1,day,0,0,0)+Math.floor(secOfDay)*1000).toISOString().replace(".000Z","Z");
+   }else{
+    stamp=new Date(Date.UTC(year,month-1,day,hh,mm,0)).toISOString().replace(".000Z","Z");
+   }
    parsed.push({stamp,statusFlag:flag,bx,by,bz,bt});
   }
   if(!parsed.length)throw Error("NOAA ACE MAG: nebyly nalezeny řádky ve formátu CURR_YR…Bt");
   const last=parsed[parsed.length-1];
+  window.__aceLatestQuality=last;
   const good=last.statusFlag===0;
   const validValue=v=>Number.isFinite(v)&&v!==-999.9&&v!==-999.0&&v!==-9999;
-  const fmt=v=>validValue(v)?v.toFixed(2)+" nT":"neplatná hodnota";
-  status.textContent=good?"OK · 0":"Příznak "+last.statusFlag;
-  status.className="metric "+(good?"good":"warn");
+  const recordValid=good&&[last.bx,last.by,last.bz,last.bt].every(validValue);
+  const fmt=v=>recordValid&&validValue(v)?v.toFixed(2)+" nT":"neplatná / nepotvrzená hodnota";
+  status.textContent=good?(recordValid?"OK · 0":"S = 0 · neplatná složka"):"Příznak "+last.statusFlag;
+  status.className="metric "+(recordValid?"good":"warn");
   $("aceBx").textContent=fmt(last.bx);$("aceBy").textContent=fmt(last.by);
   $("aceBz").textContent=fmt(last.bz);$("aceBt").textContent=fmt(last.bt);
   info.textContent="Poslední záznam: "+last.stamp.replace("T"," ")+" UTC · stavový příznak S: "+last.statusFlag+
@@ -388,8 +429,10 @@ async function refreshAce(){
    {data:goodRows.map(r=>({x:r.stamp,y:r.bz})),color:"#ff8d9a"}
   ]);
  }catch(e){
+  window.__aceLatestQuality=null;
   status.textContent="Nedostupné";status.className="metric bad";
   info.textContent="ACE MAG se nepodařilo načíst: "+e.message;
+  $("qualityAce").textContent="nedostupné";$("qualityAce").className="metric bad";
  }
 }
 refreshAce();setInterval(refreshAce,60000);
