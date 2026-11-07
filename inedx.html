@@ -1,0 +1,83 @@
+
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kosmická observatoř X-5</title>
+  <style>
+    body {
+      background: #081426;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 24px;
+    }
+    .panel {
+      background: #142740;
+      border-radius: 14px;
+      padding: 20px;
+      margin: 16px auto;
+      max-width: 550px;
+    }
+    .hodnota {
+      color: #5fe2ff;
+      font-size: 30px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌍 Kosmická observatoř X-5</h1>
+  <p>Monitorování kosmického počasí</p>
+
+  <div class="panel">
+    <h2>Rychlost slunečního větru</h2>
+    <div id="rychlost" class="hodnota">Načítání…</div>
+  </div>
+
+  <div class="panel">
+    <h2>Magnetické pole IMF – Bz</h2>
+    <div id="bz" class="hodnota">Načítání…</div>
+  </div>
+
+  <p id="aktualizace"></p>
+  <p>Zdroj dat: NOAA SWPC</p>
+
+  <script>
+    async function nactiData() {
+      try {
+        const url = "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json";
+        const bzUrl = "https://services.swpc.noaa.gov/products/solar-wind/mag-1-day.json";
+
+        const [plasma, mag] = await Promise.all([
+          fetch(url).then(r => r.json()),
+          fetch(bzUrl).then(r => r.json())
+        ]);
+
+        const p = plasma.slice(1).reverse().find(
+          r => r[2] !== null && Number.isFinite(Number(r[2]))
+        );
+        const m = mag.slice(1).reverse().find(
+          r => r[3] !== null && Number.isFinite(Number(r[3]))
+        );
+
+        document.getElementById("rychlost").textContent =
+          p ? Number(p[2]).toFixed(0) + " km/s" : "Data nejsou dostupná";
+
+        document.getElementById("bz").textContent =
+          m ? Number(m[3]).toFixed(2) + " nT" : "Data nejsou dostupná";
+
+        document.getElementById("aktualizace").textContent =
+          "Poslední měření UTC: " + (m ? m[0] : "neznámé");
+      } catch (chyba) {
+        document.getElementById("aktualizace").textContent =
+          "Data NOAA se nepodařilo načíst.";
+      }
+    }
+
+    nactiData();
+    setInterval(nactiData, 60000);
+  </script>
+</body>
+</html>
