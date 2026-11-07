@@ -325,11 +325,21 @@ function updateCumulative24h(windRows,magRows){
  const fmt=ms=>{const m=Math.round(ms/60000),h=Math.floor(m/60);return (h?h+" h ":"")+(m%60)+" min"};
  const mean=a=>a.length?a.reduce((s,p)=>s+p.v,0)/a.length:null;
  const south=bz.filter(p=>p.v<0),mBz=mean(bz),mBs=south.length?south.reduce((s,p)=>s-p.v,0)/bz.length:0;
- const pairs=[];let j=0;
+ const pairs=[],usedSpeed=new Set();
  for(const b of bz){
-  while(j+1<speed.length&&Math.abs(speed[j+1].t-b.t)<=Math.abs(speed[j].t-b.t))j++;
-  if(speed[j]&&Math.abs(speed[j].t-b.t)<=90000){const bs=Math.max(0,-b.v),e=.001*speed[j].v*bs;pairs.push({t:b.t,e,bs,v:speed[j].v,bz:b.v})}
+  let best=-1,bestDelta=Infinity;
+  for(let i=0;i<speed.length;i++){
+   if(usedSpeed.has(i))continue;
+   const delta=Math.abs(speed[i].t-b.t);
+   if(delta<bestDelta){best=i;bestDelta=delta}
+  }
+  if(best>=0&&bestDelta<=90000){
+   usedSpeed.add(best);
+   const bs=Math.max(0,-b.v),e=.001*speed[best].v*bs;
+   pairs.push({t:b.t,e,bs,v:speed[best].v,bz:b.v,delta:bestDelta})
+  }
  }
+ pairs.sort((a,b)=>a.t-b.t);
  let integral=0,maxE=0;
  for(let i=0;i<pairs.length;i++){maxE=Math.max(maxE,pairs[i].e);if(i&&pairs[i].e>0&&pairs[i-1].e>0){const dt=pairs[i].t-pairs[i-1].t;if(dt>0&&dt<=90000)integral+=(pairs[i].e+pairs[i-1].e)/2*dt/3600000}}
  const eSouth=pairs.filter(p=>p.bs>0);
@@ -340,7 +350,7 @@ function updateCumulative24h(windRows,magRows){
  $("cumEMax").textContent=eSouth.length?Math.max(...eSouth.map(p=>p.e)).toFixed(2)+" mV/m":"0.00 mV/m";
  $("cumEIntegral").textContent=integral.toFixed(2)+" mV/m·h";
  draw("cumEChart",[{data:pairs.map(p=>({x:new Date(p.t).toISOString(),y:p.e})),color:"#f2bd72"}]);
- $("cumNote").textContent="Platné Bz: "+bz.length+" · časově spárované V/Bz: "+pairs.length+" · jižní párované vzorky: "+eSouth.length+" · nejnižší Bz: "+(bz.length?Math.min(...bz.map(p=>p.v)).toFixed(2)+" nT":"nedostupné")+" · období: "+new Date(since).toISOString().slice(0,16).replace("T"," ")+" až "+new Date(now).toISOString().slice(0,16).replace("T"," ")+" UTC.";
+ $("cumNote").textContent="Platné Bz: "+bz.length+" · časově spárované V/Bz: "+pairs.length+" · jižní párované vzorky: "+eSouth.length+" · max. časový rozdíl páru: "+(pairs.length?Math.max(...pairs.map(p=>p.delta))/1000:0).toFixed(0)+" s · nejnižší Bz: "+(bz.length?Math.min(...bz.map(p=>p.v)).toFixed(2)+" nT":"nedostupné")+" · období: "+new Date(since).toISOString().slice(0,16).replace("T"," ")+" až "+new Date(now).toISOString().slice(0,16).replace("T"," ")+" UTC.";
 }
 function updateAlerts(windRows,magRows,kpRows){
  const alerts=[];
