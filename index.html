@@ -161,7 +161,7 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
 <canvas id="aceCompareChart" width="900" height="220"></canvas>
 <div class="small">Časový průběh Bz: ACE MAG (oranžově) a RTSW (modře).</div>
 <h3>Rozdíl Bz v čase (ACE − RTSW)</h3><canvas id="aceDeltaChart" width="900" height="220"></canvas>
-<div class="small">Statistika používá jedinečné páry platných vzorků s časovým rozdílem nejvýše 90 sekund v posledních 6 hodinách. Jeden vzorek RTSW se nepoužije opakovaně. Směrodatná odchylka je výběrová.</div>
+<div class="small">Statistika používá jedinečné páry platných vzorků z posledních 24 hodin s časovým rozdílem nejvýše 90 sekund. Jeden vzorek RTSW se nepoužije opakovaně. Směrodatná odchylka je výběrová.</div>
 <div class="small">Porovnávají se pouze platné vzorky: ACE MAG se stavovým příznakem S = 0 a bez hodnot −999.9; RTSW pouze s aktivním záznamem. Časový rozdíl páru musí být nejvýše 90 sekund. Rozdíl zdrojů nemusí znamenat chybu – může souviset s časem zpracování a polohou sond.</div></section>
 <section class="panel"><h2>Datové zdroje a metodika</h2><div class="small">
 RTSW: NOAA SWPC, minutová měření slunečního větru a IMF u L1. Kp: planetární index, tříhodinová/odhadovaná data. GOES: rentgenový tok v pásmu 0,1–0,8 nm. Dst: hodinový index, může mít zpoždění.<br>
@@ -650,14 +650,14 @@ async function refreshAceComparison(){
    ace.push({t:Date.UTC(y,m-1,d)+Math.floor(sec)*1000,bz});
   }
   const rt=(Array.isArray(data)?data:[]).filter(o=>o.active===true&&timeOf(o)&&good(o.bz_gsm)).map(o=>({t:Date.parse(timeOf(o)),bz:+o.bz_gsm})).filter(p=>Number.isFinite(p.t));
-  const since=Date.now()-6*3600000;
+  const since=Date.now()-24*3600000;
   const aa=ace.filter(p=>p.t>=since).sort((a,b)=>a.t-b.t),rrr=rt.filter(p=>p.t>=since).sort((a,b)=>a.t-b.t);
-  if(!aa.length||!rrr.length)throw Error("V posledních 6 hodinách chybí platná data jednoho zdroje.");
+  if(!aa.length||!rrr.length)throw Error("V posledních 24 hodinách chybí platná data jednoho zdroje.");
   const tm=t=>new Date(t).toISOString().replace("T"," ").slice(0,19)+" UTC";
   let best=null,nearest=null;
   for(const a of aa)for(const b of rrr){const dt=Math.abs(a.t-b.t);if(!nearest||dt<nearest.dt)nearest={a,b,dt};if(dt<=90000&&(!best||Math.max(a.t,b.t)>Math.max(best.a.t,best.b.t)))best={a,b,dt}}
-  if(best){const d=best.a.bz-best.b.bz;put("cmpAceBz",best.a.bz.toFixed(2)+" nT");put("cmpAceTime",tm(best.a.t));put("cmpRtswBz",best.b.bz.toFixed(2)+" nT");put("cmpRtswTime",tm(best.b.t));put("cmpDelta",(d>0?"+":"")+d.toFixed(2)+" nT");put("cmpDeltaTime","Časový rozdíl: "+Math.round(best.dt/1000)+" s · nejnovější společný pár z posledních 6 hodin");put("cmpStatus","PÁR POTVRZEN · nejnovější časově spárované měření v limitu 90 sekund.")}
-  else{put("cmpAceBz",nearest.a.bz.toFixed(2)+" nT");put("cmpAceTime",tm(nearest.a.t));put("cmpRtswBz","Bez časového páru");put("cmpRtswTime",tm(nearest.b.t));put("cmpDelta","—");put("cmpDeltaTime","Nejbližší rozdíl v posledních 6 hodinách: "+Math.round(nearest.dt/1000)+" s");put("cmpStatus","V posledních 6 hodinách nebyl nalezen pár s rozdílem do 90 sekund.")}
+  if(best){const d=best.a.bz-best.b.bz;put("cmpAceBz",best.a.bz.toFixed(2)+" nT");put("cmpAceTime",tm(best.a.t));put("cmpRtswBz",best.b.bz.toFixed(2)+" nT");put("cmpRtswTime",tm(best.b.t));put("cmpDelta",(d>0?"+":"")+d.toFixed(2)+" nT");put("cmpDeltaTime","Časový rozdíl: "+Math.round(best.dt/1000)+" s · nejnovější společný pár z posledních 24 hodin");put("cmpStatus","PÁR POTVRZEN · nejnovější časově spárované měření v limitu 90 sekund.")}
+  else{put("cmpAceBz",nearest.a.bz.toFixed(2)+" nT");put("cmpAceTime",tm(nearest.a.t));put("cmpRtswBz","Bez časového páru");put("cmpRtswTime",tm(nearest.b.t));put("cmpDelta","—");put("cmpDeltaTime","Nejbližší rozdíl v posledních 24 hodinách: "+Math.round(nearest.dt/1000)+" s");put("cmpStatus","V posledních 24 hodinách nebyl nalezen pár s rozdílem do 90 sekund.")}
   // Create unique one-to-one pairs: closest time differences are assigned first.
   const candidates=[];
   for(let i=0;i<aa.length;i++)for(let j=0;j<rrr.length;j++){const dt=Math.abs(aa[i].t-rrr[j].t);if(dt<=90000)candidates.push({i,j,dt,d:aa[i].bz-rrr[j].bz,t:Math.round((aa[i].t+rrr[j].t)/2)})}
@@ -687,7 +687,7 @@ async function refreshAceComparison(){
    $("cmpHourly").textContent=hourly.join(" · ");
    draw("aceDeltaChart",[{data:pairs.map(p=>({x:tm(p.t),y:p.d})),color:"#b58cff"}]);
   }else{for(const id of ["cmpCount","cmpMean","cmpMedian","cmpMax","cmpMin","cmpStd"])put(id,"—");put("cmpStatus","Žádné jedinečné časové páry v limitu 90 sekund.");}
-  draw("aceCompareChart",[{data:aa.slice(-360).map(p=>({x:tm(p.t),y:p.bz})),color:"#ffbd6b"},{data:rrr.slice(-360).map(p=>({x:tm(p.t),y:p.bz})),color:"#65dcff"}]);
+  draw("aceCompareChart",[{data:aa.slice(-1440).map(p=>({x:tm(p.t),y:p.bz})),color:"#ffbd6b"},{data:rrr.slice(-1440).map(p=>({x:tm(p.t),y:p.bz})),color:"#65dcff"}]);
  }catch(e){put("cmpStatus","Porovnání není dostupné: "+e.message);for(const id of ["cmpAceBz","cmpRtswBz","cmpDelta","cmpCount","cmpMean","cmpMedian","cmpMax","cmpMin","cmpStd","cmpCorr","cmpOutliers"])put(id,"—");}
 }
 refreshAceComparison();setInterval(refreshAceComparison,60000);
