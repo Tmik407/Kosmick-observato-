@@ -123,9 +123,16 @@ function series(rows,key){return rows.filter(o=>valid(o[key])).slice(-180).map(o
 function getXray(rows){let a=rows.filter(o=>valid(o.flux)&&timeOf(o));a.sort((x,y)=>Date.parse(timeOf(y))-Date.parse(timeOf(x)));return a[0]||null}
 function updateCoupling(windRows,magRows){
  const out=$("couplingNow"),status=$("couplingStatus");
- const winds=windRows.filter(r=>timeOf(r)&&valid(r.proton_speed)).map(r=>({t:Date.parse(timeOf(r)),v:Number(r.proton_speed)})).filter(r=>Number.isFinite(r.t)&&r.v>0);
- const mags=magRows.filter(r=>timeOf(r)&&valid(r.bz_gsm)).map(r=>({t:Date.parse(timeOf(r)),bz:Number(r.bz_gsm)})).filter(r=>Number.isFinite(r.t)&&r.bz!==-999.9&&r.bz!==-9999);
- if(!winds.length||!mags.length){out.textContent="Nedostupné";status.textContent="Chybí platná data rychlosti nebo Bz.";return}
+ const winds=windRows.filter(r=>timeOf(r)&&valid(r.proton_speed))
+  .map(r=>({t:Date.parse(timeOf(r)),v:Number(r.proton_speed)}))
+  .filter(r=>Number.isFinite(r.t)&&r.v>0).sort((a,b)=>a.t-b.t);
+ const mags=magRows.filter(r=>timeOf(r)&&valid(r.bz_gsm))
+  .map(r=>({t:Date.parse(timeOf(r)),bz:Number(r.bz_gsm)}))
+  .filter(r=>Number.isFinite(r.t)&&r.bz!==-999.9&&r.bz!==-9999)
+  .sort((a,b)=>a.t-b.t);
+ if(!winds.length||!mags.length){
+  out.textContent="Nedostupné";status.textContent="Chybí platná data rychlosti nebo Bz.";return;
+ }
  const paired=[];
  let wi=0;
  for(const m of mags){
@@ -136,8 +143,16 @@ function updateCoupling(windRows,magRows){
    paired.push({t:m.t,v:w.v,bz:m.bz,bs,e,delta});
   }
  }
- if(!paired.length){out.textContent="Nedostupné";status.textContent="Nenašla se měření rychlosti a Bz s časovým rozdílem do 90 sekund.";return}
- const latest=paired[paired.length-1],peak=paired.reduce((a,b)=>b.e>a.e?b:a,paired[0]);
+ paired.sort((a,b)=>a.t-b.t);
+ if(!paired.length){
+  out.textContent="Nedostupné";
+  status.textContent="Nenašla se měření rychlosti a Bz s časovým rozdílem do 90 sekund.";
+  $("couplingTime").textContent="Žádný časově odpovídající vzorek.";
+  $("couplingSpeed").textContent="—";$("couplingBs").textContent="—";
+  draw("couplingChart",[{data:[],color:"#ffbd6b"}]);return;
+ }
+ const latest=paired[paired.length-1];
+ const peak=paired.reduce((a,b)=>b.e>a.e?b:a,paired[0]);
  out.textContent=latest.e.toFixed(2)+" mV/m";
  $("couplingSpeed").textContent=latest.v.toFixed(0)+" km/s";
  $("couplingBs").textContent=latest.bs.toFixed(2)+" nT";
