@@ -252,6 +252,7 @@ function updateCoupling(windRows,magRows){
   "Maximum v zobrazeném souboru: "+peak.e.toFixed(2)+" mV/m ("+new Date(peak.t).toISOString().replace("T"," ").slice(0,16)+" UTC).";
  status.className="small "+(south?"warn":"good");
  draw("couplingChart",[{data:paired.slice(-180).map(p=>({x:new Date(p.t).toISOString(),y:p.e})),color:"#ffbd6b"}]);
+ return paired.length;
 }
 function updateQuality(windRows,cleaned,aceLatest,couplingCount){
  const pairEl=$("qualityWindPair"),spikeEl=$("qualitySpikes"),gapEl=$("qualityGaps");
@@ -312,8 +313,8 @@ async function refresh(){
  const latestPressureRow=speedCheck.rows.filter(r=>timeOf(r)&&valid(r.proton_speed)&&valid(r.proton_density)).slice(-1)[0];
  const latestPressure=latestPressureRow?1.6726e-6*Number(latestPressureRow.proton_density)*Number(latestPressureRow.proton_speed)**2:null;
  updateRisk(k,b,latestPressure, p);
- updateCoupling(speedCheck.rows,mag);
- updateQuality(wind,speedCheck,window.__aceLatestQuality||null,0);
+ const couplingCount=updateCoupling(speedCheck.rows,mag);
+ updateQuality(wind,speedCheck,window.__aceLatestQuality||null,couplingCount);
  $("stav").textContent=failures.length?"Některé zdroje nejsou dostupné: "+failures.join(" · "):"Spojení s datovými zdroji NOAA bylo úspěšné.";
  $("stav").className="status "+(failures.length?"warn":"good");
  $("updated").textContent="Poslední kontrola: "+new Date().toISOString().replace("T"," ").slice(0,19)+" UTC · automatická aktualizace každých 60 sekund";
