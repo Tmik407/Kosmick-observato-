@@ -103,7 +103,7 @@ Data v reálném čase jsou předběžná a mohou být později revidována. Ča
 const U={
  wind:"https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
  mag:"https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json",
- kp:"https://services.swpc.noaa.gov/json/planetary_k_index_1m.json",
+ kp:"https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",
  xray:"https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json",
  dst:"https://services.swpc.noaa.gov/products/kyoto-dst.json"
 };
@@ -132,6 +132,21 @@ function draw(id,series,log=false){
  series.forEach((s,si)=>{ctx.strokeStyle=s.color;ctx.lineWidth=2;ctx.beginPath();let started=false;
  s.data.forEach((pt,i)=>{if(!Number.isFinite(pt.y)){started=false;return}let yy=log?Math.log10(Math.max(pt.y,1e-9)):pt.y;let x=x0+(x1-x0)*i/Math.max(1,s.data.length-1),y=y1-(yy-min)/(max-min)*(y1-y0);if(!started){ctx.moveTo(x,y);started=true}else ctx.lineTo(x,y)});ctx.stroke()});
  ctx.fillStyle="#d6e4f2";ctx.fillText("min "+(log?Math.pow(10,min).toExponential(1):min.toFixed(1)),x0,y1+18);ctx.fillText("max "+(log?Math.pow(10,max).toExponential(1):max.toFixed(1)),x1-105,y0+10);
+}
+function cleanSpeedRows(rows){
+ const sorted=rows.filter(r=>timeOf(r)&&valid(r.proton_speed))
+  .map(r=>({r,t:Date.parse(timeOf(r)),v:Number(r.proton_speed)}))
+  .filter(x=>Number.isFinite(x.t)&&x.v>=150&&x.v<=2000)
+  .sort((a,b)=>a.t-b.t);
+ const rejected=new Set();
+ for(let i=1;i<sorted.length-1;i++){
+  const a=sorted[i-1],m=sorted[i],b=sorted[i+1];
+  const near=a.t<m.t&&b.t>m.t&&(m.t-a.t)<=180000&&(b.t-m.t)<=180000;
+  const baseline=Math.abs(a.v-b.v)<=Math.max(80,0.2*((a.v+b.v)/2));
+  const spike=Math.abs(m.v-(a.v+b.v)/2)>Math.max(150,0.4*((a.v+b.v)/2));
+  if(near&&baseline&&spike)rejected.add(m.r);
+ }
+ return {rows:sorted.filter(x=>!rejected.has(x.r)).map(x=>x.r),rejected:rejected.size};
 }
 function series(rows,key){return rows.filter(o=>valid(o[key])).slice(-180).map(o=>({x:timeOf(o),y:Number(o[key])}))}
 function getXray(rows){let a=rows.filter(o=>valid(o.flux)&&timeOf(o));a.sort((x,y)=>Date.parse(timeOf(y))-Date.parse(timeOf(x)));return a[0]||null}
@@ -232,7 +247,7 @@ async function refresh(){
  const kp=results[2].status==="fulfilled"?rowsOf(results[2].value):[];
  const xr=results[3].status==="fulfilled"?rowsOf(results[3].value):[];
  const dst=results[4].status==="fulfilled"?rowsOf(results[4].value):[];
- const p=newest(wind,["proton_speed"],true),d=newest(wind,["proton_density"],true);
+ const speedCheck=cleanSpeedRows(wind);\n  const p=newest(speedCheck.rows,["proton_speed"],true),d=newest(wind,["proton_density"],true);
  const b=newest(mag,["bz_gsm","bt"],true),k=newest(kp,["kp","Kp"]);
  const x=getXray(xr),z=dst.length?dst[dst.length-1]:null;
  setMetric("speed",p?val(p,"proton_speed"):null,"km/s","speedtime",p&&timeOf(p));
@@ -245,18 +260,18 @@ async function refresh(){
  if(x){const flux=Number(x.flux);let cls=flux>=1e-4?"X":flux>=1e-5?"M":flux>=1e-6?"C":flux>=1e-7?"B":"A";$("xray").textContent=cls+" ("+flux.toExponential(2)+" W/m²)";$("xraytime").textContent="Měření: "+timeOf(x).replace("T"," ")+" UTC"}else{$("xray").textContent="Nedostupné"}
  if(z){let dz=val(z,"dst","Dst",1);$("dst").textContent=dz===null?"Nedostupné":dz.toFixed(0)+" nT";$("dsttime").textContent="Čas: "+timeOf(z).replace("T"," ")+" UTC · ověřit interval"}else $("dst").textContent="Nedostupné";
  // Graf používá stejný poslední platný záznam jako karta rychlosti.
- const speedSeries=series(wind,"proton_speed");
+ const speedSeries=series(speedCheck.rows,"proton_speed");
  if(p){
   const latestSpeed={x:timeOf(p),y:val(p,"proton_speed")};
   const existing=speedSeries.findIndex(point=>point.x===latestSpeed.x);
   if(existing>=0)speedSeries[existing]=latestSpeed;
   else speedSeries.push(latestSpeed);
  }
- draw("speedChart",[{data:speedSeries,color:"#65dcff"}]);
+ draw("speedChart",[{data:speedSeries,color:"#65dcff"}]);\n  $("speedtime").textContent=(p?"Měření: "+timeOf(p).replace("T"," ")+" UTC":"Čas měření není dostupný")+(speedCheck.rejected?" · vyřazeno "+speedCheck.rejected+" izolované podezřelé špičky":" · kontrola skoků OK");
  draw("magChart",[{data:series(mag,"bz_gsm"),color:"#65dcff"},{data:series(mag,"bt"),color:"#ffbd6b"}]);
  draw("xrayChart",[{data:series(xr,"flux"),color:"#ff8d9a"}],true);
  updateDynamicPressure(wind);
- const latestPressureRow=wind.filter(r=>timeOf(r)&&valid(r.proton_speed)&&valid(r.proton_density)).slice(-1)[0];
+ const latestPressureRow=speedCheck.rows.filter(r=>timeOf(r)&&valid(r.proton_speed)&&valid(r.proton_density)).slice(-1)[0];
  const latestPressure=latestPressureRow?1.6726e-6*Number(latestPressureRow.proton_density)*Number(latestPressureRow.proton_speed)**2:null;
  updateRisk(k,b,latestPressure, p);
  updateCoupling(wind,mag);
