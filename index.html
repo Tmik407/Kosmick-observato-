@@ -152,7 +152,12 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
 <div><div class="small">Největší kladná odchylka</div><div id="cmpMax" class="metric">—</div></div>
 <div><div class="small">Největší záporná odchylka</div><div id="cmpMin" class="metric">—</div></div>
 <div><div class="small">Směrodatná odchylka</div><div id="cmpStd" class="metric">—</div></div>
+<div><div class="small">Korelace ACE–RTSW (r)</div><div id="cmpCorr" class="metric">—</div></div>
+<div><div class="small">Počet rozdílů nad ±5 nT</div><div id="cmpOutliers" class="metric">—</div></div>
 </div>
+<h3>Rozdělení rozdílů Bz – histogram</h3><canvas id="aceHistChart" width="900" height="220"></canvas>
+<div class="small">Histogram ukazuje četnost rozdílů ACE − RTSW v intervalech po 2 nT. Kladné hodnoty znamenají vyšší Bz u ACE.</div>
+<h3>Průměrná odchylka podle hodin</h3><div id="cmpHourly" class="small">Čekám na data…</div>
 <canvas id="aceCompareChart" width="900" height="220"></canvas>
 <div class="small">Časový průběh Bz: ACE MAG (oranžově) a RTSW (modře).</div>
 <h3>Rozdíl Bz v čase (ACE − RTSW)</h3><canvas id="aceDeltaChart" width="900" height="220"></canvas>
@@ -655,10 +660,24 @@ async function refreshAceComparison(){
    const std=ds.length>1?Math.sqrt(ds.reduce((z,x)=>z+(x-mean)**2,0)/(ds.length-1)):0;
    const fmt=x=>(x>0?"+":"")+x.toFixed(2)+" nT";
    put("cmpCount",String(pairs.length));put("cmpMean",fmt(mean));put("cmpMedian",fmt(median));put("cmpMax",fmt(Math.max(...ds)));put("cmpMin",fmt(Math.min(...ds)));put("cmpStd",std.toFixed(2)+" nT");
+   const xs=pairs.map(p=>p.a?.bz ?? (p.d + 0)); const ys=pairs.map(p=>p.b?.bz ?? 0);
+   // Correlation is calculated from the paired ACE and RTSW measurements.
+   const ax=pairs.map(p=>aa[p.i].bz),by=pairs.map(p=>rrr[p.j].bz);
+   const mx=ax.reduce((a,b)=>a+b,0)/ax.length,my=by.reduce((a,b)=>a+b,0)/by.length;
+   const cov=ax.reduce((z,x,i)=>z+(x-mx)*(by[i]-my),0);
+   const den=Math.sqrt(ax.reduce((z,x)=>z+(x-mx)**2,0)*by.reduce((z,y)=>z+(y-my)**2,0));
+   put("cmpCorr",den? (cov/den).toFixed(3):"nelze určit");
+   put("cmpOutliers",String(ds.filter(x=>Math.abs(x)>5).length)+" / "+ds.length);
+   const edges=[];for(let e=-12;e<=12;e+=2)edges.push(e);
+   const bins=edges.slice(0,-1).map((lo,i)=>({x:lo+" až "+edges[i+1],y:ds.filter(v=>v>=lo&&(i===edges.length-2?v<=edges[i+1]:v<edges[i+1])).length}));
+   draw("aceHistChart",[{data:bins,color:"#b58cff"}]);
+   const hours=new Map();for(const p of pairs){const h=new Date(p.t).toISOString().slice(0,13)+":00";if(!hours.has(h))hours.set(h,[]);hours.get(h).push(p.d)}
+   const hourly=[...hours.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([h,v])=>h+" UTC: "+fmt(v.reduce((a,b)=>a+b,0)/v.length)+" ("+v.length+" párů)");
+   $("cmpHourly").textContent=hourly.join(" · ");
    draw("aceDeltaChart",[{data:pairs.map(p=>({x:tm(p.t),y:p.d})),color:"#b58cff"}]);
   }else{for(const id of ["cmpCount","cmpMean","cmpMedian","cmpMax","cmpMin","cmpStd"])put(id,"—");put("cmpStatus","Žádné jedinečné časové páry v limitu 90 sekund.");}
   draw("aceCompareChart",[{data:aa.slice(-360).map(p=>({x:tm(p.t),y:p.bz})),color:"#ffbd6b"},{data:rrr.slice(-360).map(p=>({x:tm(p.t),y:p.bz})),color:"#65dcff"}]);
- }catch(e){put("cmpStatus","Porovnání není dostupné: "+e.message);for(const id of ["cmpAceBz","cmpRtswBz","cmpDelta","cmpCount","cmpMean","cmpMedian","cmpMax","cmpMin","cmpStd"])put(id,"—");}
+ }catch(e){put("cmpStatus","Porovnání není dostupné: "+e.message);for(const id of ["cmpAceBz","cmpRtswBz","cmpDelta","cmpCount","cmpMean","cmpMedian","cmpMax","cmpMin","cmpStd","cmpCorr","cmpOutliers"])put(id,"—");}
 }
 refreshAceComparison();setInterval(refreshAceComparison,60000);
 
