@@ -661,11 +661,16 @@ async function refreshAceComparison(){
    }
    return out;
   };
-  const now=new Date(),dates=[new Date(now.getTime()-86400000),now];
-  const archiveUrls=dates.map(d=>"https://sohoftp.nascom.nasa.gov/sdb/goes/ace/daily/"+d.toISOString().slice(0,10).replace(/-/g,"")+"_ace_mag_1m.txt");
-  const archiveResults=await Promise.allSettled(archiveUrls.map(async url=>{const r=await fetch(url,{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);return parseAceText(await r.text())}));
-  const archiveRows=archiveResults.filter(x=>x.status==="fulfilled").flatMap(x=>x.value);
-  const [liveResponse,rr]=await Promise.all([fetch("https://services.swpc.noaa.gov/text/ace-magnetometer.txt",{cache:"no-store"}),fetch(U.mag,{cache:"no-store"})]);
+  const [archiveResponse,liveResponse,rr]=await Promise.all([
+   fetch("./ace-mag-archive.json?v="+Date.now(),{cache:"no-store"}),
+   fetch("https://services.swpc.noaa.gov/text/ace-magnetometer.txt",{cache:"no-store"}),
+   fetch(U.mag,{cache:"no-store"})
+  ]);
+  let archiveRows=[];
+  if(archiveResponse.ok){
+   const archiveData=await archiveResponse.json();
+   archiveRows=Array.isArray(archiveData.rows)?archiveData.rows.filter(p=>Number.isFinite(Number(p.t))&&good(p.bz)).map(p=>({t:Number(p.t),bz:Number(p.bz)})):[];
+  }
   if(!rr.ok)throw Error("RTSW HTTP "+rr.status);
   const liveRows=liveResponse.ok?parseAceText(await liveResponse.text()):[];
   const data=await rr.json();
@@ -711,7 +716,7 @@ async function refreshAceComparison(){
   put("covHourly",hourLines.join(" · "));
   const emptyHours=hourKeys.filter(h=>hourCounts.get(h)===0).length;
   const lowHours=hourKeys.filter(h=>hourCounts.get(h)>0&&hourCounts.get(h)<30).length;
-  put("covSummary","Okno: "+new Date(windowStart).toISOString().replace("T"," ").slice(0,19)+" až "+new Date(windowEnd).toISOString().replace("T"," ").slice(0,19)+" UTC. Bez jediného páru: "+emptyHours+" hodin; méně než 30 párů: "+lowHours+" hodin. Celkové pokrytí: "+pairCount+" / 1 440 minut. Zdroj ACE: "+(archiveRows.length?"denní archiv NASA ACE + živý NOAA stream ("+archiveRows.length+" archivních platných řádků)":"pouze živý NOAA stream – archivní soubory nejsou z prohlížeče dostupné")+".");
+  put("covSummary","Okno: "+new Date(windowStart).toISOString().replace("T"," ").slice(0,19)+" až "+new Date(windowEnd).toISOString().replace("T"," ").slice(0,19)+" UTC. Bez jediného páru: "+emptyHours+" hodin; méně než 30 párů: "+lowHours+" hodin. Celkové pokrytí: "+pairCount+" / 1 440 minut. Zdroj ACE: "+(archiveRows.length?"archiv NASA ACE přes GitHub Actions + živý NOAA stream ("+archiveRows.length+" archivních platných řádků)":"pouze živý NOAA stream – čeká se na první archivní běh GitHub Actions")+".");
   const covPercentEl=$("covPercent");
   if(covPercentEl)covPercentEl.className="metric "+(coverage>=80?"good":coverage>=40?"warn":"bad");
   const covPairsEl=$("covPairs");
