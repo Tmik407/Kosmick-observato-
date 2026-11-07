@@ -1,0 +1,88 @@
+name: Archiv polární záře OVATION
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: aurora-history
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Načíst a archivovat NOAA OVATION
+        run: |
+          python - <<'PY'
+          import datetime, json, math, os, urllib.request
+          url = "https://services.swpc.noaa.gov/json/ovation_aurora_latest.json"
+          req = urllib.request.Request(url, headers={"User-Agent":"Projekt-X-5-AuroraArchive/1.0"})
+          with urllib.request.urlopen(req, timeout=40) as response:
+              data = json.load(response)
+          obs = data.get("Observation Time")
+          forecast = data.get("Forecast Time")
+          if not obs or not forecast or not isinstance(data.get("coordinates"), list):
+              raise SystemExit("NOAA OVATION payload is incomplete")
+          points = []
+          for row in data["coordinates"]:
+              if not isinstance(row, list) or len(row) < 3:
+                  continue
+              try:
+                  lon, lat, intensity = map(float, row[:3])
+              except (TypeError, ValueError):
+                  continue
+              if not all(map(math.isfinite, (lon, lat, intensity))):
+                  continue
+              if not (0 <= lon <= 360 and -90 <= lat <= 90 and 0 <= intensity <= 100):
+                  continue
+              points.append((lat, intensity))
+          if len(points) < 100:
+              raise SystemExit("Too few valid OVATION grid points")
+          north = [v for lat, v in points if lat >= 0]
+          south = [v for lat, v in points if lat <= 0]
+          stamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+          row = {
+              "observed": obs, "forecast": forecast, "saved": stamp,
+              "north_max": round(max(north), 2), "south_max": round(max(south), 2),
+              "north_mean": round(sum(north)/len(north), 3),
+              "south_mean": round(sum(south)/len(south), 3),
+              "strong_points": sum(1 for _,v in points if v >= 50),
+              "valid_points": len(points)
+          }
+          path = "aurora-history.json"
+          try:
+              with open(path, encoding="utf-8") as f:
+                  archive = json.load(f)
+          except (FileNotFoundError, json.JSONDecodeError):
+              archive = {"source":"NOAA SWPC OVATION latest JSON","rows":[]}
+          rows = archive.get("rows", [])
+          if not any(x.get("forecast") == forecast for x in rows):
+              rows.append(row)
+          cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=90)
+          kept = []
+          for x in rows:
+              try:
+                  t = datetime.datetime.fromisoformat(x["saved"].replace("Z","+00:00"))
+                  if t >= cutoff:
+                      kept.append(x)
+              except Exception:
+                  continue
+          kept.sort(key=lambda x:x.get("forecast",""))
+          archive = {"updated":stamp,"source":"NOAA SWPC OVATION","retention_days":90,"rows":kept}
+          with open(path,"w",encoding="utf-8") as f:
+              json.dump(archive,f,ensure_ascii=False,separators=(",",":"))
+          print("Archived forecast:", forecast, "valid points:", len(points), "history rows:", len(kept))
+          PY
+      - name: Uložit historii
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add aurora-history.json
+          git diff --cached --quiet || (git commit -m "Aktualizace historie polární záře OVATION" && git push)
