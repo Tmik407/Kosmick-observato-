@@ -38,6 +38,18 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
  <section class="panel"><h2>Rentgenové záření GOES</h2><div id="xray" class="metric">—</div><div id="xraytime" class="small"></div></section>
  <section class="panel"><h2>Dst index</h2><div id="dst" class="metric">—</div><div id="dsttime" class="small">Hodinová hodnota, pokud je dostupná</div></section>
 </div>
+<section class="panel" id="riskPanel">
+ <h2>Geomagnetické riziko – monitorovací panel</h2>
+ <div id="riskLevel" class="metric">Vyhodnocuji…</div>
+ <div id="riskSummary" class="small">Oficiální stupeň G se určuje pouze z platného planetárního indexu Kp.</div>
+ <div class="grid" style="margin-top:12px">
+  <div><div class="small">Kp / NOAA G-škála</div><div id="riskKp" class="metric">—</div></div>
+  <div><div class="small">IMF Bz (GSM)</div><div id="riskBz" class="metric">—</div></div>
+  <div><div class="small">Rychlost slunečního větru</div><div id="riskSpeed" class="metric">—</div></div>
+  <div><div class="small">Dynamický tlak</div><div id="riskPressure" class="metric">—</div></div>
+ </div>
+ <div id="riskNote" class="small">G1: Kp 5 · G2: Kp 6 · G3: Kp 7 · G4: Kp 8 · G5: Kp 9. Rychlost, Bz a tlak jsou doplňkové indikátory, nikoli náhrada Kp.</div>
+</section>
 <section class="panel"><h2>Průběh slunečního větru – poslední dostupné záznamy</h2><canvas id="speedChart" width="900" height="220"></canvas><div class="small">Rychlost v km/s · čas UTC · mezery v datech se nepovažují za nulové hodnoty.</div></section>
 <section class="panel"><h2>Dynamický tlak slunečního větru – časový průběh</h2><canvas id="pressureChart" width="900" height="220"></canvas><div class="small">Pdyn = 1,6726 × 10⁻⁶ × n × V² (nPa), kde n je hustota protonů v cm⁻³ a V rychlost v km/s. Výpočet používá pouze časově spárovaná měření do 90 sekund.</div></section>
 <section class="panel"><h2>Meziplanetární magnetické pole – Bz a Bt</h2><canvas id="magChart" width="900" height="220"></canvas><div class="small">Bz v GSM (nT) a celková intenzita Bt (nT). Záporné Bz znamená jižní orientaci.</div></section>
@@ -123,6 +135,33 @@ function draw(id,series,log=false){
 }
 function series(rows,key){return rows.filter(o=>valid(o[key])).slice(-180).map(o=>({x:timeOf(o),y:Number(o[key])}))}
 function getXray(rows){let a=rows.filter(o=>valid(o.flux)&&timeOf(o));a.sort((x,y)=>Date.parse(timeOf(y))-Date.parse(timeOf(x)));return a[0]||null}
+function updateRisk(k,b,p,d){
+ const kp=k?val(k,"kp","Kp"):null;
+ const bz=b?val(b,"bz_gsm"):null;
+ const speed=d?val(d,"proton_speed"):null;
+ const pressure=p;
+ let g=0;
+ if(kp!==null){if(kp>=9)g=5;else if(kp>=8)g=4;else if(kp>=7)g=3;else if(kp>=6)g=2;else if(kp>=5)g=1;}
+ $("riskKp").textContent=kp===null?"Nedostupné":kp.toFixed(1)+(g?" · G"+g:" · bez G bouře");
+ $("riskBz").textContent=bz===null?"Nedostupné":bz.toFixed(2)+" nT";
+ $("riskSpeed").textContent=speed===null?"Nedostupné":speed.toFixed(0)+" km/s";
+ $("riskPressure").textContent=pressure===null?"Nedostupné":pressure.toFixed(2)+" nPa";
+ const level=$("riskLevel"),summary=$("riskSummary");
+ if(kp!==null){
+  level.textContent=g?"G"+g+" · geomagnetická bouře":"Bez dosažené G1";
+  level.className="metric "+(g>=3?"bad":g?"warn":"good");
+  summary.textContent="Hodnocení podle dostupného planetárního Kp. Kp je globální tříhodinový/odhadovaný index; aktuální podmínky u L1 mohou předcházet změně Kp.";
+ }else{
+  level.textContent="G-škála: nelze určit";
+  level.className="metric warn";
+  summary.textContent="Planetární Kp není dostupný. G-stupeň proto neodhadujeme z Bz, rychlosti ani tlaku.";
+ }
+ const cues=[];
+ if(bz!==null)cues.push(bz<=-10?"silně jižní Bz":bz<=-5?"jižní Bz":bz<0?"slabě jižní Bz":"severní Bz");
+ if(speed!==null)cues.push(speed>=700?"velmi rychlý vítr":speed>=500?"zvýšená rychlost":"nižší rychlost");
+ if(pressure!==null)cues.push(pressure>=10?"vysoký dynamický tlak":pressure>=4?"zvýšený dynamický tlak":"nižší dynamický tlak");
+ $("riskNote").textContent="Indikátory: "+(cues.join(" · ")||"nedostatek platných dat")+". G1–G5 se zobrazí pouze při dostupném Kp. Prahy: G1 Kp 5, G2 Kp 6, G3 Kp 7, G4 Kp 8, G5 Kp 9.";
+}
 function updateDynamicPressure(rows){
  const validRows=rows.filter(r=>timeOf(r)&&valid(r.proton_speed)&&valid(r.proton_density))
   .map(r=>({t:Date.parse(timeOf(r)),speed:Number(r.proton_speed),density:Number(r.proton_density)}))
@@ -217,6 +256,9 @@ async function refresh(){
  draw("magChart",[{data:series(mag,"bz_gsm"),color:"#65dcff"},{data:series(mag,"bt"),color:"#ffbd6b"}]);
  draw("xrayChart",[{data:series(xr,"flux"),color:"#ff8d9a"}],true);
  updateDynamicPressure(wind);
+ const latestPressureRow=wind.filter(r=>timeOf(r)&&valid(r.proton_speed)&&valid(r.proton_density)).slice(-1)[0];
+ const latestPressure=latestPressureRow?1.6726e-6*Number(latestPressureRow.proton_density)*Number(latestPressureRow.proton_speed)**2:null;
+ updateRisk(k,b,latestPressure, p);
  updateCoupling(wind,mag);
  $("stav").textContent=failures.length?"Některé zdroje nejsou dostupné: "+failures.join(" · "):"Spojení s datovými zdroji NOAA bylo úspěšné.";
  $("stav").className="status "+(failures.length?"warn":"good");
