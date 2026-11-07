@@ -1,136 +1,121 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#081426">
-  <title>Kosmická observatoř X-5</title>
-  <style>
-    body { background:#081426; color:white; font-family:Arial,sans-serif; text-align:center; padding:24px; margin:0; }
-    h1 { font-size:clamp(25px,5vw,36px); }
-    .panel { background:#142740; border-radius:14px; padding:20px; margin:16px auto; max-width:550px; }
-    .hodnota { color:#5fe2ff; font-size:30px; font-weight:bold; }
-    .detail { color:#c5d3e4; font-size:14px; margin-top:10px; }
-    #stav { margin:18px auto; max-width:600px; line-height:1.5; }
-    .chyba { color:#ffb4a9; }
-    .ok { color:#a8e6bd; }
-    .zdroj { color:#aebed0; font-size:13px; }
-  </style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#081426">
+<title>Kosmická observatoř X-5</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}
+body{margin:0;background:#081426;color:#edf5ff;font-family:Arial,sans-serif;padding:18px}
+header{text-align:center;padding:18px 8px 12px}h1{font-size:clamp(25px,5vw,36px);margin:8px 0}
+.sub{color:#b9cbe0;margin:8px 0 18px}.wrap{max-width:1050px;margin:auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.panel{background:#142740;border:1px solid #29415e;border-radius:15px;padding:17px;margin:12px 0;min-width:0}
+.panel h2{font-size:19px;margin:0 0 12px}.metric{font-size:29px;font-weight:700;color:#65dcff}
+.small{font-size:12px;color:#b7c9dc;margin-top:8px;line-height:1.5}
+.status{padding:12px;text-align:center;border-radius:10px;background:#10233a;margin:12px 0;color:#bcd1e7}
+.good{color:#9ce5b5}.warn{color:#ffd08a}.bad{color:#ffaaa0}
+canvas{width:100%;height:190px;display:block}
+img.space{width:100%;height:auto;display:block;border-radius:10px;background:#07101d}
+.imagegrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+a{color:#7bdcff}footer{text-align:center;color:#9eb2c9;font-size:12px;padding:20px}
+button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px;padding:9px 14px;font-weight:bold}
+</style>
 </head>
-<body>
-  <h1>🌍 Kosmická observatoř X-5</h1>
-  <p>Monitorování kosmického počasí</p>
-
-  <div class="panel">
-    <h2>Rychlost slunečního větru</h2>
-    <div id="rychlost" class="hodnota">Načítání…</div>
-    <div id="plasma-detail" class="detail"></div>
-  </div>
-
-  <div class="panel">
-    <h2>Magnetické pole IMF – Bz (GSM)</h2>
-    <div id="bz" class="hodnota">Načítání…</div>
-    <div id="mag-detail" class="detail"></div>
-  </div>
-
-  <p id="stav">Navazuji spojení s daty NOAA SWPC…</p>
-  <p id="aktualizace" class="detail"></p>
-  <p class="zdroj">Zdroj: NOAA SWPC – Real-Time Solar Wind (RTSW)</p>
-
-  <script>
-    const WIND_URL = "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json";
-    const MAG_URL = "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json";
-
-    function cisloJePlatne(hodnota) {
-      if (hodnota === null || hodnota === undefined || hodnota === "") return false;
-      const n = Number(hodnota);
-      return Number.isFinite(n) && n !== -9999 && n !== -999.9;
-    }
-
-    function nejcerstvejsiAktivni(zaznamy, pole) {
-      if (!Array.isArray(zaznamy)) return null;
-      const platne = zaznamy.filter(z =>
-        z && z.active === true && cisloJePlatne(z[pole]) && z.time_tag
-      );
-      platne.sort((a,b) => Date.parse(b.time_tag) - Date.parse(a.time_tag));
-      if (platne.length) return platne[0];
-
-      // Záložní možnost: nejnovější platný záznam, pokud NOAA právě neoznačila aktivní zdroj.
-      const zaloha = zaznamy.filter(z =>
-        z && cisloJePlatne(z[pole]) && z.time_tag
-      );
-      zaloha.sort((a,b) => Date.parse(b.time_tag) - Date.parse(a.time_tag));
-      return zaloha.length ? zaloha[0] : null;
-    }
-
-    async function nactiJson(url) {
-      const odpoved = await fetch(url, { cache: "no-store" });
-      if (!odpoved.ok) throw new Error("HTTP " + odpoved.status + " – " + url);
-      return odpoved.json();
-    }
-
-    function zobrazCas(zaznam) {
-      if (!zaznam || !zaznam.time_tag) return "čas není dostupný";
-      return zaznam.time_tag.replace("T", " ") + " UTC";
-    }
-
-    async function nactiData() {
-      const stav = document.getElementById("stav");
-      stav.textContent = "Aktualizuji měření NOAA…";
-      stav.className = "";
-
-      const vysledky = await Promise.allSettled([
-        nactiJson(WIND_URL),
-        nactiJson(MAG_URL)
-      ]);
-
-      let chyba = false;
-
-      if (vysledky[0].status === "fulfilled") {
-        const p = nejcerstvejsiAktivni(vysledky[0].value, "proton_speed");
-        if (p) {
-          document.getElementById("rychlost").textContent = Number(p.proton_speed).toFixed(0) + " km/s";
-          document.getElementById("plasma-detail").textContent =
-            "Zdroj: " + (p.source || "neznámý") + " · " + zobrazCas(p);
-        } else {
-          document.getElementById("rychlost").textContent = "Data nejsou dostupná";
-          document.getElementById("plasma-detail").textContent = "V datech není platná rychlost slunečního větru.";
-          chyba = true;
-        }
-      } else {
-        document.getElementById("rychlost").textContent = "Chyba načítání";
-        document.getElementById("plasma-detail").textContent = String(vysledky[0].reason);
-        chyba = true;
-      }
-
-      if (vysledky[1].status === "fulfilled") {
-        const m = nejcerstvejsiAktivni(vysledky[1].value, "bz_gsm");
-        if (m) {
-          document.getElementById("bz").textContent = Number(m.bz_gsm).toFixed(2) + " nT";
-          document.getElementById("mag-detail").textContent =
-            "Zdroj: " + (m.source || "neznámý") + " · " + zobrazCas(m);
-        } else {
-          document.getElementById("bz").textContent = "Data nejsou dostupná";
-          document.getElementById("mag-detail").textContent = "V datech není platná složka Bz GSM.";
-          chyba = true;
-        }
-      } else {
-        document.getElementById("bz").textContent = "Chyba načítání";
-        document.getElementById("mag-detail").textContent = String(vysledky[1].reason);
-        chyba = true;
-      }
-
-      const ted = new Date();
-      document.getElementById("aktualizace").textContent =
-        "Kontrola stránky: " + ted.toISOString().replace("T", " ").slice(0,19) + " UTC";
-      stav.textContent = chyba
-        ? "Některá data se nepodařilo načíst. Zkusím to znovu za 60 sekund."
-        : "Spojení s NOAA funguje – hodnoty se automaticky obnovují každou minutu.";
-      stav.className = chyba ? "chyba" : "ok";
-    }
-
-    nactiData();
-    setInterval(nactiData, 60000);
-  </script>
-</body>
-</html>
+<body><div class="wrap">
+<header><h1>🌍 Kosmická observatoř X-5</h1><div class="sub">Živé monitorování kosmického počasí · data NOAA SWPC</div></header>
+<div id="stav" class="status">Navazuji spojení s NOAA…</div>
+<h2>Aktuální měření u L1</h2>
+<div class="grid">
+ <section class="panel"><h2>Rychlost slunečního větru</h2><div id="speed" class="metric">—</div><div id="speedtime" class="small"></div></section>
+ <section class="panel"><h2>Hustota protonů</h2><div id="density" class="metric">—</div><div id="densitytime" class="small"></div></section>
+ <section class="panel"><h2>IMF Bz (GSM)</h2><div id="bz" class="metric">—</div><div id="bztime" class="small"></div></section>
+ <section class="panel"><h2>IMF Bt – celková intenzita</h2><div id="bt" class="metric">—</div><div id="bttime" class="small"></div></section>
+ <section class="panel"><h2>IMF Bx (GSM)</h2><div id="bx" class="metric">—</div><div id="bxtime" class="small"></div></section>
+ <section class="panel"><h2>IMF By (GSM)</h2><div id="by" class="metric">—</div><div id="bytime" class="small"></div></section>
+ <section class="panel"><h2>Geomagnetický index Kp</h2><div id="kp" class="metric">—</div><div id="kptime" class="small"></div></section>
+ <section class="panel"><h2>Rentgenové záření GOES</h2><div id="xray" class="metric">—</div><div id="xraytime" class="small"></div></section>
+ <section class="panel"><h2>Dst index</h2><div id="dst" class="metric">—</div><div id="dsttime" class="small">Hodinová hodnota, pokud je dostupná</div></section>
+</div>
+<section class="panel"><h2>Průběh slunečního větru – poslední dostupné záznamy</h2><canvas id="speedChart" width="900" height="220"></canvas><div class="small">Rychlost v km/s · čas UTC · mezery v datech se nepovažují za nulové hodnoty.</div></section>
+<section class="panel"><h2>Meziplanetární magnetické pole – Bz a Bt</h2><canvas id="magChart" width="900" height="220"></canvas><div class="small">Bz v GSM (nT) a celková intenzita Bt (nT). Záporné Bz znamená jižní orientaci.</div></section>
+<section class="panel"><h2>Sluneční rentgenový tok GOES – pásmo 0,1–0,8 nm</h2><canvas id="xrayChart" width="900" height="220"></canvas><div class="small">Logaritmická osa toku; orientační hranice tříd C, M a X.</div></section>
+<h2>Aktuální snímky a pozorování</h2>
+<div class="imagegrid">
+ <section class="panel"><h2>Slunce – NOAA GOES/SUVI</h2><img class="space" src="https://services.swpc.noaa.gov/images/animations/suvi/primary/map/latest.png" alt="Aktuální snímek Slunce NOAA SUVI" loading="lazy"><div class="small">Aktuální snímek NOAA SUVI. Obnovuje se při obnovení stránky.</div><p><a href="https://services.swpc.noaa.gov/images/animations/suvi/primary/map/latest.png" target="_blank" rel="noopener">Otevřít originální snímek</a></p></section>
+ <section class="panel"><h2>Energetické částice – ACE EPAM</h2><img class="space" src="https://services.swpc.noaa.gov/images/ace-epam-2-hour.gif" alt="Graf energetických částic ACE EPAM za dvě hodiny" loading="lazy"><div class="small">Měření energetických částic sondou ACE za poslední dvě hodiny.</div><p><a href="https://services.swpc.noaa.gov/images/ace-epam-2-hour.gif" target="_blank" rel="noopener">Otevřít originální graf</a></p></section>
+</div>
+<section class="panel"><h2>Datové zdroje a metodika</h2><div class="small">
+RTSW: NOAA SWPC, minutová měření slunečního větru a IMF u L1. Kp: planetární index, tříhodinová/odhadovaná data. GOES: rentgenový tok v pásmu 0,1–0,8 nm. Dst: hodinový index, může mít zpoždění.<br>
+Data v reálném čase jsou předběžná a mohou být později revidována. Čas měření je uváděn v UTC. Neplatné a chybějící hodnoty jsou vynechány.
+</div><p class="small"><a href="https://www.swpc.noaa.gov/" target="_blank" rel="noopener">NOAA SWPC</a> · <a href="https://services.swpc.noaa.gov/json/" target="_blank" rel="noopener">Datové rozhraní NOAA</a> · <a href="https://www.swpc.noaa.gov/products/goes-x-ray-flux" target="_blank" rel="noopener">GOES X-ray</a></p></section>
+<footer id="updated">Poslední kontrola: — · automatická aktualizace každých 60 sekund</footer>
+</div>
+<script>
+const U={
+ wind:"https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+ mag:"https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json",
+ kp:"https://services.swpc.noaa.gov/json/planetary_k_index_1m.json",
+ xray:"https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json",
+ dst:"https://services.swpc.noaa.gov/products/kyoto-dst.json"
+};
+const $=id=>document.getElementById(id);
+function valid(v){return v!==null&&v!==undefined&&v!==""&&Number.isFinite(Number(v))&&Number(v)!==-999.9&&Number(v)!==-9999}
+function timeOf(o){return o.time_tag||o.time||o[0]||""}
+function val(o,...keys){for(const k of keys){if(o&&valid(o[k]))return Number(o[k])}return null}
+function newest(rows,keys,activeOnly=false){
+ if(!Array.isArray(rows))return null;
+ let a=rows.filter(o=>timeOf(o)&&keys.some(k=>valid(o[k]))&&(!activeOnly||o.active===true));
+ if(!a.length&&activeOnly)a=rows.filter(o=>timeOf(o)&&keys.some(k=>valid(o[k])));
+ a.sort((x,y)=>Date.parse(timeOf(y))-Date.parse(timeOf(x)));return a[0]||null
+}
+function setMetric(id,v,unit,did,stamp){$(id).textContent=v===null?"Nedostupné":v.toFixed(id==="speed"?0:2)+" "+unit;$(did).textContent=stamp?"Měření: "+stamp.replace("T"," ")+" UTC":"Čas měření není dostupný"}
+async function get(url){const r=await fetch(url,{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);return r.json()}
+function rowsOf(d){return Array.isArray(d)?d:[]}
+function draw(id,series,log=false){
+ const c=$(id),ctx=c.getContext("2d"),w=c.width,h=c.height,p=35;
+ ctx.clearRect(0,0,w,h);ctx.fillStyle="#142740";ctx.fillRect(0,0,w,h);
+ const all=series.flatMap(s=>s.data.map(x=>x.y).filter(Number.isFinite));
+ if(!all.length){ctx.fillStyle="#b7c9dc";ctx.fillText("Graf zatím nemá platná data",p,h/2);return}
+ let transformed=all.map(v=>log?Math.log10(Math.max(v,1e-9)):v),min=Math.min(...transformed),max=Math.max(...transformed);
+ if(min===max){min-=1;max+=1} const x0=p,x1=w-12,y0=12,y1=h-28;
+ ctx.strokeStyle="#35506d";ctx.lineWidth=1;ctx.fillStyle="#b7c9dc";ctx.font="12px Arial";
+ for(let i=0;i<5;i++){let y=y0+(y1-y0)*i/4;ctx.beginPath();ctx.moveTo(x0,y);ctx.lineTo(x1,y);ctx.stroke()}
+ series.forEach((s,si)=>{ctx.strokeStyle=s.color;ctx.lineWidth=2;ctx.beginPath();let started=false;
+ s.data.forEach((pt,i)=>{if(!Number.isFinite(pt.y)){started=false;return}let yy=log?Math.log10(Math.max(pt.y,1e-9)):pt.y;let x=x0+(x1-x0)*i/Math.max(1,s.data.length-1),y=y1-(yy-min)/(max-min)*(y1-y0);if(!started){ctx.moveTo(x,y);started=true}else ctx.lineTo(x,y)});ctx.stroke()});
+ ctx.fillStyle="#d6e4f2";ctx.fillText("min "+(log?Math.pow(10,min).toExponential(1):min.toFixed(1)),x0,y1+18);ctx.fillText("max "+(log?Math.pow(10,max).toExponential(1):max.toFixed(1)),x1-105,y0+10);
+}
+function series(rows,key){return rows.filter(o=>valid(o[key])).slice(-180).map(o=>({x:timeOf(o),y:Number(o[key])}))}
+function getXray(rows){let a=rows.filter(o=>valid(o.flux)&&timeOf(o));a.sort((x,y)=>Date.parse(timeOf(y))-Date.parse(timeOf(x)));return a[0]||null}
+async function refresh(){
+ const failures=[];
+ const results=await Promise.allSettled([get(U.wind),get(U.mag),get(U.kp),get(U.xray),get(U.dst)]);
+ const names=["sluneční vítr","magnetické pole","Kp","GOES X-ray","Dst"];
+ results.forEach((r,i)=>{if(r.status==="rejected")failures.push(names[i]+": "+r.reason)});
+ const wind=results[0].status==="fulfilled"?rowsOf(results[0].value):[];
+ const mag=results[1].status==="fulfilled"?rowsOf(results[1].value):[];
+ const kp=results[2].status==="fulfilled"?rowsOf(results[2].value):[];
+ const xr=results[3].status==="fulfilled"?rowsOf(results[3].value):[];
+ const dst=results[4].status==="fulfilled"?rowsOf(results[4].value):[];
+ const p=newest(wind,["proton_speed"],true),d=newest(wind,["proton_density"],true);
+ const b=newest(mag,["bz_gsm","bt"],true),k=newest(kp,["kp","Kp"]);
+ const x=getXray(xr),z=dst.length?dst[dst.length-1]:null;
+ setMetric("speed",p?val(p,"proton_speed"):null,"km/s","speedtime",p&&timeOf(p));
+ setMetric("density",d?val(d,"proton_density"):null,"cm⁻³","densitytime",d&&timeOf(d));
+ setMetric("bz",b?val(b,"bz_gsm"):null,"nT","bztime",b&&timeOf(b));
+ setMetric("bt",b?val(b,"bt"):null,"nT","bttime",b&&timeOf(b));
+ setMetric("bx",b?val(b,"bx_gsm"):null,"nT","bxtime",b&&timeOf(b));
+ setMetric("by",b?val(b,"by_gsm"):null,"nT","bytime",b&&timeOf(b));
+ setMetric("kp",k?val(k,"kp","Kp"):null,"","kptime",k&&timeOf(k));
+ if(x){const flux=Number(x.flux);let cls=flux>=1e-4?"X":flux>=1e-5?"M":flux>=1e-6?"C":flux>=1e-7?"B":"A";$("xray").textContent=cls+" ("+flux.toExponential(2)+" W/m²)";$("xraytime").textContent="Měření: "+timeOf(x).replace("T"," ")+" UTC"}else{$("xray").textContent="Nedostupné"}
+ if(z){let dz=val(z,"dst","Dst",1);$("dst").textContent=dz===null?"Nedostupné":dz.toFixed(0)+" nT";$("dsttime").textContent="Čas: "+timeOf(z).replace("T"," ")+" UTC · ověřit interval"}else $("dst").textContent="Nedostupné";
+ draw("speedChart",[{data:series(wind,"proton_speed"),color:"#65dcff"}]);
+ draw("magChart",[{data:series(mag,"bz_gsm"),color:"#65dcff"},{data:series(mag,"bt"),color:"#ffbd6b"}]);
+ draw("xrayChart",[{data:series(xr,"flux"),color:"#ff8d9a"}],true);
+ $("stav").textContent=failures.length?"Některé zdroje nejsou dostupné: "+failures.join(" · "):"Spojení s datovými zdroji NOAA bylo úspěšné.";
+ $("stav").className="status "+(failures.length?"warn":"good");
+ $("updated").textContent="Poslední kontrola: "+new Date().toISOString().replace("T"," ").slice(0,19)+" UTC · automatická aktualizace každých 60 sekund";
+}
+refresh();setInterval(refresh,60000);
+</script>
+</body></html>
