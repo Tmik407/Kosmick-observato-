@@ -787,4 +787,96 @@ refreshAceComparison();setInterval(refreshAceComparison,60000);
 
 
 </script>
+
+<section class="panel" id="auroraPanel">
+ <h2>Polární záře – Aurora | NOAA OVATION</h2>
+ <div class="small">Samostatné sledování aurorálního oválu a orientačního signálu pro Ústecký kraj. Model NOAA OVATION poskytuje krátkodobou předpověď polární záře přibližně 30–90 minut dopředu; nejde o potvrzení pozorovatelnosti z konkrétního místa.</div>
+ <div class="grid" style="margin-top:12px">
+  <div><div class="small">Čas pozorování modelu</div><div id="auroraObs" class="metric">—</div></div>
+  <div><div class="small">Čas předpovědi</div><div id="auroraForecast" class="metric">—</div></div>
+  <div><div class="small">Nejvyšší intenzita v severní polokouli</div><div id="auroraMax" class="metric">—</div></div>
+  <div><div class="small">Nejbližší bod k Mostu (50,50° N; 13,63° E)</div><div id="auroraLocal" class="metric">—</div></div>
+  <div><div class="small">Kp – poslední dostupná hodnota</div><div id="auroraKp" class="metric">—</div></div>
+  <div><div class="small">Stav dat</div><div id="auroraState" class="metric">Načítám…</div></div>
+ </div>
+ <div class="imagegrid" style="margin-top:12px">
+  <div><h3>Oficiální mapa severní polokoule NOAA</h3><img class="space" src="https://services.swpc.noaa.gov/images/animations/ovation/north/latest.jpg" alt="NOAA OVATION – severní polokoule" loading="lazy"><div class="small">Oficiální vizualizace modelu OVATION.</div></div>
+  <div><h3>Vlastní lokální model – Česká republika</h3><canvas id="auroraLocalChart" width="900" height="360" style="height:auto;min-height:190px"></canvas><div id="auroraLocalText" class="small">Vlastní graf se vykreslí po načtení dat NOAA.</div></div>
+ </div>
+ <h3>Vlastní infografika – aurorální aktivita</h3>
+ <canvas id="auroraInfographic" width="900" height="300" style="height:auto;min-height:180px"></canvas>
+ <div id="auroraInterpretation" class="small">Vyhodnocení čeká na platná data NOAA OVATION a Kp.</div>
+ <div class="small">Metodika: lokální hodnota je nejbližší bod globální mřížky OVATION k souřadnicím Mostu; doplňkově se vyhodnotí nejvyšší modelová intenzita v okolí do 300 km. Hodnota není pravděpodobností pozorování ze země. Nezahrnuje oblačnost, světelné znečištění, horizont ani počasí.</div>
+ <p><a href="https://services.swpc.noaa.gov/json/ovation_aurora_latest.json" target="_blank" rel="noopener">Otevřít surová data NOAA OVATION</a> · <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noopener">Metodika NOAA – předpověď polární záře</a></p>
+</section>
+<section class="panel" id="archivePanel">
+ <h2>Databáze a historické archivy kosmického počasí</h2>
+ <div class="grid">
+  <div><h3>NOAA SWPC – živá data</h3><div class="small">Aktuální měření slunečního větru, IMF, Kp, GOES a OVATION.</div><a href="https://services.swpc.noaa.gov/json/" target="_blank" rel="noopener">Datový katalog NOAA JSON</a></div>
+  <div><h3>NOAA NCEI – historický archiv</h3><div class="small">Dlouhodobé archivní řady kosmického počasí pro zpětné analýzy.</div><a href="https://www.ncei.noaa.gov/products/space-weather" target="_blank" rel="noopener">NCEI Space Weather Archive</a></div>
+  <div><h3>NASA CDAWeb</h3><div class="small">Archivní měření kosmických sond včetně ACE a dalších misí.</div><a href="https://cdaweb.gsfc.nasa.gov/" target="_blank" rel="noopener">NASA Coordinated Data Analysis Web</a></div>
+  <div><h3>Kyoto WDC – geomagnetické indexy</h3><div class="small">Historická data Dst a další geomagnetické indexy.</div><a href="https://wdc.kugi.kyoto-u.ac.jp/" target="_blank" rel="noopener">World Data Center for Geomagnetism</a></div>
+ </div>
+ <div class="small">Archivní zdroje jsou určeny pro historické porovnání. Dostupnost jednotlivých produktů, časové rozlišení a případná zpoždění se liší podle poskytovatele.</div>
+</section>
+<script>
+(async function(){
+ const $=id=>document.getElementById(id);
+ const put=(id,value)=>{const e=$(id);if(e)e.textContent=value};
+ const validNum=v=>Number.isFinite(Number(v));
+ const timeFmt=v=>{const d=new Date(v);return Number.isFinite(d.getTime())?d.toISOString().replace("T"," ").slice(0,16)+" UTC":"—"};
+ function drawAurora(id,points,local){
+  const c=$(id);if(!c)return;const ctx=c.getContext("2d"),w=c.width,h=c.height;
+  ctx.clearRect(0,0,w,h);ctx.fillStyle="#0b1b30";ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle="#29415e";ctx.lineWidth=1;
+  for(let i=1;i<5;i++){ctx.beginPath();ctx.moveTo(24,i*h/5);ctx.lineTo(w-20,i*h/5);ctx.stroke()}
+  const max=Math.max(10,...points.map(p=>p.v));const barW=Math.max(2,(w-50)/Math.max(1,points.length)-2);
+  points.forEach((p,i)=>{const x=26+i*((w-52)/Math.max(1,points.length));const bh=(h-72)*p.v/Math.max(100,max);ctx.fillStyle=p.v>=50?"#ff806e":p.v>=20?"#ffd06e":"#55d9a5";ctx.fillRect(x,h-42-bh,barW,bh)});
+  ctx.fillStyle="#dcecff";ctx.font="bold 18px Arial";ctx.fillText("OVATION · intenzita mřížky",24,27);
+  ctx.font="13px Arial";ctx.fillStyle="#b7c9dc";ctx.fillText("Most / Ústecký kraj · nejbližší bod: "+(local?local.v.toFixed(1)+" %":"—"),24,h-15);
+  ctx.fillText("0",24,h-45);ctx.fillText("100",w-48,42);
+ }
+ function drawInfo(id,stats){
+  const c=$(id);if(!c)return;const x=c.getContext("2d"),w=c.width,h=c.height;x.clearRect(0,0,w,h);x.fillStyle="#0b1b30";x.fillRect(0,0,w,h);
+  x.fillStyle="#eaf4ff";x.font="bold 22px Arial";x.fillText("KOSMICKÁ OBSERVATOŘ X-5 · AURORA",24,38);
+  x.fillStyle="#b8cbe0";x.font="15px Arial";x.fillText("NOAA OVATION · severní polokoule",24,66);
+  const items=[["Lokální bod",stats.local===null?"—":stats.local.toFixed(1)+" %"],["Okolí do 300 km",stats.near===null?"—":stats.near.toFixed(1)+" %"],["Maximum sever",stats.max.toFixed(1)+" %"],["Geomagnetický Kp",stats.kp===null?"—":stats.kp.toFixed(1)]];
+  items.forEach((a,i)=>{const xx=24+i*218;x.fillStyle="#142740";x.fillRect(xx,92,198,100);x.fillStyle="#b7c9dc";x.font="13px Arial";x.fillText(a[0],xx+12,119);x.fillStyle="#65dcff";x.font="bold 25px Arial";x.fillText(a[1],xx+12,158)});
+  x.fillStyle="#b7c9dc";x.font="13px Arial";x.fillText("Modelový výstup není zárukou viditelnosti. Nutná je tma, jasná obloha a vhodný výhled.",24,230);
+ }
+ async function loadAurora(){
+  try{
+   const [ar,kr]=await Promise.all([
+    fetch("https://services.swpc.noaa.gov/json/ovation_aurora_latest.json",{cache:"no-store"}),
+    fetch("https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",{cache:"no-store"})
+   ]);
+   if(!ar.ok)throw Error("OVATION HTTP "+ar.status);
+   const data=await ar.json(),coords=Array.isArray(data.coordinates)?data.coordinates:[];
+   const rows=coords.filter(p=>Array.isArray(p)&&p.length>=3&&validNum(p[0])&&validNum(p[1])&&validNum(p[2])&&+p[0]>=0&&+p[0]<=360&&+p[1]>=-90&&+p[1]<=90&&+p[2]>=0&&+p[2]<=100)
+    .map(p=>({lon:((+p[0]+180)%360)-180,lat:+p[1],v:+p[2]}));
+   if(rows.length<100)throw Error("Nedostatečný počet platných bodů OVATION");
+   const north=rows.filter(p=>p.lat>=0),max=Math.max(...north.map(p=>p.v));
+   const hav=(a,b)=>{const r=Math.PI/180,d1=(b.lat-a.lat)*r,d2=(b.lon-a.lon)*r;const q=Math.sin(d1/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(d2/2)**2;return 6371*2*Math.asin(Math.sqrt(q))};
+   const place={lat:50.50,lon:13.63},rank=north.map(p=>({...p,dist:hav(place,p)})).sort((a,b)=>a.dist-b.dist);
+   const nearest=rank[0],near=rank.filter(p=>p.dist<=300),nearMax=near.length?Math.max(...near.map(p=>p.v)):null;
+   let kp=null;
+   if(kr.ok){const k=await kr.json();const h=Array.isArray(k)?k.slice(1):[];for(let i=h.length-1;i>=0;i--){const v=Number(h[i][1]);if(Number.isFinite(v)&&v>=0&&v<=9){kp=v;break}}}
+   put("auroraObs",timeFmt(data["Observation Time"]));put("auroraForecast",timeFmt(data["Forecast Time"]));
+   put("auroraMax",max.toFixed(1)+" %");put("auroraLocal",nearest.v.toFixed(1)+" %");
+   put("auroraKp",kp===null?"nedostupné":kp.toFixed(1));put("auroraState","Platná data · "+rows.length+" bodů");
+   const selected=rank.slice(0,40).reverse();drawAurora("auroraLocalChart",selected,nearest);
+   put("auroraLocalText","Nejbližší mřížkový bod leží přibližně "+nearest.dist.toFixed(0)+" km od Mostu. Maximum v okruhu 300 km: "+(nearMax===null?"—":nearMax.toFixed(1)+" %")+".");
+   drawInfo("auroraInfographic",{local:nearest.v,near:nearMax,max,kp});
+   let text="OVATION modeluje aurorální aktivitu. ";
+   if(nearest.v>=20)text+="V okolí Mostu je v modelové mřížce zvýšený signál; to samo o sobě nepotvrzuje viditelnost.";
+   else text+="V okolí Mostu je modelový signál slabý. Polární záře může být výraznější ve vyšších zeměpisných šířkách.";
+   if(kp!==null)text+=" Aktuální dostupná hodnota Kp: "+kp.toFixed(1)+".";
+   text+=" Pro pozorování je nutné ověřit oblačnost, světelné znečištění a skutečnou tmu.";
+   put("auroraInterpretation",text);
+  }catch(e){put("auroraState","Data nedostupná");put("auroraInterpretation","Načtení NOAA OVATION se nezdařilo: "+e.message+". Zobrazená oficiální mapa může být dostupná samostatně.");}
+ }
+ loadAurora();setInterval(loadAurora,5*60*1000);
+})();
+</script>
+
 </body></html>
