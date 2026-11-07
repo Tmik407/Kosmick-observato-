@@ -247,7 +247,8 @@ async function refresh(){
  const kp=results[2].status==="fulfilled"?rowsOf(results[2].value):[];
  const xr=results[3].status==="fulfilled"?rowsOf(results[3].value):[];
  const dst=results[4].status==="fulfilled"?rowsOf(results[4].value):[];
- const speedCheck=cleanSpeedRows(wind);\n  const p=newest(speedCheck.rows,["proton_speed"],true),d=newest(wind,["proton_density"],true);
+ const speedCheck=cleanSpeedRows(wind);
+  const p=newest(speedCheck.rows,["proton_speed"],true),d=newest(wind,["proton_density"],true);
  const b=newest(mag,["bz_gsm","bt"],true),k=newest(kp,["kp","Kp"]);
  const x=getXray(xr),z=dst.length?dst[dst.length-1]:null;
  setMetric("speed",p?val(p,"proton_speed"):null,"km/s","speedtime",p&&timeOf(p));
@@ -267,7 +268,8 @@ async function refresh(){
   if(existing>=0)speedSeries[existing]=latestSpeed;
   else speedSeries.push(latestSpeed);
  }
- draw("speedChart",[{data:speedSeries,color:"#65dcff"}]);\n  $("speedtime").textContent=(p?"Měření: "+timeOf(p).replace("T"," ")+" UTC":"Čas měření není dostupný")+(speedCheck.rejected?" · vyřazeno "+speedCheck.rejected+" izolované podezřelé špičky":" · kontrola skoků OK");
+ draw("speedChart",[{data:speedSeries,color:"#65dcff"}]);
+  $("speedtime").textContent=(p?"Měření: "+timeOf(p).replace("T"," ")+" UTC":"Čas měření není dostupný")+(speedCheck.rejected?" · vyřazeno "+speedCheck.rejected+" izolované podezřelé špičky":" · kontrola skoků OK");
  draw("magChart",[{data:series(mag,"bz_gsm"),color:"#65dcff"},{data:series(mag,"bt"),color:"#ffbd6b"}]);
  draw("xrayChart",[{data:series(xr,"flux"),color:"#ff8d9a"}],true);
  updateDynamicPressure(speedCheck.rows);
