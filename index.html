@@ -50,6 +50,13 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
  </div>
  <div id="riskNote" class="small">G1: Kp 5 · G2: Kp 6 · G3: Kp 7 · G4: Kp 8 · G5: Kp 9. Rychlost, Bz a tlak jsou doplňkové indikátory, nikoli náhrada Kp.</div>
 </section>
+<section class="panel" id="alertsPanel">
+ <h2>Automatická detekce změn a upozornění</h2>
+ <div id="alertOverall" class="metric">Vyhodnocuji…</div>
+ <div id="alertSummary" class="small">Kontroluji změny rychlosti, orientaci Bz a intenzitu Bt.</div>
+ <div id="alertList" class="small" aria-live="polite">Čekám na platná měření…</div>
+ <div class="small">Pracovní prahy: skok rychlosti ≥ 100 km/s proti vzorku před 5–15 minutami; jižní Bz ≤ −5 nT a ≤ −10 nT; otočení Bz přes nulu; nárůst Bt ≥ 5 nT. Upozornění jsou indikátory, nikoli předpověď bouře. Oficiální G-stupeň se určuje z Kp.</div>
+</section>
 <section class="panel" id="qualityPanel">
  <h2>Kontrola kvality a časového souladu dat</h2>
  <div class="grid">
@@ -254,6 +261,53 @@ function updateCoupling(windRows,magRows){
  draw("couplingChart",[{data:paired.slice(-180).map(p=>({x:new Date(p.t).toISOString(),y:p.e})),color:"#ffbd6b"}]);
  return paired.length;
 }
+function updateAlerts(windRows,magRows,kpRows){
+ const alerts=[];
+ const now=Date.now();
+ const samples=(rows,key)=>rows.filter(r=>timeOf(r)&&valid(r[key]))
+  .map(r=>({t:Date.parse(timeOf(r)),v:Number(r[key])}))
+  .filter(x=>Number.isFinite(x.t)&&x.t<=now+120000&&x.t>=now-6*3600000)
+  .sort((a,b)=>a.t-b.t);
+ const speed=samples(windRows,"proton_speed");
+ const bz=samples(magRows,"bz_gsm");
+ const bt=samples(magRows,"bt");
+ const latest=(a)=>a.length?a[a.length-1]:null;
+ const s=latest(speed),z=latest(bz),b=latest(bt);
+ const reference=(a,t,minAgo,maxAgo)=>{
+  const candidates=a.filter(x=>x.t<=t-minAgo*60000&&x.t>=t-maxAgo*60000);
+  return candidates.length?candidates[candidates.length-1]:null;
+ };
+ if(s){
+  const old=reference(speed,s.t,5,15);
+  if(old&&s.v-old.v>=100)alerts.push({level:"warn",title:"Náhlé zrychlení slunečního větru",detail:"+"+(s.v-old.v).toFixed(0)+" km/s za "+Math.round((s.t-old.t)/60000)+" min · "+s.v.toFixed(0)+" km/s"});
+  else if(old&&old.v-s.v>=100)alerts.push({level:"info",title:"Výrazné zpomalení slunečního větru",detail:"−"+(old.v-s.v).toFixed(0)+" km/s proti staršímu vzorku"});
+ }
+ if(z){
+  if(z.v<=-10)alerts.push({level:"bad",title:"Silně jižní IMF Bz",detail:z.v.toFixed(2)+" nT · práh −10 nT překročen"});
+  else if(z.v<=-5)alerts.push({level:"warn",title:"Jižní IMF Bz",detail:z.v.toFixed(2)+" nT · práh −5 nT překročen"});
+  const old=reference(bz,z.t,1,10);
+  if(old&&old.v>=0&&z.v<0)alerts.push({level:"warn",title:"Otočení Bz ze severního do jižního směru",detail:old.v.toFixed(2)+" → "+z.v.toFixed(2)+" nT"});
+ }
+ if(b){
+  const old=reference(bt,b.t,5,15);
+  if(old&&b.v-old.v>=5)alerts.push({level:"warn",title:"Nárůst intenzity IMF Bt",detail:"+"+(b.v-old.v).toFixed(2)+" nT · nyní "+b.v.toFixed(2)+" nT"});
+ }
+ const kp=kpRows.filter(r=>timeOf(r)&&valid(r.kp??r.Kp)).map(r=>({t:Date.parse(timeOf(r)),v:Number(r.kp??r.Kp)})).filter(x=>Number.isFinite(x.t)).sort((a,b)=>a.t-b.t).pop();
+ if(kp&&kp.v>=5)alerts.push({level:"bad",title:"Geomagnetická bouře podle Kp",detail:"Kp "+kp.v.toFixed(1)+" · odpovídá alespoň G1"});
+ const overall=$("alertOverall"),summary=$("alertSummary"),list=$("alertList");
+ const worst=alerts.some(a=>a.level==="bad")?"bad":alerts.some(a=>a.level==="warn")?"warn":"good";
+ overall.className="metric "+worst;
+ overall.textContent=alerts.length?(worst==="bad"?"Závažné upozornění":worst==="warn"?"Zjištěna významná změna":"Informační upozornění"):"Bez překročení sledovaných prahů";
+ summary.textContent="Poslední kontrola: "+new Date().toISOString().replace("T"," ").slice(0,19)+" UTC · vyhodnocení z platných vzorků posledních 6 hodin.";
+ const timeLabel=x=>new Date(x.t).toISOString().replace("T"," ").slice(0,16)+" UTC";
+ const rows=[];
+ if(s)rows.push("Rychlost: "+s.v.toFixed(0)+" km/s · "+timeLabel(s));
+ if(z)rows.push("Bz: "+z.v.toFixed(2)+" nT · "+timeLabel(z));
+ if(b)rows.push("Bt: "+b.v.toFixed(2)+" nT · "+timeLabel(b));
+ if(alerts.length)rows.push("",...alerts.map(a=>(a.level==="bad"?"🔴":a.level==="warn"?"🟠":"🔵")+" "+a.title+" — "+a.detail));
+ else rows.push("Žádný z definovaných prahů nebyl v posledních platných vzorcích překročen.");
+ list.textContent=rows.join("\n");
+}
 function updateQuality(windRows,cleaned,aceLatest,couplingCount){
  const pairEl=$("qualityWindPair"),spikeEl=$("qualitySpikes"),gapEl=$("qualityGaps");
  const note=$("qualityNote");
@@ -315,6 +369,7 @@ async function refresh(){
  updateRisk(k,b,latestPressure, p);
  const couplingCount=updateCoupling(speedCheck.rows,mag);
  updateQuality(wind,speedCheck,window.__aceLatestQuality||null,couplingCount);
+ updateAlerts(speedCheck.rows,mag,kp);
  $("stav").textContent=failures.length?"Některé zdroje nejsou dostupné: "+failures.join(" · "):"Spojení s datovými zdroji NOAA bylo úspěšné.";
  $("stav").className="status "+(failures.length?"warn":"good");
  $("updated").textContent="Poslední kontrola: "+new Date().toISOString().replace("T"," ").slice(0,19)+" UTC · automatická aktualizace každých 60 sekund";
