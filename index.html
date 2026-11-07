@@ -173,7 +173,7 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
 <canvas id="aceCompareChart" width="900" height="220"></canvas>
 <div class="small">Časový průběh Bz: ACE MAG (oranžově) a RTSW (modře).</div>
 <h3>Rozdíl Bz v čase (ACE − RTSW)</h3><canvas id="aceDeltaChart" width="900" height="220"></canvas>
-<div class="small">Statistika používá jedinečné páry platných vzorků dostupných v načteném ACE MAG a RTSW streamu, nejvýše za posledních 24 hodin, s časovým rozdílem nejvýše 90 sekund. NOAA uvádí, že 1minutová a 5minutová historická ACE data jsou dostupná v archivu SWPC až za posledních 30 dní; tento archiv zatím není do živého porovnání zapojen. Směrodatná odchylka je výběrová.</div>
+<div class="small">Statistika používá jedinečné páry platných vzorků ACE MAG z denního archivu NASA (pokud je dostupný) doplněné živým NOAA streamem a RTSW, nejvýše za posledních 24 hodin, s časovým rozdílem nejvýše 90 sekund. Archivní ACE soubory jsou načítány pro dnešek a předchozí UTC den. Směrodatná odchylka je výběrová.</div>
 <div class="small">Porovnávají se pouze platné vzorky: ACE MAG se stavovým příznakem S = 0 a bez hodnot −999.9; RTSW pouze s aktivním záznamem. Časový rozdíl páru musí být nejvýše 90 sekund. Rozdíl zdrojů nemusí znamenat chybu – může souviset s časem zpracování a polohou sond.</div></section>
 <section class="panel"><h2>Datové zdroje a metodika</h2><div class="small">
 RTSW: NOAA SWPC, minutová měření slunečního větru a IMF u L1. Kp: planetární index, tříhodinová/odhadovaná data. GOES: rentgenový tok v pásmu 0,1–0,8 nm. Dst: hodinový index, může mít zpoždění.<br>
@@ -651,16 +651,26 @@ refreshAce();setInterval(refreshAce,60000);
 async function refreshAceComparison(){
  const put=(id,v)=>{const e=$(id);if(e)e.textContent=v};
  try{
-  const [ar,rr]=await Promise.all([fetch("https://services.swpc.noaa.gov/text/ace-magnetometer.txt",{cache:"no-store"}),fetch(U.mag,{cache:"no-store"})]);
-  if(!ar.ok||!rr.ok)throw Error("HTTP "+(!ar.ok?ar.status:rr.status));
-  const [raw,data]=await Promise.all([ar.text(),rr.json()]);
   const good=v=>Number.isFinite(Number(v))&&![ -999.9,-999,-9999].includes(Number(v));
-  const ace=[];
-  for(const line of raw.split(/\r?\n/)){const t=line.trim().split(/\s+/);if(!t[0]||t[0].startsWith("#")||t.length<11)continue;
-   const y=+t[0],m=+t[1],d=+t[2],sec=+t[5],flag=+t[6],bz=+t[9];
-   if(!Number.isInteger(y)||!Number.isInteger(m)||!Number.isInteger(d)||flag!==0||!good(bz)||m<1||m>12||d<1||d>31||!Number.isFinite(sec)||sec<0||sec>=86400)continue;
-   ace.push({t:Date.UTC(y,m-1,d)+Math.floor(sec)*1000,bz});
-  }
+  const parseAceText=raw=>{
+   const out=[];
+   for(const line of raw.split(/\r?\n/)){const t=line.trim().split(/\s+/);if(!t[0]||t[0].startsWith("#")||t.length<11)continue;
+    const y=+t[0],m=+t[1],d=+t[2],sec=+t[5],flag=+t[6],bz=+t[9];
+    if(!Number.isInteger(y)||!Number.isInteger(m)||!Number.isInteger(d)||flag!==0||!good(bz)||m<1||m>12||d<1||d>31||!Number.isFinite(sec)||sec<0||sec>=86400)continue;
+    out.push({t:Date.UTC(y,m-1,d)+Math.floor(sec)*1000,bz});
+   }
+   return out;
+  };
+  const now=new Date(),dates=[new Date(now.getTime()-86400000),now];
+  const archiveUrls=dates.map(d=>"https://sohoftp.nascom.nasa.gov/sdb/ace/daily/"+d.toISOString().slice(0,10).replace(/-/g,"")+"_ace_mag_1m.txt");
+  const archiveResults=await Promise.allSettled(archiveUrls.map(async url=>{const r=await fetch(url,{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);return parseAceText(await r.text())}));
+  const archiveRows=archiveResults.filter(x=>x.status==="fulfilled").flatMap(x=>x.value);
+  const [liveResponse,rr]=await Promise.all([fetch("https://services.swpc.noaa.gov/text/ace-magnetometer.txt",{cache:"no-store"}),fetch(U.mag,{cache:"no-store"})]);
+  if(!rr.ok)throw Error("RTSW HTTP "+rr.status);
+  const liveRows=liveResponse.ok?parseAceText(await liveResponse.text()):[];
+  const data=await rr.json();
+  const combined=archiveRows.length?archiveRows.concat(liveRows):liveRows;
+  const ace=[...new Map(combined.map(p=>[p.t,p])).values()];
   const rt=(Array.isArray(data)?data:[]).filter(o=>o.active===true&&timeOf(o)&&good(o.bz_gsm)).map(o=>({t:Date.parse(timeOf(o)),bz:+o.bz_gsm})).filter(p=>Number.isFinite(p.t));
   const since=Date.now()-24*3600000;
   const aa=ace.filter(p=>p.t>=since).sort((a,b)=>a.t-b.t),rrr=rt.filter(p=>p.t>=since).sort((a,b)=>a.t-b.t);
@@ -701,7 +711,7 @@ async function refreshAceComparison(){
   put("covHourly",hourLines.join(" · "));
   const emptyHours=hourKeys.filter(h=>hourCounts.get(h)===0).length;
   const lowHours=hourKeys.filter(h=>hourCounts.get(h)>0&&hourCounts.get(h)<30).length;
-  put("covSummary","Okno: "+new Date(windowStart).toISOString().replace("T"," ").slice(0,19)+" až "+new Date(windowEnd).toISOString().replace("T"," ").slice(0,19)+" UTC. Bez jediného páru: "+emptyHours+" hodin; méně než 30 párů: "+lowHours+" hodin. Celkové pokrytí: "+pairCount+" / 1 440 minut. Jde o počet minutových párů v aktuálně načteném streamu. Pokud ACE stream pokrývá jen poslední přibližně 2 hodiny, zbývající část dne nelze vyhodnotit bez historického archivu.");
+  put("covSummary","Okno: "+new Date(windowStart).toISOString().replace("T"," ").slice(0,19)+" až "+new Date(windowEnd).toISOString().replace("T"," ").slice(0,19)+" UTC. Bez jediného páru: "+emptyHours+" hodin; méně než 30 párů: "+lowHours+" hodin. Celkové pokrytí: "+pairCount+" / 1 440 minut. Zdroj ACE: "+(archiveRows.length?"denní archiv NASA ACE + živý NOAA stream ("+archiveRows.length+" archivních platných řádků)":"pouze živý NOAA stream – archivní soubory nejsou z prohlížeče dostupné")+".");
   const covPercentEl=$("covPercent");
   if(covPercentEl)covPercentEl.className="metric "+(coverage>=80?"good":coverage>=40?"warn":"bad");
   const covPairsEl=$("covPairs");
