@@ -55,6 +55,14 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
  <div><div class="small">Bt – celková intenzita</div><div id="aceBt" class="metric">—</div></div>
 </div>
 <div id="aceInfo" class="small">Zdroj: NOAA ACE Magnetometer · čekám na data…</div>
+<div class="panel" style="background:#10233a;margin:12px 0">
+ <h3 style="margin:0 0 10px">Automatické vyhodnocení jižního Bz</h3>
+ <div id="southStatus" class="metric">Čekám na data…</div>
+ <div id="southDuration" class="small">Doba jižní orientace: —</div>
+ <div id="southThreshold5" class="small">Bz ≤ −5 nT: —</div>
+ <div id="southThreshold10" class="small">Bz ≤ −10 nT: —</div>
+ <div id="southNote" class="small">Vyhodnocení používá pouze platné ACE MAG záznamy se stavovým příznakem S = 0.</div>
+</div>
 <canvas id="aceChart" width="900" height="240"></canvas>
 <div class="small">Graf složek Bx, By a Bz v soustavě GSM (nT). Platnost se kontroluje podle stavového příznaku a hodnot -999.9.</div>
 <p><a href="https://services.swpc.noaa.gov/text/ace-magnetometer.txt" target="_blank" rel="noopener">Otevřít surová data ACE MAG (NOAA)</a></p>
@@ -177,6 +185,50 @@ async function refreshAce(){
   info.textContent="Poslední záznam: "+last.stamp.replace("T"," ")+" UTC · stavový příznak S: "+last.statusFlag+
    " · "+(good?"záznam označen jako dobrý":"kvalita není potvrzena; interpretovat opatrně");
   const goodRows=parsed.filter(r=>r.statusFlag===0&&[r.bx,r.by,r.bz].every(validValue)).slice(-180);
+  // Doba jižního Bz: počítáme souvislý úsek do posledního platného záznamu.
+  const fmtDuration=ms=>{
+   if(ms===null)return "—";
+   const total=Math.max(0,Math.floor(ms/60000)),h=Math.floor(total/60),m=total%60;
+   return (h?h+" h ":"")+m+" min";
+  };
+  const intervals=[];
+  for(let i=1;i<goodRows.length;i++){
+   const dt=Date.parse(goodRows[i].stamp)-Date.parse(goodRows[i-1].stamp);
+   if(dt>0&&dt<3600000)intervals.push(dt);
+  }
+  intervals.sort((a,b)=>a-b);
+  const cadence=intervals.length?intervals[Math.floor(intervals.length/2)]:60000;
+  const contiguous=(a,b)=>Date.parse(b.stamp)-Date.parse(a.stamp)<=Math.max(2.5*cadence,120000);
+  const runDuration=predicate=>{
+   if(!goodRows.length||!predicate(goodRows[goodRows.length-1]))return null;
+   let start=goodRows.length-1;
+   while(start>0&&predicate(goodRows[start-1])&&contiguous(goodRows[start-1],goodRows[start]))start--;
+   return Date.parse(goodRows[goodRows.length-1].stamp)-Date.parse(goodRows[start].stamp);
+  };
+  const current=goodRows[goodRows.length-1];
+  const south=runDuration(r=>r.bz<0);
+  const s5=runDuration(r=>r.bz<=-5);
+  const s10=runDuration(r=>r.bz<=-10);
+  const southEl=$("southStatus");
+  if(current){
+   if(current.bz<0){
+    southEl.textContent="JIŽNÍ Bz · "+current.bz.toFixed(2)+" nT";
+    southEl.className="metric warn";
+    $("southDuration").textContent="Nepřetržitá jižní orientace: "+fmtDuration(south);
+   }else{
+    southEl.textContent="SEVERNÍ Bz · "+current.bz.toFixed(2)+" nT";
+    southEl.className="metric good";
+    $("southDuration").textContent="Aktuální jižní interval neběží.";
+   }
+   $("southThreshold5").textContent="Bz ≤ −5 nT: "+(s5===null?"aktuálně nesplněno":"souvisle "+fmtDuration(s5));
+   $("southThreshold10").textContent="Bz ≤ −10 nT: "+(s10===null?"aktuálně nesplněno":"souvisle "+fmtDuration(s10));
+   $("southNote").textContent="Poslední platný vzorek: "+current.stamp.replace("T"," ")+" UTC. Délka je rozdíl mezi prvním a posledním vzorkem; mezery delší než přibližně 2,5× běžný interval přeruší úsek.";
+  }else{
+   southEl.textContent="Nedostupné";southEl.className="metric bad";
+   $("southDuration").textContent="Nelze určit délku jižního Bz.";
+   $("southThreshold5").textContent="Bz ≤ −5 nT: nedostupné";
+   $("southThreshold10").textContent="Bz ≤ −10 nT: nedostupné";
+  }
   draw("aceChart",[
    {data:goodRows.map(r=>({x:r.stamp,y:r.bx})),color:"#65dcff"},
    {data:goodRows.map(r=>({x:r.stamp,y:r.by})),color:"#ffbd6b"},
