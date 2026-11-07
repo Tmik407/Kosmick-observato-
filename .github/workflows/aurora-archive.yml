@@ -1,6 +1,10 @@
 name: Archiv polární záře OVATION
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/aurora-archive.yml"
   schedule:
     - cron: "*/15 * * * *"
   workflow_dispatch:
