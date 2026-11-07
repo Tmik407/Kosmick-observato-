@@ -63,6 +63,18 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
  <div id="southThreshold10" class="small">Bz ≤ −10 nT: —</div>
  <div id="southNote" class="small">Vyhodnocení používá pouze platné ACE MAG záznamy se stavovým příznakem S = 0.</div>
 </div>
+<div class="panel" style="background:#10233a;margin:12px 0">
+ <h3 style="margin:0 0 10px">Analýza geoe efektivní složky slunečního větru</h3>
+ <div class="grid">
+  <div><div class="small">Vypočtené E = V × Bs</div><div id="couplingNow" class="metric">—</div></div>
+  <div><div class="small">Rychlost použita ve výpočtu</div><div id="couplingSpeed" class="metric">—</div></div>
+  <div><div class="small">Jižní složka Bs = max(0, −Bz)</div><div id="couplingBs" class="metric">—</div></div>
+ </div>
+ <div id="couplingTime" class="small">Časově spárovaná měření: čekám na data…</div>
+ <div id="couplingStatus" class="small">Výpočet čeká na platná, časově blízká měření slunečního větru a IMF.</div>
+ <canvas id="couplingChart" width="900" height="220"></canvas>
+ <div class="small">E = 0,001 × rychlost (km/s) × Bs (nT), výsledek v mV/m. Jde o orientační geoe efektivní elektrické pole, nikoli o předpověď geomagnetické bouře. Vzorky jsou spárovány podle času; rozdíl větší než 90 sekund se odmítá.</div>
+</div>
 <canvas id="aceChart" width="900" height="240"></canvas>
 <div class="small">Graf složek Bx, By a Bz v soustavě GSM (nT). Platnost se kontroluje podle stavového příznaku a hodnot -999.9.</div>
 <p><a href="https://services.swpc.noaa.gov/text/ace-magnetometer.txt" target="_blank" rel="noopener">Otevřít surová data ACE MAG (NOAA)</a></p>
@@ -109,6 +121,33 @@ function draw(id,series,log=false){
 }
 function series(rows,key){return rows.filter(o=>valid(o[key])).slice(-180).map(o=>({x:timeOf(o),y:Number(o[key])}))}
 function getXray(rows){let a=rows.filter(o=>valid(o.flux)&&timeOf(o));a.sort((x,y)=>Date.parse(timeOf(y))-Date.parse(timeOf(x)));return a[0]||null}
+function updateCoupling(windRows,magRows){
+ const out=$("couplingNow"),status=$("couplingStatus");
+ const winds=windRows.filter(r=>timeOf(r)&&valid(r.proton_speed)).map(r=>({t:Date.parse(timeOf(r)),v:Number(r.proton_speed)})).filter(r=>Number.isFinite(r.t)&&r.v>0);
+ const mags=magRows.filter(r=>timeOf(r)&&valid(r.bz_gsm)).map(r=>({t:Date.parse(timeOf(r)),bz:Number(r.bz_gsm)})).filter(r=>Number.isFinite(r.t)&&r.bz!==-999.9&&r.bz!==-9999);
+ if(!winds.length||!mags.length){out.textContent="Nedostupné";status.textContent="Chybí platná data rychlosti nebo Bz.";return}
+ const paired=[];
+ let wi=0;
+ for(const m of mags){
+  while(wi+1<winds.length&&Math.abs(winds[wi+1].t-m.t)<=Math.abs(winds[wi].t-m.t))wi++;
+  const w=winds[wi],delta=Math.abs(w.t-m.t);
+  if(delta<=90000){
+   const bs=Math.max(0,-m.bz),e=.001*w.v*bs;
+   paired.push({t:m.t,v:w.v,bz:m.bz,bs,e,delta});
+  }
+ }
+ if(!paired.length){out.textContent="Nedostupné";status.textContent="Nenašla se měření rychlosti a Bz s časovým rozdílem do 90 sekund.";return}
+ const latest=paired[paired.length-1],peak=paired.reduce((a,b)=>b.e>a.e?b:a,paired[0]);
+ out.textContent=latest.e.toFixed(2)+" mV/m";
+ $("couplingSpeed").textContent=latest.v.toFixed(0)+" km/s";
+ $("couplingBs").textContent=latest.bs.toFixed(2)+" nT";
+ $("couplingTime").textContent="Spárovaný vzorek: "+new Date(latest.t).toISOString().replace("T"," ").slice(0,19)+" UTC · časový rozdíl "+Math.round(latest.delta/1000)+" s";
+ const south=latest.bz<0;
+ status.textContent=(south?"Jižní Bz přispívá k vazbě se zemskou magnetosférou. ":"Bz není jižní, Bs = 0. ")+
+  "Maximum v zobrazeném souboru: "+peak.e.toFixed(2)+" mV/m ("+new Date(peak.t).toISOString().replace("T"," ").slice(0,16)+" UTC).";
+ status.className="small "+(south?"warn":"good");
+ draw("couplingChart",[{data:paired.slice(-180).map(p=>({x:new Date(p.t).toISOString(),y:p.e})),color:"#ffbd6b"}]);
+}
 async function refresh(){
  const failures=[];
  const results=await Promise.allSettled([get(U.wind),get(U.mag),get(U.kp),get(U.xray),get(U.dst)]);
@@ -142,6 +181,7 @@ async function refresh(){
  draw("speedChart",[{data:speedSeries,color:"#65dcff"}]);
  draw("magChart",[{data:series(mag,"bz_gsm"),color:"#65dcff"},{data:series(mag,"bt"),color:"#ffbd6b"}]);
  draw("xrayChart",[{data:series(xr,"flux"),color:"#ff8d9a"}],true);
+ updateCoupling(wind,mag);
  $("stav").textContent=failures.length?"Některé zdroje nejsou dostupné: "+failures.join(" · "):"Spojení s datovými zdroji NOAA bylo úspěšné.";
  $("stav").className="status "+(failures.length?"warn":"good");
  $("updated").textContent="Poslední kontrola: "+new Date().toISOString().replace("T"," ").slice(0,19)+" UTC · automatická aktualizace každých 60 sekund";
