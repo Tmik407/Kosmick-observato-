@@ -270,11 +270,11 @@ async function refresh(){
  draw("speedChart",[{data:speedSeries,color:"#65dcff"}]);\n  $("speedtime").textContent=(p?"Měření: "+timeOf(p).replace("T"," ")+" UTC":"Čas měření není dostupný")+(speedCheck.rejected?" · vyřazeno "+speedCheck.rejected+" izolované podezřelé špičky":" · kontrola skoků OK");
  draw("magChart",[{data:series(mag,"bz_gsm"),color:"#65dcff"},{data:series(mag,"bt"),color:"#ffbd6b"}]);
  draw("xrayChart",[{data:series(xr,"flux"),color:"#ff8d9a"}],true);
- updateDynamicPressure(wind);
+ updateDynamicPressure(speedCheck.rows);
  const latestPressureRow=speedCheck.rows.filter(r=>timeOf(r)&&valid(r.proton_speed)&&valid(r.proton_density)).slice(-1)[0];
  const latestPressure=latestPressureRow?1.6726e-6*Number(latestPressureRow.proton_density)*Number(latestPressureRow.proton_speed)**2:null;
  updateRisk(k,b,latestPressure, p);
- updateCoupling(wind,mag);
+ updateCoupling(speedCheck.rows,mag);
  $("stav").textContent=failures.length?"Některé zdroje nejsou dostupné: "+failures.join(" · "):"Spojení s datovými zdroji NOAA bylo úspěšné.";
  $("stav").className="status "+(failures.length?"warn":"good");
  $("updated").textContent="Poslední kontrola: "+new Date().toISOString().replace("T"," ").slice(0,19)+" UTC · automatická aktualizace každých 60 sekund";
