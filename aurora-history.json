@@ -1,5 +1,1 @@
-{
-  "source": "NOAA SWPC OVATION",
-  "retention_days": 90,
-  "rows": []
-}
+{"updated":"2026-11-07T22:04:46.015933+00:00","source":"NOAA SWPC OVATION","retention_days":90,"rows":[{"observed":"2026-11-07T21:57:00Z","forecast":"2026-11-07T22:36:00Z","saved":"2026-11-07T22:04:46.015933+00:00","north_max":30.0,"south_max":27.0,"north_mean":2.066,"south_mean":2.769,"strong_points":0,"valid_points":65160}]}
