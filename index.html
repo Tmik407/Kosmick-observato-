@@ -105,7 +105,7 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
  <section class="panel"><h2>Slunce – NOAA GOES/SUVI</h2><img class="space" src="https://services.swpc.noaa.gov/images/animations/suvi/primary/map/latest.png" alt="Aktuální snímek Slunce NOAA SUVI" loading="lazy"><div class="small">Aktuální snímek NOAA SUVI. Obnovuje se při obnovení stránky.</div><p><a href="https://services.swpc.noaa.gov/images/animations/suvi/primary/map/latest.png" target="_blank" rel="noopener">Otevřít originální snímek</a></p></section>
  <section class="panel"><h2>Energetické částice – ACE EPAM</h2><img class="space" src="https://services.swpc.noaa.gov/images/ace-epam-2-hour.gif" alt="Graf energetických částic ACE EPAM za dvě hodiny" loading="lazy"><div class="small">Měření energetických částic sondou ACE za poslední dvě hodiny.</div><p><a href="https://services.swpc.noaa.gov/images/ace-epam-2-hour.gif" target="_blank" rel="noopener">Otevřít originální graf</a></p></section>
 </div>
-<section class="panel">
+<section class="panel" id="acePanel">
 <h2>ACE MAG – samostatný magnetometr NASA/NOAA</h2>
 <div class="grid">
  <div><div class="small">Stav datového záznamu</div><div id="aceStatus" class="metric">—</div></div>
@@ -646,7 +646,20 @@ async function refreshAce(){
   $("qualityAce").textContent="nedostupné";$("qualityAce").className="metric bad";
  }
 }
-refreshAce();setInterval(refreshAce,60000);
+function startWhenNear(id,task,interval){
+ const target=$(id);if(!target){task();return}
+ let started=false,timer=null;
+ const start=()=>{
+  if(started)return;started=true;task();
+  timer=setInterval(()=>{if(!document.hidden)task()},interval);
+ };
+ if(!("IntersectionObserver" in window)){start();return}
+ const observer=new IntersectionObserver(entries=>{
+  if(entries.some(entry=>entry.isIntersecting)){start();observer.disconnect()}
+ },{rootMargin:"700px 0px"});
+ observer.observe(target);
+}
+startWhenNear("acePanel",refreshAce,3*60*1000);
 
 async function refreshAceComparison(){
  const put=(id,v)=>{const e=$(id);if(e)e.textContent=v};
@@ -695,9 +708,18 @@ async function refreshAceComparison(){
   // Korelace ACE/RTSW pro Bx, By a Bz v rozsahu ±120 minut.
   const lagRun=(left,right,key,lagMax=120)=>{
    const stats=[];
+   const lowerBound=(arr,target)=>{
+    let lo=0,hi=arr.length;
+    while(lo<hi){const mid=(lo+hi)>>1;if(arr[mid].t<target)lo=mid+1;else hi=mid}
+    return lo;
+   };
    for(let lag=-lagMax;lag<=lagMax;lag++){
     const cand=[];
-    for(let i=0;i<left.length;i++)for(let j=0;j<right.length;j++){const dt=Math.abs(right[j].t-(left[i].t+lag*60000));if(dt<=75000)cand.push({i,j,dt})}
+    for(let i=0;i<left.length;i++){
+     const target=left[i].t+lag*60000;
+     const lo=lowerBound(right,target-75000),hi=lowerBound(right,target+75001);
+     for(let j=lo;j<hi;j++)cand.push({i,j,dt:Math.abs(right[j].t-target)});
+    }
     cand.sort((a,b)=>a.dt-b.dt);const ua=new Set(),ub=new Set(),x=[],y=[];
     for(const c of cand)if(!ua.has(c.i)&&!ub.has(c.j)){ua.add(c.i);ub.add(c.j);x.push(left[c.i][key]);y.push(right[c.j][key])}
     if(x.length<30){stats.push({lag,n:x.length,r:null,rmse:null});continue}
@@ -783,7 +805,7 @@ async function refreshAceComparison(){
   draw("aceCompareChart",[{data:aa.slice(-1440).map(p=>({x:tm(p.t),y:p.bz})),color:"#ffbd6b"},{data:rrr.slice(-1440).map(p=>({x:tm(p.t),y:p.bz})),color:"#65dcff"}]);
  }catch(e){put("cmpStatus","Porovnání není dostupné: "+e.message);for(const id of ["cmpAceBz","cmpRtswBz","cmpDelta","cmpCount","cmpMean","cmpMedian","cmpMax","cmpMin","cmpStd","cmpCorr","cmpOutliers"])put(id,"—");}
 }
-refreshAceComparison();setInterval(refreshAceComparison,60000);
+startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
 
 
 </script>
@@ -908,7 +930,7 @@ refreshAceComparison();setInterval(refreshAceComparison,60000);
    put("auroraInterpretation",msg);
   }catch(e){put("auroraState","Chyba načtení");put("auroraInterpretation","Aktualizace modelu se nezdařila: "+e.message+". Neplatná data nejsou nahrazována odhadem.");}
  }
- load();setInterval(load,5*60*1000);
+ startWhenNear("auroraPanel",load,5*60*1000);
 })();
 </script>
 
@@ -939,7 +961,7 @@ refreshAceComparison();setInterval(refreshAceComparison,60000);
    el("auroraHistoryStatus").textContent=rows.length+" archivovaných předpovědí · období až 90 dní · poslední archivace: "+(d.updated||"—")+(last?" · poslední předpověď: "+last.forecast:" · čeká se na první běh GitHub Actions");
   }catch(e){el("auroraHistoryStatus").textContent="Historický archiv zatím není dostupný: "+e.message}
  }
- load();setInterval(load,5*60*1000);
+ startWhenNear("auroraHistoryChart",load,15*60*1000);
 })();
 </script>
 </body></html>
