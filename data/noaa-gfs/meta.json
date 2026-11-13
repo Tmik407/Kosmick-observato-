@@ -1,0 +1,30 @@
+{
+  "retrieved_utc": "2026-11-13T21:20:34.451829+00:00",
+  "source": "NOAA NCEP Climate Prediction Center / GFS 00Z stratospheric analysis",
+  "classification": "NUMERICAL_MODEL_ANALYSIS_MAP",
+  "region": "Northern Hemisphere",
+  "levels_hpa": [
+    10,
+    30,
+    50
+  ],
+  "forecast_hour": 0,
+  "note": "Maps are model analysis products, not direct observations and not ERA5 reanalysis.",
+  "files": {
+    "10": {
+      "file": "gfs_t10_nh_f00.png",
+      "bytes": 132156,
+      "sha256": "d2f01f7105a5776e95fac05e6ce266ef0793c6319f37e92d90806b0900f90559"
+    },
+    "30": {
+      "file": "gfs_t30_nh_f00.png",
+      "bytes": 127562,
+      "sha256": "e391fc3e51cee34cfd5d58c3c4f4c8eccce641d4e3e1c018ca9ac49b5b6cffc9"
+    },
+    "50": {
+      "file": "gfs_t50_nh_f00.png",
+      "bytes": 124291,
+      "sha256": "5c786169d8862eee11b9dedbaeb68a5bc99d5d6bb5aa1b0e3f8f4fe9302ab33e"
+    }
+  }
+}
