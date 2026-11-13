@@ -179,7 +179,7 @@ async function loadGfsGrid(force=false){
   drawGfsGrid();
  }catch(e){$('gfsMapStatus').innerHTML='<b class="warn">Meteorologická síť není dostupná.</b> '+String(e.message||e)+'. Archivované mapy NOAA CPC zůstávají níže na stránce.';}
 }
-$('gfsLevel').addEventListener('change',()=>loadGfsGrid(true));$('gfsField').addEventListener('change',drawGfsGrid);$('gfsTime').addEventListener('change',drawGfsGrid);loadGfsGrid();
+$('gfsLevel').addEventListener('change',()=>loadGfsGrid(true));$('gfsField').addEventListener('change',drawGfsGrid);$('gfsTime').addEventListener('change',drawGfsGrid);drawGfsGrid();loadGfsGrid();
 async function loadArchive(){
  const status=$('archiveStatus'),mainStatus=$('dataStatus');
  const fmt=v=>Number.isFinite(v)?v.toFixed(1).replace('.',','):'—';
