@@ -49,7 +49,9 @@ def scalar(ds, name, default=None):
     if name not in ds.variables: return default
     a=np.ma.asarray(ds.variables[name][:]).filled(np.nan)
     if a.size == 0: return default
-    return np.asarray(a).reshape(-1)[0].item()
+    value=np.asarray(a).reshape(-1)[0]
+    value=value.item() if hasattr(value,"item") else value
+    return value.decode("utf-8","replace") if isinstance(value,bytes) else value
 
 def arr(ds, name):
     if name not in ds.variables: return []
@@ -66,7 +68,7 @@ def parse_file(url, filename):
         ext=np.asarray(arr(ds,"chbnd_extent_hg"),dtype=float)
         if ext.size: ext=ext.reshape((-1,4)).tolist()
         else: ext=[]
-        degraded=int(scalar(ds,"degraded_status",1) or 0)
+        degraded=scalar(ds,"degraded_status","unknown")
         t=scalar(ds,"time",None)
         observed=None
         if t is not None and np.isfinite(float(t)):
