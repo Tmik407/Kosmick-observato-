@@ -1224,6 +1224,88 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
 })();
 </script>
 
+<section class="panel" id="sdrSpectrumPanel">
+ <h2>Automatická analýza SDR spektrogramů – X-5</h2>
+ <div class="small">Nahraj obrázek spektrogramu ze SDR#. Analýza zpracuje obraz přímo v prohlížeči: vyhodnotí rozložení energie, vodorovné a svislé stopy, úzkopásmové nosné signály, zakřivené struktury a jejich vývoj. Výsledek je obrazová klasifikace, nikoli identifikace vysílače nebo důkaz původu signálu.</div>
+ <label class="small" style="display:block;margin-top:12px">Obrázek spektrogramu (PNG/JPG/WebP)<input id="sdrImageInput" type="file" accept="image/png,image/jpeg,image/webp" style="display:block;width:100%;margin-top:5px;padding:10px;background:#081a2c;color:#fff;border:1px solid #45627e;border-radius:7px"></label>
+ <div class="grid" style="margin-top:12px">
+  <label class="small">Vzorkovací / časové rozlišení (volitelné)<input id="sdrImageMeta" type="text" placeholder="např. 10 s/div, 2 MHz span" style="display:block;width:100%;margin-top:5px;padding:10px;background:#081a2c;color:#fff;border:1px solid #45627e;border-radius:7px"></label>
+  <label class="small">Pozorovaná frekvence (MHz, volitelné)<input id="sdrImageFreq" type="number" min="0" step="0.001" placeholder="např. 7.100" style="display:block;width:100%;margin-top:5px;padding:10px;background:#081a2c;color:#fff;border:1px solid #45627e;border-radius:7px"></label>
+ </div>
+ <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button id="sdrAnalyzeImage" type="button" disabled>Analyzovat spektrogram</button><button id="sdrDownloadAnalysis" type="button" disabled>Export analýzy JSON</button></div>
+ <div id="sdrImageStatus" class="status">Vyber obrázek spektrogramu.</div>
+ <div class="grid">
+  <div><div class="small">Detekované vodorovné stopy</div><div id="sdrHorizontal" class="metric">—</div></div>
+  <div><div class="small">Detekované svislé stopy</div><div id="sdrVertical" class="metric">—</div></div>
+  <div><div class="small">Zakřivené / proměnné stopy</div><div id="sdrCurved" class="metric">—</div></div>
+  <div><div class="small">Úzkopásmové oblasti</div><div id="sdrNarrow" class="metric">—</div></div>
+  <div><div class="small">Míra struktury obrazu</div><div id="sdrStructure" class="metric">—</div></div>
+  <div><div class="small">Šumové pozadí</div><div id="sdrNoise" class="metric">—</div></div>
+ </div>
+ <div class="grid" style="align-items:start">
+  <div><h3>Vstupní spektrogram</h3><img id="sdrOriginalPreview" class="space" alt="Nahraný SDR spektrogram" style="display:none;max-height:360px;object-fit:contain"></div>
+  <div><h3>Detekční mapa</h3><canvas id="sdrDetectionCanvas" width="720" height="360" style="width:100%;height:auto;background:#07101d;border-radius:10px"></canvas></div>
+ </div>
+ <h3>Kvantitativní výsledek</h3><div id="sdrImageReport" class="small">Čekám na obrázek.</div>
+ <div class="small">Metoda: převod jasu na intenzitu, odhad pozadí, prahování relativní energie, projekce po řádcích/sloupcích a měření odchylek od vodorovného průběhu. Automaticky nelze určit absolutní výkon, frekvenci ani čas bez kalibrace os a barevné škály. Texty a popisky v obrázku mohou ovlivnit detekci; doporučen je čistý výřez spektrogramu bez ovládacích panelů.</div>
+</section>
+<script>
+(function(){
+ const $=id=>document.getElementById(id),put=(id,v)=>{const e=$(id);if(e)e.textContent=v};
+ let image=null,result=null;
+ function analyze(){
+  if(!image)return;
+  const maxW=720,maxH=360,scale=Math.min(1,maxW/image.width,maxH/image.height),w=Math.max(1,Math.round(image.width*scale)),h=Math.max(1,Math.round(image.height*scale));
+  const c=document.createElement("canvas");c.width=w;c.height=h;const cx=c.getContext("2d",{willReadFrequently:true});cx.drawImage(image,0,0,w,h);
+  const dat=cx.getImageData(0,0,w,h).data,gray=new Float32Array(w*h),row=new Float32Array(h),col=new Float32Array(w),edgeRow=new Float32Array(h),edgeCol=new Float32Array(w);
+  let sum=0,sum2=0;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,g=.2126*dat[i]+.7152*dat[i+1]+.0722*dat[i+2];gray[y*w+x]=g;sum+=g;sum2+=g*g;}
+  const mean=sum/(w*h),sd=Math.sqrt(Math.max(0,sum2/(w*h)-mean*mean)),threshold=mean+Math.max(10,sd*.65),mask=new Uint8Array(w*h);
+  let active=0;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const v=gray[y*w+x],on=v>threshold?1:0;mask[y*w+x]=on;active+=on;row[y]+=v;col[x]+=v;}
+  const rowMean=row.map(v=>v/w),colMean=col.map(v=>v/h),rBase=rowMean.reduce((a,b)=>a+b,0)/h,cBase=colMean.reduce((a,b)=>a+b,0)/w;
+  for(let y=1;y<h-1;y++)edgeRow[y]=Math.abs(rowMean[y]-rowMean[y-1])+Math.abs(rowMean[y+1]-rowMean[y]);
+  for(let x=1;x<w-1;x++)edgeCol[x]=Math.abs(colMean[x]-colMean[x-1])+Math.abs(colMean[x+1]-colMean[x]);
+  const peak=(a,base,rel)=>{let peaks=[],active=false,start=0;for(let i=1;i<a.length-1;i++){const on=a[i]>base+rel;if(on&&!active){start=i;active=true}else if(!on&&active){if(i-start>=Math.max(2,Math.round(a.length*.002)))peaks.push({start,end:i-1});active=false}}if(active)peaks.push({start,end:a.length-2});return peaks};
+  const hLines=peak(rowMean,rBase,Math.max(7,sd*.18)),vLines=peak(colMean,cBase,Math.max(7,sd*.18));
+  const curves=[];
+  for(let x0=0;x0<w-24;x0+=Math.max(4,Math.round(w/90))){
+   let points=[];
+   for(let x=x0;x<Math.min(w,x0+Math.max(24,Math.round(w*.12)));x+=Math.max(2,Math.round(w/180))){
+    let best=-1,by=-1;for(let y=0;y<h;y++){const v=gray[y*w+x];if(v>best){best=v;by=y}}
+    points.push(by);
+   }
+   if(points.length>=5){const avg=points.reduce((a,b)=>a+b,0)/points.length,variance=points.reduce((a,b)=>a+(b-avg)**2,0)/points.length;
+    const changes=points.slice(1).filter((v,i)=>Math.abs(v-points[i])>1).length;
+    if(Math.sqrt(variance)>Math.max(2,h*.008)&&changes>=2)curves.push({x:x0,span:points.length,amplitude:Math.sqrt(variance),changes});}
+  }
+  const narrow=vLines.filter(p=>(p.end-p.start+1)<=Math.max(3,w*.012)).length;
+  const structure=100*active/(w*h),noise=sd;
+  const out=$("sdrDetectionCanvas"),ox=out.getContext("2d");out.width=w;out.height=h;ox.drawImage(c,0,0);
+  ox.strokeStyle="#ffbd6b";ox.lineWidth=1.5;hLines.forEach(p=>{ox.strokeRect(0,p.start,w,p.end-p.start+1)});
+  ox.strokeStyle="#65dcff";vLines.forEach(p=>{ox.strokeRect(p.start,0,p.end-p.start+1,h)});
+  const report={analyzed_utc:new Date().toISOString(),image:{width:image.width,height:image.height},analysis:{threshold_gray:threshold,mean_gray:mean,standard_deviation_gray:sd,active_pixel_percent:structure,horizontal_bands:hLines.map(p=>({y_start:p.start,y_end:p.end})),vertical_bands:vLines.map(p=>({x_start:p.start,x_end:p.end})),curved_candidates:curves.map(p=>({x_start:p.x,window_pixels:p.span,vertical_variation_px:Number(p.amplitude.toFixed(2)),direction_changes:p.changes})),narrowband_columns:narrow}};
+  result=report;
+  put("sdrHorizontal",hLines.length);put("sdrVertical",vLines.length);put("sdrCurved",curves.length);put("sdrNarrow",narrow);put("sdrStructure",structure.toFixed(1)+" %");put("sdrNoise",sd.toFixed(1)+" / 255");
+  put("sdrImageReport","Rozlišení "+image.width+" × "+image.height+" px; průměrný jas "+mean.toFixed(1)+"/255; směrodatná odchylka "+sd.toFixed(1)+"; aktivní pixely nad prahem "+threshold.toFixed(1)+": "+structure.toFixed(1)+" %. Vodorovné pásy: "+hLines.length+", svislé pásy: "+vLines.length+", kandidáti zakřivených struktur: "+curves.length+". "+(curves.length?"Nalezeny struktury s proměnnou polohou maxima jasu; je nutná vizuální kontrola.":"Nebyla nalezena výrazná zakřivená struktura podle zvoleného obrazového prahu."));
+  put("sdrImageStatus","Analýza dokončena · "+new Date().toISOString().replace("T"," ").slice(0,16)+" UTC · výpočet proběhl lokálně v prohlížeči.");
+  $("sdrDownloadAnalysis").disabled=false;
+ }
+ $("sdrImageInput").addEventListener("change",e=>{
+  const file=e.target.files&&e.target.files[0];if(!file)return;
+  if(!/^image\/(png|jpeg|webp)$/.test(file.type)){put("sdrImageStatus","Nepodporovaný formát souboru.");return}
+  const url=URL.createObjectURL(file),img=new Image();
+  img.onload=()=>{image=img;$("sdrOriginalPreview").src=url;$("sdrOriginalPreview").style.display="block";$("sdrAnalyzeImage").disabled=false;put("sdrImageStatus","Obrázek načten: "+file.name+" · "+img.width+" × "+img.height+" px.");};
+  img.onerror=()=>put("sdrImageStatus","Obrázek nelze načíst.");
+  img.src=url;
+ });
+ $("sdrAnalyzeImage").addEventListener("click",()=>{try{analyze()}catch(e){put("sdrImageStatus","Analýza selhala: "+e.message)}});
+ $("sdrDownloadAnalysis").addEventListener("click",()=>{
+  if(!result)return;const blob=new Blob([JSON.stringify({...result,metadata:{frequency_mhz:$("sdrImageFreq").value||null,scale_note:$("sdrImageMeta").value||null}},null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="x5-sdr-image-analysis.json";a.click();URL.revokeObjectURL(url);
+ });
+})();
+</script>
+
 <section class="panel" id="sdrCorrelationPanel">
  <h2>SDR × kosmické počasí – časová korelace X-5</h2>
  <div class="small">Zadej vlastní pozorování SDR. Záznamy se ukládají pouze v tomto prohlížeči a zařízení; exportuj si zálohu JSON/CSV. Čas zadávej v UTC, aby šlo porovnávat data bez posunu časových pásem.</div>
