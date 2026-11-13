@@ -535,7 +535,25 @@ setInterval(refreshX5Infographic,30*60*1000);
    if(lt){$('nasaMirrorTemp').textContent=(num(lt.temp_k)-273.15).toFixed(2)+' °C';$('nasaMirrorTempDate').textContent=lt.date+' · analýza';}
    const rows=series.flatMap(q=>q.u.map(x=>({d:x.date,v:num(x.u60_ms),l:q.l}))).sort((a,b)=>a.d.localeCompare(b.d)).filter(x=>x.l===10);
    chart('nasaMirrorWindChart',rows.slice(-180),'NASA Ozone Watch · U60 10 hPa','m/s');
-   function vertical(id,key,unit,convert){const c=$(id);if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height;g.clearRect(0,0,w,h);g.fillStyle='#081a2b';g.fillRect(0,0,w,h);const cols={10:'#65dfff',30:'#ffbd76',50:'#b7a0ff'};g.font='bold 17px Arial';g.fillStyle='#eef7ff';g.fillText('Poslední analýza · '+unit,28,28);series.forEach((q,i)=>{const a=q[key],x=a[a.length-1];if(!x)return;const v=convert(num(key==='u'?x.u60_ms:x.temp_k));const xx=180+i*250;g.fillStyle=cols[q.l];g.font='bold 20px Arial';g.fillText(q.l+' hPa',xx,90);g.font='18px Arial';g.fillText(v===null?'—':v.toFixed(2)+' '+unit,xx,125);g.fillStyle='#9db5ca';g.font='13px Arial';g.fillText(x.date,xx,150);});}
+   function vertical(id,key,unit,convert){
+ const c=$(id);if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height,p={l:105,r:90,t:48,b:48};
+ g.clearRect(0,0,w,h);g.fillStyle='#081a2b';g.fillRect(0,0,w,h);
+ const cols={10:'#65dfff',30:'#ffbd76',50:'#b7a0ff'},levels=[10,30,50],ys={10:78,30:150,50:222};
+ const vals=series.map(q=>{const a=q[key],x=a[a.length-1];return {l:q.l,x,v:x?convert(num(key==='u'?x.u60_ms:x.temp_k)):null};}).filter(z=>z.v!==null&&Number.isFinite(z.v));
+ g.font='bold 17px Arial';g.fillStyle='#eef7ff';g.fillText(key==='u'?'Zonální vítr U60 · poslední analýza':'Teplota polární čepičky · poslední analýza',p.l,25);
+ levels.forEach(l=>{const y=ys[l];g.strokeStyle='#29445e';g.lineWidth=1;g.beginPath();g.moveTo(p.l,y);g.lineTo(w-p.r,y);g.stroke();g.fillStyle=cols[l];g.font='bold 17px Arial';g.fillText(l+' hPa',24,y+6);});
+ if(!vals.length){g.fillStyle='#b7cadd';g.font='17px Arial';g.fillText('Pro tento profil nejsou platné hodnoty.',p.l,160);return;}
+ let min=Math.min(...vals.map(x=>x.v)),max=Math.max(...vals.map(x=>x.v));
+ if(key==='u'){const m=Math.max(Math.abs(min),Math.abs(max),5);min=-m;max=m;}else{const pad=Math.max(1,(max-min)*.2);min-=pad;max+=pad;}
+ const xval=v=>p.l+(v-min)/(max-min)*(w-p.l-p.r);
+ for(let i=0;i<=4;i++){const v=min+(max-min)*i/4,x=xval(v);g.strokeStyle='#203b52';g.beginPath();g.moveTo(x,p.t);g.lineTo(x,h-p.b);g.stroke();g.fillStyle='#a9bfd5';g.font='12px Arial';g.textAlign='center';g.fillText(v.toFixed(1),x,h-18);}
+ g.textAlign='left';
+ if(key==='u'&&min<0&&max>0){const x=xval(0);g.strokeStyle='#fff';g.setLineDash([6,5]);g.beginPath();g.moveTo(x,p.t);g.lineTo(x,h-p.b);g.stroke();g.setLineDash([]);g.fillStyle='#fff';g.font='12px Arial';g.fillText('0',x+4,p.t+12);}
+ const pts=vals.sort((a,b)=>a.l-b.l).map(z=>({x:xval(z.v),y:ys[z.l],...z}));
+ if(pts.length>1){g.strokeStyle='#d7eaff';g.lineWidth=2.5;g.beginPath();pts.forEach((p,i)=>i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y));g.stroke();}
+ pts.forEach(z=>{g.fillStyle=cols[z.l];g.beginPath();g.arc(z.x,z.y,8,0,Math.PI*2);g.fill();g.strokeStyle='#fff';g.lineWidth=2;g.stroke();g.fillStyle=cols[z.l];g.font='bold 15px Arial';g.fillText(z.v.toFixed(2)+' '+unit,Math.min(w-p.r+5,z.x+14),z.y-10);});
+ g.fillStyle='#9db5ca';g.font='12px Arial';g.fillText('Datum: '+(vals[0].x.date||'—')+' · analýza forecast_hour = 0',p.l,h-2);
+}
    vertical('nasaVerticalWindChart','u','m/s',v=>v);
    vertical('nasaVerticalTempChart','t','°C',v=>v===null?null:v-273.15);
    const body=$('nasaCombinedTable')?.querySelector('tbody');if(body){body.innerHTML='';for(const q of series){const u=q.u[q.u.length-1],t=q.t[q.t.length-1],up=q.u.find(x=>u&&x.date===shiftDate(u.date,-7)),tp=q.t.find(x=>t&&x.date===shiftDate(t.date,-7));const tr=document.createElement('tr');const vals=[q.l+' hPa',u?num(u.u60_ms).toFixed(2)+' m/s':'—',u&&up?(num(u.u60_ms)-num(up.u60_ms)).toFixed(2)+' m/s':'—',t?(num(t.temp_k)-273.15).toFixed(2)+' °C':'—',t&&tp?(num(t.temp_k-tp.temp_k)).toFixed(2)+' °C':'—',u&&num(u.u60_ms)<0?'Záporný U60 na této hladině':'Kladný U60 / bez obratu'];vals.forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td);});body.appendChild(tr);}}
