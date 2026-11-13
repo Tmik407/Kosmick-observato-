@@ -1124,6 +1124,108 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  <p><a href="./space-weather-history.json" target="_blank" rel="noopener">Zdrojový archiv měření X-5</a> · <a href="https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json" target="_blank" rel="noopener">NOAA – Kp</a></p>
 </section>
 
+
+<section class="panel" id="ionosphereGlobePanel">
+ <h2>3D globus ionosféry X-5 – živá data</h2>
+ <div class="small">Interaktivní globus s globální vrstvou NOAA D-RAP (HAF – modelová absorpce HF) a skutečnými staničními měřeními GIRO. Otoč glóbus tažením prstu nebo myší. Barevný povrch je model D-RAP, body jsou měření ionosond; nejde o přímé globální měření výšky vrstev.</div>
+ <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">
+  <button id="ionoGlobeRefresh" type="button">Obnovit reálná data</button>
+  <button id="ionoGlobeReset" type="button">Výchozí pohled</button>
+ </div>
+ <div style="position:relative;background:#030b18;border:1px solid #294765;border-radius:14px;overflow:hidden">
+  <canvas id="ionoGlobeCanvas" width="900" height="650" aria-label="Interaktivní globus ionosféry s vrstvou NOAA D-RAP a stanicemi GIRO" style="width:100%;height:auto;display:block;touch-action:pan-y"></canvas>
+  <div id="ionoGlobeOverlay" style="position:absolute;left:10px;top:10px;background:#07182bdc;padding:8px 10px;border-radius:8px;font-size:12px">Načítám globální data…</div>
+ </div>
+ <div class="grid" style="margin-top:12px">
+  <div><div class="small">Model D-RAP – platnost</div><div id="ionoGlobeTime" class="metric">—</div></div>
+  <div><div class="small">Platná měření GIRO</div><div id="ionoGlobeStations" class="metric">—</div></div>
+  <div><div class="small">Nejvyšší zaznamenané foF2</div><div id="ionoGlobeFof2" class="metric">—</div></div>
+  <div><div class="small">Nejvyšší zaznamenané MUF</div><div id="ionoGlobeMuf" class="metric">—</div></div>
+ </div>
+ <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;margin-top:10px">
+  <span>🟦 D-RAP HAF nízký</span><span>🟩 střední</span><span>🟨 zvýšený</span><span>🟥 vysoký</span><span>● GIRO foF2/MUF měření</span>
+ </div>
+ <div id="ionoGlobeDetail" class="small" style="margin-top:10px">Klikni na bod stanice pro podrobnosti. Čas a kvalita dat se zobrazují samostatně.</div>
+ <div class="small" style="margin-top:8px">Zdroje: <a href="https://services.swpc.noaa.gov/text/drap_global_frequencies.txt" target="_blank" rel="noopener">NOAA SWPC D-RAP</a> · <a href="https://prop.kc2g.com/api/stations.json" target="_blank" rel="noopener">GIRO ionosondy</a>. D-RAP HAF je modelová frekvenční hranice absorpce, nikoli elektronová hustota. Výšky D/E/F1/F2 jsou v legendě pouze schematické a nejsou odvozovány z těchto dat.</div>
+</section>
+<script>
+(function(){
+ const $=id=>document.getElementById(id),canvas=$("ionoGlobeCanvas");if(!canvas)return;
+ const ctx=canvas.getContext("2d");let drap=null,stations=[],rotation=0,tilt=0.12,drag=null,selected=null,updated=null;
+ const rad=v=>v*Math.PI/180;
+ function parseDrap(text){
+  const lines=text.split(/\r?\n/),head=lines.find(l=>/^\s*-?\d+(?:\s+-?\d+){20,}\s*$/.test(l));
+  if(!head)throw Error("D-RAP: chybí hlavička souřadnic.");
+  const lons=head.trim().split(/\s+/).map(Number),rows=[];
+  for(const line of lines){const m=line.match(/^\s*(-?\d{1,2})\s*\|\s*(.*)$/);if(!m)continue;const vals=m[2].trim().split(/\s+/).map(Number);if(vals.length>=lons.length)rows.push({lat:Number(m[1]),vals:vals.slice(0,lons.length)});}
+  if(!rows.length)throw Error("D-RAP: žádná datová mřížka.");
+  return {lons,rows,valid:(text.match(/Product Valid At\s*:\s*(.+)/i)||[])[1]||"čas neuveden"};
+ }
+ function parseStations(list){
+  if(!Array.isArray(list))throw Error("GIRO: neplatná odpověď.");
+  return list.map(o=>{const st=o.station||{},lat=Number(st.latitude),lon0=Number(st.longitude),lon=lon0>180?lon0-360:lon0;
+   const val=(...keys)=>{for(const k of keys){const v=Number(o[k]);if(o[k]!==null&&o[k]!==""&&Number.isFinite(v)&&v>0&&v<1000)return v}return null};
+   const raw=o.time||o.datetime||o.timestamp||o.time_tag||o.updated||o.observed;
+   const t=raw?Date.parse(raw):NaN;
+   if(!Number.isFinite(lat)||!Number.isFinite(lon)||lat< -90||lat>90||lon< -180||lon>180)return null;
+   return {code:st.code||"?",name:st.name||st.code||"Ionosonda",lat,lon,fof2:val("fof2"),muf:val("mufd","muf"),foe:val("foe"),hmf2:val("hmf2"),time:Number.isFinite(t)?new Date(t).toISOString():null};
+  }).filter(x=>x&&(x.fof2!==null||x.muf!==null||x.foe!==null));
+ }
+ function project(lat,lon){
+  const L=rad(lon)+rotation,P=rad(lat),x=Math.cos(P)*Math.sin(L),y=Math.sin(P)*Math.cos(tilt)-Math.cos(P)*Math.cos(L)*Math.sin(tilt),z=Math.sin(P)*Math.sin(tilt)+Math.cos(P)*Math.cos(L)*Math.cos(tilt);
+  const R=Math.min(canvas.width,canvas.height)*.405;
+  return {x:canvas.width*.5+R*x,y:canvas.height*.51-R*y,z,R};
+ }
+ function color(v){if(!Number.isFinite(v)||v<0)return null;if(v<5)return "#2678c8";if(v<10)return "#23a879";if(v<15)return "#d5bd37";return "#e45c42"}
+ function draw(){
+  const W=canvas.width,H=canvas.height;ctx.clearRect(0,0,W,H);
+  const R=Math.min(W,H)*.405,cx=W/2,cy=H*.51;
+  const bg=ctx.createRadialGradient(cx-R*.3,cy-R*.4,R*.05,cx,cy,R*1.3);bg.addColorStop(0,"#153d60");bg.addColorStop(.72,"#09213b");bg.addColorStop(1,"#020916");ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle="#244968";ctx.lineWidth=1;for(let a=0;a<360;a+=15){ctx.beginPath();ctx.arc(cx,cy,R+12,rad(a),rad(a+1));ctx.stroke()}
+  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fillStyle="#0b2740";ctx.fill();ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.clip();
+  // D-RAP model cells rendered as a colored global surface, only on the visible hemisphere.
+  if(drap){for(let ri=0;ri<drap.rows.length;ri++){const row=drap.rows[ri],lat=row.lat;for(let j=0;j<drap.lons.length;j++){const v=row.vals[j],col=color(v);if(!col)continue;const lon=drap.lons[j],p=project(lat,lon);if(p.z<=0)continue;const size=Math.max(3,R*rad(4.2));ctx.globalAlpha=.62;ctx.fillStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,size,0,Math.PI*2);ctx.fill()}}}
+  ctx.globalAlpha=1;ctx.strokeStyle="#8cb6d4";ctx.lineWidth=1.2;
+  for(let lat=-60;lat<=60;lat+=30){ctx.beginPath();let open=false;for(let lon=-180;lon<=180;lon+=3){const p=project(lat,lon);if(p.z>0){if(!open){ctx.moveTo(p.x,p.y);open=true}else ctx.lineTo(p.x,p.y)}else open=false}ctx.stroke()}
+  for(let lon=-150;lon<=180;lon+=30){ctx.beginPath();let open=false;for(let lat=-90;lat<=90;lat+=3){const p=project(lat,lon);if(p.z>0){if(!open){ctx.moveTo(p.x,p.y);open=true}else ctx.lineTo(p.x,p.y)}else open=false}ctx.stroke()}
+  // Stylized day/night terminator, explicitly illustrative.
+  ctx.fillStyle="#020814";ctx.globalAlpha=.22;ctx.beginPath();ctx.ellipse(cx+R*.56,cy,R*.48,R,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+  stations.forEach((st,i)=>{const p=project(st.lat,st.lon);if(p.z<=0)return;const v=st.fof2??st.muf??st.foe??0;ctx.beginPath();ctx.arc(p.x,p.y,selected===i?8:5,0,Math.PI*2);ctx.fillStyle=st.fof2!==null?"#ffffff":"#9fe8ff";ctx.fill();ctx.strokeStyle="#062039";ctx.lineWidth=2;ctx.stroke();if(selected===i){ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,12,0,Math.PI*2);ctx.stroke()}});
+  ctx.restore();ctx.strokeStyle="#78a8cc";ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle="#d9edff";ctx.font="18px sans-serif";ctx.textAlign="center";ctx.fillText("GLOBÁLNÍ IONOSFÉRA",cx,35);
+  ctx.font="12px sans-serif";ctx.fillStyle="#9dc5e6";ctx.fillText("D-RAP HAF • NOAA  |  STANICE GIRO • MĚŘENÍ",cx,H-24);
+  $("ionoGlobeOverlay").textContent=(drap?"D-RAP načten":"D-RAP nedostupný")+" · "+stations.length+" stanic GIRO";
+ }
+ function detail(i){const s=stations[i];if(!s)return;selected=i;const f=v=>v===null?"—":v.toFixed(2);$("ionoGlobeDetail").textContent=s.name+" ("+s.code+") · "+s.lat.toFixed(2)+"°, "+s.lon.toFixed(2)+"° · foF2 "+f(s.fof2)+" MHz · MUF "+f(s.muf)+" MHz · foE "+f(s.foe)+" MHz · hmF2 "+f(s.hmf2)+" km · čas "+(s.time||"neuveden");draw()}
+ function nearest(x,y){let best=-1,d=18;stations.forEach((s,i)=>{const p=project(s.lat,s.lon);if(p.z<=0)return;const q=Math.hypot(p.x-x,p.y-y);if(q<d){d=q;best=i}});return best}
+ function coords(e){const r=canvas.getBoundingClientRect();return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height}}
+ canvas.addEventListener("pointerdown",e=>{drag={...coords(e),rotation,tilt,moved:false};canvas.setPointerCapture(e.pointerId)});
+ canvas.addEventListener("pointermove",e=>{if(!drag)return;const p=coords(e),dx=p.x-drag.x,dy=p.y-drag.y;if(Math.abs(dx)+Math.abs(dy)>3)drag.moved=true;rotation=drag.rotation+dx/Math.min(canvas.width,canvas.height)*3.2;tilt=Math.max(-1.2,Math.min(1.2,drag.tilt+dy/Math.min(canvas.width,canvas.height)*2));draw()});
+ canvas.addEventListener("pointerup",e=>{if(drag&&!drag.moved){const p=coords(e),i=nearest(p.x,p.y);if(i>=0)detail(i)}drag=null});
+ canvas.addEventListener("pointercancel",()=>drag=null);
+ $("ionoGlobeReset").addEventListener("click",()=>{rotation=0;tilt=.12;selected=null;draw()});
+ async function load(){
+  $("ionoGlobeOverlay").textContent="Načítám NOAA D-RAP a GIRO…";
+  const tasks=await Promise.allSettled([
+   fetch("https://services.swpc.noaa.gov/text/drap_global_frequencies.txt",{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("NOAA HTTP "+r.status);return r.text()}),
+   fetch("https://prop.kc2g.com/api/stations.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("GIRO HTTP "+r.status);return r.json()})
+  ]);
+  const errors=[];
+  if(tasks[0].status==="fulfilled"){try{drap=parseDrap(tasks[0].value)}catch(e){errors.push(e.message)}}else errors.push("NOAA D-RAP nedostupný");
+  if(tasks[1].status==="fulfilled"){try{stations=parseStations(tasks[1].value)}catch(e){errors.push(e.message)}}else errors.push("GIRO nedostupné");
+  updated=new Date().toISOString();$("ionoGlobeTime").textContent=drap?drap.valid:"nedostupné";
+  $("ionoGlobeStations").textContent=stations.length;
+  const f=stations.map(x=>x.fof2).filter(Number.isFinite),m=stations.map(x=>x.muf).filter(Number.isFinite);
+  $("ionoGlobeFof2").textContent=f.length?Math.max(...f).toFixed(2)+" MHz":"—";
+  $("ionoGlobeMuf").textContent=m.length?Math.max(...m).toFixed(2)+" MHz":"—";
+  $("ionoGlobeOverlay").textContent=(errors.length?errors.join(" · "):"Data načtena")+" · "+updated.slice(11,19)+" UTC";
+  draw();
+ }
+ $("ionoGlobeRefresh").addEventListener("click",load);load();setInterval(()=>{if(!document.hidden)load()},5*60*1000);
+ draw();
+})();
+</script>
+
 <section class="panel" id="ionospherePanel">
  <h2>Ionosféra a HF šíření – diagnostika X-5</h2>
  <div class="small">Živý globální model NOAA D-RAP: nejvyšší frekvence zasažená odhadovaným útlumem 1 dB (HAF). Zadej polohu a provozní frekvenci; panel vybere nejbližší buňku modelové mřížky. Výsledek je modelový odhad, nikoli měření ionosondou.</div>
