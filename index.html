@@ -1208,22 +1208,45 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  function draw(){
   const W=canvas.width,H=canvas.height;ctx.clearRect(0,0,W,H);
   const R=Math.min(W,H)*.405,cx=W/2,cy=H*.51;
-  const bg=ctx.createRadialGradient(cx-R*.3,cy-R*.4,R*.05,cx,cy,R*1.3);bg.addColorStop(0,"#153d60");bg.addColorStop(.72,"#09213b");bg.addColorStop(1,"#020916");ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
-  ctx.strokeStyle="#244968";ctx.lineWidth=1;for(let a=0;a<360;a+=15){ctx.beginPath();ctx.arc(cx,cy,R+12,rad(a),rad(a+1));ctx.stroke()}
-  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fillStyle="#0b2740";ctx.fill();ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.clip();
-  // D-RAP model cells rendered as a colored global surface, only on the visible hemisphere.
-  const sun=sunPosition(animTime);if(drap){for(let ri=0;ri<drap.rows.length;ri++){const row=drap.rows[ri],lat=row.lat;for(let j=0;j<drap.lons.length;j++){const v=row.vals[j],col=color(v);if(!col)continue;const lon=drap.lons[j],p=project(lat,lon);if(p.z<=0)continue;const daylight=solarZenithCos(lat,lon,sun),size=Math.max(3,R*rad(4.2));ctx.globalAlpha=.22+(daylight>0?.48:.10);ctx.fillStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,size,0,Math.PI*2);ctx.fill()}}}
-  ctx.globalAlpha=1;ctx.strokeStyle="#8cb6d4";ctx.lineWidth=1.2;
-  for(let lat=-60;lat<=60;lat+=30){ctx.beginPath();let open=false;for(let lon=-180;lon<=180;lon+=3){const p=project(lat,lon);if(p.z>0){if(!open){ctx.moveTo(p.x,p.y);open=true}else ctx.lineTo(p.x,p.y)}else open=false}ctx.stroke()}
-  for(let lon=-150;lon<=180;lon+=30){ctx.beginPath();let open=false;for(let lat=-90;lat<=90;lat+=3){const p=project(lat,lon);if(p.z>0){if(!open){ctx.moveTo(p.x,p.y);open=true}else ctx.lineTo(p.x,p.y)}else open=false}ctx.stroke()}
-  // Denní/noční rozhraní podle astronomické polohy Slunce v animovaném UTC čase.
+  // Hluboké kosmické pozadí s jemnými hvězdami.
+  const bg=ctx.createLinearGradient(0,0,W,H);bg.addColorStop(0,"#020817");bg.addColorStop(.55,"#071b31");bg.addColorStop(1,"#020611");ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  for(let i=0;i<95;i++){const x=(i*197.3%W),y=(i*83.7%H);ctx.globalAlpha=.18+(i%5)*.09;ctx.fillStyle="#b9ddff";ctx.beginPath();ctx.arc(x,y,i%11===0?1.8:.8,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;
+  // Atmosférický lem a měkký stín glóbu.
+  const halo=ctx.createRadialGradient(cx,cy,R*.88,cx,cy,R*1.17);halo.addColorStop(0,"rgba(46,174,255,0)");halo.addColorStop(.72,"rgba(47,174,255,.13)");halo.addColorStop(1,"rgba(47,174,255,0)");ctx.fillStyle=halo;ctx.beginPath();ctx.arc(cx,cy,R*1.2,0,Math.PI*2);ctx.fill();
+  const sphere=ctx.createRadialGradient(cx-R*.38,cy-R*.42,R*.05,cx+R*.2,cy+R*.2,R*1.18);sphere.addColorStop(0,"#2c6684");sphere.addColorStop(.38,"#16435f");sphere.addColorStop(.78,"#09253e");sphere.addColorStop(1,"#020b19");ctx.fillStyle=sphere;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fill();
+  ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.clip();
+  const sun=sunPosition(animTime);
+  // Zjednodušené obrysy pevnin – pouze orientační podklad, nikoli geografická vrstva dat.
+  const continents=[
+   [[72,-165],[68,-140],[60,-130],[55,-125],[50,-128],[48,-123],[42,-124],[35,-117],[30,-112],[24,-108],[18,-100],[15,-92],[9,-84],[8,-78],[15,-82],[20,-87],[25,-80],[30,-82],[29,-90],[25,-97],[30,-103],[38,-105],[45,-112],[52,-120],[60,-135],[68,-150]],
+   [[12,-81],[8,-78],[2,-78],[-5,-80],[-12,-77],[-20,-70],[-30,-72],[-40,-73],[-53,-70],[-55,-62],[-48,-52],[-38,-48],[-25,-45],[-10,-37],[0,-50],[7,-60],[10,-70]],
+   [[70,-10],[72,25],[68,55],[60,70],[55,90],[50,105],[45,125],[40,140],[32,132],[25,120],[20,110],[10,105],[5,95],[8,80],[18,72],[25,60],[30,48],[38,35],[45,28],[50,15],[58,5],[62,-5]],
+   [[35,-10],[30,5],[20,15],[10,20],[0,25],[-10,35],[-20,40],[-30,30],[-35,18],[-30,5],[-20,-5],[-5,-10],[10,-15],[20,-17],[30,-10]],
+   [[-12,112],[-18,122],[-25,130],[-35,135],[-40,150],[-30,153],[-20,148],[-12,135],[-10,122]],
+   [[60,-45],[65,-35],[72,-40],[78,-50],[75,-60],[68,-58]],
+   [[-70,-180],[-72,-120],[-75,-60],[-72,0],[-75,60],[-72,120],[-70,180]]
+  ];
+  continents.forEach(poly=>{ctx.beginPath();let open=false;poly.forEach(([lat,lon])=>{const p=project(lat,lon);if(p.z>0){if(!open){ctx.moveTo(p.x,p.y);open=true}else ctx.lineTo(p.x,p.y)}else open=false});ctx.closePath();ctx.fillStyle="rgba(71,137,128,.48)";ctx.fill();ctx.strokeStyle="rgba(139,205,191,.42)";ctx.lineWidth=1.5;ctx.stroke()});
+  // Modelová pole NOAA D-RAP, barevné buňky zůstávají navázané na skutečná data.
+  if(drap){for(let ri=0;ri<drap.rows.length;ri++){const row=drap.rows[ri];for(let j=0;j<drap.lons.length;j++){const col=color(row.vals[j]);if(!col)continue;const lat=row.lat,lon=drap.lons[j],p=project(lat,lon);if(p.z<=0)continue;const day=solarZenithCos(lat,lon,sun);ctx.globalAlpha=day>0?.48:.17;ctx.fillStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,Math.max(2.5,R*rad(3.6)),0,Math.PI*2);ctx.fill()}}}
+  ctx.globalAlpha=1;
+  // Zeměpisná síť – decentní tenké linie.
+  ctx.strokeStyle="rgba(164,211,237,.25)";ctx.lineWidth=1;
+  for(let lat=-60;lat<=60;lat+=30){ctx.beginPath();let open=false;for(let lon=-180;lon<=180;lon+=2){const p=project(lat,lon);if(p.z>0){if(!open){ctx.moveTo(p.x,p.y);open=true}else ctx.lineTo(p.x,p.y)}else open=false}ctx.stroke()}
+  for(let lon=-150;lon<=180;lon+=30){ctx.beginPath();let open=false;for(let lat=-90;lat<=90;lat+=2){const p=project(lat,lon);if(p.z>0){if(!open){ctx.moveTo(p.x,p.y);open=true}else ctx.lineTo(p.x,p.y)}else open=false}ctx.stroke()}
+  // Terminátor: reálná geometrie Slunce pro animovaný UTC čas.
   const terminator=[];for(let lat=-90;lat<=90;lat+=2){let bestLon=0,best=2;for(let lon=-180;lon<=180;lon+=2){const q=Math.abs(solarZenithCos(lat,lon,sun));if(q<best){best=q;bestLon=lon}}const p=project(lat,bestLon);if(p.z>0)terminator.push(p)}
-  if(terminator.length>2){ctx.beginPath();terminator.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle="#f8df91";ctx.lineWidth=2;ctx.setLineDash([5,5]);ctx.stroke();ctx.setLineDash([])}
-  for(let lat=-84;lat<=84;lat+=6)for(let lon=-180;lon<180;lon+=6){if(solarZenithCos(lat,lon,sun)>=0)continue;const p=project(lat,lon);if(p.z<=0)continue;ctx.globalAlpha=.16;ctx.fillStyle="#020611";ctx.beginPath();ctx.arc(p.x,p.y,Math.max(2,R*rad(3.1)),0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;
-  stations.forEach((st,i)=>{const p=project(st.lat,st.lon);if(p.z<=0)return;const v=st.fof2??st.muf??st.foe??0;ctx.beginPath();ctx.arc(p.x,p.y,selected===i?8:5,0,Math.PI*2);ctx.fillStyle=st.fof2!==null?"#ffffff":"#9fe8ff";ctx.fill();ctx.strokeStyle="#062039";ctx.lineWidth=2;ctx.stroke();if(selected===i){ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,12,0,Math.PI*2);ctx.stroke()}});
-  ctx.restore();ctx.strokeStyle="#78a8cc";ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.stroke();
-  ctx.fillStyle="#d9edff";ctx.font="18px sans-serif";ctx.textAlign="center";ctx.fillText("GLOBÁLNÍ IONOSFÉRA",cx,35);
-  ctx.font="12px sans-serif";ctx.fillStyle="#9dc5e6";ctx.fillText("D-RAP HAF • NOAA  |  STANICE GIRO • MĚŘENÍ",cx,H-24);
+  if(terminator.length>2){ctx.beginPath();terminator.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle="rgba(255,220,143,.95)";ctx.lineWidth=2.5;ctx.shadowColor="#ffcf75";ctx.shadowBlur=12;ctx.setLineDash([7,6]);ctx.stroke();ctx.setLineDash([]);ctx.shadowBlur=0}
+  for(let lat=-84;lat<=84;lat+=5)for(let lon=-180;lon<180;lon+=5){if(solarZenithCos(lat,lon,sun)>=0)continue;const p=project(lat,lon);if(p.z<=0)continue;ctx.globalAlpha=.20;ctx.fillStyle="#010611";ctx.beginPath();ctx.arc(p.x,p.y,Math.max(2,R*rad(2.8)),0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;
+  // Jemná atmosférická záře u okraje.
+  const edge=ctx.createRadialGradient(cx,cy,R*.76,cx,cy,R);edge.addColorStop(.72,"rgba(73,196,255,0)");edge.addColorStop(.94,"rgba(69,195,255,.08)");edge.addColorStop(1,"rgba(116,221,255,.42)");ctx.fillStyle=edge;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fill();
+  // Stanice GIRO s barevným stavem a výrazným výběrem.
+  stations.forEach((st,i)=>{const p=project(st.lat,st.lon);if(p.z<=0)return;const chosen=selected===i;ctx.save();ctx.shadowColor=chosen?"#fff":"#59d9ff";ctx.shadowBlur=chosen?18:8;ctx.beginPath();ctx.arc(p.x,p.y,chosen?7:4.5,0,Math.PI*2);ctx.fillStyle=st.fof2!==null?"#e9fbff":"#78dfff";ctx.fill();ctx.restore();ctx.strokeStyle=chosen?"#fff":"rgba(5,24,43,.95)";ctx.lineWidth=chosen?2.5:1.5;ctx.beginPath();ctx.arc(p.x,p.y,chosen?12:7,0,Math.PI*2);ctx.stroke()});
+  ctx.restore();
+  // Vnější kontura s atmosférickým lemem.
+  ctx.strokeStyle="rgba(129,218,255,.88)";ctx.lineWidth=2;ctx.shadowColor="#38bdf8";ctx.shadowBlur=16;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;
+  ctx.textAlign="center";ctx.fillStyle="#e7f6ff";ctx.font="600 19px system-ui,sans-serif";ctx.shadowColor="#4bc7ff";ctx.shadowBlur=12;ctx.fillText("GLOBÁLNÍ IONOSFÉRA",cx,36);ctx.shadowBlur=0;
+  ctx.font="12px system-ui,sans-serif";ctx.fillStyle="#9cc9e6";ctx.fillText("NOAA D-RAP • GIRO IONOSONDO • UTC",cx,H-22);
   $("ionoGlobeOverlay").textContent=(drap?"D-RAP načten":"D-RAP nedostupný")+" · "+stations.length+" stanic GIRO";
  }
  function detail(i){const s=stations[i];if(!s)return;selected=i;const f=v=>v===null?"—":v.toFixed(2);$("ionoGlobeDetail").textContent=s.name+" ("+s.code+") · "+s.lat.toFixed(2)+"°, "+s.lon.toFixed(2)+"° · foF2 "+f(s.fof2)+" MHz · MUF "+f(s.muf)+" MHz · foE "+f(s.foe)+" MHz · hmF2 "+f(s.hmf2)+" km · čas "+(s.time||"neuveden");draw();drawStationHistory()}
