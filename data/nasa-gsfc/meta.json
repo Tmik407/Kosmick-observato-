@@ -1,0 +1,37 @@
+{
+  "retrieved_utc": "2026-11-13T21:22:36.773327+00:00",
+  "source": "NASA GSFC Annual Meteorological Statistics, redistributed as open JSON by Observatoire des phénomènes naturels",
+  "upstream": "https://acd-ext.gsfc.nasa.gov/Data_services/met/ann_data.html",
+  "mirror": "https://observatory.lelama.digital/en/open-data",
+  "classification": "NASA_GSFC_DAILY_SERIES_PUBLIC_MIRROR",
+  "note": "Values are a public mirror of NASA GSFC series; verify provenance and flags. GEOS forecast values may be flagged in the source.",
+  "series": {
+    "u60_10hpa_60n": {
+      "source_code": "nasa.u60n.10.daily",
+      "unit": "m/s",
+      "rows": 17470,
+      "first_date": "1979-01-01",
+      "last_date": "2026-11-11",
+      "source_json_sha256": "7bd47419a3f00f0874b10480881651cbc1e21bf2cfdb1ba0d0b56190f0e07646",
+      "csv_bytes": 364992
+    },
+    "tcap_10hpa_60_90n": {
+      "source_code": "nasa.t6090n.10.daily",
+      "unit": "K",
+      "rows": 17470,
+      "first_date": "1979-01-01",
+      "last_date": "2026-11-11",
+      "source_json_sha256": "6ba6303e45720292be59c2f79f0b231ce91b1510bf91c5e73285678dde5c8736",
+      "csv_bytes": 382315
+    },
+    "wave_heat_flux_100hpa_45_75n": {
+      "source_code": "nasa.vt4575n.100.daily",
+      "unit": "K m/s",
+      "rows": 17470,
+      "first_date": "1979-01-01",
+      "last_date": "2026-11-11",
+      "source_json_sha256": "ad37ad6bdaf2af6d235881ae2312a4cc6b28f041f26f4eacc2cd271b8eb73fc4",
+      "csv_bytes": 353799
+    }
+  }
+}
