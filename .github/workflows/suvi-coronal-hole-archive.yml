@@ -1,7 +1,7 @@
 name: NOAA SUVI coronal-hole archive
 on:
   push:
-    paths:
+    branches: [main]
   schedule:
     - cron: "17 */6 * * *"
   workflow_dispatch:
