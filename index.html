@@ -330,9 +330,11 @@ function updateAnalysis(xrayRows,k,b,p,d,pressure,couplingCount){
  $("analysisFlareClass").textContent=flux===null?"—":flareLabel(flux);
  $("analysisFlareTime").textContent=lastX?"Tok "+flux.toExponential(2)+" W/m² · "+timeOf(lastX)+" UTC":"Bez platného vzorku";
  const bz=b?val(b,"bz_gsm"):null,bt=b?val(b,"bt"):null,speed=p?val(p,"proton_speed"):null,density=d?val(d,"proton_density"):null,kp=k?val(k,"kp","Kp"):null;
- const E=(bz!==null&&speed!==null)?0.001*speed*Math.max(0,-bz):null;
+ const pairDelta=(p&&b&&timeOf(p)&&timeOf(b))?Math.abs(Date.parse(timeOf(p))-Date.parse(timeOf(b))):Infinity;
+ const pairOK=Number.isFinite(pairDelta)&&pairDelta<=90000;
+ const E=(bz!==null&&speed!==null&&pairOK)?0.001*speed*Math.max(0,-bz):null;
  $("analysisE").textContent=E===null?"—":E.toFixed(2)+" mV/m";
- $("analysisEDetail").textContent=E===null?"V nebo Bz není dostupné":("V "+speed.toFixed(0)+" km/s · Bz "+bz.toFixed(2)+" nT · časové párování ≤ 90 s");
+ $("analysisEDetail").textContent=E===null?"V/Bz nejsou časově spárovány do 90 s":("V "+speed.toFixed(0)+" km/s · Bz "+bz.toFixed(2)+" nT · rozdíl časů "+Math.round(pairDelta/1000)+" s");
  const cues=[];
  let score=0;
  if(bz!==null){if(bz<=-10){score+=3;cues.push("silně jižní Bz")}else if(bz<=-5){score+=2;cues.push("jižní Bz")}else if(bz<0){score+=1;cues.push("slabě jižní Bz")}else cues.push("severní Bz")}
