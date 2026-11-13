@@ -603,12 +603,12 @@ setInterval(refreshX5Infographic,30*60*1000);
   g.clearRect(0,0,w,h);g.fillStyle='#ffffff';g.fillRect(0,0,w,h);g.font='bold 17px Arial';g.fillStyle='#20364a';g.fillText(title,w? p.l:0,24);
   const endDates=series.flatMap(q=>q[key].map(x=>x.date)).sort();if(!endDates.length){g.fillStyle='#5b6d7e';g.font='16px Arial';g.fillText('Pro posledních 30 dní nejsou dostupné analytické hodnoty.',p.l,100);return;}
   const end=endDates[endDates.length-1],start=shiftDate(end,-29),days=Array.from({length:30},(_,i)=>shiftDate(start,i));
-  const vals=series.flatMap(q=>q[key].filter(x=>x.date>=start&&x.date<=end).map(x=>convert(num(key==='u'?'u60_ms':'temp_k')))).filter(Number.isFinite);
+  const vals=series.flatMap(q=>q[key].filter(x=>x.date>=start&&x.date<=end).map(x=>convert(num(key==='u'?x.u60_ms:x.temp_k)))).filter(Number.isFinite);
   if(!vals.length)return;let lo=Math.min(...vals),hi=Math.max(...vals);if(key==='u'){const m=Math.max(Math.abs(lo),Math.abs(hi),5);lo=-m;hi=m;}else{const pad=Math.max(1,(hi-lo)*.15);lo-=pad;hi+=pad;}if(lo===hi){lo-=1;hi+=1;}
   const x=i=>p.l+i*(w-p.l-p.r)/29,y=v=>h-p.b-(v-lo)/(hi-lo)*(h-p.t-p.b);
   for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,yy=y(v);g.strokeStyle='#d8e2eb';g.beginPath();g.moveTo(p.l,yy);g.lineTo(w-p.r,yy);g.stroke();g.fillStyle='#63778a';g.font='12px Arial';g.textAlign='right';g.fillText(v.toFixed(1)+' '+unit,p.l-8,yy+4);}
   if(key==='u'&&lo<0&&hi>0){g.strokeStyle='#fff';g.setLineDash([5,5]);g.beginPath();g.moveTo(p.l,y(0));g.lineTo(w-p.r,y(0));g.stroke();g.setLineDash([]);}
-  series.forEach(q=>{const map=new Map(q[key].filter(z=>z.date>=start&&z.date<=end).map(z=>[z.date,convert(num(key==='u'?'u60_ms':'temp_k'))]));g.strokeStyle=cols[q.l];g.lineWidth=2.5;g.beginPath();let begun=false;days.forEach((d,i)=>{const v=map.get(d);if(!Number.isFinite(v)){begun=false;return;}if(!begun){g.moveTo(x(i),y(v));begun=true;}else g.lineTo(x(i),y(v));});g.stroke();});
+  series.forEach(q=>{const map=new Map(q[key].filter(z=>z.date>=start&&z.date<=end).map(z=>[z.date,convert(num(key==='u'?z.u60_ms:z.temp_k))]));g.strokeStyle=cols[q.l];g.lineWidth=2.5;g.beginPath();let begun=false;days.forEach((d,i)=>{const v=map.get(d);if(!Number.isFinite(v)){begun=false;return;}if(!begun){g.moveTo(x(i),y(v));begun=true;}else g.lineTo(x(i),y(v));});g.stroke();});
   g.textAlign='center';g.fillStyle='#63778a';g.font='12px Arial';[0,7,14,21,29].forEach(i=>g.fillText(days[i].slice(5),x(i),h-20));
   g.textAlign='left';let lx=p.l;[10,30,50].forEach(l=>{g.fillStyle=cols[l];g.fillRect(lx,34,12,12);g.fillStyle='#20364a';g.fillText(l+' hPa',lx+17,45);lx+=115;});
  }
