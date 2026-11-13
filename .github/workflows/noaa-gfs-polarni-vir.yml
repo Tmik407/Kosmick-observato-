@@ -1,0 +1,88 @@
+name: NOAA GFS stratospheric map archive
+
+on:
+  schedule:
+    - cron: "30 14 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: polar-vortex-noaa-gfs
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Download and validate NOAA CPC GFS maps
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/noaa-gfs
+          base="https://cpc.ncep.noaa.gov/products/stratosphere/strat_a_f/gif_files"
+          for level in 10 30 50; do
+            file="gfs_t${level}_nh_f00.png"
+            curl --fail --location --retry 4 --retry-delay 8 --connect-timeout 20 \
+              "${base}/${file}" -o "data/noaa-gfs/${file}"
+            python - "${level}" "data/noaa-gfs/${file}" <<'PY'
+          import sys
+          from pathlib import Path
+          level, name = sys.argv[1], Path(sys.argv[2])
+          raw = name.read_bytes()
+          if len(raw) < 5000 or not raw.startswith(b"\x89PNG\r\n\x1a\n"):
+              raise SystemExit(f"NOAA {level} hPa: response is not a valid PNG ({len(raw)} bytes)")
+          print(f"Validated NOAA {level} hPa: {len(raw)} bytes")
+          PY
+          done
+
+      - name: Write source and freshness metadata
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from datetime import datetime, timezone
+          from pathlib import Path
+          root = Path("data/noaa-gfs")
+          files = {}
+          for level in (10, 30, 50):
+              p = root / f"gfs_t{level}_nh_f00.png"
+              b = p.read_bytes()
+              files[str(level)] = {
+                  "file": p.name,
+                  "bytes": len(b),
+                  "sha256": hashlib.sha256(b).hexdigest()
+              }
+          meta = {
+              "retrieved_utc": datetime.now(timezone.utc).isoformat(),
+              "source": "NOAA NCEP Climate Prediction Center / GFS 00Z stratospheric analysis",
+              "classification": "NUMERICAL_MODEL_ANALYSIS_MAP",
+              "region": "Northern Hemisphere",
+              "levels_hpa": [10, 30, 50],
+              "forecast_hour": 0,
+              "note": "Maps are model analysis products, not direct observations and not ERA5 reanalysis.",
+              "files": files
+          }
+          (root / "meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
+          print(json.dumps(meta, indent=2))
+          PY
+
+      - name: Commit updated NOAA maps
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/noaa-gfs/
+          if ! git diff --cached --quiet; then
+            git commit -m "Update NOAA GFS stratospheric map archive"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          else
+            echo "NOAA map archive unchanged."
+          fi
