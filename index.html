@@ -687,6 +687,8 @@ async function refreshAce(){
   const good=last.statusFlag===0;
   const validValue=v=>Number.isFinite(v)&&v!==-999.9&&v!==-999.0&&v!==-9999;
   const recordValid=good&&[last.bx,last.by,last.bz,last.bt].every(validValue);
+  const qualityAceEl=$("qualityAce");
+  if(qualityAceEl){qualityAceEl.textContent=recordValid?"OK · S = 0":"S = "+last.statusFlag+" · neplatný / nepotvrzený záznam";qualityAceEl.className="metric "+(recordValid?"good":"warn");}
   const fmt=v=>recordValid&&validValue(v)?v.toFixed(2)+" nT":"neplatná / nepotvrzená hodnota";
   status.textContent=good?(recordValid?"OK · 0":"S = 0 · neplatná složka"):"Příznak "+last.statusFlag;
   status.className="metric "+(recordValid?"good":"warn");
