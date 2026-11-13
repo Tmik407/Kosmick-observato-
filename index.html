@@ -1190,24 +1190,41 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  function parseCoastGeo(json){if(!json||!Array.isArray(json.features))throw Error("Neplatný GeoJSON pobřeží");return json.features.map(f=>f.geometry).filter(g=>g&&g.coordinates).map(g=>({type:g.type,coordinates:g.coordinates}));}
  function parseAurora(json){if(!json||!Array.isArray(json.coordinates))throw Error("Neplatná odpověď OVATION");const pts=[];for(const q of json.coordinates){if(!Array.isArray(q)||q.length<3)continue;let lon=Number(q[0]),lat=Number(q[1]),v=Number(q[2]);if(!Number.isFinite(lon)||!Number.isFinite(lat)||!Number.isFinite(v)||lat< -90||lat>90||v<0||v>100)continue;if(lon>180)lon-=360;pts.push({lon,lat,v})}if(pts.length<1000)throw Error("OVATION mřížka je neúplná");return pts;}
  function parseIrtam(json){if(!json||json.model!=="IRTAM"||!Array.isArray(json.points))throw Error("Neplatný archiv IRTAM");const pts=json.points.map(q=>({lat:Number(q.lat),lon:Number(q.lon),v:Number(q.ne_1e6_cm3)})).filter(q=>Number.isFinite(q.lat)&&Number.isFinite(q.lon)&&Number.isFinite(q.v)&&q.lat>=-90&&q.lat<=90&&q.lon>=-180&&q.lon<=180&&q.v>=0&&q.v<=10);if(pts.length<250)throw Error("IRTAM mřížka je neúplná");return pts;}
+ let irtamTextureCache=null;
  function drawIrtamDensity(){
   if(!irtamPoints.length||!$("ionoNeToggle")?.checked)return;
-  // Vykreslení skutečné 10° mřížky jako souvislých plošek místo izolovaných puntíků.
-  const key=(lat,lon)=>Math.round(lat)+":"+Math.round(((lon+540)%360)-180),grid=new Map();
-  irtamPoints.forEach(q=>grid.set(key(q.lat,q.lon),q));
-  const stops=[[0,[12,34,126]],[.25,[37,55,224]],[.5,[135,24,222]],[.72,[232,0,93]],[.88,[255,91,19]],[1,[255,239,104]]];
-  const colorAt=v=>{const t=Math.max(0,Math.min(1,v/2));let a=stops[0],b=stops[stops.length-1];for(let i=1;i<stops.length;i++)if(t<=stops[i][0]){a=stops[i-1];b=stops[i];break}const k=(t-a[0])/(b[0]-a[0]||1),c=a[1].map((n,i)=>Math.round(n+(b[1][i]-n)*k));return "rgb("+c.join(",")+")"};
-  ctx.save();ctx.globalAlpha=.88;ctx.lineJoin="round";
-  for(const q of irtamPoints){
-   const lat0=Math.max(-89.9,q.lat-5),lat1=Math.min(89.9,q.lat+5),lon0=q.lon-5,lon1=q.lon+5;
-   const corners=[[lat0,lon0],[lat0,lon1],[lat1,lon1],[lat1,lon0]].map(([a,b])=>project(a,b));
-   // Buňky protínající okraj viditelné polokoule se oříznou klipem koule; zadní strana se nekreslí.
-   if(corners.every(p=>p.z<=0))continue;
-   ctx.beginPath();corners.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();
-   ctx.fillStyle=colorAt(q.v);ctx.globalAlpha=.58+.27*Math.min(1,q.v/2);ctx.fill();
-   ctx.strokeStyle="rgba(8,25,70,.10)";ctx.lineWidth=.45;ctx.stroke();
+  // Hladká projekce modelové mřížky IRTAM na viditelnou polokouli.
+  // Hodnoty mezi uzly se bilineárně interpolují pouze z modelové mřížky IRTAM.
+  const size=512,rotKey=rotation.toFixed(4),tiltKey=tilt.toFixed(4);
+  if(!irtamTextureCache||irtamTextureCache.rot!==rotKey||irtamTextureCache.tilt!==tiltKey||irtamTextureCache.count!==irtamPoints.length){
+   const grid=new Map();irtamPoints.forEach(q=>grid.set(Math.round(q.lat)+":"+Math.round(q.lon),q.v));
+   const sample=(lat,lon)=>{
+    const la=Math.max(-85,Math.min(85,lat)),la0=Math.floor((la+85)/10)*10-85,la1=Math.min(85,la0+10),fy=(la-la0)/(la1-la0||1);
+    let lo=((lon+180)%360+360)%360-180,lo0=Math.floor((lo+180)/10)*10-180,lo1=lo0+10;if(lo1>=180)lo1=-180;
+    const fx=(lo-lo0+360)%360/10,at=(a,b)=>grid.get(Math.round(a)+":"+Math.round(b));
+    const a=at(la0,lo0),b=at(la0,lo1),c=at(la1,lo0),d=at(la1,lo1);
+    if([a,b,c,d].some(v=>!Number.isFinite(v)))return null;
+    return (a*(1-fx)+b*fx)*(1-fy)+(c*(1-fx)+d*fx)*fy;
+   };
+   const tex=document.createElement("canvas");tex.width=size;tex.height=size;
+   const g=tex.getContext("2d"),im=g.createImageData(size,size),data=im.data;
+   const stops=[[0,[15,35,130]],[.18,[28,65,224]],[.38,[115,25,220]],[.58,[222,0,105]],[.76,[255,65,20]],[.9,[255,175,20]],[1,[255,245,130]]];
+   const rgb=v=>{const t=Math.max(0,Math.min(1,v/1.9));let a=stops[0],b=stops[stops.length-1];for(let i=1;i<stops.length;i++)if(t<=stops[i][0]){a=stops[i-1];b=stops[i];break}const k=(t-a[0])/(b[0]-a[0]||1);return a[1].map((n,i)=>Math.round(n+(b[1][i]-n)*k))};
+   const cr=Math.cos(tilt),sr=Math.sin(tilt);
+   for(let py=0;py<size;py++)for(let px=0;px<size;px++){
+    const nx=(px/(size-1))*2-1,ny=1-(py/(size-1))*2,r2=nx*nx+ny*ny;if(r2>1)continue;
+    const nz=Math.sqrt(1-r2),sinP=ny*cr+nz*sr,cosLon= nz*cr-ny*sr;
+    const lat=Math.asin(Math.max(-1,Math.min(1,sinP)))*180/Math.PI;
+    const lon=(Math.atan2(nx,cosLon)-rotation)*180/Math.PI;
+    const v=sample(lat,lon);if(v===null)continue;
+    const col=rgb(v),idx=(py*size+px)*4,shade=.76+.24*nz;
+    data[idx]=Math.round(col[0]*shade);data[idx+1]=Math.round(col[1]*shade);data[idx+2]=Math.round(col[2]*shade);data[idx+3]=Math.round(220*(.82+.18*nz));
+   }
+   g.putImageData(im,0,0);irtamTextureCache={rot:rotKey,tilt:tiltKey,count:irtamPoints.length,canvas:tex};
   }
-  ctx.restore();ctx.globalAlpha=1;
+  const R=Math.min(canvas.width,canvas.height)*.405,cx=canvas.width/2,cy=canvas.height*.51;
+  ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.clip();
+  ctx.globalAlpha=.94;ctx.drawImage(irtamTextureCache.canvas,cx-R,cy-R,2*R,2*R);ctx.restore();ctx.globalAlpha=1;
  }
  function drawCoastlines(){if(!coastGeo)return;ctx.save();ctx.strokeStyle="rgba(193,224,225,.82)";ctx.lineWidth=1.35;ctx.shadowColor="rgba(83,206,222,.45)";ctx.shadowBlur=3;const line=ring=>{let open=false;ctx.beginPath();for(const c of ring){const p=project(Number(c[1]),Number(c[0]));if(p.z>0){if(!open){ctx.moveTo(p.x,p.y);open=true}else ctx.lineTo(p.x,p.y)}else open=false}ctx.stroke()};for(const g of coastGeo){if(g.type==="Polygon")g.coordinates.forEach(line);else if(g.type==="MultiPolygon")g.coordinates.forEach(poly=>poly.forEach(line))}ctx.restore();}
  function drawAurora(){if(!auroraGrid.length)return;ctx.save();for(const q of auroraGrid){if(q.v<8)continue;const p=project(q.lat,q.lon);if(p.z<=0)continue;const t=Math.min(1,q.v/60),col=t>.72?"#e7ff85":t>.38?"#7affb2":"#32d9bd";ctx.globalAlpha=.18+.68*t;ctx.fillStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,Math.max(2.2,Math.min(6,2+q.v*.075)),0,Math.PI*2);ctx.fill()}ctx.restore();ctx.globalAlpha=1;}
@@ -1219,7 +1236,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  const issues=[];if(jobs[0].status==="fulfilled"){try{coastGeo=parseCoastGeo(jobs[0].value)}catch(e){issues.push("pobřeží: "+e.message)}}else issues.push("pobřeží nedostupné");
  if(jobs[1].status==="fulfilled"){try{auroraGrid=parseAurora(jobs[1].value);auroraMeta={observed:jobs[1].value["Observation Time"],forecast:jobs[1].value["Forecast Time"]}}catch(e){issues.push("OVATION: "+e.message)}}else issues.push("OVATION nedostupný");
  if(jobs[2].status==="fulfilled"){try{irtamPoints=parseIrtam(jobs[2].value);irtamMeta=jobs[2].value}catch(e){issues.push("IRTAM: "+e.message)}}else issues.push("IRTAM archiv nedostupný");
- status.textContent=(coastGeo?"Pobřeží načteno":"Pobřeží bez dat")+" · "+(auroraGrid.length?auroraGrid.length.toLocaleString("cs-CZ")+" bodů OVATION":"OVATION bez dat")+" · "+(irtamPoints.length?irtamPoints.length.toLocaleString("cs-CZ")+" bodů IRTAM":"IRTAM bez dat")+(issues.length?" · "+issues.join("; "):"");
+ status.textContent=(coastGeo?"Pobřeží načteno":"Pobřeží bez dat")+" · "+(auroraGrid.length?auroraGrid.length.toLocaleString("cs-CZ")+" bodů OVATION":"OVATION bez dat")+" · "+(irtamPoints.length?irtamPoints.length.toLocaleString("cs-CZ")+" bodů IRTAM · "+(irtamMeta?.target_utc||"čas neuveden"):"IRTAM bez dat")+(issues.length?" · "+issues.join("; "):"");
  draw();
  }
  function parseDrap(text){
@@ -1280,8 +1297,8 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
    [[-70,-180],[-72,-120],[-75,-60],[-72,0],[-75,60],[-72,120],[-70,180]]
   ];
   continents.forEach(poly=>{ctx.beginPath();let open=false;poly.forEach(([lat,lon])=>{const p=project(lat,lon);if(p.z>0){if(!open){ctx.moveTo(p.x,p.y);open=true}else ctx.lineTo(p.x,p.y)}else open=false});ctx.closePath();ctx.fillStyle="rgba(71,137,128,.48)";ctx.fill();ctx.strokeStyle="rgba(139,205,191,.42)";ctx.lineWidth=1.5;ctx.stroke()});
-  // Modelová pole NOAA D-RAP, barevné buňky zůstávají navázané na skutečná data.
-  if(drap){for(let ri=0;ri<drap.rows.length;ri++){const row=drap.rows[ri];for(let j=0;j<drap.lons.length;j++){const col=color(row.vals[j]);if(!col)continue;const lat=row.lat,lon=drap.lons[j],p=project(lat,lon);if(p.z<=0)continue;const day=solarZenithCos(lat,lon,sun);ctx.globalAlpha=day>0?.48:.17;ctx.fillStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,Math.max(2.5,R*rad(3.6)),0,Math.PI*2);ctx.fill()}}}
+  // NOAA D-RAP zůstává samostatnou vrstvou; při aktivním IRTAM se jeho překryv ztlumí.
+  if(drap&&!($("ionoNeToggle")?.checked&&irtamPoints.length)){for(let ri=0;ri<drap.rows.length;ri++){const row=drap.rows[ri];for(let j=0;j<drap.lons.length;j++){const col=color(row.vals[j]);if(!col)continue;const lat=row.lat,lon=drap.lons[j],p=project(lat,lon);if(p.z<=0)continue;const day=solarZenithCos(lat,lon,sun);ctx.globalAlpha=day>0?.48:.17;ctx.fillStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,Math.max(2.5,R*rad(3.6)),0,Math.PI*2);ctx.fill()}}}
   ctx.globalAlpha=1;
   // Zeměpisná síť – decentní tenké linie.
   ctx.strokeStyle="rgba(177,220,255,.30)";ctx.lineWidth=1.05;ctx.shadowColor="rgba(93,190,255,.22)";ctx.shadowBlur=2;
@@ -1303,7 +1320,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   // Vnější kontura s atmosférickým lemem.
   ctx.strokeStyle="rgba(129,218,255,.88)";ctx.lineWidth=2;ctx.shadowColor="#38bdf8";ctx.shadowBlur=16;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;
   ctx.textAlign="center";ctx.fillStyle="#e7f6ff";ctx.font="700 20px system-ui,sans-serif";ctx.shadowColor="#4bc7ff";ctx.shadowBlur=14;ctx.fillText("GLOBÁLNÍ IONOSFÉRA",cx,36);ctx.shadowBlur=0;
-  ctx.font="12px system-ui,sans-serif";ctx.fillStyle="#9cc9e6";ctx.fillText("NOAA D-RAP • GIRO NmF2/foF2 • UTC",cx,H-22);
+  ctx.font="12px system-ui,sans-serif";ctx.fillStyle="#9cc9e6";ctx.fillText(irtamPoints.length&&$("ionoNeToggle")?.checked?"IRTAM Ne • 300 km • 48h zpoždění • UTC":"NOAA D-RAP • GIRO foF2/MUF • UTC",cx,H-22);
   $("ionoGlobeOverlay").textContent=(drap?"D-RAP načten":"D-RAP nedostupný")+" · "+stations.length+" stanic GIRO";
  }
  function detail(i){const s=stations[i];if(!s)return;selected=i;const f=v=>v===null?"—":v.toFixed(2);$("ionoGlobeDetail").textContent=s.name+" ("+s.code+") · "+s.lat.toFixed(2)+"°, "+s.lon.toFixed(2)+"° · foF2 "+f(s.fof2)+" MHz · MUF "+f(s.muf)+" MHz · foE "+f(s.foe)+" MHz · hmF2 "+f(s.hmf2)+" km · čas "+(s.time||"neuveden");draw();drawStationHistory()}
