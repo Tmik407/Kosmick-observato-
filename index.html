@@ -1167,13 +1167,13 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  </div>
  <div style="margin-top:8px;padding:9px 11px;border:1px solid #315674;border-radius:8px;background:#081a2c"><div id="ionoGiroDiagnostic" class="small">Diagnostika GIRO: čekám na odpověď API.</div><div style="margin-top:6px;font-size:12px"><a href="https://prop.kc2g.com/about/" target="_blank" rel="noopener">Stav poskytovatele GIRO / KC2G ↗</a> · <a href="https://prop.kc2g.com/api/stations.json" target="_blank" rel="noopener">Otevřít surové API ↗</a></div></div>
  <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;margin-top:10px">
-  <span>🟦 D-RAP HAF nízký</span><span>🟩 střední</span><span>🟨 zvýšený</span><span>🟥 vysoký</span><span>● GIRO foF2/MUF měření</span><span>🔵→🟡 IRTAM Ne: 0–2 × 10⁶ cm⁻³</span>
+  <span>🟦 D-RAP HAF nízký</span><span>🟩 střední</span><span>🟨 zvýšený</span><span>🟥 vysoký</span><span>● GIRO foF2/MUF měření</span><span>🔵→🟡 IRTAM Ne: 0–2,5 × 10⁶ cm⁻³</span>
  </div>
  <div class="small">Barevná vrstva zobrazuje globální elektronovou hustotu IRTAM ve zvolené výšce (200, 300, 400 nebo 500 km), v jednotkách 10⁶ cm⁻³. Model je vypočten přes PyIRTAM z veřejných koeficientů GAMBIT. Skutečné stáří modelových dat se počítá z času platnosti v archivu; nejde o živé měření. Mřížka má rozlišení 10° a GIRO stanice jsou samostatné měřicí body.</div>
  <div id="irtamDataQuality" style="margin-top:10px;padding:11px 12px;border:1px solid #315674;border-radius:10px;background:linear-gradient(120deg,#07172a,#0b2540)">
   <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><strong style="color:#d9f3ff">IRTAM · KVALITA A STÁŘÍ DAT</strong><span id="irtamQualityState" class="small">Čekám na archiv…</span></div>
   <div style="height:10px;border-radius:8px;margin:9px 0;background:linear-gradient(90deg,#0f2382 0%,#1c41e0 18%,#7319dc 38%,#de0069 58%,#ff4114 76%,#ffaf14 90%,#fff582 100%)"></div>
-  <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:11px;color:#b8d4e8"><span>0.0</span><span>0.5</span><span>1.0</span><span>1.5</span><span>2.0 × 10⁶ cm⁻³</span></div>
+  <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:11px;color:#b8d4e8"><span>0.0</span><span>0.6</span><span>1.3</span><span>1.9</span><span>2.5 × 10⁶ cm⁻³</span></div>
   <div id="irtamQualityDetails" class="small" style="margin-top:8px">Globální modelová mřížka bude ověřena po načtení archivu.</div>
   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px"><label for="irtamAltitudeSelect" style="font-size:13px;color:#c5e5f7">Výška elektronové hustoty:</label><select id="irtamAltitudeSelect" style="background:#102c47;color:#e7f7ff;border:1px solid #47718f;border-radius:8px;padding:8px 12px"><option value="200">200 km</option><option value="300" selected>300 km</option><option value="400">400 km</option><option value="500">500 km</option></select><span class="small">Přepínání používá samostatný výpočet IRTAM pro každou výšku.</span></div>
  </div>
@@ -1218,7 +1218,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
    const tex=document.createElement("canvas");tex.width=size;tex.height=size;
    const g=tex.getContext("2d"),im=g.createImageData(size,size),data=im.data;
    const stops=[[0,[15,35,130]],[.18,[28,65,224]],[.38,[115,25,220]],[.58,[222,0,105]],[.76,[255,65,20]],[.9,[255,175,20]],[1,[255,245,130]]];
-   const rgb=v=>{const t=Math.max(0,Math.min(1,v/1.9));let a=stops[0],b=stops[stops.length-1];for(let i=1;i<stops.length;i++)if(t<=stops[i][0]){a=stops[i-1];b=stops[i];break}const k=(t-a[0])/(b[0]-a[0]||1);return a[1].map((n,i)=>Math.round(n+(b[1][i]-n)*k))};
+   const rgb=v=>{const t=Math.max(0,Math.min(1,v/2.5));let a=stops[0],b=stops[stops.length-1];for(let i=1;i<stops.length;i++)if(t<=stops[i][0]){a=stops[i-1];b=stops[i];break}const k=(t-a[0])/(b[0]-a[0]||1);return a[1].map((n,i)=>Math.round(n+(b[1][i]-n)*k))};
    const cr=Math.cos(tilt),sr=Math.sin(tilt);
    for(let py=0;py<size;py++)for(let px=0;px<size;px++){
     const nx=(px/(size-1))*2-1,ny=1-(py/(size-1))*2,r2=nx*nx+ny*ny;if(r2>1)continue;
