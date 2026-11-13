@@ -285,18 +285,25 @@ $('nasaFile').addEventListener('change',async ev=>{
 async function loadNasaVerticalTemp(){
  const status=$("nasaVerticalTempStatus"),cv=$("nasaVerticalTempChart"),g=cv.getContext("2d"),w=cv.width,h=cv.height,p=55;
  try{
-  const levels=[10,30,50],series=await Promise.all(levels.map(async lev=>{const r=await fetch("./data/nasa-gsfc/tcap_"+lev+"hpa_60_90n_ozonewatch.csv?v="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("Teplota "+lev+" hPa HTTP "+r.status);const lines=(await r.text()).trim().split(/\\r?\\n/);return {lev,rows:lines.slice(1).map(line=>{const a=line.split(",");return {date:a[0],v:Number(a[1]),fc:Number(a[2])}}).filter(x=>x.date&&Number.isFinite(x.v)&&x.v>-9000&&x.fc>=0)};}));
+  const levels=[10,30,50],series=await Promise.all(levels.map(async lev=>{
+   const r=await fetch("./data/nasa-gsfc/tcap_"+lev+"hpa_60_90n_ozonewatch.csv?v="+Date.now(),{cache:"no-store"});
+   if(!r.ok)throw Error("Teplota "+lev+" hPa HTTP "+r.status);
+   const lines=(await r.text()).trim().split(/\r?\n/);
+   return {lev,rows:lines.slice(1).map(line=>{const a=line.split(",");return {date:a[0],v:Number(a[1]),fc:Number(a[2])};}).filter(x=>x.date&&Number.isFinite(x.v)&&x.v>-9000&&x.fc>=0)};
+  }));
   g.clearRect(0,0,w,h);g.fillStyle="#07182a";g.fillRect(0,0,w,h);
-  const colors={10:"#63dfff",30:"#ffbd76",50:"#b69cff"},all=series.flatMap(q=>q.rows.map(x=>x.v));let min=Math.min(...all),max=Math.max(...all);if(min===max){min-=1;max+=1;}
+  const colors={10:"#63dfff",30:"#ffbd76",50:"#b69cff"},all=series.flatMap(q=>q.rows.map(x=>x.v));
+  if(!all.length)throw Error("V souborech nejsou platné hodnoty analýzy ani předpovědi.");
+  let min=Math.min(...all),max=Math.max(...all);if(min===max){min-=1;max+=1;}
   const y=v=>h-p-(v-min)/(max-min)*(h-2*p);
   for(let i=0;i<5;i++){const v=max-i*(max-min)/4,yy=y(v);g.strokeStyle="#29445e";g.beginPath();g.moveTo(p,yy);g.lineTo(w-p,yy);g.stroke();g.fillStyle="#a9bfd5";g.font="13px Arial";g.fillText(v.toFixed(1),5,yy+4);}
   for(const q of series){const a=q.rows.slice(-120);g.beginPath();a.forEach((x,i)=>{const xx=p+i*(w-2*p)/Math.max(1,a.length-1);if(i===0)g.moveTo(xx,y(x.v));else g.lineTo(xx,y(x.v));});g.strokeStyle=colors[q.lev];g.lineWidth=3;g.stroke();}
-  let legend="";for(const q of series){const hist=q.rows.filter(x=>x.fc===0),a=hist[hist.length-1],last=q.rows[q.rows.length-1];legend+=q.lev+" hPa: poslední analýza "+(a?a.date+" = "+a.v.toFixed(2)+" K":"není")+(last&&last.fc>0?"; předpověď "+last.date+" = "+last.v.toFixed(2)+" K (+"+last.fc+" h)":"")+"; ";}
+  let legend="";
+  for(const q of series){const hist=q.rows.filter(x=>x.fc===0),a=hist[hist.length-1],last=q.rows[q.rows.length-1];legend+=q.lev+" hPa: poslední analýza "+(a?a.date+" = "+a.v.toFixed(2)+" K":"není")+(last&&last.fc>0?"; předpověď "+last.date+" = "+last.v.toFixed(2)+" K (+"+last.fc+" h)":"")+"; ";}
   g.fillStyle="#edf6ff";g.font="bold 14px Arial";g.fillText("Teplota polární čepičky 60–90° N · K · posledních až 120 dní",p,22);
-  status.innerHTML="<b class=\\"good\\">NASA Ozone Watch · teplotní řady načteny.</b><br>"+legend+series.map(q=>q.lev+" hPa: "+q.rows.length+" řádků").join(" · ")+"<br>Kladný forecast_hour označuje předpověď, nikoli pozorovanou analýzu.";
- }catch(e){status.innerHTML="<b class=\\"warn\\">Teplotní řady zatím nejsou dostupné.</b> "+String(e.message||e)+". Zkontroluj běh NASA archivační úlohy.";}
-}
-\nasync function loadNasaMirror(){
+  status.innerHTML='<b class="good">NASA Ozone Watch · teplotní řady načteny.</b><br>'+legend+series.map(q=>q.lev+" hPa: "+q.rows.length+" řádků").join(" · ")+'<br>Kladný forecast_hour označuje předpověď, nikoli pozorovanou analýzu.';
+ }catch(e){status.innerHTML='<b class="warn">Teplotní řady zatím nejsou dostupné.</b> '+String(e.message||e)+'. Zkontroluj běh NASA archivační úlohy.';}
+}\nasync function loadNasaMirror(){
  const status=$('nasaMirrorStatus');
  const specs=[
   {file:'u60_10hpa_60n.csv',value:'nasaMirrorWind',date:'nasaMirrorWindDate',chart:'nasaMirrorWindChart',label:'U60 · 10 hPa',unit:'m/s',zero:true},
