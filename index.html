@@ -1174,6 +1174,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   <div style="height:10px;border-radius:8px;margin:9px 0;background:linear-gradient(90deg,#0f2382 0%,#1c41e0 18%,#7319dc 38%,#de0069 58%,#ff4114 76%,#ffaf14 90%,#fff582 100%)"></div>
   <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:11px;color:#b8d4e8"><span>0.0</span><span>0.5</span><span>1.0</span><span>1.5</span><span>2.0 × 10⁶ cm⁻³</span></div>
   <div id="irtamQualityDetails" class="small" style="margin-top:8px">Globální modelová mřížka bude ověřena po načtení archivu.</div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px"><label for="irtamAltitudeSelect" style="font-size:13px;color:#c5e5f7">Výška elektronové hustoty:</label><select id="irtamAltitudeSelect" style="background:#102c47;color:#e7f7ff;border:1px solid #47718f;border-radius:8px;padding:8px 12px"><option value="200">200 km</option><option value="300" selected>300 km</option><option value="400">400 km</option><option value="500">500 km</option></select><span class="small">Přepínání používá samostatný výpočet IRTAM pro každou výšku.</span></div>
  </div>
  <div id="ionoGlobeDetail" class="small" style="margin-top:10px">Klikni na bod stanice pro podrobnosti. Čas a kvalita dat se zobrazují samostatně.</div><div id="ionoHistoryPanel" style="margin-top:12px;background:#081a2c;border:1px solid #294765;border-radius:10px;padding:12px"><strong>Historie skutečných měření ionosond</strong><span id="ionoHistoryCount" class="small" style="float:right">Vyber stanici</span><div id="ionoHistoryInfo" class="small" style="margin:6px 0">Lokální historie tohoto prohlížeče.</div><canvas id="ionoHistoryCanvas" width="900" height="300" style="width:100%;height:auto;display:block"></canvas><div class="grid" style="margin-top:8px"><div><div class="small">Poslední foF2</div><div id="ionoHistFof2" class="metric">—</div></div><div><div class="small">Poslední hmF2</div><div id="ionoHistHmf2" class="metric">—</div></div><div><div class="small">Poslední MUF</div><div id="ionoHistMuf" class="metric">—</div></div><div><div class="small">Confidence</div><div id="ionoHistQuality" class="metric">—</div></div></div><div class="small">Historie se tvoří z nově načtených aktuálních vzorků GIRO na tomto zařízení. Starší data před prvním uložením nejsou dostupná. Mezery se neinterpolují.</div><div class="small">Lokální automatický záznam je oddělen od archivních dat GIRO. Níže lze stáhnout skutečnou historickou řadu z archivu DIDBase pro právě vybranou stanici.</div>
  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:10px">
@@ -1191,11 +1192,11 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
 (function(){
  const $=id=>document.getElementById(id),canvas=$("ionoGlobeCanvas");if(!canvas)return;
  const ctx=canvas.getContext("2d");let drap=null,stations=[],rotation=0,tilt=0.12,drag=null,selected=null,updated=null,xray=[],playTimer=null,playIndex=0,animTime=Date.now();
- const HISTORY_KEY="x5_iono_station_history_v1",HISTORY_MAX=288;let history=loadHistory();let coastGeo=null,auroraGrid=[],auroraMeta=null,irtamPoints=[],irtamMeta=null;
+ const HISTORY_KEY="x5_iono_station_history_v1",HISTORY_MAX=288;let history=loadHistory();let coastGeo=null,auroraGrid=[],auroraMeta=null,irtamPoints=[],irtamMeta=null,irtamLevels={},irtamAltitude=300;
  const rad=v=>v*Math.PI/180;
  function parseCoastGeo(json){if(!json||!Array.isArray(json.features))throw Error("Neplatný GeoJSON pobřeží");return json.features.map(f=>f.geometry).filter(g=>g&&g.coordinates).map(g=>({type:g.type,coordinates:g.coordinates}));}
  function parseAurora(json){if(!json||!Array.isArray(json.coordinates))throw Error("Neplatná odpověď OVATION");const pts=[];for(const q of json.coordinates){if(!Array.isArray(q)||q.length<3)continue;let lon=Number(q[0]),lat=Number(q[1]),v=Number(q[2]);if(!Number.isFinite(lon)||!Number.isFinite(lat)||!Number.isFinite(v)||lat< -90||lat>90||v<0||v>100)continue;if(lon>180)lon-=360;pts.push({lon,lat,v})}if(pts.length<1000)throw Error("OVATION mřížka je neúplná");return pts;}
- function parseIrtam(json){if(!json||json.model!=="IRTAM"||!Array.isArray(json.points))throw Error("Neplatný archiv IRTAM");const pts=json.points.map(q=>({lat:Number(q.lat),lon:Number(q.lon),v:Number(q.ne_1e6_cm3)})).filter(q=>Number.isFinite(q.lat)&&Number.isFinite(q.lon)&&Number.isFinite(q.v)&&q.lat>=-90&&q.lat<=90&&q.lon>=-180&&q.lon<=180&&q.v>=0&&q.v<=10);if(pts.length<250)throw Error("IRTAM mřížka je neúplná");return pts;}
+ function parseIrtam(json){if(!json||json.model!=="IRTAM"||!Array.isArray(json.points))throw Error("Neplatný archiv IRTAM");const clean=a=>a.map(q=>({lat:Number(q.lat),lon:Number(q.lon),v:Number(q.ne_1e6_cm3)})).filter(q=>Number.isFinite(q.lat)&&Number.isFinite(q.lon)&&Number.isFinite(q.v)&&q.lat>=-90&&q.lat<=90&&q.lon>=-180&&q.lon<=180&&q.v>=0&&q.v<=10);irtamLevels={};if(json.levels&&typeof json.levels==="object")for(const h of [200,300,400,500]){const a=json.levels[String(h)];if(Array.isArray(a)){const pts=clean(a);if(pts.length>=250)irtamLevels[h]=pts}}const base=irtamLevels[300]||clean(json.points);if(base.length<250)throw Error("IRTAM mřížka je neúplná");if(!irtamLevels[300])irtamLevels[300]=base;return base;}
  let irtamTextureCache=null;
  function drawIrtamDensity(){
   if(!irtamPoints.length||!$("ionoNeToggle")?.checked)return;
@@ -1241,7 +1242,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  ]);
  const issues=[];if(jobs[0].status==="fulfilled"){try{coastGeo=parseCoastGeo(jobs[0].value)}catch(e){issues.push("pobřeží: "+e.message)}}else issues.push("pobřeží nedostupné");
  if(jobs[1].status==="fulfilled"){try{auroraGrid=parseAurora(jobs[1].value);auroraMeta={observed:jobs[1].value["Observation Time"],forecast:jobs[1].value["Forecast Time"]}}catch(e){issues.push("OVATION: "+e.message)}}else issues.push("OVATION nedostupný");
- if(jobs[2].status==="fulfilled"){try{irtamPoints=parseIrtam(jobs[2].value);irtamMeta=jobs[2].value}catch(e){issues.push("IRTAM: "+e.message)}}else issues.push("IRTAM archiv nedostupný");
+ if(jobs[2].status==="fulfilled"){try{irtamPoints=parseIrtam(jobs[2].value);irtamMeta=jobs[2].value;irtamAltitude=300;const altSelect=$("irtamAltitudeSelect");if(altSelect)altSelect.value="300"}catch(e){issues.push("IRTAM: "+e.message)}}else issues.push("IRTAM archiv nedostupný");
  status.textContent=(coastGeo?"Pobřeží načteno":"Pobřeží bez dat")+" · "+(auroraGrid.length?auroraGrid.length.toLocaleString("cs-CZ")+" bodů OVATION":"OVATION bez dat")+" · "+(irtamPoints.length?irtamPoints.length.toLocaleString("cs-CZ")+" bodů IRTAM · "+(irtamMeta?.target_utc||"čas neuveden"):"IRTAM bez dat")+(issues.length?" · "+issues.join("; "):"");
  const qState=$("irtamQualityState"),qDetails=$("irtamQualityDetails");
  if(qState&&qDetails){
@@ -1254,6 +1255,16 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  }
  draw();
  }
+ const altSelect=$("irtamAltitudeSelect");
+ if(altSelect)altSelect.addEventListener("change",()=>{
+  const h=Number(altSelect.value),pts=irtamLevels[h];
+  if(!pts){altSelect.value=String(irtamAltitude);$("irtamQualityState").textContent="TATO VÝŠKA NENÍ V ARCHIVU";return}
+  irtamAltitude=h;irtamPoints=pts;irtamTextureCache=null;if(irtamMeta)irtamMeta={...irtamMeta,altitude_km:h};
+  const vals=pts.map(p=>p.v).filter(Number.isFinite),min=Math.min(...vals),max=Math.max(...vals);
+  $("irtamQualityState").textContent="MŘÍŽKA NAČTENA · "+pts.length+" BODŮ · "+h+" KM";
+  $("irtamQualityDetails").textContent="Modelový čas: "+(irtamMeta?.target_utc||"neuveden")+" · výška: "+h+" km · krok: "+(irtamMeta?.grid_step_deg??"—")+"° · rozsah: "+min.toFixed(3)+" až "+max.toFixed(3)+" × 10⁶ cm⁻³ · zdroj: PyIRTAM/GAMBIT";
+  draw();
+ });
  function parseDrap(text){
   const lines=text.split(/\r?\n/),head=lines.find(l=>/^\s*-?\d+(?:\s+-?\d+){20,}\s*$/.test(l));
   if(!head)throw Error("D-RAP: chybí hlavička souřadnic.");
