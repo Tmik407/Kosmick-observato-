@@ -833,8 +833,17 @@ async function refreshAceComparison(){
   const tm=t=>new Date(t).toISOString().replace("T"," ").slice(0,19)+" UTC";
   let best=null,nearest=null;
   for(const a of aa)for(const b of rrr){const dt=Math.abs(a.t-b.t);if(!nearest||dt<nearest.dt)nearest={a,b,dt};if(dt<=90000&&(!best||Math.max(a.t,b.t)>Math.max(best.a.t,best.b.t)))best={a,b,dt}}
-  if(best){const d=best.a.bz-best.b.bz;put("cmpAceBz",best.a.bz.toFixed(2)+" nT");put("cmpAceTime",tm(best.a.t));put("cmpRtswBz",best.b.bz.toFixed(2)+" nT");put("cmpRtswTime",tm(best.b.t));put("cmpDelta",(d>0?"+":"")+d.toFixed(2)+" nT");put("cmpDeltaTime","Časový rozdíl: "+Math.round(best.dt/1000)+" s · nejnovější společný pár z posledních 24 hodin");put("cmpStatus","PÁR POTVRZEN · nejnovější časově spárované měření v limitu 90 sekund.")}
-  else{put("cmpAceBz",nearest.a.bz.toFixed(2)+" nT");put("cmpAceTime",tm(nearest.a.t));put("cmpRtswBz","Bez časového páru");put("cmpRtswTime",tm(nearest.b.t));put("cmpDelta","—");put("cmpDeltaTime","Nejbližší rozdíl v posledních 24 hodinách: "+Math.round(nearest.dt/1000)+" s");put("cmpStatus","V posledních 24 hodinách nebyl nalezen pár s rozdílem do 90 sekund.")}
+  if(best){
+   const d=best.a.bz-best.b.bz, pairTime=Math.max(best.a.t,best.b.t), ageMin=Math.max(0,(Date.now()-pairTime)/60000);
+   const fresh=ageMin<=5, opposite=(best.a.bz<0&&best.b.bz>0)||(best.a.bz>0&&best.b.bz<0);
+   const state=!fresh?"ZASTARALÝ PÁR":opposite?"ROZPOR – OPAČNÉ ZNAMÉNKO Bz":Math.abs(d)<=1?"SHODA":Math.abs(d)<=2?"MÍRNÁ ODCHYLKA":"VÝRAZNÁ ODCHYLKA";
+   put("cmpAceBz",best.a.bz.toFixed(2)+" nT");put("cmpAceTime",tm(best.a.t));put("cmpRtswBz",best.b.bz.toFixed(2)+" nT");put("cmpRtswTime",tm(best.b.t));
+   put("cmpDelta",(d>0?"+":"")+d.toFixed(2)+" nT");
+   put("cmpDeltaTime","Časový rozdíl zdrojů: "+Math.round(best.dt/1000)+" s · stáří páru: "+ageMin.toFixed(1)+" min · tolerance časů 90 s");
+   const statusEl=$("cmpStatus");if(statusEl){statusEl.textContent=state+" · "+(!fresh?"Historický pár; není aktuálním stavem. ":opposite?"ACE a RTSW ukazují opačnou orientaci Bz. ":"Oba zdroje mají stejné znaménko Bz. ")+"Časové spárování samo o sobě nepotvrzuje shodu hodnot.";statusEl.className="small "+(!fresh?"warn":opposite||Math.abs(d)>2?"bad":Math.abs(d)>1?"warn":"good");}
+   const deltaEl=$("cmpDelta");if(deltaEl)deltaEl.className="metric "+(!fresh?"warn":opposite||Math.abs(d)>2?"bad":Math.abs(d)>1?"warn":"good");
+  }
+  else{put("cmpAceBz",nearest.a.bz.toFixed(2)+" nT");put("cmpAceTime",tm(nearest.a.t));put("cmpRtswBz","Bez časového páru");put("cmpRtswTime",tm(nearest.b.t));put("cmpDelta","—");put("cmpDeltaTime","Nejbližší rozdíl v posledních 24 hodinách: "+Math.round(nearest.dt/1000)+" s");put("cmpStatus","NENALEZEN ČASOVÝ PÁR · v posledních 24 hodinách nebylo nalezeno měření s rozdílem do 90 sekund.");const statusEl=$("cmpStatus");if(statusEl)statusEl.className="small warn"}
   // Create unique one-to-one pairs: closest time differences are assigned first.
   const candidates=[];
   for(let i=0;i<aa.length;i++)for(let j=0;j<rrr.length;j++){const dt=Math.abs(aa[i].t-rrr[j].t);if(dt<=90000)candidates.push({i,j,dt,d:aa[i].bz-rrr[j].bz,t:Math.round((aa[i].t+rrr[j].t)/2)})}
