@@ -1177,6 +1177,11 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   <div id="irtamQualityDetails" class="small" style="margin-top:8px">Globální modelová mřížka bude ověřena po načtení archivu.</div>
   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px"><label for="irtamAltitudeSelect" style="font-size:13px;color:#c5e5f7">Výška elektronové hustoty:</label><select id="irtamAltitudeSelect" style="background:#102c47;color:#e7f7ff;border:1px solid #47718f;border-radius:8px;padding:8px 12px"><option value="200">200 km</option><option value="300" selected>300 km</option><option value="400">400 km</option><option value="500">500 km</option></select><span class="small">Přepínání používá samostatný výpočet IRTAM pro každou výšku.</span></div>
  </div>
+ <div id="irtamProfilePanel" style="margin-top:12px;padding:12px;background:#081a2c;border:1px solid #315674;border-radius:10px">
+  <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><strong style="color:#d9f3ff">VERTIKÁLNÍ PROFIL IONOSFÉRY · IRTAM</strong><span id="irtamProfileStatus" class="small">Čekám na profil…</span></div>
+  <canvas id="irtamProfileCanvas" width="900" height="300" style="width:100%;height:auto;display:block;margin-top:8px"></canvas>
+  <div class="small">Čára zobrazuje globální průměr elektronové hustoty v každé modelované výšce; body označují medián a svislé úsečky rozsah minimum–maximum. Jde o statistiku celé globální mřížky, nikoli o místní profil nad konkrétní stanicí. Jednotky: 10⁶ cm⁻³.</div>
+ </div>
  <div id="ionoGlobeDetail" class="small" style="margin-top:10px">Klikni na bod stanice pro podrobnosti. Čas a kvalita dat se zobrazují samostatně.</div><div id="ionoHistoryPanel" style="margin-top:12px;background:#081a2c;border:1px solid #294765;border-radius:10px;padding:12px"><strong>Historie skutečných měření ionosond</strong><span id="ionoHistoryCount" class="small" style="float:right">Vyber stanici</span><div id="ionoHistoryInfo" class="small" style="margin:6px 0">Lokální historie tohoto prohlížeče.</div><canvas id="ionoHistoryCanvas" width="900" height="300" style="width:100%;height:auto;display:block"></canvas><div class="grid" style="margin-top:8px"><div><div class="small">Poslední foF2</div><div id="ionoHistFof2" class="metric">—</div></div><div><div class="small">Poslední hmF2</div><div id="ionoHistHmf2" class="metric">—</div></div><div><div class="small">Poslední MUF</div><div id="ionoHistMuf" class="metric">—</div></div><div><div class="small">Confidence</div><div id="ionoHistQuality" class="metric">—</div></div></div><div class="small">Historie se tvoří z nově načtených aktuálních vzorků GIRO na tomto zařízení. Starší data před prvním uložením nejsou dostupná. Mezery se neinterpolují.</div><div class="small">Lokální automatický záznam je oddělen od archivních dat GIRO. Níže lze stáhnout skutečnou historickou řadu z archivu DIDBase pro právě vybranou stanici.</div>
  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:10px">
   <label class="small">Od (UTC)<input id="ionoArchiveFrom" type="date" style="display:block;padding:8px;background:#081a2c;color:#fff;border:1px solid #45627e;border-radius:7px"></label>
@@ -1199,6 +1204,22 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  function parseAurora(json){if(!json||!Array.isArray(json.coordinates))throw Error("Neplatná odpověď OVATION");const pts=[];for(const q of json.coordinates){if(!Array.isArray(q)||q.length<3)continue;let lon=Number(q[0]),lat=Number(q[1]),v=Number(q[2]);if(!Number.isFinite(lon)||!Number.isFinite(lat)||!Number.isFinite(v)||lat< -90||lat>90||v<0||v>100)continue;if(lon>180)lon-=360;pts.push({lon,lat,v})}if(pts.length<1000)throw Error("OVATION mřížka je neúplná");return pts;}
  function parseIrtam(json){if(!json||json.model!=="IRTAM"||!Array.isArray(json.points))throw Error("Neplatný archiv IRTAM");const clean=a=>a.map(q=>({lat:Number(q.lat),lon:Number(q.lon),v:Number(q.ne_1e6_cm3)})).filter(q=>Number.isFinite(q.lat)&&Number.isFinite(q.lon)&&Number.isFinite(q.v)&&q.lat>=-90&&q.lat<=90&&q.lon>=-180&&q.lon<=180&&q.v>=0&&q.v<=10);irtamLevels={};if(json.levels&&typeof json.levels==="object")for(const h of [200,300,400,500]){const a=json.levels[String(h)];if(Array.isArray(a)){const pts=clean(a);if(pts.length>=250)irtamLevels[h]=pts}}const base=irtamLevels[300]||clean(json.points);if(base.length<250)throw Error("IRTAM mřížka je neúplná");if(!irtamLevels[300])irtamLevels[300]=base;return base;}
  function irtamDelayHours(){const target=Date.parse(irtamMeta?.target_utc||"");const generated=Date.parse(irtamMeta?.generated_utc||"");return Number.isFinite(target)&&Number.isFinite(generated)?Math.max(0,(generated-target)/3600000):NaN;}
+ function drawIrtamProfile(){
+  const cv=$("irtamProfileCanvas"),status=$("irtamProfileStatus"),profile=irtamMeta?.global_vertical_profile;
+  if(!cv||!status)return;
+  const g=cv.getContext("2d"),w=cv.width,h=cv.height;g.clearRect(0,0,w,h);g.fillStyle="#061426";g.fillRect(0,0,w,h);
+  if(!Array.isArray(profile)||profile.length<3){status.textContent="Profil není v archivu";g.fillStyle="#b8d4e8";g.font="18px sans-serif";g.fillText("Vertikální profil zatím není dostupný.",30,70);return}
+  const valid=profile.map(p=>({alt:Number(p.altitude_km),mean:Number(p.mean_ne_1e6_cm3),median:Number(p.median_ne_1e6_cm3),min:Number(p.min_ne_1e6_cm3),max:Number(p.max_ne_1e6_cm3)})).filter(p=>[p.alt,p.mean,p.median,p.min,p.max].every(Number.isFinite));
+  if(valid.length<3){status.textContent="Profil obsahuje neplatné hodnoty";return}
+  const L=72,R=24,T=24,B=48,pw=w-L-R,ph=h-T-B,x=v=>L+(v/2.5)*pw,y=v=>T+ph-(v/600)*ph;
+  g.font="13px sans-serif";g.strokeStyle="#294765";g.fillStyle="#b8d4e8";g.lineWidth=1;
+  for(let v=0;v<=2.5;v+=.5){const xx=x(v);g.beginPath();g.moveTo(xx,T);g.lineTo(xx,T+ph);g.stroke();g.fillText(v.toFixed(1),xx-10,h-22)}
+  for(let v=100;v<=600;v+=100){const yy=y(v);g.beginPath();g.moveTo(L,yy);g.lineTo(w-R,yy);g.stroke();g.fillText(String(v),20,yy+4)}
+  g.fillText("Ne · 10⁶ cm⁻³",L,T-8);g.fillText("Výška (km)",w-115,h-7);
+  g.strokeStyle="#6bd6ff";g.lineWidth=3;g.beginPath();valid.forEach((p,i)=>{const xx=x(p.mean),yy=y(p.alt);if(i===0)g.moveTo(xx,yy);else g.lineTo(xx,yy)});g.stroke();
+  valid.forEach(p=>{const yy=y(p.alt);g.strokeStyle="rgba(255,210,110,.8)";g.lineWidth=2;g.beginPath();g.moveTo(x(p.min),yy);g.lineTo(x(p.max),yy);g.stroke();g.fillStyle="#ffe08a";g.beginPath();g.arc(x(p.median),yy,4,0,Math.PI*2);g.fill();g.fillStyle="#6bd6ff";g.beginPath();g.arc(x(p.mean),yy,4,0,Math.PI*2);g.fill()});
+  status.textContent=valid.length+" výšek · globální statistika · "+(irtamMeta?.target_utc||"čas neuveden");
+ }
  let irtamTextureCache=null;
  function drawIrtamDensity(){
   if(!irtamPoints.length||!$("ionoNeToggle")?.checked)return;
@@ -1255,6 +1276,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
    qDetails.textContent="Čas modelu: "+(irtamMeta.target_utc||"neuveden")+" · výpočet: "+(irtamMeta.generated_utc||"neuveden")+" · stáří modelových dat: "+(modelAge===null?"neznámé":modelAge.toFixed(1)+" h")+" (IRTAM/GAMBIT má plánovanou prodlevu 48 h; archiv označíme za zastaralý až po 72 h) · prodleva výpočtu: "+(Number.isFinite(delay)?delay.toFixed(1)+" h":"neznámá")+" · výška: "+(irtamMeta.altitude_km??"—")+" km · krok: "+(irtamMeta.grid_step_deg??"—")+"° · rozsah: "+min.toFixed(3)+" až "+max.toFixed(3)+" × 10⁶ cm⁻³ · zdroj: PyIRTAM/GAMBIT";
   }else{qState.textContent="ARCHIV NEDOSTUPNÝ";qDetails.textContent="Barevná vrstva IRTAM není aktivní. Zobrazení nevyplňuje chybějící hodnoty odhadem."}
  }
+ drawIrtamProfile();
  draw();
  }
  const altSelect=$("irtamAltitudeSelect");
