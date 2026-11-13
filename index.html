@@ -229,6 +229,27 @@ function newest(rows,keys,activeOnly=false){
 }
 function setMetric(id,v,unit,did,stamp){$(id).textContent=v===null?"Nedostupné":v.toFixed(id==="speed"?0:2)+" "+unit;$(did).textContent=stamp?"Měření: "+stamp.replace("T"," ")+" UTC":"Čas měření není dostupný"}
 async function get(url){const r=await fetch(url,{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);return r.json()}
+async function getXrayData(){
+ const urls=[
+  U.xray,
+  "https://services.swpc.noaa.gov/json/goes/primary/xrays-6-hour.json",
+  "https://services.swpc.noaa.gov/json/goes/secondary/xrays-1-day.json"
+ ];
+ let lastError=null;
+ for(const url of urls){
+  for(let attempt=0;attempt<2;attempt++){
+   try{
+    const r=await fetch(url+(url.includes("?")?"&":"?")+"_="+Date.now(),{cache:"no-store"});
+    if(!r.ok)throw Error("HTTP "+r.status);
+    const body=await r.text();
+    let data;try{data=JSON.parse(body)}catch(e){throw Error("Neúplný nebo neplatný JSON ("+e.message+")")}
+    if(!Array.isArray(data)||!data.some(o=>o&&valid(o.flux)&&timeOf(o)))throw Error("Odpověď neobsahuje platné vzorky GOES");
+    return data;
+   }catch(e){lastError=e;if(attempt===0)await new Promise(resolve=>setTimeout(resolve,700))}
+  }
+ }
+ throw Error("GOES X-ray: primární i záložní zdroje selhaly. "+(lastError?lastError.message:"neznámá chyba"));
+}
 function rowsOf(d){return Array.isArray(d)?d:[]}
 function draw(id,series,log=false){
  const c=$(id),ctx=c.getContext("2d"),w=c.width,h=c.height,p=35;
@@ -497,7 +518,7 @@ function updateQuality(windRows,cleaned,aceLatest,couplingCount){
 async function refresh(){
  try{
  const failures=[];
- const results=await Promise.allSettled([get(U.wind),get(U.mag),get(U.kp),get(U.xray),get(U.dst)]);
+ const results=await Promise.allSettled([get(U.wind),get(U.mag),get(U.kp),getXrayData(),get(U.dst)]);
  const names=["sluneční vítr","magnetické pole","Kp","GOES X-ray","Dst"];
  results.forEach((r,i)=>{if(r.status==="rejected")failures.push(names[i]+": "+r.reason)});
  const wind=results[0].status==="fulfilled"?rowsOf(results[0].value):[];
@@ -886,6 +907,16 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  const fmtTime=v=>{const d=new Date(v);return Number.isFinite(d.getTime())?d.toISOString().replace("T"," ").slice(0,16)+" UTC":"—"};
  const num=v=>v!==null&&v!==undefined&&v!==""&&Number.isFinite(Number(v))&&![ -999.9,-999,-9999].includes(Number(v));
  async function get(url){const r=await fetch(url,{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status+" "+url);return r.json()}
+ async function getXrayData(){
+  const urls=["https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json","https://services.swpc.noaa.gov/json/goes/primary/xrays-6-hour.json","https://services.swpc.noaa.gov/json/goes/secondary/xrays-1-day.json"];
+  let last=null;
+  for(const url of urls)for(let attempt=0;attempt<2;attempt++)try{
+   const r=await fetch(url+"? _=".replace(" ","")+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);
+   const body=await r.text();let d;try{d=JSON.parse(body)}catch(e){throw Error("neplatný/neúplný JSON: "+e.message)}
+   if(!Array.isArray(d)||!d.some(o=>o&&valid(o.flux)&&o.time_tag))throw Error("bez platných vzorků");return d;
+  }catch(e){last=e;if(attempt===0)await new Promise(resolve=>setTimeout(resolve,700))}
+  throw Error("Primární i záložní GOES zdroj selhal: "+(last?last.message:"neznámá chyba"));
+ }
  function rows(d){return Array.isArray(d)?d:[]}
  function getTime(o){return o.time_tag||o.time||o[0]||""}
  function pickLatest(d,keys){let a=rows(d).filter(o=>getTime(o)&&keys.some(k=>num(o[k]))&&Number.isFinite(Date.parse(getTime(o))));a.sort((x,y)=>Date.parse(getTime(y))-Date.parse(getTime(x)));return a[0]||null}
@@ -925,7 +956,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
     "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json",
     "https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json"
    ];
-   const results=await Promise.allSettled(urls.map(get));
+   const results=await Promise.allSettled(urls.map((url,i)=>i===4?getXrayData():get(url)));
    if(results[0].status!=="fulfilled")throw results[0].reason;
    const d=results[0].value,coords=Array.isArray(d.coordinates)?d.coordinates:[];
    const pts=coords.filter(p=>Array.isArray(p)&&p.length>=3&&num(p[0])&&num(p[1])&&num(p[2])&&+p[0]>=0&&+p[0]<=360&&+p[1]>=-90&&+p[1]<=90&&+p[2]>=0&&+p[2]<=100).map(p=>({lon:((+p[0]+180)%360)-180,lat:+p[1],v:+p[2]}));
@@ -1018,8 +1049,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  }
  async function load(){
   try{
-   const r=await fetch("https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json",{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);
-   const raw=await r.json(),rows=raw.filter(o=>String(o.energy||o.energy_band||"").toLowerCase().includes("0.1-0.8")&&valid(o.flux)&&o.time_tag&&Number.isFinite(Date.parse(o.time_tag))).map(o=>({time:o.time_tag,flux:Number(o.flux)})).sort((a,b)=>Date.parse(a.time)-Date.parse(b.time));
+   const raw=await getXrayData(),rows=raw.filter(o=>String(o.energy||o.energy_band||"").toLowerCase().includes("0.1-0.8")&&valid(o.flux)&&o.time_tag&&Number.isFinite(Date.parse(o.time_tag))).map(o=>({time:o.time_tag,flux:Number(o.flux)})).sort((a,b)=>Date.parse(a.time)-Date.parse(b.time));
    if(!rows.length)throw Error("GOES nemá platné vzorky pásma 0,1–0,8 nm");
    const last=rows[rows.length-1],max=rows.reduce((a,b)=>b.flux>a.flux?b:a,rows[0]),peaks=[];
    const counts={A:0,B:0,C:0,M:0,X:0};
