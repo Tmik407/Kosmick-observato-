@@ -1,6 +1,11 @@
 name: NOAA GFS stratospheric map archive
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/noaa-gfs-polarni-vir.yml"
+      - "polarni-vir.html"
   schedule:
     - cron: "30 14 * * *"
   workflow_dispatch:
