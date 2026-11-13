@@ -1099,6 +1099,23 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  <div class="small">Vzorkování archivu: pětiminutové běhy automatizace; zdrojová měření NOAA jsou minutová. Graf zobrazuje pouze dostupné uložené záznamy, mezery nejsou interpolovány. Pdyn a Ey jsou odvozené výpočty, nikoli přímá měření. Dst zatím není součástí tohoto archivu.</div>
  <p><a href="./space-weather-history.json" target="_blank" rel="noopener">Otevřít surový archiv kosmického počasí</a> · <a href="https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json" target="_blank" rel="noopener">NOAA RTSW vítr</a> · <a href="https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json" target="_blank" rel="noopener">NOAA RTSW magnetometr</a></p>
 </section>
+<section class="panel" id="predictionPanel">
+ <h2>Predikce geomagnetické aktivity X-5 · geoeefektivita slunečního větru</h2>
+ <div class="grid">
+  <div><div class="small">Indikátor geoeefektivních podmínek · 0–100</div><div id="predScore" class="metric">—</div><div id="predLevel" class="small">Čekám na archiv NOAA…</div></div>
+  <div><div class="small">Průměrná rychlost · poslední 30 min</div><div id="predSpeed" class="metric">—</div></div>
+  <div><div class="small">Průměrné Bz · posledních 30 min</div><div id="predBz" class="metric">—</div></div>
+  <div><div class="small">Průměrné Bt · posledních 30 min</div><div id="predBt" class="metric">—</div></div>
+  <div><div class="small">Doba Bz ≤ −5 nT · poslední 3 h</div><div id="predSouth" class="metric">—</div></div>
+  <div><div class="small">Průměrné Ey · posledních 30 min</div><div id="predEy" class="metric">—</div></div>
+ </div>
+ <div id="predStatus" class="status">Načítám archivní měření…</div>
+ <h3>Vývoj geoeefektivního pole Ey = 0,001 × V × max(0, −Bz)</h3>
+ <canvas id="predEyChart" width="1000" height="240"></canvas>
+ <div id="predExplanation" class="small">Model vyhodnotí časově spárované hodnoty slunečního větru a IMF. Zohledňuje jižní Bz, rychlost, Bt, Ey a dobu trvání jižního Bz.</div>
+ <div class="small">Důležité: skóre 0–100 je vlastní heuristický indikátor X-5, nikoli kalibrovaná pravděpodobnost, předpověď Kp/Dst ani oficiální NOAA produkt. Neurčuje stupeň G. Kp a Dst jsou samostatně ověřované geomagnetické indexy; skutečnou odezvu magnetosféry lze potvrdit až následným měřením. Výpočet vyžaduje čerstvá a časově spárovaná data, neplatné hodnoty a mezery se vyřazují.</div>
+ <p><a href="./space-weather-history.json" target="_blank" rel="noopener">Zdrojový archiv měření X-5</a> · <a href="https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json" target="_blank" rel="noopener">NOAA – Kp</a></p>
+</section>
 <section class="panel" id="archivePanel">
  <h2>Databáze a historické archivy kosmického počasí</h2>
  <div class="grid">
@@ -1415,6 +1432,53 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   }catch(e){put("swaStatus","Historický archiv zatím není dostupný: "+e.message+". Automatický sběr čeká na úspěšný běh.");}
  }
  const target=el("spaceWeatherArchivePanel");
+ if("IntersectionObserver" in window){const io=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting)){load();io.disconnect();setInterval(()=>{if(!document.hidden)load()},5*60*1000)}},{rootMargin:"500px"});io.observe(target)}else{load();setInterval(()=>{if(!document.hidden)load()},5*60*1000)}
+})();
+</script>
+<script>
+(async function(){
+ const $=id=>document.getElementById(id), put=(id,v)=>{const e=$(id);if(e)e.textContent=v};
+ const fmt=v=>v===null||!Number.isFinite(v)?"—":v.toFixed(1);
+ function draw(rows){
+  const c=$("predEyChart");if(!c)return;const x=c.getContext("2d"),w=c.width,h=c.height,p={l:48,r:14,t:14,b:30};
+  x.clearRect(0,0,w,h);x.fillStyle="#b9cde0";x.font="12px Arial";
+  const vals=rows.map(r=>r.ey_mv_m).filter(v=>Number.isFinite(v)),max=Math.max(1,...vals);
+  for(let i=0;i<=4;i++){const y=p.t+(h-p.t-p.b)*i/4;x.strokeStyle="#29445e";x.beginPath();x.moveTo(p.l,y);x.lineTo(w-p.r,y);x.stroke();x.fillText((max*(1-i/4)).toFixed(1),6,y+4)}
+  const valid=rows.filter(r=>Number.isFinite(r.ey_mv_m));
+  x.strokeStyle="#65dcff";x.lineWidth=2;x.beginPath();let prev=null;
+  valid.forEach(r=>{const xx=p.l+(Date.parse(r.t)-Date.parse(rows[0].t))/Math.max(1,Date.parse(rows[rows.length-1].t)-Date.parse(rows[0].t))*(w-p.l-p.r),yy=p.t+(h-p.t-p.b)*(1-r.ey_mv_m/max);if(prev&&Date.parse(r.t)-prev.t<=180000){x.lineTo(xx,yy)}else{x.moveTo(xx,yy)}prev={t:Date.parse(r.t)}});
+  x.stroke();x.fillStyle="#b9cde0";x.fillText("Poslední 3 hodiny · čas UTC",p.l,h-8);
+ }
+ async function load(){
+  try{
+   const r=await fetch("./space-weather-history.json?ts="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);
+   const d=await r.json(),now=Date.now(),all=(d.rows||[]).map(r=>({...r,_t:Date.parse(r.t)})).filter(r=>Number.isFinite(r._t)).sort((a,b)=>a._t-b._t);
+   if(!all.length)throw Error("Archiv neobsahuje platné časové záznamy");
+   const latest=all[all.length-1],age=(now-latest._t)/60000;
+   if(age>20)throw Error("Poslední měření archivu je staré "+age.toFixed(0)+" min; skóre se kvůli zastaralým datům nezobrazuje.");
+   const recent=all.filter(r=>r._t>=now-30*60000),window3=all.filter(r=>r._t>=now-3*3600000);
+   const mean=(a,k)=>{const v=a.map(r=>r[k]).filter(Number.isFinite);return v.length? v.reduce((x,y)=>x+y,0)/v.length:null};
+   const v=mean(recent,"speed_kms"),bz=mean(recent,"bz_gsm_nt"),bt=mean(recent,"bt_nt"),ey=mean(recent,"ey_mv_m");
+   const valid=recent.filter(r=>Number.isFinite(r.speed_kms)&&Number.isFinite(r.bz_gsm_nt)&&Number.isFinite(r.ey_mv_m));
+   put("predSpeed",v===null?"—":fmt(v)+" km/s");put("predBz",bz===null?"—":fmt(bz)+" nT");put("predBt",bt===null?"—":fmt(bt)+" nT");put("predEy",ey===null?"—":fmt(ey)+" mV/m");
+   let southMs=0;
+   for(let i=1;i<window3.length;i++){const a=window3[i-1],b=window3[i],dt=b._t-a._t;if(dt>0&&dt<=180000&&Number.isFinite(a.bz_gsm_nt)&&Number.isFinite(b.bz_gsm_nt)&&a.bz_gsm_nt<=-5&&b.bz_gsm_nt<=-5)southMs+=dt}
+   const southMin=southMs/60000;put("predSouth",southMin.toFixed(0)+" min");
+   const coverage=recent.length?valid.length/recent.length:0;
+   if(valid.length<8||coverage<.5||v===null||bz===null||bt===null||ey===null){
+    put("predScore","Nedostatek dat");put("predLevel","Nelze spolehlivě vyhodnotit");put("predStatus","Za posledních 30 minut není alespoň 8 časově spárovaných platných vzorků nebo je pokrytí nižší než 50 %. Skóre se nezobrazuje.");draw(window3);return;
+   }
+   const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+   const sBz=clamp((Math.max(0,-bz)-2)*2.5,0,35),sV=clamp((v-350)/8,0,20),sBt=clamp((bt-5)*2,0,15),sDur=clamp(southMin/180*20,0,20),sEy=clamp(ey*2,0,10);
+   const score=Math.round(sBz+sV+sBt+sDur+sEy);
+   const level=score<20?"Nízké":score<40?"Zvýšené":score<60?"Střední":score<80?"Vysoké":"Velmi vysoké";
+   put("predScore",score+"/100");put("predLevel",level+" · heuristický indikátor");
+   put("predStatus","Vyhodnoceno z "+valid.length+" časově spárovaných vzorků za 30 min; pokrytí "+(coverage*100).toFixed(0)+" %. Poslední měření: "+new Date(latest._t).toISOString().replace("T"," ").slice(0,19)+" UTC.");
+   put("predExplanation","Složky skóre: jižní Bz "+sBz.toFixed(1)+"/35 · rychlost "+sV.toFixed(1)+"/20 · Bt "+sBt.toFixed(1)+"/15 · trvání jižního Bz "+sDur.toFixed(1)+"/20 · Ey "+sEy.toFixed(1)+"/10. Vyšší skóre znamená geoeefektivnější podmínky ve slunečním větru, nikoli jistotu geomagnetické bouře.");
+   draw(window3);
+  }catch(e){put("predScore","—");put("predLevel","Model není dostupný");put("predStatus","Chyba načtení: "+e.message)}
+ }
+ const target=$("predictionPanel");
  if("IntersectionObserver" in window){const io=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting)){load();io.disconnect();setInterval(()=>{if(!document.hidden)load()},5*60*1000)}},{rootMargin:"500px"});io.observe(target)}else{load();setInterval(()=>{if(!document.hidden)load()},5*60*1000)}
 })();
 </script>
