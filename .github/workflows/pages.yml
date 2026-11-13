@@ -3,6 +3,8 @@ name: Nasadit Kosmickou observatoř X-5
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: '0 8 * * *'
   workflow_dispatch:
 
 permissions:
@@ -26,9 +28,17 @@ jobs:
       - name: Nastavit GitHub Pages
         uses: actions/configure-pages@v5
       - name: Připravit web
+        run: |
+          mkdir -p _site
+          rsync -a --exclude='.git/' --exclude='.github/' --exclude='_site/' ./ _site/
+          touch _site/.nojekyll
+          test -s _site/index.html
+          test -s _site/polarni-vir.html
+          test -s _site/data/u60_daily.csv
+      - name: Nahrát kompletní web
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - name: Publikovat web
         id: deployment
         uses: actions/deploy-pages@v4
