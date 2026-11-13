@@ -74,6 +74,23 @@ def main():
     edp = np.asarray(result[-1], dtype=float)
     if edp.ndim != 3 or edp.shape[0] < 1 or edp.shape[1] != len(altitudes):
         raise RuntimeError(f"Nečekaný rozměr IRTAM EDP: {edp.shape}")
+    # Global vertical profile: spatial statistics for every modeled altitude.
+    # This is a global grid summary, not a local vertical sounding.
+    profile = []
+    for alt_idx, altitude in enumerate(altitudes):
+        vals = edp[0, alt_idx, :]
+        vals = vals[np.isfinite(vals) & (vals >= 0) & (vals <= 5e12)] / 1e12
+        if len(vals) < 250:
+            raise RuntimeError(f"Příliš málo platných bodů profilu ve výšce {altitude} km: {len(vals)}")
+        profile.append({
+            "altitude_km": int(altitude),
+            "mean_ne_1e6_cm3": round(float(np.mean(vals)), 5),
+            "median_ne_1e6_cm3": round(float(np.median(vals)), 5),
+            "min_ne_1e6_cm3": round(float(np.min(vals)), 5),
+            "max_ne_1e6_cm3": round(float(np.max(vals)), 5),
+            "valid_points": int(len(vals)),
+        })
+
     levels = {}
     for altitude in (200., 300., 400., 500.):
         alt_idx = int(np.where(altitudes == altitude)[0][0])
@@ -101,6 +118,8 @@ def main():
         "altitude_km": ALT_KM,
         "available_altitudes_km": [200, 300, 400, 500],
         "levels": levels,
+        "global_vertical_profile": profile,
+        "profile_description": "Globální prostorové statistiky elektronové hustoty pro každou výšku; nejde o lokální vertikální sondáž.",
         "f107_sfu": f107,
         "f107_date": f107_day,
         "grid_step_deg": STEP_DEG,
