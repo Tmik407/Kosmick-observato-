@@ -1,5 +1,5 @@
 {
-  "retrieved_utc": "2026-11-13T20:35:13.573397+00:00",
+  "retrieved_utc": "2026-11-13T20:39:05.934223+00:00",
   "source": "ERA5 daily derived datasets, served by polarvortex.earth",
   "attribution": "Contains modified Copernicus Climate Change Service information 2026. ERA5: Hersbach et al. (2020).",
   "files": {
@@ -26,4 +26,4 @@
       "bytes": 854784
     }
   }
-}\n
+}
