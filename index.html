@@ -1084,6 +1084,21 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  <div class="small">Vysvětlení: OVATION poskytuje krátkodobou předpověď polohy a intenzity polární záře, obvykle 30–90 minut dopředu. Zobrazená procenta jsou modelový odhad, nikoli jistota pozorování. Kp, rychlost slunečního větru, Bz a GOES tok jsou samostatné kontextové ukazatele; nenahrazují OVATION.</div>
  <p><a href="https://services.swpc.noaa.gov/json/ovation_aurora_latest.json" target="_blank" rel="noopener">Data NOAA OVATION</a> · <a href="https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json" target="_blank" rel="noopener">Kp</a> · <a href="https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json" target="_blank" rel="noopener">IMF RTSW</a> · <a href="https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json" target="_blank" rel="noopener">Sluneční vítr RTSW</a> · <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noopener">Metodika NOAA</a></p>
 </section>
+<section class="panel" id="spaceWeatherArchivePanel">
+ <h2>Historický archiv kosmického počasí X-5 · NOAA</h2>
+ <div class="grid">
+  <div><div class="small">Počet uložených vzorků</div><div id="swaCount" class="metric">—</div></div>
+  <div><div class="small">Nejstarší záznam</div><div id="swaFirst" class="metric" style="font-size:17px">—</div></div>
+  <div><div class="small">Poslední záznam</div><div id="swaLast" class="metric" style="font-size:17px">—</div></div>
+  <div><div class="small">Poslední aktualizace archivu</div><div id="swaUpdated" class="metric" style="font-size:17px">—</div></div>
+ </div>
+ <div id="swaStatus" class="status">Načítám historický archiv…</div>
+ <h3>Rychlost slunečního větru · km/s</h3><canvas id="swaSpeedChart" width="1000" height="260"></canvas>
+ <h3>IMF Bz (GSM) · nT</h3><canvas id="swaBzChart" width="1000" height="260"></canvas>
+ <h3>Planetární Kp</h3><canvas id="swaKpChart" width="1000" height="260"></canvas>
+ <div class="small">Vzorkování archivu: pětiminutové běhy automatizace; zdrojová měření NOAA jsou minutová. Graf zobrazuje pouze dostupné uložené záznamy, mezery nejsou interpolovány. Pdyn a Ey jsou odvozené výpočty, nikoli přímá měření. Dst zatím není součástí tohoto archivu.</div>
+ <p><a href="./space-weather-history.json" target="_blank" rel="noopener">Otevřít surový archiv kosmického počasí</a> · <a href="https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json" target="_blank" rel="noopener">NOAA RTSW vítr</a> · <a href="https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json" target="_blank" rel="noopener">NOAA RTSW magnetometr</a></p>
+</section>
 <section class="panel" id="archivePanel">
  <h2>Databáze a historické archivy kosmického počasí</h2>
  <div class="grid">
@@ -1364,6 +1379,43 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   const obs=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){loadLink();obs.disconnect();setInterval(()=>{if(!document.hidden)loadLink()},15*60*1000)}},{rootMargin:"500px"});
   obs.observe(panel);
  }else{loadLink();setInterval(()=>{if(!document.hidden)loadLink()},15*60*1000)}
+})();
+</script>
+<script>
+(function(){
+ const el=id=>document.getElementById(id),put=(id,v)=>{const e=el(id);if(e)e.textContent=v};
+ const valid=v=>v!==null&&v!==undefined&&Number.isFinite(Number(v));
+ const fmt=v=>{const d=new Date(v);return Number.isFinite(d.getTime())?d.toISOString().replace("T"," ").slice(0,16)+" UTC":"—"};
+ function chart(id,rows,key,title,unit,color){
+  const c=el(id);if(!c)return;const x=c.getContext("2d"),w=c.width,h=c.height,p={l:62,r:18,t:22,b:38};
+  x.clearRect(0,0,w,h);x.fillStyle="#071426";x.fillRect(0,0,w,h);
+  const pts=rows.map(r=>({t:Date.parse(r.t),v:Number(r[key])})).filter(q=>Number.isFinite(q.t)&&Number.isFinite(q.v));
+  x.fillStyle="#eaf4ff";x.font="bold 17px Arial";x.fillText(title+" ("+unit+")",p.l,18);
+  if(!pts.length){x.fillStyle="#b9cde0";x.font="14px Arial";x.fillText("Zatím nejsou dostupné platné vzorky.",p.l,h/2);return}
+  const vals=pts.map(q=>q.v),lo=Math.min(0,...vals),hi=Math.max(1,...vals),span=Math.max(1,hi-lo),t0=pts[0].t,t1=pts[pts.length-1].t,tw=Math.max(1,t1-t0),pw=w-p.l-p.r,ph=h-p.t-p.b;
+  for(let i=0;i<=4;i++){const v=lo+span*i/4,y=p.t+ph*(1-i/4);x.strokeStyle="#29445e";x.beginPath();x.moveTo(p.l,y);x.lineTo(w-p.r,y);x.stroke();x.fillStyle="#b9cde0";x.font="12px Arial";x.fillText(v.toFixed(1),5,y+4)}
+  x.strokeStyle=color;x.lineWidth=2;x.beginPath();let started=false,lastT=null;
+  pts.forEach(q=>{const xx=p.l+(q.t-t0)/tw*pw,yy=p.t+(1-(q.v-lo)/span)*ph;if(lastT!==null&&q.t-lastT>10*60*1000){started=false}if(!started){x.moveTo(xx,yy);started=true}else x.lineTo(xx,yy);lastT=q.t});x.stroke();
+  x.fillStyle="#b9cde0";x.font="12px Arial";x.fillText(fmt(t0),p.l,h-10);x.fillText(fmt(t1),Math.max(p.l,w-p.r-150),h-10);
+ }
+ async function load(){
+  try{
+   const r=await fetch("./space-weather-history.json?ts="+Date.now(),{cache:"no-store"});
+   if(!r.ok)throw Error("HTTP "+r.status);
+   const d=await r.json(),rows=Array.isArray(d.rows)?d.rows.slice().sort((a,b)=>Date.parse(a.t)-Date.parse(b.t)):[];
+   put("swaCount",rows.length.toLocaleString("cs-CZ"));put("swaUpdated",fmt(d.updated_utc));
+   put("swaFirst",rows.length?fmt(rows[0].t):"—");put("swaLast",rows.length?fmt(rows[rows.length-1].t):"—");
+   const gaps=[];for(let i=1;i<rows.length;i++){const dt=Date.parse(rows[i].t)-Date.parse(rows[i-1].t);if(dt>10*60*1000)gaps.push(dt)}
+   put("swaStatus",rows.length
+    ?"Archiv načten · "+rows.length+" záznamů · interval běhů "+(d.sampling_interval_minutes||5)+" min · "+(gaps.length?"zjištěno "+gaps.length+" časových mezer":"bez mezer delších než 10 min")+" · data bez interpolace."
+    :"Archiv je dostupný, ale zatím neobsahuje záznamy. Čeká se na první úspěšný běh GitHub Actions.");
+   chart("swaSpeedChart",rows,"speed_kms","Rychlost slunečního větru","km/s","#65dcff");
+   chart("swaBzChart",rows,"bz_gsm_nt","IMF Bz GSM","nT","#ff8d9a");
+   chart("swaKpChart",rows,"kp","Planetární Kp","index","#ffbd6b");
+  }catch(e){put("swaStatus","Historický archiv zatím není dostupný: "+e.message+". Automatický sběr čeká na úspěšný běh.");}
+ }
+ const target=el("spaceWeatherArchivePanel");
+ if("IntersectionObserver" in window){const io=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting)){load();io.disconnect();setInterval(()=>{if(!document.hidden)load()},5*60*1000)}},{rootMargin:"500px"});io.observe(target)}else{load();setInterval(()=>{if(!document.hidden)load()},5*60*1000)}
 })();
 </script>
 </body></html>
