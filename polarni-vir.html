@@ -77,6 +77,7 @@ a{color:#75dcff}footer{text-align:center;color:var(--muted);font-size:12px;paddi
 <label class="muted">Import dat NASA (TXT / DAT / CSV)<input id="nasaFile" type="file" accept=".txt,.dat,.csv,.asc,text/plain,text/csv" style="display:block;width:100%;margin-top:8px;color:var(--text)"></label>
 <div class="status" id="nasaImportStatus">Zatím nebyl načten žádný soubor NASA. Stávající ERA5 archiv zůstává beze změny.</div>
 </div>
+<div class="status" id="verticalAnalysis" style="margin:14px 0"><b>Automatické vyhodnocení vertikálního vývoje</b><br>Po importu budou pro každou hladinu vypočteny změny za 7 a 30 dní, trend větru a teploty a případné datum obratu větru. Zatím nejsou k dispozici importované řady.</div>
 <h3>Zonální vítr U na 60° N</h3><canvas id="nasaWindChart" width="1000" height="330"></canvas>
 <h3>Teplota polární čepičky 60–90° N</h3><canvas id="nasaTempChart" width="1000" height="330"></canvas>
 <div class="status" id="nasaLatest">Po importu se zde zobrazí poslední datum, hodnoty a dostupnost jednotlivých hladin.</div>
@@ -167,25 +168,24 @@ async function loadArchive(){
 }
 
 function parseNasaFixedWidth(text){
- const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/);
- const chunks=line=>{const out=[];for(let i=0;i<line.length;i+=10){const v=line.slice(i,i+10).trim();if(v)out.push(v);}return out;};
+ const lines=text.replace(/^\\uFEFF/,'').split(/\\r?\\n/);
+ const chunks=line=>{const out=[];for(let i=0;i<line.length;i+=10)out.push(line.slice(i,i+10).trim());return out;};
  const header=lines.slice(0,4).map(chunks);
- const columns=[];
- const max=Math.max(...header.map(x=>x.length));
- for(let i=0;i<max;i++){
-  const variable=(header[0][i]||'').replace(/\s+/g,' ').trim();
-  const region=(header[1][i]||'').replace(/\s+/g,' ').trim();
-  const level=(header[2][i]||'').replace(/\s+/g,' ').trim();
-  const unit=(header[3][i]||'').replace(/\s+/g,' ').trim();
-  const lev=+(level.match(/(10|30|50)\s*hPa/i)||[])[1];
+ const columns=[],max=Math.max(...header.map(x=>x.length));
+ for(let i=1;i<max;i++){
+  const variable=(header[0][i]||'').replace(/\\s+/g,' ').trim();
+  const region=(header[1][i]||'').replace(/\\s+/g,' ').trim();
+  const level=(header[2][i]||'').replace(/\\s+/g,' ').trim();
+  const unit=(header[3][i]||'').replace(/\\s+/g,' ').trim();
+  const lev=+(level.match(/(10|30|50)\\s*hPa/i)||[])[1];
   if(!lev)continue;
-  const isWind=/^U$/i.test(variable)&&/60\s*N/i.test(region);
-  const isTemp=/^T$/i.test(variable)&&/60\s*[-–]\s*90\s*N/i.test(region);
-  if(isWind||isTemp)columns.push({index:i,level:lev,type:isWind?'wind':'temp',unit});
+  const isWind=/^U$/i.test(variable)&&/60\\s*N/i.test(region);
+  const isTemp=/^T$/i.test(variable)&&/60\\s*[-–]\\s*90\\s*N/i.test(region);
+  if(isWind||isTemp)columns.push({index:i-1,level:lev,type:isWind?'wind':'temp',unit});
  }
  const rows=[];
  for(const line of lines.slice(5)){
-  const m=line.match(/^\s*(\d{4}-\d{2}-\d{2})/);if(!m)continue;
+  const m=line.match(/^\\s*(\\d{4}-\\d{2}-\\d{2})/);if(!m)continue;
   const date=m[1],rest=line.slice(m.index+m[0].length),values=[];
   for(let i=0;i<rest.length;i+=10){const raw=rest.slice(i,i+10).trim();values.push(raw===''?null:Number(raw));}
   const row={date,wind:{},temp:{}};
@@ -193,6 +193,22 @@ function parseNasaFixedWidth(text){
   rows.push(row);
  }
  return {columns,rows};
+}
+function analyzeVertical(rows){
+ const levels=[10,30,50],last=rows[rows.length-1],findAgo=(date,days)=>{const target=new Date(date+'T00:00:00Z');target.setUTCDate(target.getUTCDate()-days);const key=target.toISOString().slice(0,10);let best=null;for(const r of rows){if(r.date<=key)best=r;else break;}return best;};
+ const fmt=(v,n=1)=>Number.isFinite(v)?v.toFixed(n).replace('.',','):'—';
+ const items=[];
+ for(const lev of levels){
+  const w=last.wind[lev],t=last.temp[lev],w7=findAgo(last.date,7)?.wind[lev],t7=findAgo(last.date,7)?.temp[lev],w30=findAgo(last.date,30)?.wind[lev],t30=findAgo(last.date,30)?.temp[lev];
+  const dw7=Number.isFinite(w)&&Number.isFinite(w7)?w-w7:null,dt7=Number.isFinite(t)&&Number.isFinite(t7)?t-t7:null,dw30=Number.isFinite(w)&&Number.isFinite(w30)?w-w30:null,dt30=Number.isFinite(t)&&Number.isFinite(t30)?t-t30:null;
+  const windState=!Number.isFinite(w)?'bez hodnoty':w<0?'východní vítr':w<15?'slabý západní vítr':'západní vítr';
+  items.push({lev,w,t,dw7,dt7,dw30,dt30,windState});
+ }
+ const turns={};
+ for(const lev of levels){let date=null;for(let i=1;i<rows.length;i++){const p=rows[i-1].wind[lev],v=rows[i].wind[lev];if(Number.isFinite(p)&&Number.isFinite(v)&&p>=0&&v<0){date=rows[i].date;break;}}turns[lev]=date;}
+ const ten=items[0],official=Number.isFinite(ten.w)?(ten.w<0?'U60 na 10 hPa je záporný – splněna větrná část kritéria SSW; ověřit také další podmínky.':'U60 na 10 hPa zůstává kladný – hlavní kritérium obratu větru pro major SSW není splněno.'):'Na 10 hPa chybí U60, klasifikace SSW není možná.';
+ const html='<b>Poslední datum: '+last.date+'</b><br><table><thead><tr><th>Hladina</th><th>U60</th><th>ΔU 7 dní</th><th>T polární čepičky</th><th>ΔT 7 dní</th><th>Stav větru</th></tr></thead><tbody>'+items.map(x=>'<tr><td>'+x.lev+' hPa</td><td>'+fmt(x.w)+' m/s</td><td>'+fmt(x.dw7)+'</td><td>'+fmt(x.t)+' K</td><td>'+fmt(x.dt7)+' K</td><td>'+x.windState+'</td></tr>').join('')+'</tbody></table><p><b>Obrat U60 z kladných do záporných hodnot:</b> '+levels.map(l=>l+' hPa: '+(turns[l]||'v načteném období nezjištěn')).join(' · ')+'</p><p>'+official+'</p><p class="muted">Změny za 30 dní jsou rovněž počítány v paměti; výsledky 7 dní se zobrazují v tabulce. Sestupná posloupnost obratů mezi hladinami může naznačovat vertikální vývoj, sama o sobě ale není důkazem dynamiky bez dalších polí a kontroly dat.</p>';
+ $('verticalAnalysis').innerHTML=html;
 }
 function drawNasaSeries(canvasId,rows,type,title,unit){
  const cv=$(canvasId),g=cv.getContext('2d'),w=cv.width,h=cv.height,p=55;
@@ -221,7 +237,7 @@ $('nasaFile').addEventListener('change',async ev=>{
   if(!parsed.rows.length)throw Error('Nenašel jsem žádné denní řádky ve formátu YYYY-MM-DD.');
   if(!parsed.columns.length)throw Error('Nenašel jsem požadované sloupce U (60° N) nebo T (60–90° N) pro 10/30/50 hPa. Zkontroluj volby ve formuláři NASA.');
   const rows=parsed.rows.sort((a,b)=>a.date.localeCompare(b.date));
-  drawNasaSeries('nasaWindChart',rows,'wind','Zonální vítr U60','m/s');
+  drawNasaSeries('nasaWindChart',rows,'wind','Zonální vítr U60','m/s');\n  analyzeVertical(rows);
   drawNasaSeries('nasaTempChart',rows,'temp','Teplota polární čepičky','K');
   const last=rows[rows.length-1],parts=[];
   for(const type of ['wind','temp'])for(const lev of [10,30,50]){
