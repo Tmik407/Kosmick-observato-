@@ -71,7 +71,21 @@ a{color:#75dcff}footer{text-align:center;color:var(--muted);font-size:12px;paddi
 <tr><td>100 hPa</td><td>Teplota, v'T', EP flux</td><td>Vlnové buzení a přenos energie</td></tr>
 <tr><td>500 hPa</td><td>Geopotenciál, tlakové útvary</td><td>Propojení stratosféry s troposférou</td></tr>
 </tbody></table></section>
-<section class="panel" id="verticalSeries">
+<section class="panel" id="nasaMirrorSeries">
+<h2>Číselná stratosférická data NASA GSFC · automatický archiv</h2>
+<p class="muted">Denní číselné řady NASA GSFC jsou automaticky přebírány z veřejné datové kopie, která uvádí původ v NASA Annual Meteorological Statistics (MERRA-2 / GEOS FP). Nejde o přímé stahování z formuláře NASA ani o NOAA. Zdrojová kopie, datum importu a příznaky dat jsou zachovány; GEOS předpovědi mohou být označeny příznakem forecast.</p>
+<div class="grid">
+<div><div class="unit">Zonální vítr U60 · 10 hPa / 60° N</div><div class="metric" id="nasaMirrorWind">—</div><div class="muted" id="nasaMirrorWindDate">—</div></div>
+<div><div class="unit">Teplota polární čepičky · 10 hPa</div><div class="metric" id="nasaMirrorTemp">—</div><div class="muted" id="nasaMirrorTempDate">—</div></div>
+<div><div class="unit">Vlnový tepelný tok · 100 hPa / 45–75° N</div><div class="metric" id="nasaMirrorHeat">—</div><div class="muted" id="nasaMirrorHeatDate">—</div></div>
+</div>
+<h3>NASA GSFC · zonální vítr U60</h3><canvas id="nasaMirrorWindChart" width="1000" height="280"></canvas>
+<h3>NASA GSFC · teplota polární čepičky</h3><canvas id="nasaMirrorTempChart" width="1000" height="280"></canvas>
+<h3>NASA GSFC · vlnový tepelný tok</h3><canvas id="nasaMirrorHeatChart" width="1000" height="280"></canvas>
+<div class="status" id="nasaMirrorStatus">Načítám číselné řady NASA GSFC…</div>
+<p class="muted">Důležité omezení: veřejná kopie v tomto balíčku poskytuje U60 a teplotu na 10 hPa a vlnový tepelný tok na 100 hPa. Neposkytuje zde kompletní U60 a teploty pro 30 a 50 hPa. Tyto hladiny zůstávají dostupné v ručním importu NASA, dokud nebude ověřen další automatický numerický zdroj. <a href="https://observatory.lelama.digital/en/open-data" target="_blank" rel="noopener">Katalog otevřených dat a metodika kopie</a> · <a href="https://acd-ext.gsfc.nasa.gov/Data_services/met/ann_data.html" target="_blank" rel="noopener">NASA GSFC – původní zdroj</a>.</p>
+</section>
+\n<section class="panel" id="verticalSeries">
 <h2>Vertikální vývoj polárního víru · 10 / 30 / 50 hPa</h2>
 <p class="muted">Pro společné porovnání tří tlakových hladin lze načíst denní datový výstup NASA GSFC. Výstup obsahuje zonální vítr U na 60° N a teplotu polární čepičky 60–90° N. Importovaný soubor se zpracuje přímo v tomto prohlížeči; nikam se neodesílá.</p>
 <div class="status"><b>Jak získat data:</b> Otevři <a href="https://acd-ext.gsfc.nasa.gov/cgi-bin/datareq.pl" target="_blank" rel="noopener">NASA GSFC – přímý formulář pro stažení dat</a> a v části Data Request vyber období, proměnné „Temperature between 60° and 90°“ a „Zonal Wind at 60°“, Northern Hemisphere a hladiny 10, 30 a 50 hPa. Stáhni textový výstup (ASCII/fixed-width) a nahraj jej níže. NASA uvádí MERRA‑2 pro historická data a GEOS‑5 FP pro near-real-time doplnění; datum a zdroj importu proto vždy ověř podle metadat NASA.</div>
@@ -251,6 +265,32 @@ $('nasaFile').addEventListener('change',async ev=>{
   status.innerHTML='<b class="good">Import úspěšný.</b> '+file.name+' · '+rows.length.toLocaleString('cs-CZ')+' dní · hladiny '+found+' hPa. Soubor zůstal pouze v tomto prohlížeči.';
  }catch(err){status.innerHTML='<b class="warn">Import se nepodařil.</b> '+String(err.message||err);}
 });
+\nasync function loadNasaMirror(){
+ const status=$('nasaMirrorStatus');
+ const specs=[
+  {file:'u60_10hpa_60n.csv',value:'nasaMirrorWind',date:'nasaMirrorWindDate',chart:'nasaMirrorWindChart',label:'U60 · 10 hPa',unit:'m/s',zero:true},
+  {file:'tcap_10hpa_60_90n.csv',value:'nasaMirrorTemp',date:'nasaMirrorTempDate',chart:'nasaMirrorTempChart',label:'Teplota 60–90° N · 10 hPa',unit:'K'},
+  {file:'wave_heat_flux_100hpa_45_75n.csv',value:'nasaMirrorHeat',date:'nasaMirrorHeatDate',chart:'nasaMirrorHeatChart',label:'Vlnový tepelný tok · 100 hPa',unit:'K·m/s',zero:true}
+ ];
+ const parse=t=>{const lines=t.trim().split(/\r?\n/);return lines.slice(1).map(l=>{const a=l.split(',');return {d:a[0],v:Number(a[1]),flags:a[3]||''}}).filter(x=>x.d&&Number.isFinite(x.v));};
+ const plot=(id,series,label,unit,zero=false)=>{
+  const cv=$(id),g=cv.getContext('2d'),w=cv.width,h=cv.height,p=48;g.clearRect(0,0,w,h);g.fillStyle='#07182a';g.fillRect(0,0,w,h);
+  const a=series.slice(-365),vals=a.map(x=>x.v);if(!vals.length){g.fillStyle='#a9bfd5';g.fillText('Bez dat',p,40);return;}
+  let min=Math.min(...vals),max=Math.max(...vals);if(zero){min=Math.min(0,min);max=Math.max(0,max)}if(min===max){min-=1;max+=1}
+  const y=v=>h-p-(v-min)/(max-min)*(h-2*p);
+  for(let i=0;i<5;i++){const v=max-i*(max-min)/4,yy=y(v);g.strokeStyle='#29445e';g.beginPath();g.moveTo(p,yy);g.lineTo(w-p,yy);g.stroke();g.fillStyle='#a9bfd5';g.font='13px Arial';g.fillText(v.toFixed(1),4,yy+4)}
+  if(zero&&min<0&&max>0){g.strokeStyle='#ffbd76';g.setLineDash([5,5]);g.beginPath();g.moveTo(p,y(0));g.lineTo(w-p,y(0));g.stroke();g.setLineDash([])}
+  g.strokeStyle='#63dfff';g.lineWidth=2.5;g.beginPath();a.forEach((x,i)=>{const xx=p+i*(w-2*p)/Math.max(1,a.length-1);if(i===0)g.moveTo(xx,y(x.v));else g.lineTo(xx,y(x.v))});g.stroke();
+  g.fillStyle='#edf6ff';g.font='bold 14px Arial';g.fillText(label+' ('+unit+')',p,22);g.fillStyle='#a9bfd5';g.font='12px Arial';g.fillText(a[0]?.d||'',p,h-12);g.fillText(a[a.length-1]?.d||'',w-p-90,h-12);
+ };
+ try{
+  const results=await Promise.all(specs.map(async q=>{const r=await fetch('./data/nasa-gsfc/'+q.file+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error(q.file+' HTTP '+r.status);return {...q,series:parse(await r.text())}}));
+  for(const q of results){const last=q.series[q.series.length-1];if(!last)throw Error('Prázdná řada: '+q.file);$(q.value).textContent=last.v.toFixed(2).replace('.',',')+' '+q.unit;$(q.date).textContent=last.d+' · NASA GSFC / veřejná datová kopie';plot(q.chart,q.series,q.label,q.unit,!!q.zero);}
+  const mr=await fetch('./data/nasa-gsfc/meta.json?x='+Date.now(),{cache:'no-store'});if(!mr.ok)throw Error('metadata HTTP '+mr.status);const m=await mr.json();
+  const dt=new Date(m.retrieved_utc);const stamp=Number.isNaN(dt.getTime())?'neuvedeno':dt.toLocaleString('cs-CZ',{timeZone:'UTC'})+' UTC';
+  status.innerHTML='<b class="good">Číselný archiv NASA GSFC načten.</b> Poslední import: '+stamp+'. '+results.map(q=>q.series.length.toLocaleString('cs-CZ')+' bodů ('+q.label+')').join(' · ')+'.';
+ }catch(e){status.innerHTML='<b class="warn">Číselný archiv NASA GSFC zatím není dostupný.</b> '+String(e.message||e)+'. Po prvním úspěšném běhu archivační úlohy se hodnoty načtou automaticky.';}
+}
 \nasync function loadNoaaArchive(){
  const el=$('noaaArchiveStatus');
  try{
@@ -266,6 +306,6 @@ $('nasaFile').addEventListener('change',async ev=>{
 }
 
 loadArchive();
-loadNoaaArchive();
+loadNoaaArchive();\nloadNasaMirror();
 
 </script></body></html>
