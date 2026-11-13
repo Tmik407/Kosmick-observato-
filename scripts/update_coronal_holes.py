@@ -24,13 +24,13 @@ def listing(url):
     p=Links(); p.feed(html); return p.hrefs
 
 def newest_product():
-    years=sorted([x.strip("/") for x in listing(BASE) if re.fullmatch(r"20\\d{2}",x)], reverse=True)
+    years=sorted([x.strip("/") for x in listing(BASE) if re.fullmatch(r"20\d{2}",x)], reverse=True)
     for year in years:
         yu=BASE+year+"/"
-        months=sorted([x.strip("/") for x in listing(yu) if re.fullmatch(r"\\d{2}",x)], reverse=True)
+        months=sorted([x.strip("/") for x in listing(yu) if re.fullmatch(r"\d{2}",x)], reverse=True)
         for month in months:
             mu=yu+month+"/"
-            days=sorted([x.strip("/") for x in listing(mu) if re.fullmatch(r"\\d{2}/",x)], reverse=True)
+            days=sorted([x.strip("/") for x in listing(mu) if re.fullmatch(r"\d{2}",x)], reverse=True)
             for day in days:
                 du=mu+day+"/"
                 files=sorted([x for x in listing(du) if x.endswith(".nc") and "_s" in x])
