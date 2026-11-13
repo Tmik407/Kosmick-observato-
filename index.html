@@ -133,6 +133,13 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
   <div><div class="small">Třída X</div><div id="flarePctX" class="metric">—</div><div style="height:9px;background:#263d58;border-radius:8px;overflow:hidden"><div id="flareBarX" style="height:100%;width:0%;background:#ff8d8d"></div></div></div>
  </div>
  <div id="flarePercentNote" class="small">Procenta se počítají z platných vzorků GOES, nikoli z počtu samostatných erupcí.</div>
+ <h3>Rozdělení automaticky detekovaných vrcholů podle třídy</h3>
+ <div class="grid">
+  <div><div class="small">Vrcholy třídy C</div><div id="flareEventC" class="metric">—</div></div>
+  <div><div class="small">Vrcholy třídy M</div><div id="flareEventM" class="metric">—</div></div>
+  <div><div class="small">Vrcholy třídy X</div><div id="flareEventX" class="metric">—</div></div>
+ </div>
+ <div id="flareEventClassNote" class="small">Počty a podíly mezi automaticky detekovanými vrcholy ≥ C1. Nejde o oficiální katalog erupcí.</div>
  <h3>Rentgenový tok GOES a detekované vrcholy</h3>
  <canvas id="flareChart" width="900" height="260"></canvas>
  <div id="flareEvents" class="small">Načítám poslední měření…</div>
@@ -1202,6 +1209,10 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
    Object.keys(counts).forEach(k=>{const pct=100*counts[k]/rows.length;el("flarePct"+k).textContent=pct.toFixed(1)+" %";el("flareBar"+k).style.width=pct.toFixed(2)+"%"});
    el("flarePercentNote").textContent="Podíl ze "+rows.length.toLocaleString("cs-CZ")+" platných minutových vzorků GOES v pásmu 0,1–0,8 nm za posledních 24 hodin. Jde o rozložení intenzity toku v čase, nikoli o procentuální četnost samostatných erupcí.";
    for(let i=1;i<rows.length-1;i++){const q=rows[i];if(q.flux>=1e-6&&q.flux>rows[i-1].flux&&q.flux>=rows[i+1].flux&&(!peaks.length||Date.parse(q.time)-Date.parse(peaks[peaks.length-1].time)>20*60*1000))peaks.push(q)}
+   const eventCounts={C:0,M:0,X:0};
+   peaks.forEach(q=>{const k=q.flux>=1e-4?"X":q.flux>=1e-5?"M":"C";eventCounts[k]++});
+   ["C","M","X"].forEach(k=>{const pct=peaks.length?100*eventCounts[k]/peaks.length:0;el("flareEvent"+k).textContent=eventCounts[k]+" ("+pct.toFixed(1)+" %)"});
+   el("flareEventClassNote").textContent="Z "+peaks.length+" automaticky detekovaných vrcholů ≥ C1: C "+eventCounts.C+", M "+eventCounts.M+", X "+eventCounts.X+". Podíly jsou počítány z vrcholů, nikoli z minutových vzorků. Detekce slučuje blízké vrcholy v intervalu 20 minut a není oficiálním katalogem erupcí.";
    el("flareClass").textContent=flareClass(last.flux);el("flareTime").textContent="Poslední vzorek: "+last.time.replace("T"," ").replace("Z","")+" UTC";
    el("flarePeak").textContent=flareClass(max.flux);el("flarePeakTime").textContent=max.time.replace("T"," ").replace("Z","")+" UTC";el("flareCount").textContent=String(peaks.length);
    el("flareEvents").textContent=peaks.length?peaks.slice(-8).reverse().map(q=>flareClass(q.flux)+" · "+q.time.replace("T"," ").replace("Z","")+" UTC · "+q.flux.toExponential(2)+" W/m²").join("  |  "):"Za posledních 24 hodin nebyl v dostupných vzorcích nalezen výrazný vrchol třídy C1 nebo vyšší.";
