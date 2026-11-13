@@ -1,0 +1,46 @@
+name: Publikovat samostatný model polárního víru
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'polarni-vir.html'
+      - '.github/workflows/polarni-vir-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: polarni-vir-pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Načíst repozitář
+        uses: actions/checkout@v4
+
+      - name: Připravit samostatnou stránku
+        run: |
+          mkdir -p _site
+          cp polarni-vir.html _site/index.html
+          touch _site/.nojekyll
+
+      - name: Nastavit GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Nahrát web
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Publikovat
+        id: deployment
+        uses: actions/deploy-pages@v4
