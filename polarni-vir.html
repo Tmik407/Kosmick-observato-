@@ -83,6 +83,7 @@ a{color:#75dcff}footer{text-align:center;color:var(--muted);font-size:12px;paddi
 <h3>NASA GSFC · teplota polární čepičky</h3><canvas id="nasaMirrorTempChart" width="1000" height="280"></canvas>
 <h3>NASA GSFC · vlnový tepelný tok</h3><canvas id="nasaMirrorHeatChart" width="1000" height="280"></canvas>
 <div class="status" id="nasaMirrorStatus">Načítám číselné řady NASA GSFC…</div>
+<div class="status" id="nasaMirrorInterpretation"><b>Automatická interpretace</b><br>Čekám na číselná data.</div>
 <p class="muted">Důležité omezení: veřejná kopie v tomto balíčku poskytuje U60 a teplotu na 10 hPa a vlnový tepelný tok na 100 hPa. Neposkytuje zde kompletní U60 a teploty pro 30 a 50 hPa. Tyto hladiny zůstávají dostupné v ručním importu NASA, dokud nebude ověřen další automatický numerický zdroj. <a href="https://observatory.lelama.digital/en/open-data" target="_blank" rel="noopener">Katalog otevřených dat a metodika kopie</a> · <a href="https://acd-ext.gsfc.nasa.gov/Data_services/met/ann_data.html" target="_blank" rel="noopener">NASA GSFC – původní zdroj</a>.</p>
 </section>
 \n<section class="panel" id="verticalSeries">
@@ -286,6 +287,12 @@ $('nasaFile').addEventListener('change',async ev=>{
  try{
   const results=await Promise.all(specs.map(async q=>{const r=await fetch('./data/nasa-gsfc/'+q.file+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error(q.file+' HTTP '+r.status);return {...q,series:parse(await r.text())}}));
   for(const q of results){const last=q.series[q.series.length-1];if(!last)throw Error('Prázdná řada: '+q.file);$(q.value).textContent=last.v.toFixed(2).replace('.',',')+' '+q.unit;$(q.date).textContent=last.d+' · NASA GSFC / veřejná datová kopie';plot(q.chart,q.series,q.label,q.unit,!!q.zero);}
+  const ago=(series,days)=>{const last=series[series.length-1];const t=new Date(last.d+'T00:00:00Z');t.setUTCDate(t.getUTCDate()-days);const key=t.toISOString().slice(0,10);let found=null;for(const x of series){if(x.d<=key)found=x;else break;}return found;};
+  const u=results[0].series,t=results[1].series,h=results[2].series,ul=u[u.length-1],tl=t[t.length-1],hl=h[h.length-1],u7=ago(u,7),t7=ago(t,7),h7=ago(h,7);
+  const delta=(a,b)=>a&&b?(a.v-b.v):null,fmt=v=>Number.isFinite(v)?(v>0?'+':'')+v.toFixed(2).replace('.',','):'—';
+  const du=delta(ul,u7),dt=delta(tl,t7),dh=delta(hl,h7);
+  let windText=ul.v<0?'U60 na 10 hPa je záporný (východní vítr). Jde o signál vyžadující další kontrolu, nikoli sám o sobě potvrzení major SSW.':'U60 na 10 hPa zůstává kladný (západní vítr); hlavní podmínka obratu větru pro major SSW zatím není splněna.';
+  $('nasaMirrorInterpretation').innerHTML='<b>Automatická interpretace · poslední datum '+ul.d+'</b><br>U60 10 hPa: '+fmt(ul.v)+' m/s; změna za 7 dní: '+fmt(du)+' m/s.<br>Teplota polární čepičky 10 hPa: '+fmt(tl.v)+' K; změna za 7 dní: '+fmt(dt)+' K.<br>Vlnový tepelný tok 100 hPa: '+fmt(hl.v)+' K·m/s; změna za 7 dní: '+fmt(dh)+' K·m/s.<p>'+windText+'</p><p class="muted">Jde o denní řady převzaté z veřejné kopie NASA GSFC. Krátkodobý jednorázový obrat nelze zaměnit za potvrzenou major SSW; sleduje se trvání obratu a související dynamika.</p>';
   const mr=await fetch('./data/nasa-gsfc/meta.json?x='+Date.now(),{cache:'no-store'});if(!mr.ok)throw Error('metadata HTTP '+mr.status);const m=await mr.json();
   const dt=new Date(m.retrieved_utc);const stamp=Number.isNaN(dt.getTime())?'neuvedeno':dt.toLocaleString('cs-CZ',{timeZone:'UTC'})+' UTC';
   status.innerHTML='<b class="good">Číselný archiv NASA GSFC načten.</b> Poslední import: '+stamp+'. '+results.map(q=>q.series.length.toLocaleString('cs-CZ')+' bodů ('+q.label+')').join(' · ')+'.';
