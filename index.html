@@ -1165,6 +1165,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   <div><div class="small">Nejvyšší zaznamenané foF2</div><div id="ionoGlobeFof2" class="metric">—</div></div>
   <div><div class="small">Nejvyšší zaznamenané MUF</div><div id="ionoGlobeMuf" class="metric">—</div></div>
  </div>
+ <div id="ionoGiroDiagnostic" class="small" style="margin-top:8px;padding:9px 11px;border:1px solid #315674;border-radius:8px;background:#081a2c">Diagnostika GIRO: čekám na odpověď API.</div>
  <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;margin-top:10px">
   <span>🟦 D-RAP HAF nízký</span><span>🟩 střední</span><span>🟨 zvýšený</span><span>🟥 vysoký</span><span>● GIRO foF2/MUF měření</span><span>🔵→🟡 IRTAM Ne: 0–2 × 10⁶ cm⁻³</span>
  </div>
@@ -1191,7 +1192,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
 <script>
 (function(){
  const $=id=>document.getElementById(id),canvas=$("ionoGlobeCanvas");if(!canvas)return;
- const ctx=canvas.getContext("2d");let drap=null,stations=[],rotation=0,tilt=0.12,drag=null,selected=null,updated=null,xray=[],playTimer=null,playIndex=0,animTime=Date.now();
+ const ctx=canvas.getContext("2d");let drap=null,stations=[],stationDiagnostics={total:0,withStation:0,validCoords:0,withParameters:0,latest:null},rotation=0,tilt=0.12,drag=null,selected=null,updated=null,xray=[],playTimer=null,playIndex=0,animTime=Date.now();
  const HISTORY_KEY="x5_iono_station_history_v1",HISTORY_MAX=288;let history=loadHistory();let coastGeo=null,auroraGrid=[],auroraMeta=null,irtamPoints=[],irtamMeta=null,irtamLevels={},irtamAltitude=300;
  const rad=v=>v*Math.PI/180;
  function parseCoastGeo(json){if(!json||!Array.isArray(json.features))throw Error("Neplatný GeoJSON pobřeží");return json.features.map(f=>f.geometry).filter(g=>g&&g.coordinates).map(g=>({type:g.type,coordinates:g.coordinates}));}
@@ -1277,14 +1278,26 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   return {lons,rows,valid:(text.match(/Product Valid At\s*:\s*(.+)/i)||[])[1]||"čas neuveden"};
  }
  function parseStations(list){
-  if(!Array.isArray(list))throw Error("GIRO: neplatná odpověď.");
-  return list.map(o=>{const st=o.station||{},lat=Number(st.latitude),lon0=Number(st.longitude),lon=lon0>180?lon0-360:lon0;
-   const val=(...keys)=>{for(const k of keys){const v=Number(o[k]);if(o[k]!==null&&o[k]!==""&&Number.isFinite(v)&&v>0&&v<1000)return v}return null};
+  if(!Array.isArray(list))throw Error("GIRO: API nevrátilo seznam měření.");
+  const diag={total:list.length,withStation:0,validCoords:0,withParameters:0,latest:null};
+  const rows=list.map(o=>{
+   if(!o||typeof o!=="object")return null;
+   const st=o.station||{},lat=Number(st.latitude),lon0=Number(st.longitude),lon=lon0>180?lon0-360:lon0;
+   if(st.latitude!==undefined&&st.longitude!==undefined)diag.withStation++;
+   const validCoords=Number.isFinite(lat)&&Number.isFinite(lon)&&lat>=-90&&lat<=90&&lon>=-180&&lon<=180;
+   if(!validCoords)return null;
+   diag.validCoords++;
+   const val=(...keys)=>{for(const k of keys){const raw=o[k];if(raw===null||raw===undefined||raw==="")continue;const v=Number(raw);if(Number.isFinite(v)&&v>0&&v<1000)return v}return null};
    const raw=o.time||o.datetime||o.timestamp||o.time_tag||o.updated||o.observed;
-   const t=raw?Date.parse(raw):NaN;
-   if(!Number.isFinite(lat)||!Number.isFinite(lon)||lat< -90||lat>90||lon< -180||lon>180)return null;
-   return {code:st.code||"?",name:st.name||st.code||"Ionosonda",lat,lon,fof2:val("fof2"),muf:val("mufd","muf"),foe:val("foe"),hmf2:val("hmf2"),confidence:val("fof2_confidence","fof2_conf","confidence"),time:Number.isFinite(t)?new Date(t).toISOString():null};
-  }).filter(x=>x&&(x.fof2!==null||x.muf!==null||x.foe!==null));
+   let t=NaN;
+   if(typeof raw==="number")t=new Date(raw<1e12?raw*1000:raw).getTime();
+   else if(raw)t=Date.parse(raw);
+   const row={code:st.code||"?",name:st.name||st.code||"Ionosonda",lat,lon,fof2:val("fof2"),muf:val("mufd","muf"),foe:val("foe"),hmf2:val("hmf2"),confidence:val("fof2_confidence","fof2_conf","confidence"),time:Number.isFinite(t)?new Date(t).toISOString():null};
+   if(row.fof2!==null||row.muf!==null||row.foe!==null){diag.withParameters++;if(row.time&&(!diag.latest||Date.parse(row.time)>Date.parse(diag.latest)))diag.latest=row.time;return row}
+   return null;
+  }).filter(Boolean);
+  stationDiagnostics=diag;
+  return rows;
  }
 
  function loadHistory(){try{const a=JSON.parse(localStorage.getItem(HISTORY_KEY)||"{}");return a&&typeof a==="object"?a:{}}catch(e){return {}}}
@@ -1369,8 +1382,15 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   ]);
   const errors=[];
   if(tasks[0].status==="fulfilled"){try{drap=parseDrap(tasks[0].value)}catch(e){errors.push(e.message)}}else errors.push("NOAA D-RAP nedostupný");
-  if(tasks[1].status==="fulfilled"){try{stations=parseStations(tasks[1].value)}catch(e){errors.push(e.message)}}else errors.push("GIRO nedostupné");
+  if(tasks[1].status==="fulfilled"){try{stations=parseStations(tasks[1].value)}catch(e){errors.push(e.message);stationDiagnostics={total:0,withStation:0,validCoords:0,withParameters:0,latest:null}}}else{errors.push("GIRO nedostupné");stationDiagnostics={total:0,withStation:0,validCoords:0,withParameters:0,latest:null}}
   if(tasks[1].status==="fulfilled")recordStationSamples(stations);
+  const gd=$("ionoGiroDiagnostic");
+  if(gd){
+   const d=stationDiagnostics;
+   gd.textContent=stations.length
+    ?"GIRO API: "+d.total+" záznamů · "+d.validCoords+" se souřadnicemi · "+d.withParameters+" s platným foF2/MUF/foE · poslední měření "+(d.latest||"čas neuveden")+"."
+    :"GIRO API: "+d.total+" záznamů · "+d.withStation+" s metadaty stanice · "+d.validCoords+" s platnými souřadnicemi · 0 s platným foF2/MUF/foE. Pravděpodobný problém je nedostupnost nebo zastaralost zdrojových měření, nikoli vykreslení IRTAM.";
+  }
   if(tasks[2].status==="fulfilled"){xray=(Array.isArray(tasks[2].value)?tasks[2].value:[]).filter(r=>r.energy==="0.1-0.8nm"||r.energy==="0.1-0.8 nm").map(r=>({t:Date.parse(r.time_tag),flux:Number(r.flux)})).filter(r=>Number.isFinite(r.t)&&Number.isFinite(r.flux)&&r.flux>0).sort((a,b)=>a.t-b.t);if(!xray.length)errors.push("GOES bez platných vzorků")}else errors.push("GOES X-ray nedostupné");
   updated=new Date().toISOString();$("ionoGlobeTime").textContent=drap?drap.valid:"nedostupné";
   $("ionoGlobeStations").textContent=stations.length;
