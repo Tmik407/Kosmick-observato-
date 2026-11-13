@@ -1243,8 +1243,10 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   <div><div class="small">Sluneční vítr / IMF Bz</div><div id="sdrWind" class="metric">—</div><div id="sdrWindTime" class="small"></div></div>
  </div>
  <div id="sdrStatus" class="status">Čekám na první SDR pozorování.</div>
+ <div class="grid"><div><div class="small">Časově spárovaná ionosonda</div><div id="sdrIonoLatest" class="metric">—</div><div id="sdrIonoVerdict" class="small">Čekám na SDR záznam a GIRO data.</div></div></div>
  <h3>Časová osa SDR a kosmického počasí</h3><div id="sdrTimeline" class="small">Zatím nejsou uložena žádná pozorování.</div>
- <div class="small">Korelace je pouze časové porovnání. GOES X-ray může ovlivnit HF šíření na osvětlené straně Země; Kp a Dst popisují geomagnetickou odezvu v jiných časových měřítkách. Časová blízkost sama o sobě neprokazuje příčinnou souvislost. Ionosférické podmínky zde nejsou přímým měřením: pro interpretaci HF je nutné doplnit polohu, den/noc, frekvenci a nezávislé ionosférické údaje.</div>
+ <div class="small">Korelace je pouze časové porovnání. GOES X-ray může ovlivnit HF šíření na osvětlené straně Země; Kp a Dst popisují geomagnetickou odezvu v jiných časových měřítkách. Ionosondová MUF(3000) a foF2 jsou přímé parametry z měření stanic, pokud jsou časově dostupné; porovnání frekvence SDR s MUF(3000) je orientační, protože MUF závisí na délce a trase spojení. Časová blízkost sama o sobě neprokazuje příčinnou souvislost.</div>
+ <div class="small">Ionosondová data: Ionospheric map by Andrew Rodland (KC2G), prop.kc2g.com; zdrojová měření GIRO a provozovatelé stanic. Použití dat podléhá podmínkám GIRO CC BY-NC-SA 4.0; komerční využití není automaticky povoleno. Data se mohou zpozdit nebo být nedostupná.</div>
  <p><a href="https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json" target="_blank" rel="noopener">NOAA GOES X-ray 1 den</a> · <a href="https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json" target="_blank" rel="noopener">NOAA planetární Kp</a> · <a href="https://wdc.kugi.kyoto-u.ac.jp/hapi/" target="_blank" rel="noopener">WDC Kyoto Dst / HAPI</a></p>
 </section>
 
@@ -1720,12 +1722,25 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  const KEY="x5_sdr_observations_v1",valid=n=>Number.isFinite(Number(n)),time=v=>{const n=Date.parse(v);return Number.isFinite(n)?n:null};
  const stamp=t=>Number.isFinite(t)?new Date(t).toISOString().replace("T"," ").slice(0,16)+" UTC":"—";
  const read=()=>{try{const a=JSON.parse(localStorage.getItem(KEY)||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}};
- let xr=[],kp=[],dst=[],wind=[];
+ let xr=[],kp=[],dst=[],wind=[],iono=[];
+ const geoDistance=(a,b,c,d)=>{const r=x=>x*Math.PI/180,dl=r(c-a),dn=r(d-b),q=Math.sin(dl/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dn/2)**2;return 6371*2*Math.asin(Math.sqrt(q))};
+ function parseIono(list){
+  if(!Array.isArray(list))throw Error("GIRO odpověď není seznam stanic");
+  const lat=Number(document.getElementById("ionoLat")?.value??50.5),lon=Number(document.getElementById("ionoLon")?.value??13.6);
+  return list.map(o=>{
+   const st=o.station||{},la=Number(st.latitude),lo0=Number(st.longitude),lo=lo0>=180?lo0-360:lo0;
+   if(!Number.isFinite(la)||!Number.isFinite(lo))return null;
+   const n=(...keys)=>{for(const k of keys){const v=Number(o[k]);if(o[k]!==null&&o[k]!==""&&Number.isFinite(v)&&v>0&&v<1000)return v}return null};
+   const raw=o.time||o.datetime||o.timestamp||o.time_tag||o.updated||o.observed||null;
+   return {code:st.code||"—",name:st.name||st.code||"Stanice",lat:la,lon:lo,muf:n("mufd","muf"),fof2:n("fof2"),hmf2:n("hmf2"),foe:n("foe"),t:raw?time(raw):null,distance:geoDistance(lat,lon,la,lo)};
+  }).filter(Boolean).sort((a,b)=>a.distance-b.distance);
+ }
  function nearest(rows,t,maxAge,key){let best=null,delta=Infinity;for(const r of rows){const d=Math.abs(r.t-t);if(d<delta){delta=d;best=r}}return best&&delta<=maxAge?{...best,delta}:null}
  function cls(v){if(!(v>0))return"—";const p=Math.floor(Math.log10(v)),m=v/Math.pow(10,p);return (p>=-4?"X":p>=-5?"M":p>=-6?"C":p>=-7?"B":"A")+m.toFixed(1)}
  function correlate(o){
   const t=time(o.time),x=nearest(xr,t,30*60000),k=nearest(kp,t,90*60000),d=nearest(dst,t,90*60000),w=nearest(wind,t,5*60000);
-  return {x,k,d,w};
+  const it=nearest(iono.filter(q=>q.t!==null&&q.distance<=2500),t,45*60000);
+  return {x,k,d,w,it,closest:iono[0]||null};
  }
  function render(){
   const a=read().sort((x,y)=>time(y.time)-time(x.time));put("sdrCount",String(a.length));
@@ -1736,15 +1751,21 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   put("sdrDst",c.d?c.d.dst.toFixed(0)+" nT":"—");put("sdrDstTime",c.d?"odchylka "+Math.round(c.d.delta/60000)+" min · "+stamp(c.d.t):"bez hodnoty v ±90 min");
   put("sdrWind",c.w?((Number.isFinite(c.w.v)?c.w.v.toFixed(0)+" km/s":"—")+" · Bz "+(Number.isFinite(c.w.bz)?c.w.bz.toFixed(1)+" nT":"—")):"—");
   put("sdrWindTime",c.w?"odchylka "+Math.round(c.w.delta/60000)+" min · "+stamp(c.w.t):"bez vzorku v ±5 min");
-  const available=[c.x,c.k,c.d,c.w].filter(Boolean).length;
-  put("sdrStatus","Nejnovější záznam: "+stamp(time(a[0].time))+" · časově dostupné "+available+"/4 typů dat. Zdroje: NOAA GOES, NOAA Kp, Kyoto Dst a archiv slunečního větru X-5.");
+  const ionoLine=c.it?((c.it.muf!==null?"MUF(3000) "+c.it.muf.toFixed(1)+" MHz":"MUF —")+" · "+(c.it.fof2!==null?"foF2 "+c.it.fof2.toFixed(2)+" MHz":"foF2 —")+" · "+c.it.code+" · Δ "+Math.round(c.it.delta/60000)+" min"):(c.closest?"Nejbližší ionosonda "+c.closest.code+" ("+c.closest.distance.toFixed(0)+" km), bez časového párování":"Ionosonda nedostupná");
+  const available=[c.x,c.k,c.d,c.w,c.it].filter(Boolean).length;
+  put("sdrStatus","Nejnovější záznam: "+stamp(time(a[0].time))+" · časově dostupné "+available+"/5 typů dat. Ionosonda: "+ionoLine+".");
+  put("sdrIonoLatest",ionoLine);
+  if(c.it&&Number.isFinite(Number(a[0].freq))&&c.it.muf!==null){const margin=c.it.muf-Number(a[0].freq);put("sdrIonoVerdict",margin>=0?"Frekvence je "+margin.toFixed(1)+" MHz pod naměřeným MUF(3000).":"Frekvence je "+Math.abs(margin).toFixed(1)+" MHz nad MUF(3000).")}
+  else put("sdrIonoVerdict","Pro porovnání frekvence s MUF je nutný platný časově spárovaný údaj ionosondy a frekvence SDR.");
   $("sdrTimeline").innerHTML=a.map(o=>{
    const q=correlate(o),f=(v,u)=>v?String(v)+u:"nedostupné";
    const x=q.x?cls(q.x.flux)+" ("+q.x.flux.toExponential(2)+" W/m²; Δ "+Math.round(q.x.delta/60000)+" min)":"bez GOES vzorku";
    const k=q.k?"Kp "+q.k.kp.toFixed(2)+" (Δ "+Math.round(q.k.delta/60000)+" min)":"Kp nedostupné";
    const d=q.d?"Dst "+q.d.dst.toFixed(0)+" nT":"Dst nedostupné";
    const w=q.w?"V "+f(q.w.v.toFixed(0)," km/s")+" · Bz "+f(q.w.bz.toFixed(1)," nT"):"vítr/IMF nedostupný";
-   return "<div class='panel' style='margin:8px 0;padding:12px'><b>"+stamp(time(o.time))+" · "+(o.freq?o.freq+" MHz · ":"")+(o.mode||"SDR")+"</b><br>"+(o.signal||"Bez popisu signálu")+"<br>"+x+"<br>"+k+" · "+d+"<br>"+w+(o.note?"<br>Poznámka: "+String(o.note).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])):"")+"</div>";
+   const ip=q.it?((q.it.muf!==null?"MUF "+q.it.muf.toFixed(1)+" MHz":"MUF —")+" · "+(q.it.fof2!==null?"foF2 "+q.it.fof2.toFixed(2)+" MHz":"foF2 —")+" · "+q.it.code+" (Δ "+Math.round(q.it.delta/60000)+" min)"):"ionosonda bez párování ±45 min";
+   const fc=q.it&&q.it.muf!==null&&Number.isFinite(Number(o.freq))?(Number(o.freq)<=q.it.muf?"frekvence pod MUF(3000)":"frekvence nad MUF(3000)"):"nelze porovnat frekvenci";
+   return "<div class='panel' style='margin:8px 0;padding:12px'><b>"+stamp(time(o.time))+" · "+(o.freq?o.freq+" MHz · ":"")+(o.mode||"SDR")+"</b><br>"+(o.signal||"Bez popisu signálu")+"<br>"+x+"<br>"+k+" · "+d+"<br>"+w+"<br><b>Ionosféra:</b> "+ip+" · "+fc+(o.note?"<br>Poznámka: "+String(o.note).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])):"")+"</div>";
   }).join("");
  }
  function download(name,content,type){const b=new Blob([content],{type}),u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download=name;a.click();URL.revokeObjectURL(u)}
@@ -1761,13 +1782,15 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
    fetch("https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("GOES HTTP "+r.status);return r.json()}),
    fetch("https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("Kp HTTP "+r.status);return r.json()}),
    fetch("https://wdc.kugi.kyoto-u.ac.jp/hapi/data?id=hour_dst&time.min="+encodeURIComponent(new Date(Date.now()-2*86400000).toISOString())+"&time.max="+encodeURIComponent(new Date(Date.now()+3600000).toISOString())+"&format=json",{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("Dst HTTP "+r.status);return r.json()}),
-   fetch("./space-weather-history.json?ts="+Date.now(),{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("Archiv větru HTTP "+r.status);return r.json()})
+   fetch("./space-weather-history.json?ts="+Date.now(),{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("Archiv větru HTTP "+r.status);return r.json()}),
+   fetch("https://prop.kc2g.com/api/stations.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("GIRO HTTP "+r.status);return r.json()})
   ]);
   const errors=[];
   if(tasks[0].status==="fulfilled"){const d=tasks[0].value;xr=(Array.isArray(d)?d:[]).filter(r=>r.energy==="0.1-0.8nm"||r.energy==="0.1-0.8 nm").map(r=>({t:time(r.time_tag),flux:Number(r.flux)})).filter(r=>r.t!==null&&r.flux>0)}else errors.push("GOES");
   if(tasks[1].status==="fulfilled"){const d=tasks[1].value;kp=(Array.isArray(d)?d:[]).map(r=>({t:time(r.time_tag||r.time),kp:Number(r.Kp??r.kp)})).filter(r=>r.t!==null&&valid(r.kp)&&r.kp>=0&&r.kp<=9)}else errors.push("Kp");
   if(tasks[2].status==="fulfilled"){const d=tasks[2].value;dst=(d.data||[]).map(r=>Array.isArray(r)?({t:time(r[0]),dst:Number(r[1])}):({t:time(r.Time||r.time),dst:Number(r.dstValue??r.dst)})).filter(r=>r.t!==null&&valid(r.dst)&&Math.abs(r.dst)<500&&r.dst!==-999.9&&r.dst!==-999&&r.dst!==-9999)}else errors.push("Dst");
   if(tasks[3].status==="fulfilled"){const d=tasks[3].value;wind=(d.rows||[]).map(r=>({t:time(r.t),v:Number(r.speed_kms),bz:Number(r.bz_gsm_nt)})).filter(r=>r.t!==null)}else errors.push("vítr");
+  if(tasks[4].status==="fulfilled"){try{iono=parseIono(tasks[4].value)}catch(e){errors.push("ionosonda: "+e.message)}}else errors.push("ionosonda GIRO");
   render();put("sdrStatus",read().length?$("sdrStatus").textContent+" · "+(errors.length?"Nedostupné zdroje: "+errors.join(", "):"Všechny zdroje načteny."):"Čekám na první SDR záznam. "+(errors.length?"Nedostupné zdroje: "+errors.join(", "):"Datové zdroje načteny."));
  }
  const p=$("sdrCorrelationPanel");if(!p)return;
