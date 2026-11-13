@@ -25,7 +25,7 @@ a{color:#75dcff;text-decoration:none}a:hover{text-decoration:underline;color:#b9
 <div class="status" id="dataStatus"><b>Stav dat:</b> Načítám poslední dostupná denní data ERA5…</div>
 <section class="panel"><h2>Aktuální diagnostické hodnoty</h2><div class="grid">
 <div><div class="unit">Zonální vítr · 10 hPa / 60° N</div><div class="metric" id="wind">—</div><div class="muted">Hodnota bude načtena z datového archivu</div></div>
-<div><div class="unit">Teplota polární oblasti · 10 hPa</div><div class="metric" id="temp">—</div><div class="muted">Denní průměr polární oblasti</div></div>
+<div><div class="unit">Teplota polární oblasti · 10 hPa (°C)</div><div class="metric" id="temp">—</div><div class="muted">Denní průměr polární oblasti</div></div>
 <div><div class="unit">Nejnižší teplota · 50 hPa</div><div class="metric" id="tmin">—</div><div class="muted">Minimální teplota bude doplněna, pokud ji zdroj poskytne</div></div>
 <div><div class="unit">Diagnostický stav</div><div class="metric" id="state">Čeká na data</div><div class="muted">Vyhodnocení podle posledního dostupného U60</div></div>
 </div><p class="muted" id="metricSource">Zdroj a čas posledního záznamu se načtou z datového archivu. ERA5 je reanalýza, nikoli přímé měření v atmosféře.</p></section>
@@ -35,7 +35,7 @@ a{color:#75dcff;text-decoration:none}a:hover{text-decoration:underline;color:#b9
 <p class="muted">Automaticky stahovaný denní archiv ERA5 od roku 1959. Jde o reanalýzu založenou na pozorováních a modelu, nikoli o přímé měření jedním přístrojem. Aktualizace archivu probíhá denně; datum posledního záznamu se zobrazuje samostatně.</p>
 <div class="grid">
 <div><div class="unit">U60 · 10 hPa / 60° N</div><div class="metric" id="u60latest">—</div><div class="muted" id="u60date">—</div></div>
-<div><div class="unit">Teplota polární čepičky · 10 hPa</div><div class="metric" id="capLatest">—</div><div class="muted" id="capDate">—</div></div>
+<div><div class="unit">Teplota polární čepičky · 10 hPa (°C)</div><div class="metric" id="capLatest">—</div><div class="muted" id="capDate">—</div></div>
 <div><div class="unit">Vlnový tepelný tok · 100 hPa</div><div class="metric" id="heatLatest">—</div><div class="muted" id="heatDate">—</div></div>
 <div><div class="unit">Záznamů v archivu</div><div class="metric" id="recordCount">—</div><div class="muted" id="archiveRange">—</div></div>
 </div>
@@ -180,17 +180,6 @@ async function loadGfsGrid(force=false){
  }catch(e){$('gfsMapStatus').innerHTML='<b class="warn">Meteorologická síť není dostupná.</b> '+String(e.message||e)+'. Archivované mapy NOAA CPC zůstávají níže na stránce.';}
 }
 $('gfsLevel').addEventListener('change',()=>loadGfsGrid(true));$('gfsField').addEventListener('change',drawGfsGrid);$('gfsTime').addEventListener('change',drawGfsGrid);loadGfsGrid();
-const polarPoints=[];for(const lat of [60,66,72,78,84,90])for(let i=0;i<16;i++)polarPoints.push({lat,lon:i*22.5});
-let gfsData=null;
-function polarXY(lat,lon){const r=(90-lat)/30*330,a=(lon-90)*Math.PI/180;return{x:550+r*Math.cos(a),y:418+r*Math.sin(a)};}
-function drawGfs(){const cv=$('gfsGridMap'),g=cv.getContext('2d'),level=$('gfsLevel').value,field=$('gfsField').value,idx=+$('gfsTime').value||0;g.clearRect(0,0,1100,820);g.fillStyle='#07182a';g.fillRect(0,0,1100,820);for(const lat of [60,65,70,75,80,85]){g.beginPath();g.arc(550,418,(90-lat)/30*330,0,Math.PI*2);g.strokeStyle='#45627a';g.stroke();}for(let lon=0;lon<360;lon+=30){const p=polarXY(60,lon);g.beginPath();g.moveTo(550,418);g.lineTo(p.x,p.y);g.strokeStyle='#29475f';g.stroke();}if(!gfsData)return;const key=field==='temperature'?'temperature_':'geopotential_height_';const vals=gfsData.map(d=>field==='wind'?d.hourly['wind_speed_'+level+'hPa']?.[idx]:d.hourly[key+level+'hPa']?.[idx]).filter(Number.isFinite);if(!vals.length)return;const min=Math.min(...vals),max=Math.max(...vals);for(const d of gfsData){const v=field==='wind'?d.hourly['wind_speed_'+level+'hPa']?.[idx]:d.hourly[key+level+'hPa']?.[idx];if(!Number.isFinite(v))continue;const p=polarXY(d.latitude,d.longitude),t=(v-min)/(max-min||1);g.beginPath();g.arc(p.x,p.y,19,0,Math.PI*2);g.fillStyle='hsl('+(240-240*t)+',85%,55%)';g.fill();const dir=d.hourly['wind_direction_'+level+'hPa']?.[idx],spd=d.hourly['wind_speed_'+level+'hPa']?.[idx];if(Number.isFinite(dir)&&Number.isFinite(spd)){const a=(dir+180)*Math.PI/180,L=8+Math.min(18,spd*.15);g.strokeStyle='white';g.beginPath();g.moveTo(p.x,p.y);g.lineTo(p.x+Math.sin(a)*L,p.y-Math.cos(a)*L);g.stroke();}}g.fillStyle='white';g.font='bold 17px Arial';g.fillText((field==='temperature'?'TEPLOTA':field==='wind'?'RYCHLOST VĚTRU':'GEOPOTENCIÁL')+' · '+level+' hPa',30,35);}
-async function loadGfsGrid(){const level=$('gfsLevel').value;$('gfsMapStatus').textContent='Stahuji modelová data pro '+polarPoints.length+' bodů…';const lat=polarPoints.map(p=>p.lat).join(','),lon=polarPoints.map(p=>p.lon).join(','),vars=['temperature_'+level+'hPa','geopotential_height_'+level+'hPa','wind_speed_'+level+'hPa','wind_direction_'+level+'hPa'].join(',');try{const r=await fetch('https://api.open-meteo.com/v1/gfs?latitude='+lat+'&longitude='+lon+'&hourly='+vars+'&forecast_days=2&timezone=GMT');if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();gfsData=Array.isArray(d)?d:[d];const times=gfsData[0].hourly.time,sel=$('gfsTime');sel.innerHTML='';times.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t.replace('T',' ')+' UTC';sel.appendChild(o);});const range=(k)=>{const a=gfsData.flatMap(x=>x.hourly[k]||[]).filter(Number.isFinite);return a.length?Math.min(...a).toFixed(1)+' – '+Math.max(...a).toFixed(1):'—';};$('gfsTempRange').textContent=range('temperature_'+level+'hPa')+' °C';$('gfsZRange').textContent=range('geopotential_height_'+level+'hPa')+' m';$('gfsWindRange').textContent=range('wind_speed_'+level+'hPa')+' km/h';$('gfsPointCount').textContent=gfsData.filter(x=>x.hourly).length+' / '+polarPoints.length;$('gfsMapStatus').innerHTML='<b class="good">Modelová data načtena.</b> NOAA GFS · '+level+' hPa · '+gfsData.length+' bodů. Časová osa UTC.';drawGfs();}catch(e){$('gfsMapStatus').innerHTML='<b class="warn">Data nejsou dostupná:</b> '+e.message;}}
-$('gfsLevel').addEventListener('change',loadGfsGrid);$('gfsField').addEventListener('change',drawGfs);$('gfsTime').addEventListener('change',drawGfs);loadGfsGrid();
-const polarPoints=[];for(const lat of [60,65,70,75,80,85,90])for(let i=0;i<16;i++)polarPoints.push({lat,lon:i*22.5});let gfsData=null;
-function polarXY(lat,lon){const r=(90-lat)/30*330,a=(lon-90)*Math.PI/180;return{x:550+r*Math.cos(a),y:418+r*Math.sin(a)};}
-function drawGfs(){const g=$('gfsGridMap').getContext('2d'),level=$('gfsLevel').value,field=$('gfsField').value,idx=+$('gfsTime').value||0;g.clearRect(0,0,1100,820);g.fillStyle='#07182a';g.fillRect(0,0,1100,820);for(const lat of [60,65,70,75,80,85]){g.beginPath();g.arc(550,418,(90-lat)/30*330,0,Math.PI*2);g.strokeStyle='#45627a';g.stroke();}for(let lon=0;lon<360;lon+=30){const p=polarXY(60,lon);g.beginPath();g.moveTo(550,418);g.lineTo(p.x,p.y);g.strokeStyle='#29475f';g.stroke();}if(!gfsData)return;const vals=gfsData.map(d=>field==='temperature'?d.hourly['temperature_'+level+'hPa']?.[idx]:field==='wind'?d.hourly['wind_speed_'+level+'hPa']?.[idx]:d.hourly['geopotential_height_'+level+'hPa']?.[idx]).filter(Number.isFinite);if(!vals.length)return;const min=Math.min(...vals),max=Math.max(...vals);for(const d of gfsData){const v=field==='temperature'?d.hourly['temperature_'+level+'hPa']?.[idx]:field==='wind'?d.hourly['wind_speed_'+level+'hPa']?.[idx]:d.hourly['geopotential_height_'+level+'hPa']?.[idx];if(!Number.isFinite(v))continue;const p=polarXY(d.latitude,d.longitude),t=(v-min)/(max-min||1);g.beginPath();g.arc(p.x,p.y,19,0,Math.PI*2);g.fillStyle='hsl('+(240-240*t)+',85%,55%)';g.fill();const dir=d.hourly['wind_direction_'+level+'hPa']?.[idx],spd=d.hourly['wind_speed_'+level+'hPa']?.[idx];if(Number.isFinite(dir)&&Number.isFinite(spd)){const a=(dir+180)*Math.PI/180,L=8+Math.min(18,spd*.15);g.strokeStyle='white';g.beginPath();g.moveTo(p.x,p.y);g.lineTo(p.x+Math.sin(a)*L,p.y-Math.cos(a)*L);g.stroke();}}g.fillStyle='white';g.font='bold 17px Arial';g.fillText((field==='temperature'?'TEPLOTA':field==='wind'?'RYCHLOST VĚTRU':'GEOPOTENCIÁL')+' · '+level+' hPa',30,35);}
-async function loadGfsGrid(){const level=$('gfsLevel').value;$('gfsMapStatus').textContent='Stahuji modelová data pro 96 bodů…';const lat=polarPoints.map(p=>p.lat).join(','),lon=polarPoints.map(p=>p.lon).join(','),vars=['temperature_'+level+'hPa','geopotential_height_'+level+'hPa','wind_speed_'+level+'hPa','wind_direction_'+level+'hPa'].join(',');try{const r=await fetch('https://api.open-meteo.com/v1/gfs?latitude='+lat+'&longitude='+lon+'&hourly='+vars+'&forecast_days=2&timezone=GMT');if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();gfsData=Array.isArray(d)?d:[d];const times=gfsData[0].hourly.time,sel=$('gfsTime');sel.innerHTML='';times.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t.replace('T',' ')+' UTC';sel.appendChild(o);});const range=k=>{const a=gfsData.flatMap(x=>x.hourly[k]||[]).filter(Number.isFinite);return a.length?Math.min(...a).toFixed(1)+' – '+Math.max(...a).toFixed(1):'—';};$('gfsTempRange').textContent=range('temperature_'+level+'hPa')+' °C';$('gfsZRange').textContent=range('geopotential_height_'+level+'hPa')+' m';$('gfsWindRange').textContent=range('wind_speed_'+level+'hPa')+' km/h';$('gfsPointCount').textContent=gfsData.filter(x=>x.hourly).length+' / 96';$('gfsMapStatus').innerHTML='<b class="good">Modelová data načtena.</b> NOAA GFS · '+level+' hPa · '+gfsData.length+' bodů · časy UTC.';drawGfs();}catch(e){$('gfsMapStatus').innerHTML='<b class="warn">Data nejsou dostupná:</b> '+e.message;}}
-$('gfsLevel').addEventListener('change',loadGfsGrid);$('gfsField').addEventListener('change',drawGfs);$('gfsTime').addEventListener('change',drawGfs);loadGfsGrid();
 async function loadArchive(){
  const status=$('archiveStatus'),mainStatus=$('dataStatus');
  const fmt=v=>Number.isFinite(v)?v.toFixed(1).replace('.',','):'—';
@@ -217,12 +206,12 @@ async function loadArchive(){
  const last=a=>a.length?a[a.length-1]:null,lu=last(seriesU),lt=last(seriesT),lh=last(seriesH);
  if(!lu)throw Error('Soubor U60 byl načten, ale nepodařilo se rozpoznat sloupec zonálního větru. Hlavička: '+u.headers.join(', '));
  $('wind').textContent=fmt(lu.v)+' m/s';$('u60latest').textContent=fmt(lu.v)+' m/s';$('u60date').textContent=lu.d+' · ERA5';
- if(lt){$('temp').textContent=fmt(lt.v)+' K';$('capLatest').textContent=fmt(lt.v)+' K';$('capDate').textContent=lt.d+' · ERA5';}
+ if(lt){$('temp').textContent=fmt(lt.v-273.15)+' °C';$('capLatest').textContent=fmt(lt.v-273.15)+' °C';$('capDate').textContent=lt.d+' · ERA5';}
  if(lh){$('heatLatest').textContent=fmt(lh.v)+' K·m/s';$('heatDate').textContent=lh.d+' · ERA5';}
  $('state').textContent=lu.v<0?'Východní vítr':'Západní vítr';
  $('recordCount').textContent=u.rows.length.toLocaleString('cs-CZ');$('archiveRange').textContent=(dates.find(Boolean)||'')+' až '+(lu.d||'');
  $('metricSource').textContent='ERA5 · denní průměry. Poslední dostupný záznam: '+lu.d+'. Nejde o okamžité měření ani předpověď.';
- drawLine('u60Chart',seriesU.slice(-365),'U60','m/s',true);drawLine('tempChart',seriesT.slice(-365),'Teplota polární čepičky','K');drawLine('heatChart',seriesH.slice(-365),'Vlnový tepelný tok','K·m/s',true);
+ drawLine('u60Chart',seriesU.slice(-365),'U60','m/s',true);drawLine('tempChart',seriesT.slice(-365).map(x=>({...x,v:x.v-273.15})),'Teplota polární čepičky','°C');drawLine('heatChart',seriesH.slice(-365),'Vlnový tepelný tok','K·m/s',true);
  status.innerHTML='<b class="good">Archiv načten.</b> '+u.rows.length.toLocaleString('cs-CZ')+' denních záznamů U60; poslední datum '+lu.d+'. '+(lh?'Tepelný tok poslední dostupný '+lh.d+'.':'Tepelný tok nebyl rozpoznán.')+'<br>Rozpoznané sloupce: U60 = '+(u.headers[uIdx]||'nenalezen')+'; teplota = '+(u.headers[tIdx]||'nenalezena')+'; tepelný tok = '+(wv.headers[hIdx]||'nenalezen')+'.';
  mainStatus.innerHTML='<b>Stav dat:</b> Archiv ERA5 načten · poslední datum '+lu.d+' · denní aktualizace přes GitHub Actions.';
  }catch(e){status.innerHTML='<b class="warn">Archiv zatím není dostupný.</b> '+String(e.message||e)+'<br>Grafy zůstávají bez hodnot; žádná chybějící data nejsou nahrazena nulou.';mainStatus.innerHTML='<b>Stav dat:</b> Archiv se nepodařilo načíst. Zobrazené hodnoty zůstávají prázdné.';}
@@ -301,7 +290,7 @@ $('nasaFile').addEventListener('change',async ev=>{
   const rows=parsed.rows.sort((a,b)=>a.date.localeCompare(b.date));
   drawNasaSeries('nasaWindChart',rows,'wind','Zonální vítr U60','m/s');
   analyzeVertical(rows);
-  drawNasaSeries('nasaTempChart',rows,'temp','Teplota polární čepičky','K');
+  drawNasaSeries('nasaTempChart',rows.map(x=>({...x,temp:x.temp-273.15})),'temp','Teplota polární čepičky','°C');
   const last=rows[rows.length-1],parts=[];
   for(const type of ['wind','temp'])for(const lev of [10,30,50]){
    const val=last[type][lev];parts.push(type==='wind'?'U '+lev+' hPa: '+(Number.isFinite(val)?val.toFixed(2)+' m/s':'chybí'):'T '+lev+' hPa: '+(Number.isFinite(val)?val.toFixed(2)+' K':'chybí'));
@@ -318,11 +307,11 @@ async function loadNasaVerticalWind(){
   const levels=[10,30,50],series=await Promise.all(levels.map(async lev=>{const r=await fetch("./data/nasa-gsfc/u60_"+lev+"hpa_60n_ozonewatch.csv?v="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("U60 "+lev+" hPa HTTP "+r.status);const lines=(await r.text()).trim().split(/\r?
 /);return {lev,rows:lines.slice(1).map(line=>{const a=line.split(",");return {date:a[0],v:Number(a[1]),fc:Number(a[2])}}).filter(x=>x.date&&Number.isFinite(x.v)&&x.v>-9000&&x.fc>=0)};}));
   g.clearRect(0,0,w,h);g.fillStyle="#07182a";g.fillRect(0,0,w,h);
-  const colors={10:"#63dfff",30:"#ffbd76",50:"#b69cff"},all=series.flatMap(q=>q.rows.map(x=>x.v));let min=Math.min(0,...all),max=Math.max(0,...all);if(min===max){min-=1;max+=1;}
+  const colors={10:"#63dfff",30:"#ffbd76",50:"#b69cff"},all=series.flatMap(q=>q.rows.map(x=>x.v-273.15));let min=Math.min(0,...all),max=Math.max(0,...all);if(min===max){min-=1;max+=1;}
   const y=v=>h-p-(v-min)/(max-min)*(h-2*p);
   for(let i=0;i<5;i++){const v=max-i*(max-min)/4,yy=y(v);g.strokeStyle="#29445e";g.beginPath();g.moveTo(p,yy);g.lineTo(w-p,yy);g.stroke();g.fillStyle="#a9bfd5";g.font="13px Arial";g.fillText(v.toFixed(1),5,yy+4);}
   g.strokeStyle="#ffbd76";g.setLineDash([5,5]);g.beginPath();g.moveTo(p,y(0));g.lineTo(w-p,y(0));g.stroke();g.setLineDash([]);
-  for(const q of series){const a=q.rows.slice(-120);g.beginPath();a.forEach((x,i)=>{const xx=p+i*(w-2*p)/Math.max(1,a.length-1);if(i===0)g.moveTo(xx,y(x.v));else g.lineTo(xx,y(x.v));});g.strokeStyle=colors[q.lev];g.lineWidth=3;g.stroke();}
+  for(const q of series){const a=q.rows.slice(-120);g.beginPath();a.forEach((x,i)=>{const xx=p+i*(w-2*p)/Math.max(1,a.length-1);if(i===0)g.moveTo(xx,y(x.v-273.15));else g.lineTo(xx,y(x.v-273.15));});g.strokeStyle=colors[q.lev];g.lineWidth=3;g.stroke();}
   let legend="";for(const q of series){const last=q.rows[q.rows.length-1],hist=q.rows.filter(x=>x.fc===0),analysis=hist[hist.length-1],forecast=q.rows.filter(x=>x.fc>0);legend+=q.lev+" hPa: poslední "+last.date+" = "+last.v.toFixed(2)+" m/s"+(last.fc>0?" (předpověď +"+last.fc+" h)":" (analýza)")+"; ";}
   g.fillStyle="#edf6ff";g.font="bold 14px Arial";g.fillText("U60 na 60° N · m/s · posledních až 120 dní",p,22);
   status.innerHTML="<b class=\\"good\\">Vertikální řady NASA Ozone Watch načteny.</b><br>"+legend+"<br>Data s forecast_hour = 0 jsou analýza; kladné forecast_hour označuje předpověď. "+series.map(q=>q.lev+" hPa: "+q.rows.length+" řádků").join(" · ");
@@ -346,8 +335,8 @@ async function loadNasaVerticalTemp(){
   for(let i=0;i<5;i++){const v=max-i*(max-min)/4,yy=y(v);g.strokeStyle="#29445e";g.beginPath();g.moveTo(p,yy);g.lineTo(w-p,yy);g.stroke();g.fillStyle="#a9bfd5";g.font="13px Arial";g.fillText(v.toFixed(1),5,yy+4);}
   for(const q of series){const a=q.rows.slice(-120);g.beginPath();a.forEach((x,i)=>{const xx=p+i*(w-2*p)/Math.max(1,a.length-1);if(i===0)g.moveTo(xx,y(x.v));else g.lineTo(xx,y(x.v));});g.strokeStyle=colors[q.lev];g.lineWidth=3;g.stroke();}
   let legend="";
-  for(const q of series){const hist=q.rows.filter(x=>x.fc===0),a=hist[hist.length-1],last=q.rows[q.rows.length-1];legend+=q.lev+" hPa: poslední analýza "+(a?a.date+" = "+a.v.toFixed(2)+" K":"není")+(last&&last.fc>0?"; předpověď "+last.date+" = "+last.v.toFixed(2)+" K (+"+last.fc+" h)":"")+"; ";}
-  g.fillStyle="#edf6ff";g.font="bold 14px Arial";g.fillText("Teplota polární čepičky 60–90° N · K · posledních až 120 dní",p,22);
+  for(const q of series){const hist=q.rows.filter(x=>x.fc===0),a=hist[hist.length-1],last=q.rows[q.rows.length-1];legend+=q.lev+" hPa: poslední analýza "+(a?a.date+" = "+(a.v-273.15).toFixed(2)+" °C":"není")+(last&&last.fc>0?"; předpověď "+last.date+" = "+last.v.toFixed(2)+" K (+"+last.fc+" h)":"")+"; ";}
+  g.fillStyle="#edf6ff";g.font="bold 14px Arial";g.fillText("Teplota polární čepičky 60–90° N · °C · posledních až 120 dní",p,22);
   status.innerHTML='<b class="good">NASA Ozone Watch · teplotní řady načteny.</b><br>'+legend+series.map(q=>q.lev+" hPa: "+q.rows.length+" řádků").join(" · ")+'<br>Kladný forecast_hour označuje předpověď, nikoli pozorovanou analýzu.';
  }catch(e){status.innerHTML='<b class="warn">Teplotní řady zatím nejsou dostupné.</b> '+String(e.message||e)+'. Zkontroluj běh NASA archivační úlohy.';}
 }
@@ -373,7 +362,7 @@ async function loadNasaCombinedProfile(){
   body.innerHTML=records.map(x=>{
    const state=x.w<0?"Východní vítr":x.w<15?"Slabý západní vítr":"Západní vítr";
    const thermal=x.dt===null?"změna T bez srovnání":x.dt>0.5?"oteplení za 7 dní":x.dt<-.5?"ochlazení za 7 dní":"malá změna T";
-   return "<tr><td><b>"+x.lev+" hPa</b><br>"+x.date+"</td><td>"+fmt(x.w,"m/s")+"</td><td>"+fmt(x.dw,"m/s")+"</td><td>"+fmt(x.t,"K")+"<br>"+fmt(x.t-273.15,"°C")+"</td><td>"+fmt(x.dt,"K")+"</td><td>"+state+"; "+thermal+"</td></tr>";
+   return "<tr><td><b>"+x.lev+" hPa</b><br>"+x.date+"</td><td>"+fmt(x.w,"m/s")+"</td><td>"+fmt(x.dw,"m/s")+"</td><td>"+fmt(x.t-273.15,"°C")+"</td><td>"+fmt(x.dt,"°C")+"</td><td>"+state+"; "+thermal+"</td></tr>";
   }).join("");
   const top=records[0],mid=records[1],low=records[2];
   let conclusion;
