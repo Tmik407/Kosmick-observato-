@@ -1257,39 +1257,57 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   if(!image)return;
   const maxW=720,maxH=360,scale=Math.min(1,maxW/image.width,maxH/image.height),w=Math.max(1,Math.round(image.width*scale)),h=Math.max(1,Math.round(image.height*scale));
   const c=document.createElement("canvas");c.width=w;c.height=h;const cx=c.getContext("2d",{willReadFrequently:true});cx.drawImage(image,0,0,w,h);
-  const dat=cx.getImageData(0,0,w,h).data,gray=new Float32Array(w*h),row=new Float32Array(h),col=new Float32Array(w),edgeRow=new Float32Array(h),edgeCol=new Float32Array(w);
+  const dat=cx.getImageData(0,0,w,h).data,gray=new Float32Array(w*h),row=new Float32Array(h),col=new Float32Array(w),hist=new Uint32Array(256);
   let sum=0,sum2=0;
-  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,g=.2126*dat[i]+.7152*dat[i+1]+.0722*dat[i+2];gray[y*w+x]=g;sum+=g;sum2+=g*g;}
-  const mean=sum/(w*h),sd=Math.sqrt(Math.max(0,sum2/(w*h)-mean*mean)),threshold=mean+Math.max(10,sd*.65),mask=new Uint8Array(w*h);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,g=.2126*dat[i]+.7152*dat[i+1]+.0722*dat[i+2];gray[y*w+x]=g;sum+=g;sum2+=g*g;hist[Math.max(0,Math.min(255,Math.round(g)))]++;}
+  const mean=sum/(w*h),sd=Math.sqrt(Math.max(0,sum2/(w*h)-mean*mean));
+  const percentile=p=>{let n=Math.floor(w*h*p),v=0;for(;v<255&&n>0;v++)n-=hist[v];return v};
+  const background=percentile(.50),threshold=Math.max(background+8,mean+sd*.45),mask=new Uint8Array(w*h);
   let active=0;
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){const v=gray[y*w+x],on=v>threshold?1:0;mask[y*w+x]=on;active+=on;row[y]+=v;col[x]+=v;}
   const rowMean=row.map(v=>v/w),colMean=col.map(v=>v/h),rBase=rowMean.reduce((a,b)=>a+b,0)/h,cBase=colMean.reduce((a,b)=>a+b,0)/w;
-  for(let y=1;y<h-1;y++)edgeRow[y]=Math.abs(rowMean[y]-rowMean[y-1])+Math.abs(rowMean[y+1]-rowMean[y]);
-  for(let x=1;x<w-1;x++)edgeCol[x]=Math.abs(colMean[x]-colMean[x-1])+Math.abs(colMean[x+1]-colMean[x]);
-  const peak=(a,base,rel)=>{let peaks=[],active=false,start=0;for(let i=1;i<a.length-1;i++){const on=a[i]>base+rel;if(on&&!active){start=i;active=true}else if(!on&&active){if(i-start>=Math.max(2,Math.round(a.length*.002)))peaks.push({start,end:i-1});active=false}}if(active)peaks.push({start,end:a.length-2});return peaks};
-  const hLines=peak(rowMean,rBase,Math.max(7,sd*.18)),vLines=peak(colMean,cBase,Math.max(7,sd*.18));
-  const curves=[];
-  for(let x0=0;x0<w-24;x0+=Math.max(4,Math.round(w/90))){
-   let points=[];
-   for(let x=x0;x<Math.min(w,x0+Math.max(24,Math.round(w*.12)));x+=Math.max(2,Math.round(w/180))){
-    let best=-1,by=-1;for(let y=0;y<h;y++){const v=gray[y*w+x];if(v>best){best=v;by=y}}
-    points.push(by);
+  const peak=(a,base,rel)=>{let peaks=[],on=false,start=0;for(let i=1;i<a.length-1;i++){const hit=a[i]>base+rel;if(hit&&!on){start=i;on=true}else if(!hit&&on){if(i-start>=Math.max(2,Math.round(a.length*.002)))peaks.push({start,end:i-1});on=false}}if(on)peaks.push({start,end:a.length-2});return peaks};
+  const hLines=peak(rowMean,rBase,Math.max(6,sd*.15)),vLines=peak(colMean,cBase,Math.max(6,sd*.15));
+  // Sledujeme lokální jasové vrcholy v každém sloupci; návaznost omezuje přeskoky mezi nesouvisejícími pixely.
+  const step=Math.max(1,Math.round(w/360)),tracks=[];let activeTrack=null,previousY=null;
+  for(let x=0;x<w;x+=step){
+   const candidates=[];
+   for(let y=2;y<h-2;y++){
+    const v=gray[y*w+x];
+    if(v>threshold&&v>=gray[y*w+x-1]&&v>=gray[y*w+x+1]&&v>=gray[(y-1)*w+x]&&v>=gray[(y+1)*w+x])candidates.push({y,v});
    }
-   if(points.length>=5){const avg=points.reduce((a,b)=>a+b,0)/points.length,variance=points.reduce((a,b)=>a+(b-avg)**2,0)/points.length;
-    const changes=points.slice(1).filter((v,i)=>Math.abs(v-points[i])>1).length;
-    if(Math.sqrt(variance)>Math.max(2,h*.008)&&changes>=2)curves.push({x:x0,span:points.length,amplitude:Math.sqrt(variance),changes});}
+   let chosen=null;
+   if(candidates.length){
+    candidates.sort((a,b)=>(b.v-(previousY===null?0:Math.abs(b.y-previousY)*1.8))-(a.v-(previousY===null?0:Math.abs(a.y-previousY)*1.8)));
+    chosen=candidates[0];
+   }
+   if(chosen&&(!activeTrack||previousY===null||Math.abs(chosen.y-previousY)<=Math.max(5,h*.08))){
+    if(!activeTrack){activeTrack={points:[],start:x};tracks.push(activeTrack)}
+    activeTrack.points.push({x,y:chosen.y,v:chosen.v});previousY=chosen.y;
+   }else{activeTrack=null;previousY=null;if(chosen){activeTrack={points:[{x,y:chosen.y,v:chosen.v}],start:x};tracks.push(activeTrack);previousY=chosen.y}}
   }
+  const validTracks=tracks.filter(t=>t.points.length>=Math.max(7,Math.round((w/step)*.08)));
+  const curved=validTracks.map(t=>{
+   const p=t.points,n=p.length,mx=p.reduce((a,q)=>a+q.x,0)/n,my=p.reduce((a,q)=>a+q.y,0)/n;
+   const slope=p.reduce((a,q)=>a+(q.x-mx)*(q.y-my),0)/(p.reduce((a,q)=>a+(q.x-mx)**2,0)||1);
+   const residual=Math.sqrt(p.reduce((a,q)=>a+(q.y-(my+slope*(q.x-mx)))**2,0)/n);
+   const drift=p[p.length-1].y-p[0].y;
+   return {points:p,x_start:p[0].x,x_end:p[n-1].x,span_px:p[n-1].x-p[0].x+step,drift_y_px:drift,slope_px_per_x:Number(slope.toFixed(4)),curvature_residual_px:Number(residual.toFixed(2)),peak_mean_gray:Number((p.reduce((a,q)=>a+q.v,0)/n).toFixed(1))};
+  }).filter(t=>Math.abs(t.drift_y_px)>=Math.max(3,h*.01)||t.curvature_residual_px>=Math.max(2,h*.006));
+  const widths=validTracks.map(t=>{const xs=t.points.map(p=>p.x),ys=t.points.map(p=>p.y);return Math.max(...ys)-Math.min(...ys)+1});
+  const median=a=>{if(!a.length)return null;const b=[...a].sort((x,y)=>x-y);return b[Math.floor(b.length/2)]};
   const narrow=vLines.filter(p=>(p.end-p.start+1)<=Math.max(3,w*.012)).length;
-  const structure=100*active/(w*h),noise=sd;
+  const structure=100*active/(w*h),noise=sd,contrast=threshold-background;
   const out=$("sdrDetectionCanvas"),ox=out.getContext("2d");out.width=w;out.height=h;ox.drawImage(c,0,0);
-  ox.strokeStyle="#ffbd6b";ox.lineWidth=1.5;hLines.forEach(p=>{ox.strokeRect(0,p.start,w,p.end-p.start+1)});
-  ox.strokeStyle="#65dcff";vLines.forEach(p=>{ox.strokeRect(p.start,0,p.end-p.start+1,h)});
-  const report={analyzed_utc:new Date().toISOString(),image:{width:image.width,height:image.height},analysis:{threshold_gray:threshold,mean_gray:mean,standard_deviation_gray:sd,active_pixel_percent:structure,horizontal_bands:hLines.map(p=>({y_start:p.start,y_end:p.end})),vertical_bands:vLines.map(p=>({x_start:p.start,x_end:p.end})),curved_candidates:curves.map(p=>({x_start:p.x,window_pixels:p.span,vertical_variation_px:Number(p.amplitude.toFixed(2)),direction_changes:p.changes})),narrowband_columns:narrow}};
+  ox.strokeStyle="#ffbd6b";ox.lineWidth=1.5;hLines.forEach(p=>ox.strokeRect(0,p.start,w,p.end-p.start+1));
+  ox.strokeStyle="#65dcff";vLines.forEach(p=>ox.strokeRect(p.start,0,p.end-p.start+1,h));
+  ox.strokeStyle="#ff4fd8";ox.lineWidth=2;validTracks.forEach(t=>{ox.beginPath();t.points.forEach((p,i)=>i?ox.lineTo(p.x,p.y):ox.moveTo(p.x,p.y));ox.stroke()});
+  const report={analyzed_utc:new Date().toISOString(),image:{width:image.width,height:image.height,analysis_width:w,analysis_height:h},method:{background_gray_median:background,threshold_gray:Number(threshold.toFixed(2)),track_step_px:step,track_min_points:Math.max(7,Math.round((w/step)*.08)),continuity_limit_px:Number(Math.max(5,h*.08).toFixed(2))},metrics:{mean_gray:Number(mean.toFixed(2)),standard_deviation_gray:Number(sd.toFixed(2)),active_pixel_percent:Number(structure.toFixed(3)),contrast_threshold_minus_median:Number(contrast.toFixed(2)),horizontal_bands:hLines.map(p=>({y_start:p.start,y_end:p.end,height_px:p.end-p.start+1})),vertical_bands:vLines.map(p=>({x_start:p.start,x_end:p.end,width_px:p.end-p.start+1})),narrowband_regions:narrow,tracked_ridge_count:validTracks.length,curved_or_drifting_tracks:curved.map(({points,...t})=>t),median_track_vertical_extent_px:median(widths),track_coverage_percent:validTracks.length?Number((100*validTracks.reduce((a,t)=>a+t.points.length,0)/(validTracks.length*Math.ceil(w/step))).toFixed(1)):0}};
   result=report;
-  put("sdrHorizontal",hLines.length);put("sdrVertical",vLines.length);put("sdrCurved",curves.length);put("sdrNarrow",narrow);put("sdrStructure",structure.toFixed(1)+" %");put("sdrNoise",sd.toFixed(1)+" / 255");
-  put("sdrImageReport","Rozlišení "+image.width+" × "+image.height+" px; průměrný jas "+mean.toFixed(1)+"/255; směrodatná odchylka "+sd.toFixed(1)+"; aktivní pixely nad prahem "+threshold.toFixed(1)+": "+structure.toFixed(1)+" %. Vodorovné pásy: "+hLines.length+", svislé pásy: "+vLines.length+", kandidáti zakřivených struktur: "+curves.length+". "+(curves.length?"Nalezeny struktury s proměnnou polohou maxima jasu; je nutná vizuální kontrola.":"Nebyla nalezena výrazná zakřivená struktura podle zvoleného obrazového prahu."));
-  put("sdrImageStatus","Analýza dokončena · "+new Date().toISOString().replace("T"," ").slice(0,16)+" UTC · výpočet proběhl lokálně v prohlížeči.");
-  $("sdrDownloadAnalysis").disabled=false;
+  put("sdrHorizontal",hLines.length);put("sdrVertical",vLines.length);put("sdrCurved",curved.length);put("sdrNarrow",narrow);put("sdrStructure",structure.toFixed(1)+" %");put("sdrNoise",sd.toFixed(1)+" / 255");
+  const trackText=curved.length?curved.map((t,i)=>"Stopa "+(i+1)+": posun "+(t.drift_y_px>0?"+":"")+t.drift_y_px.toFixed(1)+" px; sklon "+t.slope_px_per_x+" px/px; odchylka od přímky "+t.curvature_residual_px+" px; délka "+t.span_px+" px").join(" | "):"Nebyly nalezeny dostatečně souvislé zakřivené nebo driftující stopy.";
+  put("sdrImageReport","Rozlišení analýzy "+w+" × "+h+" px (originál "+image.width+" × "+image.height+"). Medián pozadí "+background+"/255; práh "+threshold.toFixed(1)+"/255; kontrast prahu vůči mediánu "+contrast.toFixed(1); aktivní pixely "+structure.toFixed(2)+" %; směrodatná odchylka "+sd.toFixed(1)+". Vodorovné pásy: "+hLines.length+", svislé pásy: "+vLines.length+", úzké oblasti: "+narrow+". Sledované hřebeny: "+validTracks.length+"; jejich střední vertikální rozsah: "+(median(widths)===null?"—":median(widths)+" px")+". "+trackText+" Jednotky jsou pouze pixely; bez kalibrace os nelze určit Hz/MHz, sekundy ani rychlost driftu.");
+  put("sdrImageStatus","Pokročilá analýza dokončena · "+new Date().toISOString().replace("T"," ").slice(0,16)+" UTC · lokální výpočet v prohlížeči.");
  }
  $("sdrImageInput").addEventListener("change",e=>{
   const file=e.target.files&&e.target.files[0];if(!file)return;
