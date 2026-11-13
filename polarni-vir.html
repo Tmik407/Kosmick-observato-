@@ -2,10 +2,10 @@
 <html lang="cs">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#071426">
+<meta name="theme-color" content="#f3f7fb">
 <title>Polární vír X-5 | Kosmická observatoř</title>
 <style>
-:root{color-scheme:dark;--bg:#06111f;--panel:#0d2035;--line:#24445f;--text:#edf7ff;--muted:#63778a;--cyan:#65e3ff;--orange:#ffbd76;--red:#ff8585;--violet:#b7a0ff}
+:root{color-scheme:light;--bg:#f3f7fb;--panel:#ffffff;--line:#d7e1eb;--text:#172b3f;--muted:#5b6d7e;--cyan:#087fa5;--orange:#a85b12;--red:#b42318;--violet:#6941a5}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse at 50% -12%,#214b70 0,#0a1b2d 38%,#050d18 78%);color:var(--text);font:15px/1.55 Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;padding:clamp(10px,2vw,24px)}
 main{max-width:1320px;margin:auto}header{text-align:center;padding:30px 12px 26px;background:linear-gradient(135deg,rgba(22,57,84,.78),rgba(8,24,42,.35));border:1px solid #315674;border-radius:22px;margin-bottom:18px;box-shadow:0 18px 55px #0005}h1{font-size:clamp(28px,5vw,46px);letter-spacing:-.04em;margin:10px 0}h2{font-size:clamp(18px,2vw,22px);letter-spacing:-.02em;margin:0 0 14px}h3{font-size:16px;margin:22px 0 10px}.sub,.muted{color:var(--muted);line-height:1.65}
 .panel{background:linear-gradient(145deg,rgba(17,43,67,.97),rgba(8,25,43,.98));border:1px solid #2b4d69;border-radius:20px;padding:clamp(15px,2vw,24px);margin:16px 0;min-width:0;box-shadow:0 14px 38px #0003;}
@@ -204,7 +204,7 @@ async function loadArchive(){
  const fmt=v=>Number.isFinite(v)?v.toFixed(1).replace('.',','):'—';
  const parseCSV=t=>{const lines=t.trim().split(/\r?\n/);const headers=lines.shift().split(',').map(x=>x.trim().replace(/^"|"$/g,''));return {headers,rows:lines.map(l=>l.split(',').map(x=>x.trim().replace(/^"|"$/g,'')))}};
  const pick=(headers,tests)=>headers.findIndex(h=>tests.some(re=>re.test(h.toLowerCase().replace(/[^a-z0-9]/g,''))));
- const drawLine=(id,series,label,unit,zero=false)=>{const cv=$(id),cx=cv.getContext('2d'),w=cv.width,h=cv.height,p=48;cx.clearRect(0,0,w,h);cx.fillStyle='#07182a';cx.fillRect(0,0,w,h);const vals=series.map(x=>x.v).filter(Number.isFinite);if(!vals.length){cx.fillStyle='#63778a';cx.fillText('Data pro tento graf nebyla nalezena',p,40);return}let min=Math.min(...vals),max=Math.max(...vals);if(zero){min=Math.min(0,min);max=Math.max(0,max)}if(max===min){max+=1;min-=1}const y=v=>h-p-(v-min)/(max-min)*(h-2*p);for(let i=0;i<5;i++){const yy=p+i*(h-2*p)/4;cx.strokeStyle='#d8e2eb';cx.beginPath();cx.moveTo(p,yy);cx.lineTo(w-p,yy);cx.stroke();cx.fillStyle='#63778a';cx.font='13px Arial';cx.fillText((max-i*(max-min)/4).toFixed(1),5,yy+4)}if(zero&&min<0&&max>0){cx.strokeStyle='#ffbd76';cx.setLineDash([5,5]);cx.beginPath();cx.moveTo(p,y(0));cx.lineTo(w-p,y(0));cx.stroke();cx.setLineDash([])}cx.strokeStyle='#63dfff';cx.lineWidth=2.5;cx.beginPath();series.forEach((d,i)=>{const x=p+i*(w-2*p)/Math.max(1,series.length-1);if(i===0)cx.moveTo(x,y(d.v));else cx.lineTo(x,y(d.v))});cx.stroke();cx.fillStyle='#edf6ff';cx.font='bold 14px Arial';cx.fillText(label+' ('+unit+')',p,22);cx.fillStyle='#63778a';cx.fillText(series[0].d,p,h-12);cx.fillText(series[series.length-1].d,w-p-90,h-12)};
+ const drawLine=(id,series,label,unit,zero=false)=>{const cv=$(id),cx=cv.getContext('2d'),w=cv.width,h=cv.height,p=48;cx.clearRect(0,0,w,h);cx.fillStyle='#07182a';cx.fillRect(0,0,w,h);const vals=series.map(x=>x.v).filter(Number.isFinite);if(!vals.length){cx.fillStyle='#63778a';cx.fillText('Data pro tento graf nebyla nalezena',p,40);return}let min=Math.min(...vals),max=Math.max(...vals);if(zero){min=Math.min(0,min);max=Math.max(0,max)}if(max===min){max+=1;min-=1}const y=v=>h-p-(v-min)/(max-min)*(h-2*p);for(let i=0;i<5;i++){const yy=p+i*(h-2*p)/4;cx.strokeStyle='#d8e2eb';cx.beginPath();cx.moveTo(p,yy);cx.lineTo(w-p,yy);cx.stroke();cx.fillStyle='#63778a';cx.font='13px Arial';cx.fillText((max-i*(max-min)/4).toFixed(1),5,yy+4)}if(zero&&min<0&&max>0){cx.strokeStyle='#a85b12';cx.setLineDash([5,5]);cx.beginPath();cx.moveTo(p,y(0));cx.lineTo(w-p,y(0));cx.stroke();cx.setLineDash([])}cx.strokeStyle='#63dfff';cx.lineWidth=2.5;cx.beginPath();series.forEach((d,i)=>{const x=p+i*(w-2*p)/Math.max(1,series.length-1);if(i===0)cx.moveTo(x,y(d.v));else cx.lineTo(x,y(d.v))});cx.stroke();cx.fillStyle='#edf6ff';cx.font='bold 14px Arial';cx.fillText(label+' ('+unit+')',p,22);cx.fillStyle='#63778a';cx.fillText(series[0].d,p,h-12);cx.fillText(series[series.length-1].d,w-p-90,h-12)};
  try{
  const [uText,wText,metaText]=await Promise.all([
  fetch('./data/u60_daily.csv?x='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('u60_daily.csv HTTP '+r.status);return r.text()}),
@@ -281,7 +281,7 @@ function analyzeVertical(rows){
 function drawNasaSeries(canvasId,rows,type,title,unit){
  const cv=$(canvasId),g=cv.getContext('2d'),w=cv.width,h=cv.height,p=55;
  g.clearRect(0,0,w,h);g.fillStyle='#07182a';g.fillRect(0,0,w,h);
- const colors={10:'#63dfff',30:'#ffbd76',50:'#b69cff'};
+ const colors={10:'#63dfff',30:'#a85b12',50:'#b69cff'};
  const levels=[10,30,50],all=[];
  for(const lev of levels)for(const r of rows)if(Number.isFinite(r[type][lev]))all.push(r[type][lev]);
  if(!all.length){g.fillStyle='#63778a';g.font='16px Arial';g.fillText('V importovaném souboru nebyla nalezena odpovídající řada.',p,42);return;}
@@ -323,10 +323,10 @@ async function loadNasaVerticalWind(){
  try{
   const levels=[10,30,50],series=await Promise.all(levels.map(async lev=>{const r=await fetch("./data/nasa-gsfc/u60_"+lev+"hpa_60n_ozonewatch.csv?v="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("U60 "+lev+" hPa HTTP "+r.status);const lines=(await r.text()).trim().split(/\r?\n/);return {lev,rows:lines.slice(1).map(line=>{const a=line.split(",");return {date:a[0],v:Number(a[1]),fc:Number(a[2])}}).filter(x=>x.date&&Number.isFinite(x.v)&&x.v>-9000&&x.fc>=0)};}));
   g.clearRect(0,0,w,h);g.fillStyle="#07182a";g.fillRect(0,0,w,h);
-  const colors={10:"#63dfff",30:"#ffbd76",50:"#b69cff"},all=series.flatMap(q=>q.rows.map(x=>x.v-273.15));let min=Math.min(0,...all),max=Math.max(0,...all);if(min===max){min-=1;max+=1;}
+  const colors={10:"#63dfff",30:"#a85b12",50:"#b69cff"},all=series.flatMap(q=>q.rows.map(x=>x.v-273.15));let min=Math.min(0,...all),max=Math.max(0,...all);if(min===max){min-=1;max+=1;}
   const y=v=>h-p-(v-min)/(max-min)*(h-2*p);
   for(let i=0;i<5;i++){const v=max-i*(max-min)/4,yy=y(v);g.strokeStyle="#d8e2eb";g.beginPath();g.moveTo(p,yy);g.lineTo(w-p,yy);g.stroke();g.fillStyle="#63778a";g.font="13px Arial";g.fillText(v.toFixed(1),5,yy+4);}
-  g.strokeStyle="#ffbd76";g.setLineDash([5,5]);g.beginPath();g.moveTo(p,y(0));g.lineTo(w-p,y(0));g.stroke();g.setLineDash([]);
+  g.strokeStyle="#a85b12";g.setLineDash([5,5]);g.beginPath();g.moveTo(p,y(0));g.lineTo(w-p,y(0));g.stroke();g.setLineDash([]);
   for(const q of series){const a=q.rows.slice(-120);g.beginPath();a.forEach((x,i)=>{const xx=p+i*(w-2*p)/Math.max(1,a.length-1);if(i===0)g.moveTo(xx,y(x.v-273.15));else g.lineTo(xx,y(x.v-273.15));});g.strokeStyle=colors[q.lev];g.lineWidth=3;g.stroke();}
   let legend="";for(const q of series){const last=q.rows[q.rows.length-1],hist=q.rows.filter(x=>x.fc===0),analysis=hist[hist.length-1],forecast=q.rows.filter(x=>x.fc>0);legend+=q.lev+" hPa: poslední "+last.date+" = "+last.v.toFixed(2)+" m/s"+(last.fc>0?" (předpověď +"+last.fc+" h)":" (analýza)")+"; ";}
   g.fillStyle="#edf6ff";g.font="bold 14px Arial";g.fillText("U60 na 60° N · m/s · posledních až 120 dní",p,22);
@@ -343,7 +343,7 @@ async function loadNasaVerticalTemp(){
    return {lev,rows:lines.slice(1).map(line=>{const a=line.split(",");return {date:a[0],v:Number(a[1]),fc:Number(a[2])};}).filter(x=>x.date&&Number.isFinite(x.v)&&x.v>-9000&&x.fc>=0)};
   }));
   g.clearRect(0,0,w,h);g.fillStyle="#07182a";g.fillRect(0,0,w,h);
-  const colors={10:"#63dfff",30:"#ffbd76",50:"#b69cff"},all=series.flatMap(q=>q.rows.map(x=>x.v-273.15));
+  const colors={10:"#63dfff",30:"#a85b12",50:"#b69cff"},all=series.flatMap(q=>q.rows.map(x=>x.v-273.15));
   if(!all.length)throw Error("V souborech nejsou platné hodnoty analýzy ani předpovědi.");
   let min=Math.min(...all),max=Math.max(...all);if(min===max){min-=1;max+=1;}
   const y=v=>h-p-(v-min)/(max-min)*(h-2*p);
@@ -400,7 +400,7 @@ async function loadNasaMirror(){
   let min=Math.min(...vals),max=Math.max(...vals);if(zero){min=Math.min(0,min);max=Math.max(0,max)}if(min===max){min-=1;max+=1}
   const y=v=>h-p-(v-min)/(max-min)*(h-2*p);
   for(let i=0;i<5;i++){const v=max-i*(max-min)/4,yy=y(v);g.strokeStyle='#d8e2eb';g.beginPath();g.moveTo(p,yy);g.lineTo(w-p,yy);g.stroke();g.fillStyle='#63778a';g.font='13px Arial';g.fillText(v.toFixed(1),4,yy+4)}
-  if(zero&&min<0&&max>0){g.strokeStyle='#ffbd76';g.setLineDash([5,5]);g.beginPath();g.moveTo(p,y(0));g.lineTo(w-p,y(0));g.stroke();g.setLineDash([])}
+  if(zero&&min<0&&max>0){g.strokeStyle='#a85b12';g.setLineDash([5,5]);g.beginPath();g.moveTo(p,y(0));g.lineTo(w-p,y(0));g.stroke();g.setLineDash([])}
   g.strokeStyle='#63dfff';g.lineWidth=2.5;g.beginPath();a.forEach((x,i)=>{const xx=p+i*(w-2*p)/Math.max(1,a.length-1);if(i===0)g.moveTo(xx,y(x.v));else g.lineTo(xx,y(x.v))});g.stroke();
   g.fillStyle='#edf6ff';g.font='bold 14px Arial';g.fillText(label+' ('+unit+')',p,22);g.fillStyle='#63778a';g.font='12px Arial';g.fillText(a[0]?.d||'',p,h-12);g.fillText(a[a.length-1]?.d||'',w-p-90,h-12);
  };
@@ -483,7 +483,7 @@ setInterval(refreshX5Infographic,30*60*1000);
   const k=field.value==='temperature'?'temperature_':field.value==='wind'?'wind_speed_':'geopotential_height_',lev=level.value+'hPa',idx=Number(time.value)||0;
   const vals=rows.map(d=>d.hourly&&d.hourly[k+lev]&&d.hourly[k+lev][idx]).filter(Number.isFinite);if(!vals.length)return;
   const lo=Math.min(...vals),hi=Math.max(...vals);
-  rows.forEach(d=>{const v=d.hourly&&d.hourly[k+lev]&&d.hourly[k+lev][idx];if(!Number.isFinite(v))return;const p=xy(d.latitude,d.longitude),t=(v-lo)/(hi-lo||1);ctx.beginPath();ctx.arc(p.x,p.y,20,0,Math.PI*2);ctx.fillStyle='hsl('+(240-240*t)+',88%,55%)';ctx.fill();ctx.strokeStyle='#fff9';ctx.stroke();
+  rows.forEach(d=>{const v=d.hourly&&d.hourly[k+lev]&&d.hourly[k+lev][idx];if(!Number.isFinite(v))return;const p=xy(d.latitude,d.longitude),t=(v-lo)/(hi-lo||1);ctx.beginPath();ctx.arc(p.x,p.y,20,0,Math.PI*2);ctx.fillStyle='hsl('+(240-240*t)+',88%,55%)';ctx.fill();ctx.strokeStyle='#52677a';ctx.stroke();
    const sp=d.hourly['wind_speed_'+lev]?.[idx],dr=d.hourly['wind_direction_'+lev]?.[idx];if(Number.isFinite(sp)&&Number.isFinite(dr)){const a=(dr+180)*Math.PI/180,L=8+Math.min(22,sp*.18);ctx.strokeStyle='white';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+Math.sin(a)*L,p.y-Math.cos(a)*L);ctx.stroke();}
   });
   ctx.fillStyle='#fff';ctx.font='16px Arial';ctx.fillText((field.value==='temperature'?'TEPLOTA':field.value==='wind'?'RYCHLOST VĚTRU':'GEOPOTENCIÁLNÍ VÝŠKA')+' · '+lo.toFixed(1)+' až '+hi.toFixed(1)+(field.value==='temperature'?' °C':field.value==='wind'?' km/h':' m'),28,H-25);
@@ -513,10 +513,10 @@ setInterval(refreshX5Infographic,30*60*1000);
  const num=x=>{const n=Number(x);return Number.isFinite(n)?n:null;};
  function chart(id,series,title,unit){
   const c=$(id);if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height,p=55;g.clearRect(0,0,w,h);g.fillStyle='#ffffff';g.fillRect(0,0,w,h);
-  const vals=series.map(x=>x.v).filter(Number.isFinite);if(!vals.length){g.fillStyle='#d4e5f3';g.font='18px Arial';g.fillText('Data nejsou k dispozici',p,45);return;}
+  const vals=series.map(x=>x.v).filter(Number.isFinite);if(!vals.length){g.fillStyle='#5b6d7e';g.font='18px Arial';g.fillText('Data nejsou k dispozici',p,45);return;}
   let lo=Math.min(...vals),hi=Math.max(...vals);if(lo===hi){lo-=1;hi+=1;}const y=v=>h-p-(v-lo)/(hi-lo)*(h-2*p);
   g.font='13px Arial';g.fillStyle='#5b6d7e';g.strokeStyle='#d8e2eb';for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,yy=y(v);g.beginPath();g.moveTo(p,yy);g.lineTo(w-p,yy);g.stroke();g.fillText(v.toFixed(1)+' '+unit,4,yy-4);}
-  g.strokeStyle='#65dfff';g.lineWidth=2.5;g.beginPath();series.forEach((x,i)=>{const xx=p+i*(w-2*p)/Math.max(1,series.length-1);if(i===0)g.moveTo(xx,y(x.v));else g.lineTo(xx,y(x.v));});g.stroke();
+  g.strokeStyle='#087fa5';g.lineWidth=2.5;g.beginPath();series.forEach((x,i)=>{const xx=p+i*(w-2*p)/Math.max(1,series.length-1);if(i===0)g.moveTo(xx,y(x.v));else g.lineTo(xx,y(x.v));});g.stroke();
   g.fillStyle='#eaf6ff';g.font='bold 16px Arial';g.fillText(title,p,22);g.fillStyle='#63778a';g.font='12px Arial';if(series.length){g.fillText(series[0].d,p,h-12);g.fillText(series[series.length-1].d,w-p-90,h-12);}
  }
  async function load(){
@@ -570,7 +570,7 @@ setInterval(refreshX5Infographic,30*60*1000);
    function vertical(id,key,unit,convert){
  const c=$(id);if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height,p={l:105,r:90,t:48,b:48};
  g.clearRect(0,0,w,h);g.fillStyle='#ffffff';g.fillRect(0,0,w,h);
- const cols={10:'#65dfff',30:'#ffbd76',50:'#b7a0ff'},levels=[10,30,50],ys={10:78,30:150,50:222};
+ const cols={10:'#087fa5',30:'#a85b12',50:'#6941a5'},levels=[10,30,50],ys={10:78,30:150,50:222};
  const vals=series.map(q=>{const a=q[key],x=a[a.length-1];return {l:q.l,x,v:x?convert(num(key==='u'?x.u60_ms:x.temp_k)):null};}).filter(z=>z.v!==null&&Number.isFinite(z.v));
  g.font='bold 17px Arial';g.fillStyle='#20364a';g.fillText(key==='u'?'Zonální vítr U60 · poslední analýza':'Teplota polární čepičky · poslední analýza',p.l,25);
  levels.forEach(l=>{const y=ys[l];g.strokeStyle='#d8e2eb';g.lineWidth=1;g.beginPath();g.moveTo(p.l,y);g.lineTo(w-p.r,y);g.stroke();g.fillStyle=cols[l];g.font='bold 17px Arial';g.fillText(l+' hPa',24,y+6);});
@@ -599,7 +599,7 @@ setInterval(refreshX5Infographic,30*60*1000);
   }catch(e){for(const id of ['nasaVerticalWindStatus','nasaVerticalTempStatus','nasaCombinedStatus'])if($(id))$(id).textContent='NASA archiv není dostupný: '+e.message;}
  }
  function multi30(id,series,key,convert,unit,title){
-  const c=$(id);if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height,p={l:75,r:35,t:42,b:48},cols={10:'#65dfff',30:'#ffbd76',50:'#b7a0ff'};
+  const c=$(id);if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height,p={l:75,r:35,t:42,b:48},cols={10:'#087fa5',30:'#a85b12',50:'#6941a5'};
   g.clearRect(0,0,w,h);g.fillStyle='#ffffff';g.fillRect(0,0,w,h);g.font='bold 17px Arial';g.fillStyle='#20364a';g.fillText(title,w? p.l:0,24);
   const endDates=series.flatMap(q=>q[key].map(x=>x.date)).sort();if(!endDates.length){g.fillStyle='#5b6d7e';g.font='16px Arial';g.fillText('Pro posledních 30 dní nejsou dostupné analytické hodnoty.',p.l,100);return;}
   const end=endDates[endDates.length-1],start=shiftDate(end,-29),days=Array.from({length:30},(_,i)=>shiftDate(start,i));
