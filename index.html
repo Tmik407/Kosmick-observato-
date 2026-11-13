@@ -1129,9 +1129,15 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  <h2>3D globus ionosféry X-5 – živá data</h2>
  <div class="small">Interaktivní globus s globální vrstvou NOAA D-RAP (HAF – modelová absorpce HF) a skutečnými staničními měřeními GIRO. Otoč glóbus tažením prstu nebo myší. Barevný povrch je model D-RAP, body jsou měření ionosond; nejde o přímé globální měření výšky vrstev.</div>
  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">
-  <button id="ionoGlobeRefresh" type="button">Obnovit reálná data</button>
-  <button id="ionoGlobeReset" type="button">Výchozí pohled</button>
+  <button id="ionoGlobeRefresh" type="button">Obnovit reálná data</button><button id="ionoGlobeReset" type="button">Výchozí pohled</button><button id="ionoTimePlay" type="button">▶ Přehrát 6 hodin</button><button id="ionoTimeNow" type="button">Nyní</button>
  </div>
+ <div style="background:#081a2c;border:1px solid #294765;border-radius:10px;padding:12px;margin:10px 0">
+  <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><strong>Časová animace – den/noc a sluneční erupce</strong><span id="ionoTimeLabel" class="small">Načítám…</span></div>
+  <input id="ionoTimeSlider" type="range" min="0" max="100" value="100" step="1" style="width:100%;margin:12px 0">
+  <div id="ionoXrayStatus" class="small">Čekám na GOES data.</div>
+  <div class="grid" style="margin-top:8px"><div><div class="small">GOES 0,1–0,8 nm</div><div id="ionoXrayValue" class="metric">—</div></div><div><div class="small">Třída erupce</div><div id="ionoXrayClass" class="metric">—</div></div><div><div class="small">Subsolární bod</div><div id="ionoDayNight" class="metric">—</div></div><div><div class="small">Modelová odezva</div><div id="ionoLayerResponse" class="metric">—</div></div></div>
+ </div>
+ <div style="background:#081a2c;border:1px solid #294765;border-radius:10px;padding:12px;margin:10px 0"><strong>Schematický řez ionosférou</strong><canvas id="ionoLayerCanvas" width="900" height="230" style="width:100%;height:auto;display:block"></canvas><div class="small">Výšky D/E/F1/F2 jsou orientační. Změna intenzity je kvalitativní ilustrace podle GOES toku, nikoli měřený profil elektronové hustoty.</div></div>
  <div style="position:relative;background:#030b18;border:1px solid #294765;border-radius:14px;overflow:hidden">
   <canvas id="ionoGlobeCanvas" width="900" height="650" aria-label="Interaktivní globus ionosféry s vrstvou NOAA D-RAP a stanicemi GIRO" style="width:100%;height:auto;display:block;touch-action:pan-y"></canvas>
   <div id="ionoGlobeOverlay" style="position:absolute;left:10px;top:10px;background:#07182bdc;padding:8px 10px;border-radius:8px;font-size:12px">Načítám globální data…</div>
@@ -1151,7 +1157,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
 <script>
 (function(){
  const $=id=>document.getElementById(id),canvas=$("ionoGlobeCanvas");if(!canvas)return;
- const ctx=canvas.getContext("2d");let drap=null,stations=[],rotation=0,tilt=0.12,drag=null,selected=null,updated=null;
+ const ctx=canvas.getContext("2d");let drap=null,stations=[],rotation=0,tilt=0.12,drag=null,selected=null,updated=null,xray=[],playTimer=null,playIndex=0,animTime=Date.now();
  const rad=v=>v*Math.PI/180;
  function parseDrap(text){
   const lines=text.split(/\r?\n/),head=lines.find(l=>/^\s*-?\d+(?:\s+-?\d+){20,}\s*$/.test(l));
@@ -1177,6 +1183,13 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   return {x:canvas.width*.5+R*x,y:canvas.height*.51-R*y,z,R};
  }
  function color(v){if(!Number.isFinite(v)||v<0)return null;if(v<5)return "#2678c8";if(v<10)return "#23a879";if(v<15)return "#d5bd37";return "#e45c42"}
+ function sunPosition(ms){const d=new Date(ms),day=Math.floor((Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())-Date.UTC(d.getUTCFullYear(),0,0))/86400000),g=2*Math.PI/365*(day-1+(d.getUTCHours()-12)/24),dec=.006918-.399912*Math.cos(g)+.070257*Math.sin(g)-.006758*Math.cos(2*g)+.000907*Math.sin(2*g)-.002697*Math.cos(3*g)+.00148*Math.sin(3*g),lon=((180-(d.getUTCHours()+d.getUTCMinutes()/60)*15+540)%360)-180;return {lat:dec*180/Math.PI,lon}}
+ function solarZenithCos(lat,lon,sp){return Math.sin(rad(lat))*Math.sin(rad(sp.lat))+Math.cos(rad(lat))*Math.cos(rad(sp.lat))*Math.cos(rad(lon-sp.lon))}
+ function nearestXray(ms){if(!xray.length)return null;let b=null,delta=Infinity;for(const q of xray){const d=Math.abs(q.t-ms);if(d<delta){delta=d;b=q}}return b&&delta<=15*60000?b:null}
+ function flareClass(v){if(!(v>0))return "—";const p=Math.floor(Math.log10(v));return (p>=-4?"X":p>=-5?"M":p>=-6?"C":p>=-7?"B":"A")+(v/Math.pow(10,p)).toFixed(1)}
+ function drawLayers(level=0){const c=$("ionoLayerCanvas"),g=c.getContext("2d"),w=c.width;g.clearRect(0,0,w,c.height);g.fillStyle="#061426";g.fillRect(0,0,w,c.height);const bands=[["D",60,90,"#3189e8"],["E",90,150,"#2bc58b"],["F1",150,220,"#e6cf45"],["F2",220,500,"#f28a39"]],base=190,scale=.30;g.fillStyle="#17608d";g.fillRect(0,base,w,28);g.fillStyle="#d6eaff";g.font="15px sans-serif";g.fillText("Zemský povrch",18,base+20);bands.forEach((b,i)=>{const y=base-b[1]*scale,hh=Math.max(12,(b[2]-b[1])*scale);g.globalAlpha=.35+level*.5;g.fillStyle=b[3];g.fillRect(180+i*165,y,135,hh);g.globalAlpha=1;g.fillStyle="#fff";g.fillText(b[0]+" · "+b[1]+"–"+b[2]+" km",185+i*165,y-7)});g.fillStyle="#c4d9ec";g.font="13px sans-serif";g.fillText("Intenzita grafiky podle GOES: "+(level>.75?"vysoká":level>.5?"zvýšená":level>.25?"mírná":"nízká"),18,218)}
+ function setAnimTime(ms){animTime=ms;const q=nearestXray(ms),sp=sunPosition(ms);if(xray.length){playIndex=xray.reduce((best,r,i)=>Math.abs(r.t-ms)<Math.abs(xray[best].t-ms)?i:best,0);$("ionoTimeSlider").value=String(Math.round(100*playIndex/Math.max(1,xray.length-1)))}$("ionoTimeLabel").textContent=new Date(ms).toISOString().replace("T"," ").slice(0,16)+" UTC";$("ionoXrayValue").textContent=q?q.flux.toExponential(2)+" W/m²":"—";$("ionoXrayClass").textContent=q?flareClass(q.flux):"—";$("ionoDayNight").textContent=sp.lat.toFixed(1)+"° / "+sp.lon.toFixed(1)+"°";const level=q?Math.max(0,Math.min(1,(Math.log10(q.flux)+7)/4)):0;$("ionoLayerResponse").textContent=q?(level>.75?"silná rentgenová aktivita":level>.5?"zvýšená aktivita":level>.25?"mírná aktivita":"nízká aktivita"):"bez blízkého GOES vzorku";$("ionoXrayStatus").textContent=q?"GOES vzorek "+new Date(q.t).toISOString()+" · odchylka "+Math.round(Math.abs(q.t-ms)/60000)+" min":"Pro tento čas není dostupný blízký GOES vzorek.";draw();drawLayers(level)}
+
  function draw(){
   const W=canvas.width,H=canvas.height;ctx.clearRect(0,0,W,H);
   const R=Math.min(W,H)*.405,cx=W/2,cy=H*.51;
@@ -1184,12 +1197,14 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   ctx.strokeStyle="#244968";ctx.lineWidth=1;for(let a=0;a<360;a+=15){ctx.beginPath();ctx.arc(cx,cy,R+12,rad(a),rad(a+1));ctx.stroke()}
   ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fillStyle="#0b2740";ctx.fill();ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.clip();
   // D-RAP model cells rendered as a colored global surface, only on the visible hemisphere.
-  if(drap){for(let ri=0;ri<drap.rows.length;ri++){const row=drap.rows[ri],lat=row.lat;for(let j=0;j<drap.lons.length;j++){const v=row.vals[j],col=color(v);if(!col)continue;const lon=drap.lons[j],p=project(lat,lon);if(p.z<=0)continue;const size=Math.max(3,R*rad(4.2));ctx.globalAlpha=.62;ctx.fillStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,size,0,Math.PI*2);ctx.fill()}}}
+  const sun=sunPosition(animTime);if(drap){for(let ri=0;ri<drap.rows.length;ri++){const row=drap.rows[ri],lat=row.lat;for(let j=0;j<drap.lons.length;j++){const v=row.vals[j],col=color(v);if(!col)continue;const lon=drap.lons[j],p=project(lat,lon);if(p.z<=0)continue;const daylight=solarZenithCos(lat,lon,sun),size=Math.max(3,R*rad(4.2));ctx.globalAlpha=.22+(daylight>0?.48:.10);ctx.fillStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,size,0,Math.PI*2);ctx.fill()}}}
   ctx.globalAlpha=1;ctx.strokeStyle="#8cb6d4";ctx.lineWidth=1.2;
   for(let lat=-60;lat<=60;lat+=30){ctx.beginPath();let open=false;for(let lon=-180;lon<=180;lon+=3){const p=project(lat,lon);if(p.z>0){if(!open){ctx.moveTo(p.x,p.y);open=true}else ctx.lineTo(p.x,p.y)}else open=false}ctx.stroke()}
   for(let lon=-150;lon<=180;lon+=30){ctx.beginPath();let open=false;for(let lat=-90;lat<=90;lat+=3){const p=project(lat,lon);if(p.z>0){if(!open){ctx.moveTo(p.x,p.y);open=true}else ctx.lineTo(p.x,p.y)}else open=false}ctx.stroke()}
-  // Stylized day/night terminator, explicitly illustrative.
-  ctx.fillStyle="#020814";ctx.globalAlpha=.22;ctx.beginPath();ctx.ellipse(cx+R*.56,cy,R*.48,R,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+  // Denní/noční rozhraní podle astronomické polohy Slunce v animovaném UTC čase.
+  const terminator=[];for(let lat=-90;lat<=90;lat+=2){let bestLon=0,best=2;for(let lon=-180;lon<=180;lon+=2){const q=Math.abs(solarZenithCos(lat,lon,sun));if(q<best){best=q;bestLon=lon}}const p=project(lat,bestLon);if(p.z>0)terminator.push(p)}
+  if(terminator.length>2){ctx.beginPath();terminator.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle="#f8df91";ctx.lineWidth=2;ctx.setLineDash([5,5]);ctx.stroke();ctx.setLineDash([])}
+  for(let lat=-84;lat<=84;lat+=6)for(let lon=-180;lon<180;lon+=6){if(solarZenithCos(lat,lon,sun)>=0)continue;const p=project(lat,lon);if(p.z<=0)continue;ctx.globalAlpha=.16;ctx.fillStyle="#020611";ctx.beginPath();ctx.arc(p.x,p.y,Math.max(2,R*rad(3.1)),0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;
   stations.forEach((st,i)=>{const p=project(st.lat,st.lon);if(p.z<=0)return;const v=st.fof2??st.muf??st.foe??0;ctx.beginPath();ctx.arc(p.x,p.y,selected===i?8:5,0,Math.PI*2);ctx.fillStyle=st.fof2!==null?"#ffffff":"#9fe8ff";ctx.fill();ctx.strokeStyle="#062039";ctx.lineWidth=2;ctx.stroke();if(selected===i){ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,12,0,Math.PI*2);ctx.stroke()}});
   ctx.restore();ctx.strokeStyle="#78a8cc";ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.stroke();
   ctx.fillStyle="#d9edff";ctx.font="18px sans-serif";ctx.textAlign="center";ctx.fillText("GLOBÁLNÍ IONOSFÉRA",cx,35);
@@ -1208,11 +1223,13 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   $("ionoGlobeOverlay").textContent="Načítám NOAA D-RAP a GIRO…";
   const tasks=await Promise.allSettled([
    fetch("https://services.swpc.noaa.gov/text/drap_global_frequencies.txt",{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("NOAA HTTP "+r.status);return r.text()}),
-   fetch("https://prop.kc2g.com/api/stations.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("GIRO HTTP "+r.status);return r.json()})
+   fetch("https://prop.kc2g.com/api/stations.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("GIRO HTTP "+r.status);return r.json()}),
+   fetch("https://services.swpc.noaa.gov/json/goes/primary/xrays-6-hour.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("GOES HTTP "+r.status);return r.json()})
   ]);
   const errors=[];
   if(tasks[0].status==="fulfilled"){try{drap=parseDrap(tasks[0].value)}catch(e){errors.push(e.message)}}else errors.push("NOAA D-RAP nedostupný");
   if(tasks[1].status==="fulfilled"){try{stations=parseStations(tasks[1].value)}catch(e){errors.push(e.message)}}else errors.push("GIRO nedostupné");
+  if(tasks[2].status==="fulfilled"){xray=(Array.isArray(tasks[2].value)?tasks[2].value:[]).filter(r=>r.energy==="0.1-0.8nm"||r.energy==="0.1-0.8 nm").map(r=>({t:Date.parse(r.time_tag),flux:Number(r.flux)})).filter(r=>Number.isFinite(r.t)&&Number.isFinite(r.flux)&&r.flux>0).sort((a,b)=>a.t-b.t);if(!xray.length)errors.push("GOES bez platných vzorků")}else errors.push("GOES X-ray nedostupné");
   updated=new Date().toISOString();$("ionoGlobeTime").textContent=drap?drap.valid:"nedostupné";
   $("ionoGlobeStations").textContent=stations.length;
   const f=stations.map(x=>x.fof2).filter(Number.isFinite),m=stations.map(x=>x.muf).filter(Number.isFinite);
@@ -1221,8 +1238,11 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   $("ionoGlobeOverlay").textContent=(errors.length?errors.join(" · "):"Data načtena")+" · "+updated.slice(11,19)+" UTC";
   draw();
  }
- $("ionoGlobeRefresh").addEventListener("click",load);load();setInterval(()=>{if(!document.hidden)load()},5*60*1000);
- draw();
+ $("ionoGlobeRefresh").addEventListener("click",load);
+ $("ionoTimeSlider").addEventListener("input",e=>{if(!xray.length)return;playIndex=Math.round(Number(e.target.value)/100*(xray.length-1));setAnimTime(xray[playIndex].t)});
+ $("ionoTimePlay").addEventListener("click",()=>{if(playTimer){clearInterval(playTimer);playTimer=null;$("ionoTimePlay").textContent="▶ Přehrát 6 hodin";return}if(!xray.length){$("ionoXrayStatus").textContent="Nejsou načtena data GOES.";return}if(playIndex>=xray.length-1)playIndex=0;$("ionoTimePlay").textContent="Ⅱ Pozastavit";playTimer=setInterval(()=>{playIndex++;if(playIndex>=xray.length){clearInterval(playTimer);playTimer=null;$("ionoTimePlay").textContent="▶ Přehrát 6 hodin";return}setAnimTime(xray[playIndex].t)},450)});
+ $("ionoTimeNow").addEventListener("click",()=>{if(playTimer){clearInterval(playTimer);playTimer=null;$("ionoTimePlay").textContent="▶ Přehrát 6 hodin"}setAnimTime(Date.now())});
+ load();setInterval(()=>{if(!document.hidden)load()},5*60*1000);setAnimTime(Date.now());drawLayers(0);draw();
 })();
 </script>
 
