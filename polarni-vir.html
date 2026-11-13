@@ -488,4 +488,63 @@ setInterval(refreshX5Infographic,30*60*1000);
  level.addEventListener('change',load);field.addEventListener('change',draw);time.addEventListener('change',draw);
  base();ctx.fillStyle='#dce9f4';ctx.font='18px Arial';ctx.fillText('Polární síť připravena – načítám aktuální model…',28,75);load();
 })();
+</script>
+<script>
+(function(){
+ const $=id=>document.getElementById(id);
+ const csv=async path=>{const r=await fetch(path+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error(path+' HTTP '+r.status);const t=await r.text();const lines=t.trim().split(/\r?\n/);const h=lines.shift().split(',');return lines.map(line=>{const a=line.split(',');const o={};h.forEach((k,i)=>o[k.trim()]=a[i]===undefined?'':a[i].trim());return o;});};
+ const num=x=>{const n=Number(x);return Number.isFinite(n)?n:null;};
+ function chart(id,series,title,unit){
+  const c=$(id);if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height,p=55;g.clearRect(0,0,w,h);g.fillStyle='#081a2b';g.fillRect(0,0,w,h);
+  const vals=series.map(x=>x.v).filter(Number.isFinite);if(!vals.length){g.fillStyle='#d4e5f3';g.font='18px Arial';g.fillText('Data nejsou k dispozici',p,45);return;}
+  let lo=Math.min(...vals),hi=Math.max(...vals);if(lo===hi){lo-=1;hi+=1;}const y=v=>h-p-(v-lo)/(hi-lo)*(h-2*p);
+  g.font='13px Arial';g.fillStyle='#b7cadd';g.strokeStyle='#29445e';for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,yy=y(v);g.beginPath();g.moveTo(p,yy);g.lineTo(w-p,yy);g.stroke();g.fillText(v.toFixed(1)+' '+unit,4,yy-4);}
+  g.strokeStyle='#65dfff';g.lineWidth=2.5;g.beginPath();series.forEach((x,i)=>{const xx=p+i*(w-2*p)/Math.max(1,series.length-1);if(i===0)g.moveTo(xx,y(x.v));else g.lineTo(xx,y(x.v));});g.stroke();
+  g.fillStyle='#eaf6ff';g.font='bold 16px Arial';g.fillText(title,p,22);g.fillStyle='#9db5ca';g.font='12px Arial';if(series.length){g.fillText(series[0].d,p,h-12);g.fillText(series[series.length-1].d,w-p-90,h-12);}
+ }
+ async function load(){
+  const status=$('archiveStatus'),main=$('dataStatus');if(main)main.textContent='Načítám ERA5 a NASA Ozone Watch…';
+  try{
+   const [era,wave]=await Promise.all([csv('./data/u60_daily.csv'),csv('./data/wave_forcing_daily.csv')]);
+   const valid=era.filter(x=>x.date&&num(x.u60_10hpa_60n_ms)!==null&&num(x.capT_10hpa_n_k)!==null);
+   const last=valid[valid.length-1];if(!last)throw Error('ERA5 archiv neobsahuje platný poslední záznam');
+   const celsius=num(last.capT_10hpa_n_k)-273.15;
+   if($('wind'))$('wind').textContent=num(last.u60_10hpa_60n_ms).toFixed(2)+' m/s';
+   if($('temp'))$('temp').textContent=celsius.toFixed(2)+' °C';
+   if($('u60latest'))$('u60latest').textContent=num(last.u60_10hpa_60n_ms).toFixed(2)+' m/s';
+   if($('u60date'))$('u60date').textContent=last.date+' · ERA5';
+   if($('capLatest'))$('capLatest').textContent=celsius.toFixed(2)+' °C';
+   if($('capDate'))$('capDate').textContent=last.date+' · ERA5';
+   if($('recordCount'))$('recordCount').textContent=valid.length.toLocaleString('cs-CZ');
+   if($('archiveRange'))$('archiveRange').textContent=valid[0].date+' až '+last.date;
+   const w=wave.filter(x=>x.date&&num(x.z10_wave1_60n)!==null);const wl=w[w.length-1];if(wl){if($('heatLatest'))$('heatLatest').textContent=num(wl.z10_wave1_60n).toFixed(2);if($('heatDate'))$('heatDate').textContent=wl.date+' · Z10 wave 1';}
+   chart('u60Chart',valid.slice(-365).map(x=>({d:x.date,v:num(x.u60_10hpa_60n_ms)})),'Zonální vítr U60 · 10 hPa','m/s');
+   chart('tempChart',valid.slice(-365).map(x=>({d:x.date,v:num(x.capT_10hpa_n_k)-273.15})),'Teplota polární čepičky · 10 hPa','°C');
+   chart('heatChart',w.slice(-365).map(x=>({d:x.date,v:num(x.z10_wave1_60n)})),'Vlnový tepelný tok Z10 · vlna 1','m');
+   if(status)status.innerHTML='<b class="good">ERA5 archiv načten.</b> Poslední záznam '+last.date+' · '+valid.length.toLocaleString('cs-CZ')+' denních hodnot. ERA5 je reanalýza, nikoli přímé měření.';
+   if(main)main.textContent='ERA5 archiv načten · poslední dostupný den '+last.date+'. NASA Ozone Watch se načítá samostatně.';
+  }catch(e){if(status)status.innerHTML='<b class="warn">ERA5 archiv se nepodařilo načíst:</b> '+e.message;if(main)main.textContent='Chyba načtení ERA5: '+e.message;}
+  await loadNasa();
+ }
+ async function loadNasa(){
+  const levels=[10,30,50];
+  try{
+   const series=await Promise.all(levels.map(async l=>{const [u,t]=await Promise.all([csv('./data/nasa-gsfc/u60_'+l+'hpa_60n_ozonewatch.csv'),csv('./data/nasa-gsfc/tcap_'+l+'hpa_60_90n_ozonewatch.csv')]);return {l,u:u.filter(x=>num(x.forecast_hour)===0&&num(x.u60_ms)!==null),t:t.filter(x=>num(x.forecast_hour)===0&&num(x.temp_k)!==null)};}));
+   const latest=series[0].u[series[0].u.length-1],lt=series[0].t[series[0].t.length-1];
+   if(latest){$('nasaMirrorWind').textContent=num(latest.u60_ms).toFixed(2)+' m/s';$('nasaMirrorWindDate').textContent=latest.date+' · analýza';}
+   if(lt){$('nasaMirrorTemp').textContent=(num(lt.temp_k)-273.15).toFixed(2)+' °C';$('nasaMirrorTempDate').textContent=lt.date+' · analýza';}
+   const rows=series.flatMap(q=>q.u.map(x=>({d:x.date,v:num(x.u60_ms),l:q.l}))).sort((a,b)=>a.d.localeCompare(b.d)).filter(x=>x.l===10);
+   chart('nasaMirrorWindChart',rows.slice(-180),'NASA Ozone Watch · U60 10 hPa','m/s');
+   function vertical(id,key,unit,convert){const c=$(id);if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height;g.clearRect(0,0,w,h);g.fillStyle='#081a2b';g.fillRect(0,0,w,h);const cols={10:'#65dfff',30:'#ffbd76',50:'#b7a0ff'};g.font='bold 17px Arial';g.fillStyle='#eef7ff';g.fillText('Poslední analýza · '+unit,28,28);series.forEach((q,i)=>{const a=q[key],x=a[a.length-1];if(!x)return;const v=convert(num(key==='u'?'u60_ms':'temp_k')===null?null:num(key==='u'?x.u60_ms:x.temp_k));const xx=180+i*250;g.fillStyle=cols[q.l];g.font='bold 20px Arial';g.fillText(q.l+' hPa',xx,90);g.font='18px Arial';g.fillText(v===null?'—':v.toFixed(2)+' '+unit,xx,125);g.fillStyle='#9db5ca';g.font='13px Arial';g.fillText(x.date,xx,150);});}
+   vertical('nasaVerticalWindChart','u','m/s',v=>v);
+   vertical('nasaVerticalTempChart','t','°C',v=>v===null?null:v-273.15);
+   const body=$('nasaCombinedTable')?.querySelector('tbody');if(body){body.innerHTML='';for(const q of series){const u=q.u[q.u.length-1],t=q.t[q.t.length-1],up=q.u.find(x=>u&&x.date===shiftDate(u.date,-7)),tp=q.t.find(x=>t&&x.date===shiftDate(t.date,-7));const tr=document.createElement('tr');const vals=[q.l+' hPa',u?num(u.u60_ms).toFixed(2)+' m/s':'—',u&&up?(num(u.u60_ms)-num(up.u60_ms)).toFixed(2)+' m/s':'—',t?(num(t.temp_k)-273.15).toFixed(2)+' °C':'—',t&&tp?(num(t.temp_k-tp.temp_k)).toFixed(2)+' °C':'—',u&&num(u.u60_ms)<0?'Záporný U60 na této hladině':'Kladný U60 / bez obratu'];vals.forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td);});body.appendChild(tr);}}
+   if($('nasaVerticalWindStatus'))$('nasaVerticalWindStatus').textContent='NASA Ozone Watch · pouze forecast_hour = 0 · analýzy načteny.';
+   if($('nasaVerticalTempStatus'))$('nasaVerticalTempStatus').textContent='Teploty převedeny z kelvinů na °C. Pouze analytické hodnoty.';
+   if($('nasaCombinedStatus'))$('nasaCombinedStatus').textContent='Společná diagnostika 10/30/50 hPa. Změny za 7 dní jsou uvedeny pouze při přesném datovém páru.';
+  }catch(e){for(const id of ['nasaVerticalWindStatus','nasaVerticalTempStatus','nasaCombinedStatus'])if($(id))$(id).textContent='NASA archiv není dostupný: '+e.message;}
+ }
+ function shiftDate(d,n){const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);}
+ load();setInterval(load,30*60*1000);
+})();
 </script></body></html>
