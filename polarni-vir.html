@@ -78,6 +78,10 @@ a{color:#75dcff;text-decoration:none}a:hover{text-decoration:underline;color:#b9
 <h3>NASA GSFC · zonální vítr U60</h3><canvas id="nasaMirrorWindChart" width="1000" height="280"></canvas>
 <h3>Vertikální profil U60 · NASA Ozone Watch / 10–30–50 hPa</h3><canvas id="nasaVerticalWindChart" width="1000" height="300"></canvas><div class="status" id="nasaVerticalWindStatus">Načítám vertikální řady U60…</div>
 <h3>Vertikální teplotní profil polární čepičky · 10–30–50 hPa</h3><canvas id="nasaVerticalTempChart" width="1000" height="300"></canvas><div class="status" id="nasaVerticalTempStatus">Načítám teplotní řady…</div>
+<h3>Časový vývoj polární stratosféry · posledních 30 dní</h3>
+<p class="muted">Denní analytické hodnoty NASA Ozone Watch (forecast_hour = 0). Každá barva odpovídá tlakové hladině. Teploty jsou převedeny z K na °C.</p>
+<div class="panel" style="padding:12px;margin:10px 0"><b>U60 · zonální vítr na 60° N (m/s)</b><canvas id="nasa30dWindChart" width="1000" height="330" style="width:100%;height:auto"></canvas><div class="status" id="nasa30dWindStatus">Načítám 30denní řadu větru…</div></div>
+<div class="panel" style="padding:12px;margin:10px 0"><b>Teplota polární čepičky 60–90° N (°C)</b><canvas id="nasa30dTempChart" width="1000" height="330" style="width:100%;height:auto"></canvas><div class="status" id="nasa30dTempStatus">Načítám 30denní řadu teplot…</div></div>
 <h3>Společná diagnostika vertikální struktury · vítr + teplota</h3>
 <div class="status" id="nasaCombinedStatus">Porovnávám shodná data analýzy na 10, 30 a 50 hPa…</div>
 <div style="overflow-x:auto"><table id="nasaCombinedTable"><thead><tr><th>Hladina</th><th>U60</th><th>ΔU / 7 dní</th><th>Teplota 60–90° N</th><th>ΔT / 7 dní</th><th>Interpretace</th></tr></thead><tbody><tr><td colspan="6">Čekám na data NASA Ozone Watch…</td></tr></tbody></table></div>
@@ -556,11 +560,29 @@ setInterval(refreshX5Infographic,30*60*1000);
 }
    vertical('nasaVerticalWindChart','u','m/s',v=>v);
    vertical('nasaVerticalTempChart','t','°C',v=>v===null?null:v-273.15);
+   multi30('nasa30dWindChart',series,'u',v=>v,'m/s','NASA Ozone Watch · U60 · 30 dní');
+   multi30('nasa30dTempChart',series,'t',v=>v===null?null:v-273.15,'°C','NASA Ozone Watch · teplota · 30 dní');
+   if($('nasa30dWindStatus'))$('nasa30dWindStatus').textContent='Denní analýzy forecast_hour = 0 · hladiny 10/30/50 hPa · mezery v datech zůstávají prázdné.';
+   if($('nasa30dTempStatus'))$('nasa30dTempStatus').textContent='Teploty převedeny z kelvinů na °C · denní analýzy forecast_hour = 0.';
    const body=$('nasaCombinedTable')?.querySelector('tbody');if(body){body.innerHTML='';for(const q of series){const u=q.u[q.u.length-1],t=q.t[q.t.length-1],up=q.u.find(x=>u&&x.date===shiftDate(u.date,-7)),tp=q.t.find(x=>t&&x.date===shiftDate(t.date,-7));const tr=document.createElement('tr');const vals=[q.l+' hPa',u?num(u.u60_ms).toFixed(2)+' m/s':'—',u&&up?(num(u.u60_ms)-num(up.u60_ms)).toFixed(2)+' m/s':'—',t?(num(t.temp_k)-273.15).toFixed(2)+' °C':'—',t&&tp?(num(t.temp_k-tp.temp_k)).toFixed(2)+' °C':'—',u&&num(u.u60_ms)<0?'Záporný U60 na této hladině':'Kladný U60 / bez obratu'];vals.forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td);});body.appendChild(tr);}}
    if($('nasaVerticalWindStatus'))$('nasaVerticalWindStatus').textContent='NASA Ozone Watch · pouze forecast_hour = 0 · analýzy načteny.';
    if($('nasaVerticalTempStatus'))$('nasaVerticalTempStatus').textContent='Teploty převedeny z kelvinů na °C. Pouze analytické hodnoty.';
    if($('nasaCombinedStatus'))$('nasaCombinedStatus').textContent='Společná diagnostika 10/30/50 hPa. Změny za 7 dní jsou uvedeny pouze při přesném datovém páru.';
   }catch(e){for(const id of ['nasaVerticalWindStatus','nasaVerticalTempStatus','nasaCombinedStatus'])if($(id))$(id).textContent='NASA archiv není dostupný: '+e.message;}
+ }
+ function multi30(id,series,key,convert,unit,title){
+  const c=$(id);if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height,p={l:75,r:35,t:42,b:48},cols={10:'#65dfff',30:'#ffbd76',50:'#b7a0ff'};
+  g.clearRect(0,0,w,h);g.fillStyle='#081a2b';g.fillRect(0,0,w,h);g.font='bold 17px Arial';g.fillStyle='#eef7ff';g.fillText(title,w? p.l:0,24);
+  const endDates=series.flatMap(q=>q[key].map(x=>x.date)).sort();if(!endDates.length){g.fillStyle='#b7cadd';g.font='16px Arial';g.fillText('Pro posledních 30 dní nejsou dostupné analytické hodnoty.',p.l,100);return;}
+  const end=endDates[endDates.length-1],start=shiftDate(end,-29),days=Array.from({length:30},(_,i)=>shiftDate(start,i));
+  const vals=series.flatMap(q=>q[key].filter(x=>x.date>=start&&x.date<=end).map(x=>convert(num(key==='u'?'u60_ms':'temp_k')))).filter(Number.isFinite);
+  if(!vals.length)return;let lo=Math.min(...vals),hi=Math.max(...vals);if(key==='u'){const m=Math.max(Math.abs(lo),Math.abs(hi),5);lo=-m;hi=m;}else{const pad=Math.max(1,(hi-lo)*.15);lo-=pad;hi+=pad;}if(lo===hi){lo-=1;hi+=1;}
+  const x=i=>p.l+i*(w-p.l-p.r)/29,y=v=>h-p.b-(v-lo)/(hi-lo)*(h-p.t-p.b);
+  for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,yy=y(v);g.strokeStyle='#29445e';g.beginPath();g.moveTo(p.l,yy);g.lineTo(w-p.r,yy);g.stroke();g.fillStyle='#a9bfd5';g.font='12px Arial';g.textAlign='right';g.fillText(v.toFixed(1)+' '+unit,p.l-8,yy+4);}
+  if(key==='u'&&lo<0&&hi>0){g.strokeStyle='#fff';g.setLineDash([5,5]);g.beginPath();g.moveTo(p.l,y(0));g.lineTo(w-p.r,y(0));g.stroke();g.setLineDash([]);}
+  series.forEach(q=>{const map=new Map(q[key].filter(z=>z.date>=start&&z.date<=end).map(z=>[z.date,convert(num(key==='u'?'u60_ms':'temp_k'))]));g.strokeStyle=cols[q.l];g.lineWidth=2.5;g.beginPath();let begun=false;days.forEach((d,i)=>{const v=map.get(d);if(!Number.isFinite(v)){begun=false;return;}if(!begun){g.moveTo(x(i),y(v));begun=true;}else g.lineTo(x(i),y(v));});g.stroke();});
+  g.textAlign='center';g.fillStyle='#a9bfd5';g.font='12px Arial';[0,7,14,21,29].forEach(i=>g.fillText(days[i].slice(5),x(i),h-20));
+  g.textAlign='left';let lx=p.l;[10,30,50].forEach(l=>{g.fillStyle=cols[l];g.fillRect(lx,34,12,12);g.fillStyle='#dceaf5';g.fillText(l+' hPa',lx+17,45);lx+=115;});
  }
  function shiftDate(d,n){const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);}
  load();setInterval(load,30*60*1000);
