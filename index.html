@@ -100,6 +100,25 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
 <section class="panel"><h2>Dynamický tlak slunečního větru – časový průběh</h2><canvas id="pressureChart" width="900" height="220"></canvas><div class="small">Pdyn = 1,6726 × 10⁻⁶ × n × V² (nPa), kde n je hustota protonů v cm⁻³ a V rychlost v km/s. Výpočet používá pouze časově spárovaná měření do 90 sekund.</div></section>
 <section class="panel"><h2>Meziplanetární magnetické pole – Bz a Bt</h2><canvas id="magChart" width="900" height="220"></canvas><div class="small">Bz v GSM (nT) a celková intenzita Bt (nT). Záporné Bz znamená jižní orientaci.</div></section>
 <section class="panel"><h2>Sluneční rentgenový tok GOES – pásmo 0,1–0,8 nm</h2><canvas id="xrayChart" width="900" height="220"></canvas><div class="small">Logaritmická osa toku; orientační hranice tříd C, M a X.</div></section>
+<section class="panel" id="solarEventsPanel">
+ <h2>Sluneční erupce a koronální díry – Solar Watch X-5</h2>
+ <div class="grid">
+  <div><div class="small">Aktuální GOES třída (0,1–0,8 nm)</div><div id="flareClass" class="metric">—</div><div id="flareTime" class="small">Čekám na data GOES</div></div>
+  <div><div class="small">Nejvyšší tok za 24 hodin</div><div id="flarePeak" class="metric">—</div><div id="flarePeakTime" class="small"></div></div>
+  <div><div class="small">Výrazné vrcholy toku ≥ C1</div><div id="flareCount" class="metric">—</div><div class="small">Automatická detekce z měření GOES</div></div>
+ </div>
+ <h3>Rentgenový tok GOES a detekované vrcholy</h3>
+ <canvas id="flareChart" width="900" height="260"></canvas>
+ <div id="flareEvents" class="small">Načítám poslední měření…</div>
+ <div class="small">Třída A/B/C/M/X se odvozuje z toku v pásmu 0,1–0,8 nm. Automaticky nalezené vrcholy nejsou plnohodnotným katalogem erupcí; přesný začátek, konec a aktivní oblast je nutné ověřit v katalogu.</div>
+ <h3>Koronální díry – snímky Slunce v EUV</h3>
+ <div class="imagegrid">
+  <div><img id="ch195" class="space" data-src="https://services.swpc.noaa.gov/images/animations/suvi/primary/195/latest.png" alt="Slunce v pásmu SUVI 195 angströmů" loading="lazy"><div class="small">SUVI 195 Å – struktura koróny a tmavé oblasti, které mohou odpovídat koronálním dírám.</div></div>
+  <div><img id="ch284" class="space" data-src="https://services.swpc.noaa.gov/images/animations/suvi/primary/284/latest.png" alt="Slunce v pásmu SUVI 284 angströmů" loading="lazy"><div class="small">SUVI 284 Å – doplňkový pohled na aktivní oblasti a korónu.</div></div>
+ </div>
+ <div id="coronalHoleStatus" class="small">Snímky se načtou při otevření této sekce. Koronální díry se nebudou automaticky označovat bez ověřeného katalogu nebo obrazové analýzy.</div>
+ <p><a href="https://www.swpc.noaa.gov/products/goes-x-ray-flux" target="_blank" rel="noopener">NOAA GOES X-ray</a> · <a href="https://data.nas.nasa.gov/helio/portals/solarflares/webapp.html" target="_blank" rel="noopener">NASA Solar Flare Catalog</a> · <a href="https://api.helioviewer.org/docs/v2/api/index.html" target="_blank" rel="noopener">Helioviewer – katalog slunečních událostí</a></p>
+</section>
 <h2>Aktuální snímky a pozorování</h2>
 <div class="imagegrid">
  <section class="panel"><h2>Slunce – NOAA GOES/SUVI</h2><img class="space" src="https://services.swpc.noaa.gov/images/animations/suvi/primary/map/latest.png" alt="Aktuální snímek Slunce NOAA SUVI" loading="lazy"><div class="small">Aktuální snímek NOAA SUVI. Obnovuje se při obnovení stránky.</div><p><a href="https://services.swpc.noaa.gov/images/animations/suvi/primary/map/latest.png" target="_blank" rel="noopener">Otevřít originální snímek</a></p></section>
@@ -962,6 +981,48 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   }catch(e){el("auroraHistoryStatus").textContent="Historický archiv zatím není dostupný: "+e.message}
  }
  startWhenNear("auroraHistoryChart",load,15*60*1000);
+})();
+</script>
+<script>
+(function(){
+ const panel=document.getElementById("solarEventsPanel");if(!panel)return;
+ const el=id=>document.getElementById(id);
+ const valid=v=>v!==null&&v!==undefined&&v!==""&&Number.isFinite(Number(v))&&Number(v)>0;
+ function flareClass(v){
+  if(!valid(v))return "—";
+  const n=Number(v),bands=[["X",1e-4],["M",1e-5],["C",1e-6],["B",1e-7],["A",1e-8]];
+  const b=bands.find(x=>n>=x[1])||["A",1e-8];return b[0]+(n/b[1]).toFixed(2);
+ }
+ function draw(data,peaks){
+  const c=el("flareChart"),ctx=c.getContext("2d"),w=c.width,h=c.height,p=42;
+  ctx.clearRect(0,0,w,h);ctx.fillStyle="#142740";ctx.fillRect(0,0,w,h);
+  const vals=data.map(d=>d.flux).filter(valid);
+  if(!vals.length){ctx.fillStyle="#b7c9dc";ctx.fillText("GOES zatím neposkytuje platná data",p,h/2);return}
+  const logs=vals.map(v=>Math.log10(v)),lo=Math.min(-8,Math.floor(Math.min(...logs))),hi=Math.max(-4,Math.ceil(Math.max(...logs))),plotW=w-p-15,plotH=h-42;
+  ctx.font="12px Arial";ctx.strokeStyle="#35506d";ctx.fillStyle="#b7c9dc";
+  for(let i=0;i<=4;i++){const y=14+plotH*i/4;ctx.beginPath();ctx.moveTo(p,y);ctx.lineTo(w-12,y);ctx.stroke();ctx.fillText((hi-(hi-lo)*i/4).toFixed(0),8,y+4)}
+  const t0=Date.parse(data[0].time),t1=Date.parse(data[data.length-1].time),span=Math.max(1,t1-t0);
+  ctx.strokeStyle="#65dcff";ctx.lineWidth=2;ctx.beginPath();
+  data.forEach((d,i)=>{const x=p+(Date.parse(d.time)-t0)/span*plotW,y=14+(hi-Math.log10(Math.max(d.flux,1e-12)))/(hi-lo)*plotH;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)});ctx.stroke();
+  ctx.fillStyle="#ffbd6b";peaks.forEach(d=>{const x=p+(Date.parse(d.time)-t0)/span*plotW,y=14+(hi-Math.log10(Math.max(d.flux,1e-12)))/(hi-lo)*plotH;ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fill()});
+  ctx.fillStyle="#d6e4f2";ctx.fillText("Log10 toku (W/m²) · čas UTC",p,h-10);
+ }
+ async function load(){
+  try{
+   const r=await fetch("https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json",{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);
+   const raw=await r.json(),rows=raw.filter(o=>String(o.energy||o.energy_band||"").toLowerCase().includes("0.1-0.8")&&valid(o.flux)&&o.time_tag&&Number.isFinite(Date.parse(o.time_tag))).map(o=>({time:o.time_tag,flux:Number(o.flux)})).sort((a,b)=>Date.parse(a.time)-Date.parse(b.time));
+   if(!rows.length)throw Error("GOES nemá platné vzorky pásma 0,1–0,8 nm");
+   const last=rows[rows.length-1],max=rows.reduce((a,b)=>b.flux>a.flux?b:a,rows[0]),peaks=[];
+   for(let i=1;i<rows.length-1;i++){const q=rows[i];if(q.flux>=1e-6&&q.flux>rows[i-1].flux&&q.flux>=rows[i+1].flux&&(!peaks.length||Date.parse(q.time)-Date.parse(peaks[peaks.length-1].time)>20*60*1000))peaks.push(q)}
+   el("flareClass").textContent=flareClass(last.flux);el("flareTime").textContent="Poslední vzorek: "+last.time.replace("T"," ").replace("Z","")+" UTC";
+   el("flarePeak").textContent=flareClass(max.flux);el("flarePeakTime").textContent=max.time.replace("T"," ").replace("Z","")+" UTC";el("flareCount").textContent=String(peaks.length);
+   el("flareEvents").textContent=peaks.length?peaks.slice(-8).reverse().map(q=>flareClass(q.flux)+" · "+q.time.replace("T"," ").replace("Z","")+" UTC · "+q.flux.toExponential(2)+" W/m²").join("  |  "):"Za posledních 24 hodin nebyl v dostupných vzorcích nalezen výrazný vrchol třídy C1 nebo vyšší.";
+   draw(rows,peaks);
+  }catch(e){el("flareClass").textContent="Nedostupné";el("flareEvents").textContent="Načtení GOES selhalo: "+e.message;draw([],[])}
+  ["ch195","ch284"].forEach(id=>{const img=el(id);img.src=img.dataset.src;img.onerror=()=>{img.style.display="none";el("coronalHoleStatus").textContent="Jeden ze snímků SUVI není momentálně dostupný. Zobrazení koronálních děr vyžaduje platný EUV snímek."}});
+  el("coronalHoleStatus").textContent="Snímky SUVI se načítají. Tmavé oblasti v EUV mohou být kandidáty koronálních děr; potvrzení vyžaduje kontrolu polohy, tvaru a vývoje v čase.";
+ }
+ if("IntersectionObserver"in window){const io=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){load();io.disconnect()}});io.observe(panel)}else load();
 })();
 </script>
 </body></html>
