@@ -534,6 +534,21 @@ setInterval(refreshX5Infographic,30*60*1000);
   const levels=[10,30,50];
   try{
    const series=await Promise.all(levels.map(async l=>{const [u,t]=await Promise.all([csv('./data/nasa-gsfc/u60_'+l+'hpa_60n_ozonewatch.csv'),csv('./data/nasa-gsfc/tcap_'+l+'hpa_60_90n_ozonewatch.csv')]);return {l,u:u.filter(x=>num(x.forecast_hour)===0&&num(x.u60_ms)!==null),t:t.filter(x=>num(x.forecast_hour)===0&&num(x.temp_k)!==null)};}));
+   const [mirrorU,mirrorT,mirrorW]=await Promise.all([
+    csv('./data/nasa-gsfc/u60_10hpa_60n.csv'),
+    csv('./data/nasa-gsfc/tcap_10hpa_60_90n.csv'),
+    csv('./data/nasa-gsfc/wave_heat_flux_100hpa_45_75n.csv')
+   ]);
+   const mirrorRows=a=>a.filter(x=>x.date&&num(x.value)!==null);
+   const mu=mirrorRows(mirrorU),mt=mirrorRows(mirrorT),mw=mirrorRows(mirrorW);
+   chart('nasaMirrorWindChart',mu.slice(-365).map(x=>({d:x.date,v:num(x.value)})),'NASA GSFC · U60 10 hPa','m/s');
+   chart('nasaMirrorTempChart',mt.slice(-365).map(x=>({d:x.date,v:num(x.value)-273.15})),'NASA GSFC · teplota 10 hPa','°C');
+   chart('nasaMirrorHeatChart',mw.slice(-365).map(x=>({d:x.date,v:num(x.value)})),'NASA GSFC · vlnový tepelný tok 100 hPa','m²/s²');
+   const mlast=mt[mt.length-1],wlast=mw[mw.length-1];
+   if(mlast){if($('nasaMirrorTemp').textContent==='—')$('nasaMirrorTemp').textContent=(num(mlast.value)-273.15).toFixed(2)+' °C';if($('nasaMirrorTempDate').textContent==='—')$('nasaMirrorTempDate').textContent=mlast.date+' · NASA GSFC';}
+   if(wlast){$('nasaMirrorHeat').textContent=num(wlast.value).toFixed(2);$('nasaMirrorHeatDate').textContent=wlast.date+' · NASA GSFC';}
+   if($('nasaMirrorStatus'))$('nasaMirrorStatus').innerHTML='<b class="good">NASA GSFC archiv načten.</b> U60, teplota a vlnový tepelný tok · '+mu.length.toLocaleString('cs-CZ')+' / '+mt.length.toLocaleString('cs-CZ')+' / '+mw.length.toLocaleString('cs-CZ')+' denních záznamů.';
+   if($('nasaMirrorInterpretation'))$('nasaMirrorInterpretation').textContent='Časové řady NASA GSFC jsou zrcadlené numerické série. Teplota je převedena z K na °C; nejde o přímé satelitní měření.';
    const latest=series[0].u[series[0].u.length-1],lt=series[0].t[series[0].t.length-1];
    if(latest){$('nasaMirrorWind').textContent=num(latest.u60_ms).toFixed(2)+' m/s';$('nasaMirrorWindDate').textContent=latest.date+' · analýza';}
    if(lt){$('nasaMirrorTemp').textContent=(num(lt.temp_k)-273.15).toFixed(2)+' °C';$('nasaMirrorTempDate').textContent=lt.date+' · analýza';}
