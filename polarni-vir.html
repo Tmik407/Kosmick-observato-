@@ -5,19 +5,19 @@
 <meta name="theme-color" content="#071426">
 <title>Polární vír X-5 | Kosmická observatoř</title>
 <style>
-:root{color-scheme:dark;--bg:#071426;--panel:#11263f;--line:#294563;--text:#edf6ff;--muted:#a9bfd5;--cyan:#63dfff;--orange:#ffbd76;--red:#ff8585}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% 0%,#17385b 0,#071426 55%);color:var(--text);font:15px Arial,sans-serif;padding:16px}
-main{max-width:1180px;margin:auto}header{text-align:center;padding:20px 8px}h1{font-size:clamp(26px,5vw,40px);margin:6px}h2{font-size:20px;margin:0 0 12px}h3{font-size:16px;margin:18px 0 8px}.sub,.muted{color:var(--muted);line-height:1.5}
-.panel{background:linear-gradient(145deg,#142e4a,#0d2037);border:1px solid var(--line);border-radius:16px;padding:17px;margin:12px 0;min-width:0}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:10px}.metric{font-size:clamp(23px,4vw,32px);font-weight:700;color:var(--cyan);margin:6px 0}.unit{font-size:12px;color:var(--muted)}
-.status{padding:12px;border-radius:10px;background:#0b1c30;border:1px solid var(--line);line-height:1.5}
+:root{color-scheme:dark;--bg:#06111f;--panel:#0d2035;--line:#24445f;--text:#edf7ff;--muted:#9db5ca;--cyan:#65e3ff;--orange:#ffbd76;--red:#ff8585;--violet:#b7a0ff}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse at 50% -12%,#214b70 0,#0a1b2d 38%,#050d18 78%);color:var(--text);font:15px/1.55 Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;padding:clamp(10px,2vw,24px)}
+main{max-width:1320px;margin:auto}header{text-align:center;padding:30px 12px 26px;background:linear-gradient(135deg,rgba(22,57,84,.78),rgba(8,24,42,.35));border:1px solid #315674;border-radius:22px;margin-bottom:18px;box-shadow:0 18px 55px #0005}h1{font-size:clamp(28px,5vw,46px);letter-spacing:-.04em;margin:10px 0}h2{font-size:clamp(18px,2vw,22px);letter-spacing:-.02em;margin:0 0 14px}h3{font-size:16px;margin:22px 0 10px}.sub,.muted{color:var(--muted);line-height:1.65}
+.panel{background:linear-gradient(145deg,rgba(17,43,67,.97),rgba(8,25,43,.98));border:1px solid #2b4d69;border-radius:20px;padding:clamp(15px,2vw,24px);margin:16px 0;min-width:0;box-shadow:0 14px 38px #0003;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:10px}.metric{font-size:clamp(24px,4vw,34px);font-weight:750;letter-spacing:-.035em;color:var(--cyan);margin:7px 0;text-shadow:0 0 22px #45cfff30}.unit{font-size:12px;color:var(--muted)}
+.status{padding:14px 16px;border-radius:13px;background:linear-gradient(120deg,#0a1b2c,#102a42);border:1px solid var(--line);line-height:1.6;box-shadow:inset 3px 0 #55cde9}
 .tag{display:inline-block;border:1px solid #47708f;border-radius:20px;padding:5px 9px;margin:3px;color:#c7eaff;font-size:12px}
-canvas{width:100%;height:auto;display:block;background:#07182a;border-radius:12px}
+canvas{width:100%;height:auto;min-height:220px;display:block;background:radial-gradient(ellipse at 50% 42%,#102e49,#061525 72%);border:1px solid #25445f;border-radius:16px;box-shadow:inset 0 0 45px #0005;}
 .controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}.controls label{display:block;color:var(--muted);font-size:13px}.controls input{width:100%;accent-color:var(--cyan)}
 table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{color:#c7eaff}
-a{color:#75dcff}footer{text-align:center;color:var(--muted);font-size:12px;padding:20px}
+a{color:#75dcff;text-decoration:none}a:hover{text-decoration:underline;color:#b9f1ff}button{font:inherit}footer{text-align:center;color:var(--muted);font-size:12px;padding:20px}
 .warn{color:var(--orange)}.good{color:#9ce5b5}
-@media(max-width:600px){body{padding:9px}.panel{padding:13px}table{font-size:12px}}
+@media(max-width:700px){body{padding:8px}.panel{padding:13px;border-radius:15px}header{padding:22px 10px}table{font-size:12px}td,th{padding:8px 6px}canvas{min-height:190px}}
 </style>
 </head>
 <body><main>
@@ -80,7 +80,8 @@ a{color:#75dcff}footer{text-align:center;color:var(--muted);font-size:12px;paddi
 <div><div class="unit">Vlnový tepelný tok · 100 hPa / 45–75° N</div><div class="metric" id="nasaMirrorHeat">—</div><div class="muted" id="nasaMirrorHeatDate">—</div></div>
 </div>
 <h3>NASA GSFC · zonální vítr U60</h3><canvas id="nasaMirrorWindChart" width="1000" height="280"></canvas>
-<h3>Vertikální profil U60 · NASA Ozone Watch / 10–30–50 hPa</h3><canvas id="nasaVerticalWindChart" width="1000" height="300"></canvas><div class="status" id="nasaVerticalWindStatus">Načítám vertikální řady U60…</div>\n<h3>Vertikální teplotní profil polární čepičky · 10–30–50 hPa</h3><canvas id="nasaVerticalTempChart" width="1000" height="300"></canvas><div class="status" id="nasaVerticalTempStatus">Načítám teplotní řady…</div>
+<h3>Vertikální profil U60 · NASA Ozone Watch / 10–30–50 hPa</h3><canvas id="nasaVerticalWindChart" width="1000" height="300"></canvas><div class="status" id="nasaVerticalWindStatus">Načítám vertikální řady U60…</div>
+<h3>Vertikální teplotní profil polární čepičky · 10–30–50 hPa</h3><canvas id="nasaVerticalTempChart" width="1000" height="300"></canvas><div class="status" id="nasaVerticalTempStatus">Načítám teplotní řady…</div>
 <h3>Společná diagnostika vertikální struktury · vítr + teplota</h3>
 <div class="status" id="nasaCombinedStatus">Porovnávám shodná data analýzy na 10, 30 a 50 hPa…</div>
 <div style="overflow-x:auto"><table id="nasaCombinedTable"><thead><tr><th>Hladina</th><th>U60</th><th>ΔU / 7 dní</th><th>Teplota 60–90° N</th><th>ΔT / 7 dní</th><th>Interpretace</th></tr></thead><tbody><tr><td colspan="6">Čekám na data NASA Ozone Watch…</td></tr></tbody></table></div>
@@ -91,7 +92,8 @@ a{color:#75dcff}footer{text-align:center;color:var(--muted);font-size:12px;paddi
 <div class="status" id="nasaMirrorInterpretation"><b>Automatická interpretace</b><br>Čekám na číselná data.</div>
 <p class="muted">Vertikální profil 10 / 30 / 50 hPa je doplněn přímými denními textovými řadami NASA Ozone Watch (MERRA-2 a pro novější období GEOS FP). U každého bodu rozlišujeme analýzu (forecast_hour = 0) a předpověď (kladný forecast_hour); chybějící hodnoty -9999 se nezobrazují. <a href="https://observatory.lelama.digital/en/open-data" target="_blank" rel="noopener">Katalog otevřených dat a metodika kopie</a> · <a href="https://acd-ext.gsfc.nasa.gov/Data_services/met/ann_data.html" target="_blank" rel="noopener">NASA GSFC – původní zdroj</a>.</p>
 </section>
-\n<section class="panel" id="verticalSeries">
+
+<section class="panel" id="verticalSeries">
 <h2>Vertikální vývoj polárního víru · 10 / 30 / 50 hPa</h2>
 <p class="muted">Pro společné porovnání tří tlakových hladin lze načíst denní datový výstup NASA GSFC. Výstup obsahuje zonální vítr U na 60° N a teplotu polární čepičky 60–90° N. Importovaný soubor se zpracuje přímo v tomto prohlížeči; nikam se neodesílá.</p>
 <div class="status"><b>Jak získat data:</b> Otevři <a href="https://acd-ext.gsfc.nasa.gov/cgi-bin/datareq.pl" target="_blank" rel="noopener">NASA GSFC – přímý formulář pro stažení dat</a> a v části Data Request vyber období, proměnné „Temperature between 60° and 90°“ a „Zonal Wind at 60°“, Northern Hemisphere a hladiny 10, 30 a 50 hPa. Stáhni textový výstup (ASCII/fixed-width) a nahraj jej níže. NASA uvádí MERRA‑2 pro historická data a GEOS‑5 FP pro near-real-time doplnění; datum a zdroj importu proto vždy ověř podle metadat NASA.</div>
@@ -127,7 +129,8 @@ a{color:#75dcff}footer{text-align:center;color:var(--muted);font-size:12px;paddi
 <a href="https://mls.jpl.nasa.gov/eos-aura-mls/data.php" target="_blank" rel="noopener">Aura MLS – data a NRT</a> ·
 <a href="https://access.earthdata.nasa.gov/" target="_blank" rel="noopener">Earthdata Access</a></p>
 <div class="status">NASA GES DISC přešel na distribuci Earthdata Cloud. Automatický odběr chráněných dat nesmí používat anonymní staré adresy. Pro bezpečné připojení bude potřeba vytvořit token NASA Earthdata jako GitHub Actions Secret; heslo se do stránky ani repozitáře neukládá.</div>
-</section>\n<section class="panel"><h2>Automaticky počítané diagnostiky</h2><div class="grid">
+</section>
+<section class="panel"><h2>Automaticky počítané diagnostiky</h2><div class="grid">
 <div><b>U60 / 10 hPa</b><p class="muted">Zonální průměr zonálního větru na 60° N. Záporná hodnota znamená východní vítr.</p></div>
 <div><b>Teplota polární čepičky</b><p class="muted">Plošně vážený průměr 60–90° N na 10, 30 a 50 hPa.</p></div>
 <div><b>Vlnový tepelný tok v'T'</b><p class="muted">45–75° N na 100 hPa; kladný tok značí vzestupnou aktivitu planetárních vln.</p></div>
@@ -140,23 +143,35 @@ a{color:#75dcff}footer{text-align:center;color:var(--muted);font-size:12px;paddi
 </main>
 <script>
 const $=id=>document.getElementById(id),c=$('polar'),ctx=c.getContext('2d');
-function draw(){const w=c.width,h=c.height,cx=w/2,cy=h/2,R=260,wind=+$('windCtl').value,temp=+$('tempCtl').value,shape=+$('shapeCtl').value,wave=+$('waveCtl').value;
-$('windOut').textContent=wind+' m/s';$('tempOut').textContent=temp+' K';$('shapeOut').textContent=shape.toFixed(1).replace('.',',');$('waveOut').textContent='Vlna '+wave;
-ctx.clearRect(0,0,w,h);ctx.fillStyle='#07182a';ctx.fillRect(0,0,w,h);
-for(let r of [70,140,210,260]){ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle='#29445e';ctx.lineWidth=1;ctx.stroke()}
-for(let a=0;a<360;a+=30){let q=a*Math.PI/180;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+R*Math.cos(q),cy+R*Math.sin(q));ctx.strokeStyle='#203a55';ctx.stroke()}
-ctx.fillStyle='#c5d8e9';ctx.font='16px Arial';ctx.fillText('90° N',cx+10,cy-12);ctx.fillText('60° N',cx+R+12,cy+5);ctx.fillText('30° N',cx+R+12,cy+145);
-let amp=wind<0?0.22:Math.max(.04,(45-wind)/150),stretch=shape*(1+amp),phase=wave===1?.35:1.1;
-ctx.beginPath();for(let i=0;i<=720;i++){let a=i/720*Math.PI*2,rad=155+35*Math.sin(wave*a+phase)+18*Math.cos(2*a-phase),x=cx+Math.cos(a)*rad*stretch,y=cy+Math.sin(a)*rad/Math.sqrt(stretch);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}
-ctx.closePath();let grad=ctx.createRadialGradient(cx,cy,30,cx,cy,260);grad.addColorStop(0,temp>213?'rgba(255,150,90,.24)':'rgba(70,180,255,.25)');grad.addColorStop(1,'rgba(40,130,210,.04)');ctx.fillStyle=grad;ctx.fill();ctx.strokeStyle=wind<0?'#ff9b73':'#63dfff';ctx.lineWidth=4;ctx.stroke();
-ctx.fillStyle='#edf6ff';ctx.font='bold 22px Arial';ctx.textAlign='center';ctx.fillText(wind<0?'Obrácený zonální vítr':'Západní cirkulace',cx,cy+310);ctx.textAlign='left';
+function draw(){
+ const w=c.width,h=c.height,cx=w/2,cy=h/2,R=255,wind=+$('windCtl').value,temp=+$('tempCtl').value,shape=+$('shapeCtl').value,wave=+$('waveCtl').value;
+ $('windOut').textContent=wind+' m/s';$('tempOut').textContent=temp+' K';$('shapeOut').textContent=shape.toFixed(1).replace('.',',');$('waveOut').textContent='Vlna '+wave;
+ ctx.clearRect(0,0,w,h);
+ const bg=ctx.createRadialGradient(cx,cy,25,cx,cy,500);bg.addColorStop(0,'#123958');bg.addColorStop(.58,'#0a2138');bg.addColorStop(1,'#061525');ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+ // Polární stereografická síť
+ for(const r of [72,142,210,255]){ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle=r===255?'#5c88a7':'#31536f';ctx.lineWidth=r===255?2:1;ctx.stroke()}
+ for(let a=0;a<360;a+=15){const q=a*Math.PI/180;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+R*Math.cos(q),cy+R*Math.sin(q));ctx.strokeStyle=a%45===0?'#345b78':'#203e59';ctx.lineWidth=a%45===0?1.4:1;ctx.stroke()}
+ ctx.fillStyle='#c9deee';ctx.font='bold 15px Arial';ctx.textAlign='center';ctx.fillText('90° N',cx,cy-12);ctx.fillText('60° N',cx+R+34,cy+5);ctx.fillText('30° N',cx+R+34,cy+145);
+ // Schematická deformace okraje víru a planetární vlny
+ const amp=wind<0?.28:Math.max(.05,(45-wind)/170),stretch=shape*(1+amp),phase=wave===1?.35:1.1;
+ ctx.beginPath();
+ for(let i=0;i<=900;i++){const a=i/900*Math.PI*2,rad=157+34*Math.sin(wave*a+phase)+18*Math.cos(2*a-phase)+10*Math.sin(3*a+phase),x=cx+Math.cos(a)*rad*stretch,y=cy+Math.sin(a)*rad/Math.sqrt(stretch);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}
+ ctx.closePath();
+ const grad=ctx.createRadialGradient(cx,cy,35,cx,cy,270);grad.addColorStop(0,temp>213?'rgba(255,160,100,.30)':'rgba(75,180,255,.28)');grad.addColorStop(.72,'rgba(65,165,220,.16)');grad.addColorStop(1,'rgba(35,105,175,.02)');ctx.fillStyle=grad;ctx.fill();
+ ctx.strokeStyle=wind<0?'#ff9b73':'#65e3ff';ctx.lineWidth=5;ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=18;ctx.stroke();ctx.shadowBlur=0;
+ // Středové jádro a popisky
+ const core=ctx.createRadialGradient(cx-20,cy-25,4,cx,cy,95);core.addColorStop(0,'#b9eaff');core.addColorStop(.25,'#4e9fc7');core.addColorStop(1,'rgba(12,40,65,.08)');ctx.beginPath();ctx.arc(cx,cy,92,0,Math.PI*2);ctx.fillStyle=core;ctx.fill();
+ ctx.strokeStyle='#8edfff88';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,92,0,Math.PI*2);ctx.stroke();
+ ctx.textAlign='center';ctx.fillStyle='#f1f8ff';ctx.font='bold 22px Arial';ctx.fillText(wind<0?'VÝCHODNÍ PROUDĚNÍ':'ZÁPADNÍ PROUDĚNÍ',cx,cy+315);
+ ctx.font='14px Arial';ctx.fillStyle='#a9c6dc';ctx.fillText('U60: '+wind+' m/s  ·  T: '+temp+' K  ·  Vlna '+wave,cx,cy+340);ctx.textAlign='left';
 }
 ['windCtl','tempCtl','shapeCtl','waveCtl'].forEach(id=>$(id).addEventListener('input',draw));draw();
 
 async function loadArchive(){
  const status=$('archiveStatus'),mainStatus=$('dataStatus');
  const fmt=v=>Number.isFinite(v)?v.toFixed(1).replace('.',','):'—';
- const parseCSV=t=>{const lines=t.trim().split(/\r?\n/);const headers=lines.shift().split(',').map(x=>x.trim().replace(/^"|"$/g,''));return {headers,rows:lines.map(l=>l.split(',').map(x=>x.trim().replace(/^"|"$/g,'')))}};
+ const parseCSV=t=>{const lines=t.trim().split(/\r?
+/);const headers=lines.shift().split(',').map(x=>x.trim().replace(/^"|"$/g,''));return {headers,rows:lines.map(l=>l.split(',').map(x=>x.trim().replace(/^"|"$/g,'')))}};
  const pick=(headers,tests)=>headers.findIndex(h=>tests.some(re=>re.test(h.toLowerCase().replace(/[^a-z0-9]/g,''))));
  const drawLine=(id,series,label,unit,zero=false)=>{const cv=$(id),cx=cv.getContext('2d'),w=cv.width,h=cv.height,p=48;cx.clearRect(0,0,w,h);cx.fillStyle='#07182a';cx.fillRect(0,0,w,h);const vals=series.map(x=>x.v).filter(Number.isFinite);if(!vals.length){cx.fillStyle='#a9bfd5';cx.fillText('Data pro tento graf nebyla nalezena',p,40);return}let min=Math.min(...vals),max=Math.max(...vals);if(zero){min=Math.min(0,min);max=Math.max(0,max)}if(max===min){max+=1;min-=1}const y=v=>h-p-(v-min)/(max-min)*(h-2*p);for(let i=0;i<5;i++){const yy=p+i*(h-2*p)/4;cx.strokeStyle='#29445e';cx.beginPath();cx.moveTo(p,yy);cx.lineTo(w-p,yy);cx.stroke();cx.fillStyle='#a9bfd5';cx.font='13px Arial';cx.fillText((max-i*(max-min)/4).toFixed(1),5,yy+4)}if(zero&&min<0&&max>0){cx.strokeStyle='#ffbd76';cx.setLineDash([5,5]);cx.beginPath();cx.moveTo(p,y(0));cx.lineTo(w-p,y(0));cx.stroke();cx.setLineDash([])}cx.strokeStyle='#63dfff';cx.lineWidth=2.5;cx.beginPath();series.forEach((d,i)=>{const x=p+i*(w-2*p)/Math.max(1,series.length-1);if(i===0)cx.moveTo(x,y(d.v));else cx.lineTo(x,y(d.v))});cx.stroke();cx.fillStyle='#edf6ff';cx.font='bold 14px Arial';cx.fillText(label+' ('+unit+')',p,22);cx.fillStyle='#a9bfd5';cx.fillText(series[0].d,p,h-12);cx.fillText(series[series.length-1].d,w-p-90,h-12)};
  try{
@@ -190,7 +205,8 @@ async function loadArchive(){
 }
 
 function parseNasaFixedWidth(text){
- const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/);
+ const lines=text.replace(/^\uFEFF/,'').split(/\r?
+/);
  const chunks=line=>{const out=[];for(let i=0;i<line.length;i+=10)out.push(line.slice(i,i+10).trim());return out;};
  const header=lines.slice(0,4).map(chunks);
  const columns=[],max=Math.max(...header.map(x=>x.length));
@@ -271,10 +287,12 @@ $('nasaFile').addEventListener('change',async ev=>{
   status.innerHTML='<b class="good">Import úspěšný.</b> '+file.name+' · '+rows.length.toLocaleString('cs-CZ')+' dní · hladiny '+found+' hPa. Soubor zůstal pouze v tomto prohlížeči.';
  }catch(err){status.innerHTML='<b class="warn">Import se nepodařil.</b> '+String(err.message||err);}
 });
-\nasync function loadNasaVerticalWind(){
+
+async function loadNasaVerticalWind(){
  const status=$("nasaVerticalWindStatus"),cv=$("nasaVerticalWindChart"),g=cv.getContext("2d"),w=cv.width,h=cv.height,p=55;
  try{
-  const levels=[10,30,50],series=await Promise.all(levels.map(async lev=>{const r=await fetch("./data/nasa-gsfc/u60_"+lev+"hpa_60n_ozonewatch.csv?v="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("U60 "+lev+" hPa HTTP "+r.status);const lines=(await r.text()).trim().split(/\r?\n/);return {lev,rows:lines.slice(1).map(line=>{const a=line.split(",");return {date:a[0],v:Number(a[1]),fc:Number(a[2])}}).filter(x=>x.date&&Number.isFinite(x.v)&&x.v>-9000&&x.fc>=0)};}));
+  const levels=[10,30,50],series=await Promise.all(levels.map(async lev=>{const r=await fetch("./data/nasa-gsfc/u60_"+lev+"hpa_60n_ozonewatch.csv?v="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("U60 "+lev+" hPa HTTP "+r.status);const lines=(await r.text()).trim().split(/\r?
+/);return {lev,rows:lines.slice(1).map(line=>{const a=line.split(",");return {date:a[0],v:Number(a[1]),fc:Number(a[2])}}).filter(x=>x.date&&Number.isFinite(x.v)&&x.v>-9000&&x.fc>=0)};}));
   g.clearRect(0,0,w,h);g.fillStyle="#07182a";g.fillRect(0,0,w,h);
   const colors={10:"#63dfff",30:"#ffbd76",50:"#b69cff"},all=series.flatMap(q=>q.rows.map(x=>x.v));let min=Math.min(0,...all),max=Math.max(0,...all);if(min===max){min-=1;max+=1;}
   const y=v=>h-p-(v-min)/(max-min)*(h-2*p);
@@ -292,7 +310,8 @@ async function loadNasaVerticalTemp(){
   const levels=[10,30,50],series=await Promise.all(levels.map(async lev=>{
    const r=await fetch("./data/nasa-gsfc/tcap_"+lev+"hpa_60_90n_ozonewatch.csv?v="+Date.now(),{cache:"no-store"});
    if(!r.ok)throw Error("Teplota "+lev+" hPa HTTP "+r.status);
-   const lines=(await r.text()).trim().split(/\r?\n/);
+   const lines=(await r.text()).trim().split(/\r?
+/);
    return {lev,rows:lines.slice(1).map(line=>{const a=line.split(",");return {date:a[0],v:Number(a[1]),fc:Number(a[2])};}).filter(x=>x.date&&Number.isFinite(x.v)&&x.v>-9000&&x.fc>=0)};
   }));
   g.clearRect(0,0,w,h);g.fillStyle="#07182a";g.fillRect(0,0,w,h);
@@ -307,10 +326,12 @@ async function loadNasaVerticalTemp(){
   g.fillStyle="#edf6ff";g.font="bold 14px Arial";g.fillText("Teplota polární čepičky 60–90° N · K · posledních až 120 dní",p,22);
   status.innerHTML='<b class="good">NASA Ozone Watch · teplotní řady načteny.</b><br>'+legend+series.map(q=>q.lev+" hPa: "+q.rows.length+" řádků").join(" · ")+'<br>Kladný forecast_hour označuje předpověď, nikoli pozorovanou analýzu.';
  }catch(e){status.innerHTML='<b class="warn">Teplotní řady zatím nejsou dostupné.</b> '+String(e.message||e)+'. Zkontroluj běh NASA archivační úlohy.';}
-}\nasync function loadNasaCombinedProfile(){
+}
+async function loadNasaCombinedProfile(){
  const box=$("nasaCombinedStatus"),body=document.querySelector("#nasaCombinedTable tbody");
  const levels=[10,30,50];
- const read=async(file,valueKey)=>{const r=await fetch("./data/nasa-gsfc/"+file+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error(file+" HTTP "+r.status);const lines=(await r.text()).trim().split(/\r?\n/);return new Map(lines.slice(1).map(line=>{const a=line.split(",");return [a[0],{v:Number(a[1]),fc:Number(a[2])}]}).filter(([d,x])=>d&&Number.isFinite(x.v)&&x.v>-9000&&x.fc===0));};
+ const read=async(file,valueKey)=>{const r=await fetch("./data/nasa-gsfc/"+file+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error(file+" HTTP "+r.status);const lines=(await r.text()).trim().split(/\r?
+/);return new Map(lines.slice(1).map(line=>{const a=line.split(",");return [a[0],{v:Number(a[1]),fc:Number(a[2])}]}).filter(([d,x])=>d&&Number.isFinite(x.v)&&x.v>-9000&&x.fc===0));};
  const fmt=(v,unit)=>Number.isFinite(v)?(v>0?"+":"")+v.toFixed(2).replace(".",",")+" "+unit:"—");
  try{
   const records=await Promise.all(levels.map(async lev=>{
@@ -345,7 +366,8 @@ async function loadNasaMirror(){
   {file:'tcap_10hpa_60_90n.csv',value:'nasaMirrorTemp',date:'nasaMirrorTempDate',chart:'nasaMirrorTempChart',label:'Teplota 60–90° N · 10 hPa',unit:'K'},
   {file:'wave_heat_flux_100hpa_45_75n.csv',value:'nasaMirrorHeat',date:'nasaMirrorHeatDate',chart:'nasaMirrorHeatChart',label:'Vlnový tepelný tok · 100 hPa',unit:'K·m/s',zero:true}
  ];
- const parse=t=>{const lines=t.trim().split(/\r?\n/);return lines.slice(1).map(l=>{const a=l.split(',');return {d:a[0],v:Number(a[1]),flags:a[3]||''}}).filter(x=>x.d&&Number.isFinite(x.v));};
+ const parse=t=>{const lines=t.trim().split(/\r?
+/);return lines.slice(1).map(l=>{const a=l.split(',');return {d:a[0],v:Number(a[1]),flags:a[3]||''}}).filter(x=>x.d&&Number.isFinite(x.v));};
  const plot=(id,series,label,unit,zero=false)=>{
   const cv=$(id),g=cv.getContext('2d'),w=cv.width,h=cv.height,p=48;g.clearRect(0,0,w,h);g.fillStyle='#07182a';g.fillRect(0,0,w,h);
   const a=series.slice(-365),vals=a.map(x=>x.v);if(!vals.length){g.fillStyle='#a9bfd5';g.fillText('Bez dat',p,40);return;}
@@ -370,7 +392,8 @@ async function loadNasaMirror(){
   status.innerHTML='<b class="good">Číselný archiv NASA GSFC načten.</b> Poslední import: '+stamp+'. '+results.map(q=>q.series.length.toLocaleString('cs-CZ')+' bodů ('+q.label+')').join(' · ')+'.';
  }catch(e){status.innerHTML='<b class="warn">Číselný archiv NASA GSFC zatím není dostupný.</b> '+String(e.message||e)+'. Po prvním úspěšném běhu archivační úlohy se hodnoty načtou automaticky.';}
 }
-\nasync function loadNoaaArchive(){
+
+async function loadNoaaArchive(){
  const el=$('noaaArchiveStatus');
  try{
   const r=await fetch('./data/noaa-gfs/meta.json?x='+Date.now(),{cache:'no-store'});
@@ -385,8 +408,10 @@ async function loadNasaMirror(){
 }
 
 loadArchive();
-loadNoaaArchive();\nloadNasaMirror();
-loadNasaVerticalWind();\nloadNasaVerticalTemp();
+loadNoaaArchive();
+loadNasaMirror();
+loadNasaVerticalWind();
+loadNasaVerticalTemp();
 loadNasaCombinedProfile();
 
 </script></body></html>
