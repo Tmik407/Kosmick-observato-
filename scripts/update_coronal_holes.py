@@ -98,7 +98,7 @@ def main():
     payload={"source":"NOAA NCEI GOES-19 SUVI Level 2 Coronal Hole Boundaries",
              "updated_utc":datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
              "latest":current,"rows":rows}
-    OUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+"\\n",encoding="utf-8")
+    OUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     print(f"NOAA product {filename}: {current['num_coronal_holes']} holes; degraded_status={current['degraded_status']}")
 
 if __name__=="__main__": main()
