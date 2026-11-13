@@ -91,7 +91,8 @@ ctx.beginPath();for(let i=0;i<=720;i++){let a=i/720*Math.PI*2,rad=155+35*Math.si
 ctx.closePath();let grad=ctx.createRadialGradient(cx,cy,30,cx,cy,260);grad.addColorStop(0,temp>213?'rgba(255,150,90,.24)':'rgba(70,180,255,.25)');grad.addColorStop(1,'rgba(40,130,210,.04)');ctx.fillStyle=grad;ctx.fill();ctx.strokeStyle=wind<0?'#ff9b73':'#63dfff';ctx.lineWidth=4;ctx.stroke();
 ctx.fillStyle='#edf6ff';ctx.font='bold 22px Arial';ctx.textAlign='center';ctx.fillText(wind<0?'Obrácený zonální vítr':'Západní cirkulace',cx,cy+310);ctx.textAlign='left';
 }
-['windCtl','tempCtl','shapeCtl','waveCtl'].forEach(id=>$(id).addEventListener('input',draw));draw();\n
+['windCtl','tempCtl','shapeCtl','waveCtl'].forEach(id=>$(id).addEventListener('input',draw));draw();
+
 async function loadArchive(){
  const status=$('archiveStatus'),mainStatus=$('dataStatus');
  const fmt=v=>Number.isFinite(v)?v.toFixed(1).replace('.',','):'—';
