@@ -1151,13 +1151,14 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;margin-top:10px">
   <span>🟦 D-RAP HAF nízký</span><span>🟩 střední</span><span>🟨 zvýšený</span><span>🟥 vysoký</span><span>● GIRO foF2/MUF měření</span>
  </div>
- <div id="ionoGlobeDetail" class="small" style="margin-top:10px">Klikni na bod stanice pro podrobnosti. Čas a kvalita dat se zobrazují samostatně.</div>
+ <div id="ionoGlobeDetail" class="small" style="margin-top:10px">Klikni na bod stanice pro podrobnosti. Čas a kvalita dat se zobrazují samostatně.</div><div id="ionoHistoryPanel" style="margin-top:12px;background:#081a2c;border:1px solid #294765;border-radius:10px;padding:12px"><strong>Historie skutečných měření ionosond</strong><span id="ionoHistoryCount" class="small" style="float:right">Vyber stanici</span><div id="ionoHistoryInfo" class="small" style="margin:6px 0">Lokální historie tohoto prohlížeče.</div><canvas id="ionoHistoryCanvas" width="900" height="300" style="width:100%;height:auto;display:block"></canvas><div class="grid" style="margin-top:8px"><div><div class="small">Poslední foF2</div><div id="ionoHistFof2" class="metric">—</div></div><div><div class="small">Poslední hmF2</div><div id="ionoHistHmf2" class="metric">—</div></div><div><div class="small">Poslední MUF</div><div id="ionoHistMuf" class="metric">—</div></div><div><div class="small">Confidence</div><div id="ionoHistQuality" class="metric">—</div></div></div><div class="small">Historie se tvoří z nově načtených aktuálních vzorků GIRO na tomto zařízení. Starší data před prvním uložením nejsou dostupná. Mezery se neinterpolují.</div></div>
  <div class="small" style="margin-top:8px">Zdroje: <a href="https://services.swpc.noaa.gov/text/drap_global_frequencies.txt" target="_blank" rel="noopener">NOAA SWPC D-RAP</a> · <a href="https://prop.kc2g.com/api/stations.json" target="_blank" rel="noopener">GIRO ionosondy</a>. D-RAP HAF je modelová frekvenční hranice absorpce, nikoli elektronová hustota. Výšky D/E/F1/F2 jsou v legendě pouze schematické a nejsou odvozovány z těchto dat.</div>
 </section>
 <script>
 (function(){
  const $=id=>document.getElementById(id),canvas=$("ionoGlobeCanvas");if(!canvas)return;
  const ctx=canvas.getContext("2d");let drap=null,stations=[],rotation=0,tilt=0.12,drag=null,selected=null,updated=null,xray=[],playTimer=null,playIndex=0,animTime=Date.now();
+ const HISTORY_KEY="x5_iono_station_history_v1",HISTORY_MAX=288;let history=loadHistory();
  const rad=v=>v*Math.PI/180;
  function parseDrap(text){
   const lines=text.split(/\r?\n/),head=lines.find(l=>/^\s*-?\d+(?:\s+-?\d+){20,}\s*$/.test(l));
@@ -1174,9 +1175,14 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
    const raw=o.time||o.datetime||o.timestamp||o.time_tag||o.updated||o.observed;
    const t=raw?Date.parse(raw):NaN;
    if(!Number.isFinite(lat)||!Number.isFinite(lon)||lat< -90||lat>90||lon< -180||lon>180)return null;
-   return {code:st.code||"?",name:st.name||st.code||"Ionosonda",lat,lon,fof2:val("fof2"),muf:val("mufd","muf"),foe:val("foe"),hmf2:val("hmf2"),time:Number.isFinite(t)?new Date(t).toISOString():null};
+   return {code:st.code||"?",name:st.name||st.code||"Ionosonda",lat,lon,fof2:val("fof2"),muf:val("mufd","muf"),foe:val("foe"),hmf2:val("hmf2"),confidence:val("fof2_confidence","fof2_conf","confidence"),time:Number.isFinite(t)?new Date(t).toISOString():null};
   }).filter(x=>x&&(x.fof2!==null||x.muf!==null||x.foe!==null));
  }
+
+ function loadHistory(){try{const a=JSON.parse(localStorage.getItem(HISTORY_KEY)||"{}");return a&&typeof a==="object"?a:{}}catch(e){return {}}}
+ function saveHistory(){try{localStorage.setItem(HISTORY_KEY,JSON.stringify(history))}catch(e){$("ionoHistoryInfo").textContent="Místní úložiště je plné."}}
+ function recordStationSamples(rows){const now=new Date().toISOString();rows.forEach(st=>{const key=st.code||st.name;if(!key||!(st.fof2!==null||st.muf!==null||st.hmf2!==null||st.foe!==null))return;const a=history[key]||(history[key]=[]),last=a[a.length-1];if(last&&Math.abs(Date.parse(last.captured)-Date.parse(now))<60000)return;a.push({captured:now,observed:st.time||null,fof2:st.fof2,muf:st.muf,hmf2:st.hmf2,foe:st.foe,confidence:st.confidence??null});history[key]=a.filter(q=>Date.now()-Date.parse(q.captured)<=86400000).slice(-HISTORY_MAX)});saveHistory()}
+ function drawStationHistory(){const c=$("ionoHistoryCanvas"),g=c.getContext("2d"),w=c.width,h=c.height;g.clearRect(0,0,w,h);g.fillStyle="#061426";g.fillRect(0,0,w,h);const st=selected===null?null:stations[selected],arr=st?(history[st.code||st.name]||[]):[];$("ionoHistoryCount").textContent=st?arr.length+" vzorků / 24 h":"Vyber stanici";$("ionoHistoryInfo").textContent=st?st.name+" ("+st.code+") · lokální historie tohoto prohlížeče.":"Klepni na měřicí bod na globusu.";const last=arr[arr.length-1];$("ionoHistFof2").textContent=last&&last.fof2!==null?last.fof2.toFixed(2)+" MHz":"—";$("ionoHistHmf2").textContent=last&&last.hmf2!==null?last.hmf2.toFixed(1)+" km":"—";$("ionoHistMuf").textContent=last&&last.muf!==null?last.muf.toFixed(2)+" MHz":"—";$("ionoHistQuality").textContent=last&&last.confidence!==null?last.confidence+" / 100":"neuvedena";if(!st||!arr.length){g.fillStyle="#9bb7d0";g.font="18px sans-serif";g.fillText("Zatím nejsou uloženy časové vzorky této stanice.",24,150);return}const ss=[{k:"fof2",n:"foF2",c:"#60c8ff"},{k:"muf",n:"MUF",c:"#f6d365"},{k:"hmf2",n:"hmF2",c:"#bb9cff"}],l=62,top=30,pw=w-82,ph=h-72,ts=arr.map(q=>Date.parse(q.captured)).filter(Number.isFinite),t0=Math.min(...ts),t1=Math.max(...ts),span=Math.max(3600000,t1-t0);g.strokeStyle="#31516e";for(let i=0;i<=4;i++){const y=top+i*ph/4;g.beginPath();g.moveTo(l,y);g.lineTo(w-20,y);g.stroke()}ss.forEach((z,j)=>{const vs=arr.map(q=>q[z.k]).filter(Number.isFinite);if(!vs.length)return;const pad=Math.max((Math.max(...vs)-Math.min(...vs))*.15,z.k==="hmf2"?10:.5),lo=Math.max(0,Math.min(...vs)-pad),hi=Math.max(...vs)+pad;g.strokeStyle=z.c;g.fillStyle=z.c;g.lineWidth=2;let open=false;arr.forEach(q=>{const v=q[z.k],t=Date.parse(q.captured);if(!Number.isFinite(v)||!Number.isFinite(t)){open=false;return}const x=l+(t-t0)/span*pw,y=top+ph-(v-lo)/(hi-lo||1)*ph;if(!open){g.beginPath();g.moveTo(x,y);open=true}else g.lineTo(x,y);g.beginPath();g.arc(x,y,3,0,Math.PI*2);g.fill()});if(open)g.stroke();g.font="13px sans-serif";g.fillText(z.n,l+j*140,18)});g.fillStyle="#9bb7d0";g.font="12px sans-serif";g.fillText(new Date(t0).toISOString().slice(11,16)+" UTC",l,h-12);g.fillText(new Date(t1).toISOString().slice(11,16)+" UTC",w-95,h-12)}
  function project(lat,lon){
   const L=rad(lon)+rotation,P=rad(lat),x=Math.cos(P)*Math.sin(L),y=Math.sin(P)*Math.cos(tilt)-Math.cos(P)*Math.cos(L)*Math.sin(tilt),z=Math.sin(P)*Math.sin(tilt)+Math.cos(P)*Math.cos(L)*Math.cos(tilt);
   const R=Math.min(canvas.width,canvas.height)*.405;
@@ -1211,7 +1217,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   ctx.font="12px sans-serif";ctx.fillStyle="#9dc5e6";ctx.fillText("D-RAP HAF • NOAA  |  STANICE GIRO • MĚŘENÍ",cx,H-24);
   $("ionoGlobeOverlay").textContent=(drap?"D-RAP načten":"D-RAP nedostupný")+" · "+stations.length+" stanic GIRO";
  }
- function detail(i){const s=stations[i];if(!s)return;selected=i;const f=v=>v===null?"—":v.toFixed(2);$("ionoGlobeDetail").textContent=s.name+" ("+s.code+") · "+s.lat.toFixed(2)+"°, "+s.lon.toFixed(2)+"° · foF2 "+f(s.fof2)+" MHz · MUF "+f(s.muf)+" MHz · foE "+f(s.foe)+" MHz · hmF2 "+f(s.hmf2)+" km · čas "+(s.time||"neuveden");draw()}
+ function detail(i){const s=stations[i];if(!s)return;selected=i;const f=v=>v===null?"—":v.toFixed(2);$("ionoGlobeDetail").textContent=s.name+" ("+s.code+") · "+s.lat.toFixed(2)+"°, "+s.lon.toFixed(2)+"° · foF2 "+f(s.fof2)+" MHz · MUF "+f(s.muf)+" MHz · foE "+f(s.foe)+" MHz · hmF2 "+f(s.hmf2)+" km · čas "+(s.time||"neuveden");draw();drawStationHistory()}
  function nearest(x,y){let best=-1,d=18;stations.forEach((s,i)=>{const p=project(s.lat,s.lon);if(p.z<=0)return;const q=Math.hypot(p.x-x,p.y-y);if(q<d){d=q;best=i}});return best}
  function coords(e){const r=canvas.getBoundingClientRect();return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height}}
  canvas.addEventListener("pointerdown",e=>{drag={...coords(e),rotation,tilt,moved:false};canvas.setPointerCapture(e.pointerId)});
@@ -1229,6 +1235,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   const errors=[];
   if(tasks[0].status==="fulfilled"){try{drap=parseDrap(tasks[0].value)}catch(e){errors.push(e.message)}}else errors.push("NOAA D-RAP nedostupný");
   if(tasks[1].status==="fulfilled"){try{stations=parseStations(tasks[1].value)}catch(e){errors.push(e.message)}}else errors.push("GIRO nedostupné");
+  if(tasks[1].status==="fulfilled")recordStationSamples(stations);
   if(tasks[2].status==="fulfilled"){xray=(Array.isArray(tasks[2].value)?tasks[2].value:[]).filter(r=>r.energy==="0.1-0.8nm"||r.energy==="0.1-0.8 nm").map(r=>({t:Date.parse(r.time_tag),flux:Number(r.flux)})).filter(r=>Number.isFinite(r.t)&&Number.isFinite(r.flux)&&r.flux>0).sort((a,b)=>a.t-b.t);if(!xray.length)errors.push("GOES bez platných vzorků")}else errors.push("GOES X-ray nedostupné");
   updated=new Date().toISOString();$("ionoGlobeTime").textContent=drap?drap.valid:"nedostupné";
   $("ionoGlobeStations").textContent=stations.length;
@@ -1236,7 +1243,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   $("ionoGlobeFof2").textContent=f.length?Math.max(...f).toFixed(2)+" MHz":"—";
   $("ionoGlobeMuf").textContent=m.length?Math.max(...m).toFixed(2)+" MHz":"—";
   $("ionoGlobeOverlay").textContent=(errors.length?errors.join(" · "):"Data načtena")+" · "+updated.slice(11,19)+" UTC";
-  draw();
+  draw();drawStationHistory();
  }
  $("ionoGlobeRefresh").addEventListener("click",load);
  $("ionoTimeSlider").addEventListener("input",e=>{if(!xray.length)return;playIndex=Math.round(Number(e.target.value)/100*(xray.length-1));setAnimTime(xray[playIndex].t)});
