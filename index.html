@@ -1123,6 +1123,22 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  <div class="small">Důležité: skóre 0–100 je vlastní heuristický indikátor X-5, nikoli kalibrovaná pravděpodobnost, předpověď Kp/Dst ani oficiální NOAA produkt. Neurčuje stupeň G. Kp a Dst jsou samostatně ověřované geomagnetické indexy; skutečnou odezvu magnetosféry lze potvrdit až následným měřením. Výpočet vyžaduje čerstvá a časově spárovaná data, neplatné hodnoty a mezery se vyřazují.</div>
  <p><a href="./space-weather-history.json" target="_blank" rel="noopener">Zdrojový archiv měření X-5</a> · <a href="https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json" target="_blank" rel="noopener">NOAA – Kp</a></p>
 </section>
+<section class="panel" id="stormHistoryPanel">
+ <h2>Historický přehled geomagnetických bouří · G1–G5</h2>
+ <div class="grid">
+  <div><div class="small">Období Kp</div><div id="stormRange" class="metric">—</div><div class="small">Posledních 7 dní</div></div>
+  <div><div class="small">Detekované bouřkové epizody</div><div id="stormCount" class="metric">—</div></div>
+  <div><div class="small">Nejvyšší Kp</div><div id="stormMaxKp" class="metric">—</div></div>
+  <div><div class="small">Nejnižší Dst</div><div id="stormMinDst" class="metric">—</div></div>
+ </div>
+ <div id="stormStatus" class="status">Načítám Kp a Dst…</div>
+ <h3>Průběh Kp a hranice bouřkových stupňů</h3>
+ <canvas id="stormKpChart" width="1000" height="240"></canvas>
+ <h3>Události G1 až G5</h3>
+ <div id="stormEvents" class="small">Čekám na data…</div>
+ <div class="small">Epizoda začíná při Kp ≥ 5 (G1) a končí po poklesu pod Kp 5. Stupně G jsou určeny z planetárního Kp v tříhodinových intervalech. Dst je samostatný hodinový index; jeho minimum je doplňkový ukazatel intenzity, nikoli převod na stupeň G. Sluneční vítr a Bz jsou připojovány podle časové blízkosti. Data mohou být průběžná a později revidovaná.</div>
+ <p><a href="https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json" target="_blank" rel="noopener">NOAA – pozorovaný Kp</a> · <a href="https://wdc.kugi.kyoto-u.ac.jp/hapi/" target="_blank" rel="noopener">WDC Kyoto – HAPI Dst</a> · <a href="https://www.spaceweather.gov/products/planetary-k-index" target="_blank" rel="noopener">NOAA – definice Kp a G škály</a></p>
+</section>
 <section class="panel" id="archivePanel">
  <h2>Databáze a historické archivy kosmického počasí</h2>
  <div class="grid">
@@ -1503,6 +1519,73 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  }
  const target=$("predictionPanel");
  if("IntersectionObserver" in window){const io=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting)){load();io.disconnect();setInterval(()=>{if(!document.hidden)load()},5*60*1000)}},{rootMargin:"500px"});io.observe(target)}else{load();setInterval(()=>{if(!document.hidden)load()},5*60*1000)}
+})();
+</script>
+<script>
+(function(){
+ const el=id=>document.getElementById(id),put=(id,v)=>{const e=el(id);if(e)e.textContent=v};
+ const fmt=t=>new Date(t).toISOString().replace("T"," ").slice(0,16)+" UTC";
+ const g=k=>k>=9?"G5":k>=8?"G4":k>=7?"G3":k>=6?"G2":k>=5?"G1":"—";
+ function draw(rows){
+  const c=el("stormKpChart");if(!c)return;const x=c.getContext("2d"),w=c.width,h=c.height,p={l:48,r:14,t:12,b:30},ph=h-p.t-p.b,pw=w-p.l-p.r;
+  x.clearRect(0,0,w,h);x.font="12px Arial";
+  for(let k=0;k<=9;k++){const y=p.t+ph*(1-k/9);x.strokeStyle=k===5?"#ffb86b":"#29445e";x.beginPath();x.moveTo(p.l,y);x.lineTo(w-p.r,y);x.stroke();if(k%1===0){x.fillStyle="#b9cde0";x.fillText(String(k),20,y+4)}}
+  if(!rows.length)return;
+  const t0=rows[0].t,t1=rows[rows.length-1].t+10800000,dx=Math.max(1,t1-t0);
+  x.strokeStyle="#65dcff";x.lineWidth=2;x.beginPath();rows.forEach((r,i)=>{const xx=p.l+(r.t-t0)/dx*pw,yy=p.t+ph*(1-r.kp/9);if(i===0)x.moveTo(xx,yy);else x.lineTo(xx,yy)});x.stroke();
+  x.fillStyle="#b9cde0";x.fillText("Kp · tříhodinové intervaly · UTC",p.l,h-8);
+ }
+ async function load(){
+  try{
+   const now=new Date(),end=new Date(now.getTime()+3600000),start=new Date(now.getTime()-7*86400000);
+   const iso=d=>d.toISOString().replace(".000Z","Z");
+   const kpUrl="https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json";
+   const dstUrl="https://wdc.kugi.kyoto-u.ac.jp/hapi/data?id=hour_dst&time.min="+encodeURIComponent(iso(start))+"&time.max="+encodeURIComponent(iso(end))+"&format=json";
+   const [kr,dr,wr]=await Promise.all([
+    fetch(kpUrl,{cache:"no-store"}),
+    fetch(dstUrl,{cache:"no-store"}),
+    fetch("./space-weather-history.json?ts="+Date.now(),{cache:"no-store"})
+   ]);
+   if(!kr.ok)throw Error("NOAA Kp HTTP "+kr.status);
+   const raw=await kr.json(),kpRows=Array.isArray(raw)?raw.map(r=>({t:Date.parse(r.time_tag||r.time),kp:Number(r.Kp??r.kp)})).filter(r=>Number.isFinite(r.t)&&Number.isFinite(r.kp)&&r.kp>=0&&r.kp<=9).sort((a,b)=>a.t-b.t):[];
+   if(!kpRows.length)throw Error("NOAA neposkytla platné Kp záznamy");
+   let dstRows=[],dstNote="Dst nedostupné";
+   if(dr.ok){
+    const d=await dr.json(),data=Array.isArray(d.data)?d.data:[];
+    dstRows=data.map(r=>Array.isArray(r)?{t:Date.parse(r[0]),dst:Number(r[1])}:({t:Date.parse(r.Time||r.time),dst:Number(r.dstValue??r.dst)})).filter(r=>Number.isFinite(r.t)&&Number.isFinite(r.dst)&&Math.abs(r.dst)<5000).sort((a,b)=>a.t-b.t);
+    if(dstRows.length)dstNote="Dst Kyoto HAPI: "+dstRows.length+" platných hodinových hodnot";
+   }else dstNote="Dst Kyoto HAPI HTTP "+dr.status;
+   let wind=[];
+   if(wr.ok){const d=await wr.json();wind=(d.rows||[]).map(r=>({t:Date.parse(r.t),v:Number(r.speed_kms),bz:Number(r.bz_gsm_nt)})).filter(r=>Number.isFinite(r.t)).sort((a,b)=>a.t-b.t)}
+   const events=[];
+   for(const r of kpRows){
+    if(r.kp>=5){
+     let e=events[events.length-1];
+     if(!e||r.t-e.last>3.01*3600000){e={start:r.t,last:r.t,max:r.kp,periods:0};events.push(e)}
+     e.last=r.t;e.max=Math.max(e.max,r.kp);e.periods++;
+    }
+   }
+   events.forEach(e=>{
+    const ds=dstRows.filter(d=>d.t>=e.start-3600000&&d.t<=e.last+4*3600000);
+    e.dst=ds.length?Math.min(...ds.map(d=>d.dst)):null;
+    e.dstTime=ds.length?ds.reduce((a,b)=>b.dst<a.dst?b:a).t:null;
+    const ws=wind.filter(v=>v.t>=e.start&&v.t<=e.last+10800000);
+    const vs=ws.map(v=>v.v).filter(Number.isFinite),bs=ws.map(v=>v.bz).filter(Number.isFinite);
+    e.speed=vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:null;
+    e.bz=bs.length?Math.min(...bs):null;e.windCount=ws.length;
+   });
+   const max=Math.max(...kpRows.map(r=>r.kp)),minDst=dstRows.length?Math.min(...dstRows.map(r=>r.dst)):null;
+   put("stormRange",kpRows.length+" intervalů");put("stormCount",String(events.length));put("stormMaxKp",max.toFixed(2)+" · "+g(max));put("stormMinDst",minDst===null?"—":minDst.toFixed(0)+" nT");
+   put("stormStatus","NOAA Kp: "+kpRows.length+" tříhodinových intervalů · "+dstNote+". Poslední Kp: "+fmt(kpRows[kpRows.length-1].t)+".");
+   const box=el("stormEvents");
+   if(!events.length)box.textContent="V načteném sedmidenním období nebyla nalezena epizoda s Kp ≥ 5 (G1).";
+   else box.innerHTML=events.slice().reverse().map(e=>"<div class='panel' style='margin:8px 0;padding:12px'><b>"+g(e.max)+" · maximum Kp "+e.max.toFixed(2)+"</b><br>"+fmt(e.start)+" až "+fmt(e.last+10800000)+" · "+e.periods+" tříhodinových intervalů<br>Dst minimum: "+(e.dst===null?"nedostupné":e.dst.toFixed(0)+" nT · "+fmt(e.dstTime))+"<br>Průměrná rychlost: "+(e.speed===null?"—":e.speed.toFixed(1)+" km/s")+" · nejnižší Bz: "+(e.bz===null?"—":e.bz.toFixed(1)+" nT")+" · vzorky větru: "+e.windCount+"</div>").join("");
+   draw(kpRows);
+  }catch(e){put("stormStatus","Chyba načtení historických indexů: "+e.message);put("stormEvents","Historické porovnání není momentálně dostupné.");}
+ }
+ const panel=el("stormHistoryPanel");
+ if(panel&&"IntersectionObserver" in window){const io=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting)){load();io.disconnect();setInterval(()=>{if(!document.hidden)load()},15*60*1000)}},{rootMargin:"500px"});io.observe(panel)}
+ else if(panel){load();setInterval(()=>{if(!document.hidden)load()},15*60*1000)}
 })();
 </script>
 </body></html>
