@@ -24,7 +24,7 @@ jobs:
         run: python scripts/update_coronal_holes.py
       - name: Commit archive when changed
         run: |
-          if git diff --quiet -- coronal-hole-history.json; then
+          if [ -f coronal-hole-history.json ] && git diff --quiet -- coronal-hole-history.json; then
             echo "NOAA product unchanged; archive not modified."
             exit 0
           fi
