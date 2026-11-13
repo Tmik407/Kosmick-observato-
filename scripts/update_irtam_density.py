@@ -49,9 +49,13 @@ def get_f107(day):
 
 def main():
     now = datetime.now(timezone.utc)
-    target_day = (now - timedelta(days=2)).date()
-    # Coefficient products are available on 15-minute epochs. Use 12:00 UTC.
-    target = datetime(target_day.year, target_day.month, target_day.day, 12, 0)
+    # Use the newest 15-minute model epoch that is at least 48 hours delayed.
+    # This avoids the old fixed 12:00 UTC target, which made the displayed age
+    # vary from roughly 36 to 60 hours even when a fresh build succeeded.
+    target_dt = now - timedelta(hours=48)
+    minute = (target_dt.minute // 15) * 15
+    target = target_dt.replace(minute=minute, second=0, microsecond=0, tzinfo=None)
+    target_day = target.date()
     f107, f107_day = get_f107(target_day)
 
     lats = np.arange(-85, 86, STEP_DEG, dtype=float)
