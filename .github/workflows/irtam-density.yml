@@ -32,5 +32,8 @@ jobs:
             echo "No IRTAM changes"
           else
             git commit -m "Update delayed IRTAM global electron density"
-            git push
+            # Other scheduled archive jobs may update main while this model runs.
+            # Rebase our generated grid on the latest main before pushing.
+            git pull --rebase origin main
+            git push origin HEAD:main
           fi
