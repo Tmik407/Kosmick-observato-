@@ -169,6 +169,9 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
   <div><div class="small">Poslední neplatný záznam</div><div id="aceDiagLastInvalid" class="metric">—</div></div>
   <div><div class="small">Mezery nad 90 sekund</div><div id="aceDiagGaps" class="metric">—</div></div>
   <div><div class="small">Nejdelší mezera</div><div id="aceDiagMaxGap" class="metric">—</div></div>
+  <div><div class="small">Časové rozpětí platných dat</div><div id="aceDiagSpan" class="metric">—</div></div>
+  <div><div class="small">Pokrytí celých 24 hodin</div><div id="aceDiagCoverage" class="metric">—</div></div>
+  <div><div class="small">První platný záznam</div><div id="aceDiagFirstValid" class="metric">—</div></div>
   <div><div class="small">Platné vzorky NOAA RTSW</div><div id="aceDiagRtsw" class="metric">—</div></div>
   <div><div class="small">Stav zdroje ACE</div><div id="aceDiagSource" class="metric">Čekám…</div></div>
  </div>
@@ -681,7 +684,14 @@ function updateAceDiagnostics(parsed){
  const invalidRows=recent.filter(r=>r.statusFlag!==0||![r.bx,r.by,r.bz,r.bt].every(goodValue));
  const flags={};for(const r of recent){const k=String(r.statusFlag);flags[k]=(flags[k]||0)+1}
  let gaps=0,maxGap=0;for(let i=1;i<validRows.length;i++){const dt=Date.parse(validRows[i].stamp)-Date.parse(validRows[i-1].stamp);if(dt>90000){gaps++;maxGap=Math.max(maxGap,dt)}}
- const lastValid=validRows[validRows.length-1],lastInvalid=invalidRows[invalidRows.length-1];
+ const firstValid=validRows[0],lastValid=validRows[validRows.length-1],lastInvalid=invalidRows[invalidRows.length-1];
+ const spanMs=firstValid&&lastValid?Date.parse(lastValid.stamp)-Date.parse(firstValid.stamp):0;
+ const coverage24=validRows.length/1440*100;
+ const spanText=firstValid&&lastValid?(spanMs/3600000).toFixed(1)+" h":"—";
+ const firstText=firstValid?firstValid.stamp.slice(11,19)+" UTC":"žádný";
+ set("aceDiagSpan",spanText,spanMs>=20*3600000?"good":spanMs>=6*3600000?"warn":"bad");
+ set("aceDiagCoverage",coverage24.toFixed(1)+" %",coverage24>=90?"good":coverage24>=50?"warn":"bad");
+ set("aceDiagFirstValid",firstText,firstValid?"good":"bad");
  set("aceDiagValid",String(validRows.length),validRows.length?"good":"warn");
  set("aceDiagInvalid",String(invalidRows.length),invalidRows.length?"warn":"good");
  set("aceDiagLastValid",lastValid?lastValid.stamp.slice(11,19)+" UTC":"žádný",""+(lastValid?"good":"bad"));
@@ -691,7 +701,7 @@ function updateAceDiagnostics(parsed){
  const flagText=Object.keys(flags).sort((a,b)=>Number(a)-Number(b)).map(k=>"S="+k+": "+flags[k]).join(" · ");
  const flagsEl=$("aceDiagFlags");if(flagsEl)flagsEl.textContent="Rozložení příznaků za 24 h: "+(flagText||"žádné záznamy")+" · celkem "+recent.length+" záznamů.";
  const source=$("aceDiagSource");if(source){source.textContent=recent.length?"odpověď přijata · "+recent.length+" řádků":"bez záznamů v okně";source.className="metric "+(recent.length?"good":"warn")}
- const note=$("aceDiagNote");if(note)note.textContent="Okno: posledních 24 hodin UTC. Platné: S = 0 a všechny B složky konečné a bez sentinel hodnot. Mezery: "+gaps+" intervalů nad 90 s; nejdelší "+(maxGap?(maxGap/60000).toFixed(1)+" min":"žádná")+". Stavový příznak popisuje kvalitu záznamu, sám o sobě nedokazuje výpadek sondy.";
+ const note=$("aceDiagNote");if(note)note.textContent="Okno: posledních 24 hodin UTC (očekáváno přibližně 1 440 minutových vzorků). Pokrytí celého okna: "+coverage24.toFixed(1)+" %. Zachycené časové rozpětí: "+spanText+". Mezery >90 s mezi sousedními platnými záznamy: "+gaps+"; nejdelší "+(maxGap?(maxGap/60000).toFixed(1)+" min":"žádná v zachyceném úseku")+". Nula mezer neznamená úplné 24h pokrytí. Stavový příznak sám o sobě nedokazuje výpadek sondy.";
  const rtsw=$("aceDiagRtsw");if(rtsw){rtsw.textContent="načítám…";fetch(U.mag,{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("HTTP "+r.status);return r.json()}).then(rows=>{const count=rows.filter(o=>{const t=Date.parse(timeOf(o));return Number.isFinite(t)&&t>=start&&t<=now&&val(o,"bz_gsm","bz")!==null}).length;rtsw.textContent=String(count);rtsw.className="metric "+(count?"good":"warn")}).catch(e=>{rtsw.textContent="nedostupné";rtsw.className="metric bad"})}
 }
 async function refreshAce(){
