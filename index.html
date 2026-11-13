@@ -50,6 +50,20 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
  </div>
  <div id="riskNote" class="small">G1: Kp 5 · G2: Kp 6 · G3: Kp 7 · G4: Kp 8 · G5: Kp 9. Rychlost, Bz a tlak jsou doplňkové indikátory, nikoli náhrada Kp.</div>
 </section>
+
+<section class="panel" id="analysisPanel">
+ <h2>Analytický modul X-5 – stav a geomagnetické podmínky</h2>
+ <div class="grid">
+  <div><div class="small">Diagnostika GOES X-ray</div><div id="analysisGoesStatus" class="metric">Kontroluji…</div><div id="analysisGoesDetail" class="small">Ověřuji čerstvost a platnost vzorků.</div></div>
+  <div><div class="small">Aktuální třída GOES</div><div id="analysisFlareClass" class="metric">—</div><div id="analysisFlareTime" class="small"></div></div>
+  <div><div class="small">Geoe efektivní pole E</div><div id="analysisE" class="metric">—</div><div id="analysisEDetail" class="small">Výpočet vyžaduje časově blízké V a Bz.</div></div>
+  <div><div class="small">Indikátor geomagnetické aktivity</div><div id="analysisLevel" class="metric">—</div><div id="analysisLevelDetail" class="small">Vyhodnocuji naměřené parametry.</div></div>
+ </div>
+ <h3>Vyhodnocení vstupních parametrů</h3>
+ <div id="analysisInterpretation" class="small">Čekám na současná a platná měření.</div>
+ <div id="analysisQuality" class="small">Kvalita dat: čekám na kontrolu.</div>
+ <div class="small">Tento modul poskytuje diagnostiku a heuristický indikátor podmínek u L1. Není to oficiální předpověď geomagnetické bouře ani pravděpodobnost jejího vzniku. Oficiální NOAA G-stupeň vychází z planetárního Kp; skutečný dopad se ověřuje následným vývojem Kp/Dst.</div>
+</section>
 <section class="panel" id="alertsPanel">
  <h2>Automatická detekce změn a upozornění</h2>
  <div id="alertOverall" class="metric">Vyhodnocuji…</div>
@@ -292,6 +306,55 @@ function cleanSpeedRows(rows){
 }
 function series(rows,key){return rows.filter(o=>valid(o[key])).slice(-180).map(o=>({x:timeOf(o),y:Number(o[key])}))}
 function getXray(rows){let a=rows.filter(o=>valid(o.flux)&&timeOf(o));a.sort((x,y)=>Date.parse(timeOf(y))-Date.parse(timeOf(x)));return a[0]||null}
+
+function flareLabel(flux){
+ if(!Number.isFinite(flux)||flux<=0)return "—";
+ const bands=[["X",1e-4],["M",1e-5],["C",1e-6],["B",1e-7],["A",1e-8]];
+ const b=bands.find(x=>flux>=x[1])||["A",1e-8];
+ return b[0]+(flux/b[1]).toFixed(2);
+}
+function updateAnalysis(xrayRows,k,b,p,d,pressure,couplingCount){
+ const validX=Array.isArray(xrayRows)?xrayRows.filter(o=>valid(o.flux)&&timeOf(o)&&Number.isFinite(Date.parse(timeOf(o)))&&String(o.energy||o.energy_band||"").toLowerCase().includes("0.1-0.8")):[];
+ validX.sort((a,b)=>Date.parse(timeOf(a))-Date.parse(timeOf(b)));
+ const lastX=validX[validX.length-1],flux=lastX?Number(lastX.flux):null;
+ const age=lastX?Math.max(0,(Date.now()-Date.parse(timeOf(lastX)))/60000):Infinity;
+ const xStatus=$("analysisGoesStatus"),xDetail=$("analysisGoesDetail");
+ if(!lastX){
+  xStatus.textContent="NEDOSTUPNÉ";xStatus.className="metric bad";
+  xDetail.textContent="V poslední odpovědi není platný vzorek pásma 0,1–0,8 nm.";
+ }else{
+  xStatus.textContent=age<=5?"OK":age<=15?"ZPOŽDĚNÍ":"STARÁ DATA";
+  xStatus.className="metric "+(age<=5?"good":age<=15?"warn":"bad");
+  xDetail.textContent=validX.length+" platných vzorků · poslední "+age.toFixed(1)+" min starý · "+timeOf(lastX).replace("T"," ")+" UTC";
+ }
+ $("analysisFlareClass").textContent=flux===null?"—":flareLabel(flux);
+ $("analysisFlareTime").textContent=lastX?"Tok "+flux.toExponential(2)+" W/m² · "+timeOf(lastX)+" UTC":"Bez platného vzorku";
+ const bz=b?val(b,"bz_gsm"):null,bt=b?val(b,"bt"):null,speed=p?val(p,"proton_speed"):null,density=d?val(d,"proton_density"):null,kp=k?val(k,"kp","Kp"):null;
+ const E=(bz!==null&&speed!==null)?0.001*speed*Math.max(0,-bz):null;
+ $("analysisE").textContent=E===null?"—":E.toFixed(2)+" mV/m";
+ $("analysisEDetail").textContent=E===null?"V nebo Bz není dostupné":("V "+speed.toFixed(0)+" km/s · Bz "+bz.toFixed(2)+" nT · časové párování ≤ 90 s");
+ const cues=[];
+ let score=0;
+ if(bz!==null){if(bz<=-10){score+=3;cues.push("silně jižní Bz")}else if(bz<=-5){score+=2;cues.push("jižní Bz")}else if(bz<0){score+=1;cues.push("slabě jižní Bz")}else cues.push("severní Bz")}
+ if(speed!==null){if(speed>=700)score+=2;else if(speed>=500)score+=1;cues.push("V "+speed.toFixed(0)+" km/s")}
+ if(bt!==null){if(bt>=15)score+=2;else if(bt>=10)score+=1;cues.push("Bt "+bt.toFixed(1)+" nT")}
+ if(pressure!==null){if(pressure>=10)score+=2;else if(pressure>=4)score+=1;cues.push("tlak "+pressure.toFixed(2)+" nPa")}
+ if(kp!==null){if(kp>=5)score+=3;else if(kp>=4)score+=1;cues.push("Kp "+kp.toFixed(1))}
+ const level=$("analysisLevel");
+ let label="NÍZKÉ",klass="good",meaning="Z dostupných parametrů nevyplývá výrazná kombinace geoe efektivních podmínek.";
+ if(score>=7){label="VÝRAZNÉ";klass="bad";meaning="Více indikátorů současně ukazuje zvýšenou geomagnetickou aktivitu."}
+ else if(score>=4){label="ZVÝŠENÉ";klass="warn";meaning="Podmínky stojí za pozornost; sleduj další vývoj Bz, Bt a Kp."}
+ level.textContent=label;level.className="metric "+klass;
+ $("analysisLevelDetail").textContent="Interní skóre "+score+" · heuristický indikátor, nikoli NOAA G-stupeň.";
+ $("analysisInterpretation").textContent=meaning+" "+(cues.join(" · ")||"Nedostatek platných vstupů")+".";
+ const quality=[];
+ quality.push("GOES: "+(lastX?(age<=15?"čerstvý":"zpožděný"):"chybí"));
+ quality.push("RTSW V: "+(speed!==null?"platné":"chybí"));
+ quality.push("IMF Bz/Bt: "+(bz!==null&&bt!==null?"platné":"neúplné"));
+ quality.push("Kp: "+(kp!==null?"platné":"chybí"));
+ quality.push("V/Bz párování: "+(couplingCount?couplingCount+" vzorků":"bez spárovaných vzorků"));
+ $("analysisQuality").textContent="Kontrola vstupů: "+quality.join(" · ")+(density!==null?" · hustota "+density.toFixed(2)+" cm⁻³":" · hustota chybí");
+}
 function updateRisk(k,b,p,d){
  const kp=k?val(k,"kp","Kp"):null;
  const bz=b?val(b,"bz_gsm"):null;
@@ -560,6 +623,7 @@ async function refresh(){
  updateAlerts(speedCheck.rows,mag,kp);
  updateHistory24h(wind,mag);
  updateCumulative24h(wind,mag);
+ updateAnalysis(xr,k,b,p,d,latestPressure,couplingCount);
  $("stav").textContent=failures.length?"Některé zdroje nejsou dostupné: "+failures.join(" · "):"Spojení s datovými zdroji NOAA bylo úspěšné.";
  $("stav").className="status "+(failures.length?"warn":"good");
  $("updated").textContent="Poslední kontrola: "+new Date().toISOString().replace("T"," ").slice(0,19)+" UTC · automatická aktualizace každých 60 sekund";
