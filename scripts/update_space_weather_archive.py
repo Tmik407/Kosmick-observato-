@@ -37,12 +37,12 @@ def main():
  now=datetime.now(timezone.utc)
  wind=[]; mag=[]; kp=[]
  for r in records(fetch(SOURCES["wind"])):
-  t=stamp(r.get("time_tag",r.get("time"))); s=num(r.get("speed"),0,3000); d=num(r.get("density"),0,10000)
-  if t and (s is not None or d is not None): wind.append({"dt":t,"speed":s,"density":d})
+  t=stamp(r.get("time_tag",r.get("time"))); s=num(r.get("proton_speed",r.get("speed")),0,3000); d=num(r.get("proton_density",r.get("density")),0,10000)
+  if t and r.get("active",True) is True and (s is not None or d is not None): wind.append({"dt":t,"speed":s,"density":d})
  for r in records(fetch(SOURCES["mag"])):
   t=stamp(r.get("time_tag",r.get("time")))
   v={"bx":num(r.get("bx_gsm",r.get("bx")),-200,200),"by":num(r.get("by_gsm",r.get("by")),-200,200),"bz":num(r.get("bz_gsm",r.get("bz")),-200,200),"bt":num(r.get("bt"),0,300)}
-  if t and any(x is not None for x in v.values()): mag.append({"dt":t,**v})
+  if t and r.get("active",True) is True and any(x is not None for x in v.values()): mag.append({"dt":t,**v})
  for r in records(fetch(SOURCES["kp"])):
   t=stamp(r.get("time_tag",r.get("time"))); k=num(r.get("Kp",r.get("kp")),0,9)
   if t and k is not None: kp.append({"dt":t,"kp":k})
