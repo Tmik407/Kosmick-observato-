@@ -53,11 +53,12 @@ a{color:#75dcff}footer{text-align:center;color:var(--muted);font-size:12px;paddi
 </section>
 <section class="panel" id="noaa-gfs">
 <h2>Nezávislá analýza NOAA GFS · severní polokoule</h2>
-<p class="muted">Aktuální běh analýzy NCEP/GFS (f00, cyklus 00 UTC) pro tři stratosférické tlakové hladiny. Mapy se načítají přímo z NOAA CPC; datum a platnost jsou vytištěny v každém obrázku. Jde o analýzu numerického modelu, nikoli o přímé satelitní měření ani o ERA5 reanalýzu.</p>
+<p class="muted">Automaticky archivované analýzy NCEP/GFS (f00, cyklus 00 UTC) pro tři stratosférické tlakové hladiny. Obrázky se denně ukládají do repozitáře X-5; metadata uvádějí čas stažení a kontrolní součty. Jde o analýzu numerického modelu, nikoli o přímé měření ani o ERA5 reanalýzu.</p>
+<div class="status" id="noaaArchiveStatus">Načítám metadata archivu NOAA GFS…</div>
 <div class="grid">
-<div><h3>10 hPa · střední stratosféra</h3><a href="https://cpc.ncep.noaa.gov/products/stratosphere/strat_a_f/gif_files/gfs_t10_nh_f00.png" target="_blank" rel="noopener"><img src="https://cpc.ncep.noaa.gov/products/stratosphere/strat_a_f/gif_files/gfs_t10_nh_f00.png" alt="NOAA GFS analýza teploty 10 hPa severní polokoule" loading="lazy" style="width:100%;height:auto;border-radius:10px;background:#07182a"></a></div>
-<div><h3>30 hPa · střední stratosféra</h3><a href="https://cpc.ncep.noaa.gov/products/stratosphere/strat_a_f/gif_files/gfs_t30_nh_f00.png" target="_blank" rel="noopener"><img src="https://cpc.ncep.noaa.gov/products/stratosphere/strat_a_f/gif_files/gfs_t30_nh_f00.png" alt="NOAA GFS analýza teploty 30 hPa severní polokoule" loading="lazy" style="width:100%;height:auto;border-radius:10px;background:#07182a"></a></div>
-<div><h3>50 hPa · dolní stratosféra</h3><a href="https://cpc.ncep.noaa.gov/products/stratosphere/strat_a_f/gif_files/gfs_t50_nh_f00.png" target="_blank" rel="noopener"><img src="https://cpc.ncep.noaa.gov/products/stratosphere/strat_a_f/gif_files/gfs_t50_nh_f00.png" alt="NOAA GFS analýza teploty 50 hPa severní polokoule" loading="lazy" style="width:100%;height:auto;border-radius:10px;background:#07182a"></a></div>
+<div><h3>10 hPa · střední stratosféra</h3><a href="./data/noaa-gfs/gfs_t10_nh_f00.png" target="_blank" rel="noopener"><img src="./data/noaa-gfs/gfs_t10_nh_f00.png" alt="NOAA GFS analýza teploty 10 hPa severní polokoule" loading="lazy" style="width:100%;height:auto;border-radius:10px;background:#07182a"></a></div>
+<div><h3>30 hPa · střední stratosféra</h3><a href="./data/noaa-gfs/gfs_t30_nh_f00.png" target="_blank" rel="noopener"><img src="./data/noaa-gfs/gfs_t30_nh_f00.png" alt="NOAA GFS analýza teploty 30 hPa severní polokoule" loading="lazy" style="width:100%;height:auto;border-radius:10px;background:#07182a"></a></div>
+<div><h3>50 hPa · dolní stratosféra</h3><a href="./data/noaa-gfs/gfs_t50_nh_f00.png" target="_blank" rel="noopener"><img src="./data/noaa-gfs/gfs_t50_nh_f00.png" alt="NOAA GFS analýza teploty 50 hPa severní polokoule" loading="lazy" style="width:100%;height:auto;border-radius:10px;background:#07182a"></a></div>
 </div>
 <div class="status" style="margin-top:12px"><b>Jak vrstvu číst:</b> Porovnejte polohu a rozsah studeného jádra mezi 10, 30 a 50 hPa. Samotná teplotní mapa nepotvrzuje náhlé stratosférické oteplení (SSW); k tomu je nutné ověřit zejména zonální vítr na 60° N a jeho obrat, dále vývoj v čase.</div>
 <p class="muted">Zdroj: <a href="https://cpc.ncep.noaa.gov/products/stratosphere/strat_a_f/" target="_blank" rel="noopener">NOAA CPC – NCEP/GFS stratosférické analýzy a předpovědi</a>. NOAA uvádí hladiny 70, 50, 30, 20, 10, 5, 2 a 1 hPa a předpovědní mapy v intervalech 24 hodin. Prognostické mapy mohou mít rozdílnou dostupnost a platnost; proto zde nejsou vydávány za aktuální, pokud datum jejich běhu není ověřeno.</p>
@@ -250,6 +251,21 @@ $('nasaFile').addEventListener('change',async ev=>{
   status.innerHTML='<b class="good">Import úspěšný.</b> '+file.name+' · '+rows.length.toLocaleString('cs-CZ')+' dní · hladiny '+found+' hPa. Soubor zůstal pouze v tomto prohlížeči.';
  }catch(err){status.innerHTML='<b class="warn">Import se nepodařil.</b> '+String(err.message||err);}
 });
-\nloadArchive();
+\nasync function loadNoaaArchive(){
+ const el=$('noaaArchiveStatus');
+ try{
+  const r=await fetch('./data/noaa-gfs/meta.json?x='+Date.now(),{cache:'no-store'});
+  if(!r.ok)throw Error('metadata HTTP '+r.status);
+  const m=await r.json();
+  const d=m.retrieved_utc?new Date(m.retrieved_utc):null;
+  const stamp=d&&!Number.isNaN(d.getTime())?d.toLocaleString('cs-CZ',{timeZone:'UTC'})+' UTC':'čas stažení neuveden';
+  el.innerHTML='<b class="good">Archiv NOAA GFS načten.</b> Poslední stažení: '+stamp+'. Hladiny 10 / 30 / 50 hPa · severní polokoule · analýza f00. Klasifikace: analýza numerického modelu.';
+ }catch(e){
+  el.innerHTML='<b class="warn">Archiv NOAA GFS zatím není dostupný.</b> '+String(e.message||e)+'. Obrázky se zobrazí po prvním úspěšném běhu automatického archivu.';
+ }
+}
+
+loadArchive();
+loadNoaaArchive();
 
 </script></body></html>
