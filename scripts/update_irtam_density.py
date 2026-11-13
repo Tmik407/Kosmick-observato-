@@ -84,7 +84,7 @@ def main():
         points.append({
             "lat": round(float(lat), 1),
             "lon": round(float(lon), 1),
-            "ne_cm3": round(float(val) / 1e6, 5),
+            "ne_1e6_cm3": round(float(val) / 1e12, 5),
         })
     if len(points) < 250:
         raise RuntimeError(f"Příliš málo platných bodů IRTAM: {len(points)}")
