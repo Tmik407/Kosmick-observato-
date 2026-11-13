@@ -167,25 +167,25 @@ async function loadArchive(){
 }
 
 function parseNasaFixedWidth(text){
- const lines=text.replace(/^\\uFEFF/,'').split(/\\r?\\n/);
+ const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/);
  const chunks=line=>{const out=[];for(let i=0;i<line.length;i+=10){const v=line.slice(i,i+10).trim();if(v)out.push(v);}return out;};
  const header=lines.slice(0,4).map(chunks);
  const columns=[];
  const max=Math.max(...header.map(x=>x.length));
  for(let i=0;i<max;i++){
-  const variable=(header[0][i]||'').replace(/\\s+/g,' ').trim();
-  const region=(header[1][i]||'').replace(/\\s+/g,' ').trim();
-  const level=(header[2][i]||'').replace(/\\s+/g,' ').trim();
-  const unit=(header[3][i]||'').replace(/\\s+/g,' ').trim();
-  const lev=+(level.match(/(10|30|50)\\s*hPa/i)||[])[1];
+  const variable=(header[0][i]||'').replace(/\s+/g,' ').trim();
+  const region=(header[1][i]||'').replace(/\s+/g,' ').trim();
+  const level=(header[2][i]||'').replace(/\s+/g,' ').trim();
+  const unit=(header[3][i]||'').replace(/\s+/g,' ').trim();
+  const lev=+(level.match(/(10|30|50)\s*hPa/i)||[])[1];
   if(!lev)continue;
-  const isWind=/^U$/i.test(variable)&&/60\\s*N/i.test(region);
-  const isTemp=/^T$/i.test(variable)&&/60\\s*[-–]\\s*90\\s*N/i.test(region);
+  const isWind=/^U$/i.test(variable)&&/60\s*N/i.test(region);
+  const isTemp=/^T$/i.test(variable)&&/60\s*[-–]\s*90\s*N/i.test(region);
   if(isWind||isTemp)columns.push({index:i,level:lev,type:isWind?'wind':'temp',unit});
  }
  const rows=[];
  for(const line of lines.slice(5)){
-  const m=line.match(/^\\s*(\\d{4}-\\d{2}-\\d{2})/);if(!m)continue;
+  const m=line.match(/^\s*(\d{4}-\d{2}-\d{2})/);if(!m)continue;
   const date=m[1],rest=line.slice(m.index+m[0].length),values=[];
   for(let i=0;i<rest.length;i+=10){const raw=rest.slice(i,i+10).trim();values.push(raw===''?null:Number(raw));}
   const row={date,wind:{},temp:{}};
