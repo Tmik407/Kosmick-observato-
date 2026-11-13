@@ -1291,7 +1291,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
    const raw=o.time||o.datetime||o.timestamp||o.time_tag||o.updated||o.observed;
    let t=NaN;
    if(typeof raw==="number")t=new Date(raw<1e12?raw*1000:raw).getTime();
-   else if(raw)t=Date.parse(raw);
+   else if(raw)t=Date.parse(typeof raw==="string"&&!/[zZ]|[+-]\\d{2}:?\\d{2}$/.test(raw)?raw+"Z":raw);
    const row={code:st.code||"?",name:st.name||st.code||"Ionosonda",lat,lon,fof2:val("fof2"),muf:val("mufd","muf"),foe:val("foe"),hmf2:val("hmf2"),confidence:val("fof2_confidence","fof2_conf","confidence"),time:Number.isFinite(t)?new Date(t).toISOString():null};
    if(row.fof2!==null||row.muf!==null||row.foe!==null){
     const age=row.time?Date.now()-Date.parse(row.time):Infinity;
@@ -1403,7 +1403,8 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
    if(provider){
     const stamp=provider.last_data_utc||provider.last_data_text||null,parsed=provider.last_data_utc?Date.parse(provider.last_data_utc):NaN;
     const age=Number.isFinite(parsed)?Math.max(0,(Date.now()-parsed)/3600000):null;
-    providerLine=(provider.stale?"Poskytovatel hlásí ZASTARALÁ DATA. ":provider.status_text||"Stav poskytovatele načten.")+(stamp?" Poslední příjem GIRO: "+stamp+" UTC"+(age!==null?" · stáří "+age.toFixed(1)+" h.":"."):"");
+    const stampLabel=provider.last_data_utc?stamp+" UTC":stamp;
+    providerLine=(provider.stale?"Poskytovatel hlásí ZASTARALÁ DATA. ":provider.status_text||"Stav poskytovatele načten.")+(stampLabel?" Poslední příjem GIRO: "+stampLabel+(age!==null?" · stáří "+age.toFixed(1)+" h.":"."):"");
     if(provider.error)providerLine+=" Kontrola stavu: "+provider.error;
    }else if(tasks[3].status==="fulfilled"){
     const page=tasks[3].value,stale=/Data is stale|No data has been received from GIRO/i.test(page);
