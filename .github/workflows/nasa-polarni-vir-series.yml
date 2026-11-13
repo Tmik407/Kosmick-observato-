@@ -1,0 +1,134 @@
+name: NASA stratospheric numerical series mirror
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/nasa-polarni-vir-series.yml"
+      - "polarni-vir.html"
+  schedule:
+    - cron: "45 14 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: polar-vortex-nasa-series
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Download NASA GSFC daily series from public mirror
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/nasa-gsfc
+          base="https://observatory.lelama.digital/api/series"
+          for code in nasa.u60n.10.daily nasa.t6090n.10.daily nasa.vt4575n.100.daily; do
+            curl --fail --location --retry 4 --retry-delay 8 --connect-timeout 20 \
+              "${base}/${code}.json" -o "data/nasa-gsfc/${code}.json"
+          done
+          python - <<'PY'
+          import csv, json, hashlib
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          root = Path("data/nasa-gsfc")
+          codes = {
+              "nasa.u60n.10.daily": ("u60_10hpa_60n", "m/s"),
+              "nasa.t6090n.10.daily": ("tcap_10hpa_60_90n", "K"),
+              "nasa.vt4575n.100.daily": ("wave_heat_flux_100hpa_45_75n", "K m/s"),
+          }
+
+          def find_points(obj):
+              if isinstance(obj, dict):
+                  for key in ("points", "data", "values", "series"):
+                      val = obj.get(key)
+                      if isinstance(val, list):
+                          if val and isinstance(val[0], (list, dict)):
+                              return val
+                          if not val:
+                              return val
+                  for val in obj.values():
+                      got = find_points(val)
+                      if got is not None:
+                          return got
+              return obj if isinstance(obj, list) else None
+
+          meta = {
+              "retrieved_utc": datetime.now(timezone.utc).isoformat(),
+              "source": "NASA GSFC Annual Meteorological Statistics, redistributed as open JSON by Observatoire des phénomènes naturels",
+              "upstream": "https://acd-ext.gsfc.nasa.gov/Data_services/met/ann_data.html",
+              "mirror": "https://observatory.lelama.digital/en/open-data",
+              "classification": "NASA_GSFC_DAILY_SERIES_PUBLIC_MIRROR",
+              "note": "Values are a public mirror of NASA GSFC series; verify provenance and flags. GEOS forecast values may be flagged in the source.",
+              "series": {}
+          }
+
+          for code, (stem, unit) in codes.items():
+              src = root / f"{code}.json"
+              raw = src.read_bytes()
+              obj = json.loads(raw)
+              points = find_points(obj)
+              if not isinstance(points, list) or not points:
+                  raise SystemExit(f"{code}: no points array found in JSON")
+              rows = []
+              for point in points:
+                  if isinstance(point, dict):
+                      date = point.get("date") or point.get("time") or point.get("key")
+                      value = point.get("value")
+                      uncertainty = point.get("uncertainty")
+                      flags = point.get("flags")
+                  elif isinstance(point, list) and len(point) >= 2:
+                      date, value = point[0], point[1]
+                      uncertainty = point[2] if len(point) > 2 else ""
+                      flags = point[3] if len(point) > 3 else ""
+                  else:
+                      continue
+                  if date is None or value is None:
+                      continue
+                  try:
+                      float(value)
+                  except (TypeError, ValueError):
+                      continue
+                  rows.append((str(date)[:10], value, "" if uncertainty is None else uncertainty, "" if flags is None else flags))
+              rows.sort(key=lambda r: r[0])
+              if len(rows) < 100:
+                  raise SystemExit(f"{code}: too few parsed rows ({len(rows)})")
+              out = root / f"{stem}.csv"
+              with out.open("w", newline="", encoding="utf-8") as f:
+                  w = csv.writer(f)
+                  w.writerow(["date", "value", "uncertainty", "flags"])
+                  w.writerows(rows)
+              meta["series"][stem] = {
+                  "source_code": code, "unit": unit, "rows": len(rows),
+                  "first_date": rows[0][0], "last_date": rows[-1][0],
+                  "source_json_sha256": hashlib.sha256(raw).hexdigest(),
+                  "csv_bytes": out.stat().st_size
+              }
+          (root / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          print(json.dumps(meta, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Commit numerical series
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/nasa-gsfc/
+          if ! git diff --cached --quiet; then
+            git commit -m "Update NASA GSFC polar vortex numerical series"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          else
+            echo "NASA series unchanged."
+          fi
