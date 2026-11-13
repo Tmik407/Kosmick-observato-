@@ -80,12 +80,12 @@ a{color:#75dcff}footer{text-align:center;color:var(--muted);font-size:12px;paddi
 <div><div class="unit">Vlnový tepelný tok · 100 hPa / 45–75° N</div><div class="metric" id="nasaMirrorHeat">—</div><div class="muted" id="nasaMirrorHeatDate">—</div></div>
 </div>
 <h3>NASA GSFC · zonální vítr U60</h3><canvas id="nasaMirrorWindChart" width="1000" height="280"></canvas>
-<h3>Vertikální profil U60 · NASA Ozone Watch / 10–30–50 hPa</h3><canvas id="nasaVerticalWindChart" width="1000" height="300"></canvas><div class="status" id="nasaVerticalWindStatus">Načítám vertikální řady U60…</div>
+<h3>Vertikální profil U60 · NASA Ozone Watch / 10–30–50 hPa</h3><canvas id="nasaVerticalWindChart" width="1000" height="300"></canvas><div class="status" id="nasaVerticalWindStatus">Načítám vertikální řady U60…</div>\n<h3>Vertikální teplotní profil polární čepičky · 10–30–50 hPa</h3><canvas id="nasaVerticalTempChart" width="1000" height="300"></canvas><div class="status" id="nasaVerticalTempStatus">Načítám teplotní řady…</div>
 <h3>NASA GSFC · teplota polární čepičky</h3><canvas id="nasaMirrorTempChart" width="1000" height="280"></canvas>
 <h3>NASA GSFC · vlnový tepelný tok</h3><canvas id="nasaMirrorHeatChart" width="1000" height="280"></canvas>
 <div class="status" id="nasaMirrorStatus">Načítám číselné řady NASA GSFC…</div>
 <div class="status" id="nasaMirrorInterpretation"><b>Automatická interpretace</b><br>Čekám na číselná data.</div>
-<p class="muted">Důležité omezení: veřejná kopie v tomto balíčku poskytuje U60 a teplotu na 10 hPa a vlnový tepelný tok na 100 hPa. Neposkytuje zde kompletní U60 a teploty pro 30 a 50 hPa. Tyto hladiny zůstávají dostupné v ručním importu NASA, dokud nebude ověřen další automatický numerický zdroj. <a href="https://observatory.lelama.digital/en/open-data" target="_blank" rel="noopener">Katalog otevřených dat a metodika kopie</a> · <a href="https://acd-ext.gsfc.nasa.gov/Data_services/met/ann_data.html" target="_blank" rel="noopener">NASA GSFC – původní zdroj</a>.</p>
+<p class="muted">Vertikální profil 10 / 30 / 50 hPa je doplněn přímými denními textovými řadami NASA Ozone Watch (MERRA-2 a pro novější období GEOS FP). U každého bodu rozlišujeme analýzu (forecast_hour = 0) a předpověď (kladný forecast_hour); chybějící hodnoty -9999 se nezobrazují. <a href="https://observatory.lelama.digital/en/open-data" target="_blank" rel="noopener">Katalog otevřených dat a metodika kopie</a> · <a href="https://acd-ext.gsfc.nasa.gov/Data_services/met/ann_data.html" target="_blank" rel="noopener">NASA GSFC – původní zdroj</a>.</p>
 </section>
 \n<section class="panel" id="verticalSeries">
 <h2>Vertikální vývoj polárního víru · 10 / 30 / 50 hPa</h2>
@@ -282,7 +282,21 @@ $('nasaFile').addEventListener('change',async ev=>{
   status.innerHTML="<b class=\\"good\\">Vertikální řady NASA Ozone Watch načteny.</b><br>"+legend+"<br>Data s forecast_hour = 0 jsou analýza; kladné forecast_hour označuje předpověď. "+series.map(q=>q.lev+" hPa: "+q.rows.length+" řádků").join(" · ");
  }catch(e){status.innerHTML="<b class=\\"warn\\">Vertikální řady zatím nejsou dostupné.</b> "+String(e.message||e)+". Zkontroluj běh NASA archivační úlohy.";}
 }
-async function loadNasaMirror(){
+async function loadNasaVerticalTemp(){
+ const status=$("nasaVerticalTempStatus"),cv=$("nasaVerticalTempChart"),g=cv.getContext("2d"),w=cv.width,h=cv.height,p=55;
+ try{
+  const levels=[10,30,50],series=await Promise.all(levels.map(async lev=>{const r=await fetch("./data/nasa-gsfc/tcap_"+lev+"hpa_60_90n_ozonewatch.csv?v="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("Teplota "+lev+" hPa HTTP "+r.status);const lines=(await r.text()).trim().split(/\\r?\\n/);return {lev,rows:lines.slice(1).map(line=>{const a=line.split(",");return {date:a[0],v:Number(a[1]),fc:Number(a[2])}}).filter(x=>x.date&&Number.isFinite(x.v)&&x.v>-9000&&x.fc>=0)};}));
+  g.clearRect(0,0,w,h);g.fillStyle="#07182a";g.fillRect(0,0,w,h);
+  const colors={10:"#63dfff",30:"#ffbd76",50:"#b69cff"},all=series.flatMap(q=>q.rows.map(x=>x.v));let min=Math.min(...all),max=Math.max(...all);if(min===max){min-=1;max+=1;}
+  const y=v=>h-p-(v-min)/(max-min)*(h-2*p);
+  for(let i=0;i<5;i++){const v=max-i*(max-min)/4,yy=y(v);g.strokeStyle="#29445e";g.beginPath();g.moveTo(p,yy);g.lineTo(w-p,yy);g.stroke();g.fillStyle="#a9bfd5";g.font="13px Arial";g.fillText(v.toFixed(1),5,yy+4);}
+  for(const q of series){const a=q.rows.slice(-120);g.beginPath();a.forEach((x,i)=>{const xx=p+i*(w-2*p)/Math.max(1,a.length-1);if(i===0)g.moveTo(xx,y(x.v));else g.lineTo(xx,y(x.v));});g.strokeStyle=colors[q.lev];g.lineWidth=3;g.stroke();}
+  let legend="";for(const q of series){const hist=q.rows.filter(x=>x.fc===0),a=hist[hist.length-1],last=q.rows[q.rows.length-1];legend+=q.lev+" hPa: poslední analýza "+(a?a.date+" = "+a.v.toFixed(2)+" K":"není")+(last&&last.fc>0?"; předpověď "+last.date+" = "+last.v.toFixed(2)+" K (+"+last.fc+" h)":"")+"; ";}
+  g.fillStyle="#edf6ff";g.font="bold 14px Arial";g.fillText("Teplota polární čepičky 60–90° N · K · posledních až 120 dní",p,22);
+  status.innerHTML="<b class=\\"good\\">NASA Ozone Watch · teplotní řady načteny.</b><br>"+legend+series.map(q=>q.lev+" hPa: "+q.rows.length+" řádků").join(" · ")+"<br>Kladný forecast_hour označuje předpověď, nikoli pozorovanou analýzu.";
+ }catch(e){status.innerHTML="<b class=\\"warn\\">Teplotní řady zatím nejsou dostupné.</b> "+String(e.message||e)+". Zkontroluj běh NASA archivační úlohy.";}
+}
+\nasync function loadNasaMirror(){
  const status=$('nasaMirrorStatus');
  const specs=[
   {file:'u60_10hpa_60n.csv',value:'nasaMirrorWind',date:'nasaMirrorWindDate',chart:'nasaMirrorWindChart',label:'U60 · 10 hPa',unit:'m/s',zero:true},
@@ -330,6 +344,6 @@ async function loadNasaMirror(){
 
 loadArchive();
 loadNoaaArchive();\nloadNasaMirror();
-loadNasaVerticalWind();
+loadNasaVerticalWind();\nloadNasaVerticalTemp();
 
 </script></body></html>
