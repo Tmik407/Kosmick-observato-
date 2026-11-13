@@ -100,25 +100,3 @@ jobs:
             echo "Archiv se nezměnil; ponechávám stávající verzi."
           fi
 
-      - name: Připravit celý web včetně oddělené stránky polárního víru
-        run: |
-          set -euo pipefail
-          mkdir -p _site
-          rsync -a --exclude='.git/' --exclude='.github/' --exclude='_site/' ./ _site/
-          touch _site/.nojekyll
-          test -s _site/index.html
-          test -s _site/polarni-vir.html
-          test -s _site/data/u60_daily.csv
-          test -s _site/data/wave_forcing_daily.csv
-
-      - name: Nastavit GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: Nahrát kompletní web
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-
-      - name: Publikovat kompletní web X-5
-        id: deployment
-        uses: actions/deploy-pages@v4
