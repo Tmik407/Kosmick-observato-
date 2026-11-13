@@ -1,4 +1,4 @@
-name: Aktualizace dat a publikace modelu polárního víru X-5
+name: Denní archiv dat polárního víru X-5
 
 on:
   push:
@@ -12,19 +12,13 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
-# Sdílí zámek s hlavním pages.yml, aby se dvě nasazení nepřepisovala.
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: polar-vortex-data
+  cancel-in-progress: true
 
 jobs:
-  update-and-deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  update-archive:
     runs-on: ubuntu-latest
     steps:
       - name: Načíst repozitář
@@ -62,10 +56,10 @@ jobs:
               path = Path("data") / name
               with path.open(encoding="utf-8-sig", newline="") as f:
                   reader = csv.DictReader(f)
-                  header = set(reader.fieldnames or [])
-                  missing = spec["required"] - header
+                  fields = list(reader.fieldnames or [])
+                  missing = spec["required"] - set(fields)
                   if missing:
-                      raise SystemExit(f"{name}: missing required columns {sorted(missing)}; got {sorted(header)}")
+                      raise SystemExit(f"{name}: missing columns {sorted(missing)}")
                   rows = list(reader)
               if len(rows) < 1000:
                   raise SystemExit(f"{name}: too few records ({len(rows)})")
@@ -73,10 +67,8 @@ jobs:
               if not dates:
                   raise SystemExit(f"{name}: no valid dates")
               meta["files"][name] = {
-                  "rows": len(rows),
-                  "columns": list(reader.fieldnames or []),
-                  "first_date": dates[0],
-                  "last_date": dates[-1],
+                  "rows": len(rows), "columns": fields,
+                  "first_date": dates[0], "last_date": dates[-1],
                   "bytes": path.stat().st_size
               }
           (Path("data") / "archive-meta.json").write_text(
@@ -99,4 +91,3 @@ jobs:
           else
             echo "Archiv se nezměnil; ponechávám stávající verzi."
           fi
-
