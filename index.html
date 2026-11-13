@@ -160,6 +160,21 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
  <div><div class="small">Bt – celková intenzita</div><div id="aceBt" class="metric">—</div></div>
 </div>
 <div id="aceInfo" class="small">Zdroj: NOAA ACE Magnetometer · čekám na data…</div>
+<div class="panel" style="background:#10233a;margin:12px 0" id="aceDiagnostics">
+ <h3 style="margin:0 0 10px">ACE MAG – monitor kvality a výpadků (24 hodin)</h3>
+ <div class="grid">
+  <div><div class="small">Platné záznamy S = 0</div><div id="aceDiagValid" class="metric">—</div></div>
+  <div><div class="small">Neplatné / jiné příznaky</div><div id="aceDiagInvalid" class="metric">—</div></div>
+  <div><div class="small">Poslední platný záznam</div><div id="aceDiagLastValid" class="metric">—</div></div>
+  <div><div class="small">Poslední neplatný záznam</div><div id="aceDiagLastInvalid" class="metric">—</div></div>
+  <div><div class="small">Mezery nad 90 sekund</div><div id="aceDiagGaps" class="metric">—</div></div>
+  <div><div class="small">Nejdelší mezera</div><div id="aceDiagMaxGap" class="metric">—</div></div>
+  <div><div class="small">Platné vzorky NOAA RTSW</div><div id="aceDiagRtsw" class="metric">—</div></div>
+  <div><div class="small">Stav zdroje ACE</div><div id="aceDiagSource" class="metric">Čekám…</div></div>
+ </div>
+ <div id="aceDiagFlags" class="small">Rozložení stavových příznaků: čekám na data…</div>
+ <div id="aceDiagNote" class="small">Mezery se počítají mezi sousedními platnými záznamy S = 0; neplatné záznamy se do výpočtů nezahrnují.</div>
+</div>
 <div id="aceVectorCheck" class="small">Kontrola vektorové velikosti Bt: čekám na platná data.</div>
 <div class="panel" style="background:#10233a;margin:12px 0">
  <h3 style="margin:0 0 10px">Automatické vyhodnocení jižního Bz</h3>
@@ -657,6 +672,28 @@ async function refresh(){
  }
 }
 refresh();setInterval(refresh,60000);
+function updateAceDiagnostics(parsed){
+ const set=(id,value,cls)=>{const el=$(id);if(el){el.textContent=value;if(cls)el.className="metric "+cls}};
+ const now=Date.now(),start=now-24*3600000;
+ const recent=parsed.filter(r=>Date.parse(r.stamp)>=start&&Date.parse(r.stamp)<=now);
+ const goodValue=v=>Number.isFinite(v)&&![ -999.9,-999,-9999].includes(v);
+ const validRows=recent.filter(r=>r.statusFlag===0&&[r.bx,r.by,r.bz,r.bt].every(goodValue)).sort((a,b)=>Date.parse(a.stamp)-Date.parse(b.stamp));
+ const invalidRows=recent.filter(r=>r.statusFlag!==0||![r.bx,r.by,r.bz,r.bt].every(goodValue));
+ const flags={};for(const r of recent){const k=String(r.statusFlag);flags[k]=(flags[k]||0)+1}
+ let gaps=0,maxGap=0;for(let i=1;i<validRows.length;i++){const dt=Date.parse(validRows[i].stamp)-Date.parse(validRows[i-1].stamp);if(dt>90000){gaps++;maxGap=Math.max(maxGap,dt)}}
+ const lastValid=validRows[validRows.length-1],lastInvalid=invalidRows[invalidRows.length-1];
+ set("aceDiagValid",String(validRows.length),validRows.length?"good":"warn");
+ set("aceDiagInvalid",String(invalidRows.length),invalidRows.length?"warn":"good");
+ set("aceDiagLastValid",lastValid?lastValid.stamp.slice(11,19)+" UTC":"žádný",""+(lastValid?"good":"bad"));
+ set("aceDiagLastInvalid",lastInvalid?lastInvalid.stamp.slice(11,19)+" UTC · S="+lastInvalid.statusFlag:"žádný",lastInvalid?"warn":"good");
+ set("aceDiagGaps",String(gaps),gaps?"warn":"good");
+ set("aceDiagMaxGap",maxGap?(maxGap/60000).toFixed(1)+" min":"—",maxGap>600000?"warn":"good");
+ const flagText=Object.keys(flags).sort((a,b)=>Number(a)-Number(b)).map(k=>"S="+k+": "+flags[k]).join(" · ");
+ const flagsEl=$("aceDiagFlags");if(flagsEl)flagsEl.textContent="Rozložení příznaků za 24 h: "+(flagText||"žádné záznamy")+" · celkem "+recent.length+" záznamů.";
+ const source=$("aceDiagSource");if(source){source.textContent=recent.length?"odpověď přijata · "+recent.length+" řádků":"bez záznamů v okně";source.className="metric "+(recent.length?"good":"warn")}
+ const note=$("aceDiagNote");if(note)note.textContent="Okno: posledních 24 hodin UTC. Platné: S = 0 a všechny B složky konečné a bez sentinel hodnot. Mezery: "+gaps+" intervalů nad 90 s; nejdelší "+(maxGap?(maxGap/60000).toFixed(1)+" min":"žádná")+". Stavový příznak popisuje kvalitu záznamu, sám o sobě nedokazuje výpadek sondy.";
+ const rtsw=$("aceDiagRtsw");if(rtsw){rtsw.textContent="načítám…";fetch(U.mag,{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("HTTP "+r.status);return r.json()}).then(rows=>{const count=rows.filter(o=>{const t=Date.parse(timeOf(o));return Number.isFinite(t)&&t>=start&&t<=now&&val(o,"bz_gsm","bz")!==null}).length;rtsw.textContent=String(count);rtsw.className="metric "+(count?"good":"warn")}).catch(e=>{rtsw.textContent="nedostupné";rtsw.className="metric bad"})}
+}
 async function refreshAce(){
  const status=$("aceStatus"),info=$("aceInfo");
  try{
@@ -687,6 +724,7 @@ async function refreshAce(){
    parsed.push({stamp,statusFlag:flag,bx,by,bz,bt});
   }
   if(!parsed.length)throw Error("NOAA ACE MAG: nebyly nalezeny řádky ve formátu CURR_YR…Bt");
+  updateAceDiagnostics(parsed);
   const last=parsed[parsed.length-1];
   window.__aceLatestQuality=last;
   const good=last.statusFlag===0;
