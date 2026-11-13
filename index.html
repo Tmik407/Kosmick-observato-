@@ -59,6 +59,9 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
   <div><div class="small">Geoe efektivní pole E</div><div id="analysisE" class="metric">—</div><div id="analysisEDetail" class="small">Výpočet vyžaduje časově blízké V a Bz.</div></div>
   <div><div class="small">Indikátor geomagnetické aktivity</div><div id="analysisLevel" class="metric">—</div><div id="analysisLevelDetail" class="small">Vyhodnocuji naměřené parametry.</div></div>
  </div>
+ <h3>Aktuálnost vstupních měření</h3>
+ <div id="analysisFreshness" class="small">Čekám na časové značky V a Bz.</div>
+ <div id="analysisPairStatus" class="small">Kontrola společného vzorku pro výpočet E.</div>
  <h3>Vyhodnocení vstupních parametrů</h3>
  <div id="analysisInterpretation" class="small">Čekám na současná a platná měření.</div>
  <div id="analysisQuality" class="small">Kvalita dat: čekám na kontrolu.</div>
@@ -330,11 +333,22 @@ function updateAnalysis(xrayRows,k,b,p,d,pressure,couplingCount){
  $("analysisFlareClass").textContent=flux===null?"—":flareLabel(flux);
  $("analysisFlareTime").textContent=lastX?"Tok "+flux.toExponential(2)+" W/m² · "+timeOf(lastX)+" UTC":"Bez platného vzorku";
  const bz=b?val(b,"bz_gsm"):null,bt=b?val(b,"bt"):null,speed=p?val(p,"proton_speed"):null,density=d?val(d,"proton_density"):null,kp=k?val(k,"kp","Kp"):null;
- const pairDelta=(p&&b&&timeOf(p)&&timeOf(b))?Math.abs(Date.parse(timeOf(p))-Date.parse(timeOf(b))):Infinity;
+ const tV=(p&&timeOf(p))?Date.parse(timeOf(p)):NaN,tB=(b&&timeOf(b))?Date.parse(timeOf(b)):NaN;
+ const ageV=Number.isFinite(tV)?Math.max(0,(Date.now()-tV)/60000):Infinity;
+ const ageB=Number.isFinite(tB)?Math.max(0,(Date.now()-tB)/60000):Infinity;
+ const pairDelta=(Number.isFinite(tV)&&Number.isFinite(tB))?Math.abs(tV-tB):Infinity;
+ const pairTime=Number.isFinite(tV)&&Number.isFinite(tB)?Math.max(tV,tB):NaN;
+ const pairAge=Number.isFinite(pairTime)?Math.max(0,(Date.now()-pairTime)/60000):Infinity;
  const pairOK=Number.isFinite(pairDelta)&&pairDelta<=90000;
- const E=(bz!==null&&speed!==null&&pairOK)?0.001*speed*Math.max(0,-bz):null;
+ const pairFresh=pairOK&&pairAge<=5&&ageV<=5&&ageB<=5;
+ const freshness=age=>!Number.isFinite(age)?"chybí":age<=5?"čerstvé":age<=15?"zpožděné":"zastaralé";
+ $("analysisFreshness").textContent="RTSW rychlost V: "+(speed===null?"nedostupná":speed.toFixed(0)+" km/s")+(Number.isFinite(tV)?" · "+timeOf(p)+" UTC · stáří "+ageV.toFixed(1)+" min ("+freshness(ageV)+")":"")+" | IMF Bz: "+(bz===null?"nedostupné":bz.toFixed(2)+" nT")+(Number.isFinite(tB)?" · "+timeOf(b)+" UTC · stáří "+ageB.toFixed(1)+" min ("+freshness(ageB)+")":"");
+ const pairEl=$("analysisPairStatus");
+ pairEl.textContent=pairOK?"Spárovaný vzorek: "+new Date(pairTime).toISOString().replace("T"," ").replace(".000Z","")+" UTC · rozdíl "+Math.round(pairDelta/1000)+" s · stáří "+pairAge.toFixed(1)+" min · "+(pairFresh?"ČERSTVÝ":"STARŠÍ NEŽ 5 MIN – NEPOUŽÍVÁ SE JAKO AKTUÁLNÍ"):"Společný vzorek V/Bz není dostupný v toleranci 90 sekund.";
+ pairEl.className="small "+(pairFresh?"good":pairOK?"warn":"bad");
+ const E=(bz!==null&&speed!==null&&pairFresh)?0.001*speed*Math.max(0,-bz):null;
  $("analysisE").textContent=E===null?"—":E.toFixed(2)+" mV/m";
- $("analysisEDetail").textContent=E===null?"V/Bz nejsou časově spárovány do 90 s":("V "+speed.toFixed(0)+" km/s · Bz "+bz.toFixed(2)+" nT · rozdíl časů "+Math.round(pairDelta/1000)+" s");
+ $("analysisEDetail").textContent=E===null?(pairOK?"Vzorek je časově spárovaný, ale starší než 5 minut; aktuální E se nezobrazuje.":"V/Bz nejsou časově spárovány do 90 s") :("V "+speed.toFixed(0)+" km/s · Bz "+bz.toFixed(2)+" nT · rozdíl "+Math.round(pairDelta/1000)+" s · stáří páru "+pairAge.toFixed(1)+" min");
  const cues=[];
  let score=0;
  if(bz!==null){if(bz<=-10){score+=3;cues.push("silně jižní Bz")}else if(bz<=-5){score+=2;cues.push("jižní Bz")}else if(bz<0){score+=1;cues.push("slabě jižní Bz")}else cues.push("severní Bz")}
@@ -351,8 +365,9 @@ function updateAnalysis(xrayRows,k,b,p,d,pressure,couplingCount){
  $("analysisInterpretation").textContent=meaning+" "+(cues.join(" · ")||"Nedostatek platných vstupů")+".";
  const quality=[];
  quality.push("GOES: "+(lastX?(age<=15?"čerstvý":"zpožděný"):"chybí"));
- quality.push("RTSW V: "+(speed!==null?"platné":"chybí"));
- quality.push("IMF Bz/Bt: "+(bz!==null&&bt!==null?"platné":"neúplné"));
+ quality.push("RTSW V: "+(speed!==null?freshness(ageV):"chybí"));
+ quality.push("IMF Bz/Bt: "+(bz!==null&&bt!==null?freshness(ageB):"neúplné"));
+ quality.push("V/Bz pár: "+(pairFresh?"čerstvý":pairOK?"zastaralý":"nespárovaný"));
  quality.push("Kp: "+(kp!==null?"platné":"chybí"));
  quality.push("V/Bz párování: "+(couplingCount?couplingCount+" vzorků":"bez spárovaných vzorků"));
  $("analysisQuality").textContent="Kontrola vstupů: "+quality.join(" · ")+(density!==null?" · hustota "+density.toFixed(2)+" cm⁻³":" · hustota chybí");
