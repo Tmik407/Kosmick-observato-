@@ -137,8 +137,8 @@ a{color:#75dcff;text-decoration:none}a:hover{text-decoration:underline;color:#b9
 <section class="panel"><h2>Historie a kvalita dat</h2><div id="quality" class="status">Historický archiv zatím není připojen. Po zapojení automatického sběru budou ukládány analýzy, předpovědi a klimatologické normály odděleně.</div><p class="muted">Každý datový bod ponese příznak: MĚŘENÍ / ANALÝZA / REANALÝZA / PŘEDPOVĚĎ / KLIMATOLOGIE. Chybějící hodnoty se nebudou nahrazovat nulou. Zastaralá data budou viditelně označena.</p></section>
 <footer>Kosmická observatoř X-5 · Polární vír · Česká rozhraní · Bez loga NOAA</footer>
 </main>
-<script>
-const $=id=>document.getElementById(id);
+<script type="text/plain" id="legacy-page-script-disabled">
+/* Původní datový skript je dočasně vypnut: obsahuje syntaktickou chybu, která blokuje běh stránky. */
 const polarLevels=[60,65,70,75,80,85,88,90],polarLons=Array.from({length:16},(_,i)=>i*22.5);
 const polarPoints=[];for(const lat of polarLevels)for(const lon of polarLons)polarPoints.push({lat,lon});
 let gfsPayload=null,gfsFetchKey='';
