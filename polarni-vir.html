@@ -29,13 +29,14 @@ a{color:#75dcff;text-decoration:none}a:hover{text-decoration:underline;color:#b9
 <div><div class="unit">Nejnižší teplota · 50 hPa</div><div class="metric" id="tmin">—</div><div class="muted">Minimální teplota bude doplněna, pokud ji zdroj poskytne</div></div>
 <div><div class="unit">Diagnostický stav</div><div class="metric" id="state">Čeká na data</div><div class="muted">Vyhodnocení podle posledního dostupného U60</div></div>
 </div><p class="muted" id="metricSource">Zdroj a čas posledního záznamu se načtou z datového archivu. ERA5 je reanalýza, nikoli přímé měření v atmosféře.</p></section>
-<section class="panel"><h2>Polární projekce – diagnostický náčrt</h2><canvas id="polar" width="1000" height="700" role="img" aria-label="Schematická polární projekce deformace polárního víru"></canvas><p class="muted">Schematická vizualizace odvozená z diagnostických parametrů a ovládacích prvků níže. Není to skutečná mapa geopotenciálu ani satelitní snímek.</p>
-<div class="controls">
-<label>Rychlost zonálního větru 10 hPa: <b id="windOut">−2 m/s</b><input id="windCtl" type="range" min="-40" max="60" value="-2" step="1"></label>
-<label>Teplota polární oblasti: <b id="tempOut">216 K</b><input id="tempCtl" type="range" min="190" max="240" value="216" step="1"></label>
-<label>Deformace víru: <b id="shapeOut">1,8</b><input id="shapeCtl" type="range" min="1" max="3" value="1.8" step=".1"></label>
-<label>Dominantní vlna: <b id="waveOut">Vlna 1</b><input id="waveCtl" type="range" min="1" max="2" value="1" step="1"></label>
-</div></section>
+<section class="panel" id="real-polar-map">
+<h2>Skutečná meteorologická mapa polární stratosféry</h2>
+<p class="muted">Originální polární mapový produkt NOAA/NCEP GFS pro severní polokouli. Zobrazuje výstup numerického meteorologického modelu, nikoli schematickou kresbu. Vyber hladinu 10, 30 nebo 50 hPa.</p>
+<div class="controls"><label for="gfsLevel"><b>Tlaková hladina</b><select id="gfsLevel"><option value="10">10 hPa · horní stratosféra</option><option value="30">30 hPa · střední stratosféra</option><option value="50">50 hPa · dolní stratosféra</option></select></label></div>
+<a id="gfsMapLink" href="./data/noaa-gfs/gfs_t10_nh_f00.png" target="_blank" rel="noopener"><img id="gfsMap" src="./data/noaa-gfs/gfs_t10_nh_f00.png" alt="Meteorologická polární mapa NOAA GFS 10 hPa severní polokoule" loading="eager" style="display:block;width:100%;height:auto;min-height:240px;object-fit:contain;border:1px solid #315674;border-radius:16px;background:#061525"></a>
+<div class="status" id="gfsMapStatus">Načítám skutečnou mapu NOAA GFS…</div>
+<p class="muted">Zdroj: NOAA/NCEP GFS · analýza f00. Čas stažení a stav archivu se načítají z metadat. Mapa je modelová analýza; nepředstavuje přímé satelitní měření. <a href="https://www.cpc.ncep.noaa.gov/products/stratosphere/strat_a_f/" target="_blank" rel="noopener">Metodika a produkty NOAA CPC</a>.</p>
+</section>
 
 <section class="panel"><h2>Archiv měření a časové řady</h2>
 <p class="muted">Automaticky stahovaný denní archiv ERA5 od roku 1959. Jde o reanalýzu založenou na pozorováních a modelu, nikoli o přímé měření jedním přístrojem. Aktualizace archivu probíhá denně; datum posledního záznamu se zobrazuje samostatně.</p>
@@ -142,31 +143,17 @@ a{color:#75dcff;text-decoration:none}a:hover{text-decoration:underline;color:#b9
 <footer>Kosmická observatoř X-5 · Polární vír · Česká rozhraní · Bez loga NOAA</footer>
 </main>
 <script>
-const $=id=>document.getElementById(id),c=$('polar'),ctx=c.getContext('2d');
-function draw(){
- const w=c.width,h=c.height,cx=w/2,cy=h/2,R=255,wind=+$('windCtl').value,temp=+$('tempCtl').value,shape=+$('shapeCtl').value,wave=+$('waveCtl').value;
- $('windOut').textContent=wind+' m/s';$('tempOut').textContent=temp+' K';$('shapeOut').textContent=shape.toFixed(1).replace('.',',');$('waveOut').textContent='Vlna '+wave;
- ctx.clearRect(0,0,w,h);
- const bg=ctx.createRadialGradient(cx,cy,25,cx,cy,500);bg.addColorStop(0,'#123958');bg.addColorStop(.58,'#0a2138');bg.addColorStop(1,'#061525');ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
- // Polární stereografická síť
- for(const r of [72,142,210,255]){ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle=r===255?'#5c88a7':'#31536f';ctx.lineWidth=r===255?2:1;ctx.stroke()}
- for(let a=0;a<360;a+=15){const q=a*Math.PI/180;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+R*Math.cos(q),cy+R*Math.sin(q));ctx.strokeStyle=a%45===0?'#345b78':'#203e59';ctx.lineWidth=a%45===0?1.4:1;ctx.stroke()}
- ctx.fillStyle='#c9deee';ctx.font='bold 15px Arial';ctx.textAlign='center';ctx.fillText('90° N',cx,cy-12);ctx.fillText('60° N',cx+R+34,cy+5);ctx.fillText('30° N',cx+R+34,cy+145);
- // Schematická deformace okraje víru a planetární vlny
- const amp=wind<0?.28:Math.max(.05,(45-wind)/170),stretch=shape*(1+amp),phase=wave===1?.35:1.1;
- ctx.beginPath();
- for(let i=0;i<=900;i++){const a=i/900*Math.PI*2,rad=157+34*Math.sin(wave*a+phase)+18*Math.cos(2*a-phase)+10*Math.sin(3*a+phase),x=cx+Math.cos(a)*rad*stretch,y=cy+Math.sin(a)*rad/Math.sqrt(stretch);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}
- ctx.closePath();
- const grad=ctx.createRadialGradient(cx,cy,35,cx,cy,270);grad.addColorStop(0,temp>213?'rgba(255,160,100,.30)':'rgba(75,180,255,.28)');grad.addColorStop(.72,'rgba(65,165,220,.16)');grad.addColorStop(1,'rgba(35,105,175,.02)');ctx.fillStyle=grad;ctx.fill();
- ctx.strokeStyle=wind<0?'#ff9b73':'#65e3ff';ctx.lineWidth=5;ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=18;ctx.stroke();ctx.shadowBlur=0;
- // Středové jádro a popisky
- const core=ctx.createRadialGradient(cx-20,cy-25,4,cx,cy,95);core.addColorStop(0,'#b9eaff');core.addColorStop(.25,'#4e9fc7');core.addColorStop(1,'rgba(12,40,65,.08)');ctx.beginPath();ctx.arc(cx,cy,92,0,Math.PI*2);ctx.fillStyle=core;ctx.fill();
- ctx.strokeStyle='#8edfff88';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,92,0,Math.PI*2);ctx.stroke();
- ctx.textAlign='center';ctx.fillStyle='#f1f8ff';ctx.font='bold 22px Arial';ctx.fillText(wind<0?'VÝCHODNÍ PROUDĚNÍ':'ZÁPADNÍ PROUDĚNÍ',cx,cy+315);
- ctx.font='14px Arial';ctx.fillStyle='#a9c6dc';ctx.fillText('U60: '+wind+' m/s  ·  T: '+temp+' K  ·  Vlna '+wave,cx,cy+340);ctx.textAlign='left';
+const $=id=>document.getElementById(id);
+const gfsFiles={10:'./data/noaa-gfs/gfs_t10_nh_f00.png',30:'./data/noaa-gfs/gfs_t30_nh_f00.png',50:'./data/noaa-gfs/gfs_t50_nh_f00.png'};
+function setGfsLevel(){
+ const level=$('gfsLevel').value,url=gfsFiles[level],img=$('gfsMap');
+ img.alt='Meteorologická mapa NOAA GFS '+level+' hPa severní polokoule';
+ $('gfsMapLink').href=url;img.src=url;
+ $('gfsMapStatus').textContent='Zobrazuji archivovanou mapu NOAA GFS na hladině '+level+' hPa. Čas platnosti ověř podle metadat archivu níže.';
+ img.onerror=()=>{$('gfsMapStatus').innerHTML='<b class="warn">Mapa této hladiny není právě dostupná.</b> Zkontroluj stav archivu NOAA GFS níže.';};
+ img.onload=()=>{$('gfsMapStatus').innerHTML='<b class="good">Meteorologická mapa načtena.</b> NOAA/NCEP GFS · '+level+' hPa · severní polokoule.';};
 }
-['windCtl','tempCtl','shapeCtl','waveCtl'].forEach(id=>$(id).addEventListener('input',draw));draw();
-
+$('gfsLevel').addEventListener('change',setGfsLevel);setGfsLevel();
 async function loadArchive(){
  const status=$('archiveStatus'),mainStatus=$('dataStatus');
  const fmt=v=>Number.isFinite(v)?v.toFixed(1).replace('.',','):'—';
