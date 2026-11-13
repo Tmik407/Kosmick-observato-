@@ -1123,6 +1123,31 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  <div class="small">Důležité: skóre 0–100 je vlastní heuristický indikátor X-5, nikoli kalibrovaná pravděpodobnost, předpověď Kp/Dst ani oficiální NOAA produkt. Neurčuje stupeň G. Kp a Dst jsou samostatně ověřované geomagnetické indexy; skutečnou odezvu magnetosféry lze potvrdit až následným měřením. Výpočet vyžaduje čerstvá a časově spárovaná data, neplatné hodnoty a mezery se vyřazují.</div>
  <p><a href="./space-weather-history.json" target="_blank" rel="noopener">Zdrojový archiv měření X-5</a> · <a href="https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json" target="_blank" rel="noopener">NOAA – Kp</a></p>
 </section>
+
+<section class="panel" id="sdrCorrelationPanel">
+ <h2>SDR × kosmické počasí – časová korelace X-5</h2>
+ <div class="small">Zadej vlastní pozorování SDR. Záznamy se ukládají pouze v tomto prohlížeči a zařízení; exportuj si zálohu JSON/CSV. Čas zadávej v UTC, aby šlo porovnávat data bez posunu časových pásem.</div>
+ <div class="grid" style="margin-top:12px">
+  <label class="small">Datum a čas pozorování (UTC)<input id="sdrTime" type="datetime-local" step="60" style="display:block;width:100%;margin-top:5px;padding:10px;background:#081a2c;color:#fff;border:1px solid #45627e;border-radius:7px"></label>
+  <label class="small">Frekvence (MHz)<input id="sdrFreq" type="number" min="0" step="0.001" placeholder="např. 7.100" style="display:block;width:100%;margin-top:5px;padding:10px;background:#081a2c;color:#fff;border:1px solid #45627e;border-radius:7px"></label>
+  <label class="small">Režim / pásmo<input id="sdrMode" type="text" placeholder="např. HF / AM / USB / SDR" style="display:block;width:100%;margin-top:5px;padding:10px;background:#081a2c;color:#fff;border:1px solid #45627e;border-radius:7px"></label>
+  <label class="small">Síla / charakter signálu<input id="sdrSignal" type="text" placeholder="např. S5, šum, zakřivené stopy" style="display:block;width:100%;margin-top:5px;padding:10px;background:#081a2c;color:#fff;border:1px solid #45627e;border-radius:7px"></label>
+ </div>
+ <label class="small" style="display:block;margin-top:10px">Poznámka k pozorování<textarea id="sdrNote" rows="3" placeholder="Popis signálu, časový průběh, zařízení a případné rušení…" style="display:block;width:100%;margin-top:5px;padding:10px;background:#081a2c;color:#fff;border:1px solid #45627e;border-radius:7px"></textarea></label>
+ <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button id="sdrSave" type="button">Uložit pozorování</button><button id="sdrExportJson" type="button">Export JSON</button><button id="sdrExportCsv" type="button">Export CSV</button><button id="sdrClear" type="button">Smazat místní záznamy</button></div>
+ <div class="grid" style="margin-top:14px">
+  <div><div class="small">Uložená pozorování</div><div id="sdrCount" class="metric">0</div></div>
+  <div><div class="small">Nejbližší GOES X-ray</div><div id="sdrXray" class="metric">—</div><div id="sdrXrayTime" class="small"></div></div>
+  <div><div class="small">Nejbližší Kp</div><div id="sdrKp" class="metric">—</div><div id="sdrKpTime" class="small"></div></div>
+  <div><div class="small">Nejbližší Dst</div><div id="sdrDst" class="metric">—</div><div id="sdrDstTime" class="small"></div></div>
+  <div><div class="small">Sluneční vítr / IMF Bz</div><div id="sdrWind" class="metric">—</div><div id="sdrWindTime" class="small"></div></div>
+ </div>
+ <div id="sdrStatus" class="status">Čekám na první SDR pozorování.</div>
+ <h3>Časová osa SDR a kosmického počasí</h3><div id="sdrTimeline" class="small">Zatím nejsou uložena žádná pozorování.</div>
+ <div class="small">Korelace je pouze časové porovnání. GOES X-ray může ovlivnit HF šíření na osvětlené straně Země; Kp a Dst popisují geomagnetickou odezvu v jiných časových měřítkách. Časová blízkost sama o sobě neprokazuje příčinnou souvislost. Ionosférické podmínky zde nejsou přímým měřením: pro interpretaci HF je nutné doplnit polohu, den/noc, frekvenci a nezávislé ionosférické údaje.</div>
+ <p><a href="https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json" target="_blank" rel="noopener">NOAA GOES X-ray 1 den</a> · <a href="https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json" target="_blank" rel="noopener">NOAA planetární Kp</a> · <a href="https://wdc.kugi.kyoto-u.ac.jp/hapi/" target="_blank" rel="noopener">WDC Kyoto Dst / HAPI</a></p>
+</section>
+
 <section class="panel" id="stormHistoryPanel">
  <h2>Historický přehled geomagnetických bouří · G1–G5</h2>
  <div class="grid">
@@ -1588,4 +1613,68 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  else if(panel){load();setInterval(()=>{if(!document.hidden)load()},15*60*1000)}
 })();
 </script>
+
+<script>
+(function(){
+ const $=id=>document.getElementById(id),put=(id,v)=>{const e=$(id);if(e)e.textContent=v};
+ const KEY="x5_sdr_observations_v1",valid=n=>Number.isFinite(Number(n)),time=v=>{const n=Date.parse(v);return Number.isFinite(n)?n:null};
+ const stamp=t=>Number.isFinite(t)?new Date(t).toISOString().replace("T"," ").slice(0,16)+" UTC":"—";
+ const read=()=>{try{const a=JSON.parse(localStorage.getItem(KEY)||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}};
+ let xr=[],kp=[],dst=[],wind=[];
+ function nearest(rows,t,maxAge,key){let best=null,delta=Infinity;for(const r of rows){const d=Math.abs(r.t-t);if(d<delta){delta=d;best=r}}return best&&delta<=maxAge?{...best,delta}:null}
+ function cls(v){if(!(v>0))return"—";const p=Math.floor(Math.log10(v)),m=v/Math.pow(10,p);return (p>=-4?"X":p>=-5?"M":p>=-6?"C":p>=-7?"B":"A")+m.toFixed(1)}
+ function correlate(o){
+  const t=time(o.time),x=nearest(xr,t,30*60000),k=nearest(kp,t,90*60000),d=nearest(dst,t,90*60000),w=nearest(wind,t,5*60000);
+  return {x,k,d,w};
+ }
+ function render(){
+  const a=read().sort((x,y)=>time(y.time)-time(x.time));put("sdrCount",String(a.length));
+  if(!a.length){put("sdrTimeline","Zatím nejsou uložena žádná pozorování.");put("sdrStatus","Zadej první pozorování SDR.");return}
+  const c=correlate(a[0]);put("sdrXray",c.x?cls(c.x.flux)+" · "+c.x.flux.toExponential(2)+" W/m²":"—");
+  put("sdrXrayTime",c.x?"odchylka "+Math.round(c.x.delta/60000)+" min · "+stamp(c.x.t):"bez vzorku v ±30 min");
+  put("sdrKp",c.k?c.k.kp.toFixed(2):"—");put("sdrKpTime",c.k?"odchylka "+Math.round(c.k.delta/60000)+" min · "+stamp(c.k.t):"bez intervalu v ±90 min");
+  put("sdrDst",c.d?c.d.dst.toFixed(0)+" nT":"—");put("sdrDstTime",c.d?"odchylka "+Math.round(c.d.delta/60000)+" min · "+stamp(c.d.t):"bez hodnoty v ±90 min");
+  put("sdrWind",c.w?((Number.isFinite(c.w.v)?c.w.v.toFixed(0)+" km/s":"—")+" · Bz "+(Number.isFinite(c.w.bz)?c.w.bz.toFixed(1)+" nT":"—")):"—");
+  put("sdrWindTime",c.w?"odchylka "+Math.round(c.w.delta/60000)+" min · "+stamp(c.w.t):"bez vzorku v ±5 min");
+  const available=[c.x,c.k,c.d,c.w].filter(Boolean).length;
+  put("sdrStatus","Nejnovější záznam: "+stamp(time(a[0].time))+" · časově dostupné "+available+"/4 typů dat. Zdroje: NOAA GOES, NOAA Kp, Kyoto Dst a archiv slunečního větru X-5.");
+  $("sdrTimeline").innerHTML=a.map(o=>{
+   const q=correlate(o),f=(v,u)=>v?String(v)+u:"nedostupné";
+   const x=q.x?cls(q.x.flux)+" ("+q.x.flux.toExponential(2)+" W/m²; Δ "+Math.round(q.x.delta/60000)+" min)":"bez GOES vzorku";
+   const k=q.k?"Kp "+q.k.kp.toFixed(2)+" (Δ "+Math.round(q.k.delta/60000)+" min)":"Kp nedostupné";
+   const d=q.d?"Dst "+q.d.dst.toFixed(0)+" nT":"Dst nedostupné";
+   const w=q.w?"V "+f(q.w.v.toFixed(0)," km/s")+" · Bz "+f(q.w.bz.toFixed(1)," nT"):"vítr/IMF nedostupný";
+   return "<div class='panel' style='margin:8px 0;padding:12px'><b>"+stamp(time(o.time))+" · "+(o.freq?o.freq+" MHz · ":"")+(o.mode||"SDR")+"</b><br>"+(o.signal||"Bez popisu signálu")+"<br>"+x+"<br>"+k+" · "+d+"<br>"+w+(o.note?"<br>Poznámka: "+String(o.note).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])):"")+"</div>";
+  }).join("");
+ }
+ function download(name,content,type){const b=new Blob([content],{type}),u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download=name;a.click();URL.revokeObjectURL(u)}
+ $("sdrSave").addEventListener("click",()=>{
+  const raw=$("sdrTime").value;if(!raw){put("sdrStatus","Vyplň datum a čas pozorování v UTC.");return}
+  const o={id:Date.now(),time:new Date(raw).toISOString(),freq:$("sdrFreq").value?Number($("sdrFreq").value):null,mode:$("sdrMode").value.trim(),signal:$("sdrSignal").value.trim(),note:$("sdrNote").value.trim(),saved_utc:new Date().toISOString()};
+  const a=read();a.push(o);localStorage.setItem(KEY,JSON.stringify(a));$("sdrNote").value="";$("sdrSignal").value="";render();
+ });
+ $("sdrExportJson").addEventListener("click",()=>download("x5-sdr-pozorovani.json",JSON.stringify({exported_utc:new Date().toISOString(),observations:read()},null,2),"application/json"));
+ $("sdrExportCsv").addEventListener("click",()=>{const esc=v=>'"'+String(v??"").replace(/"/g,'""')+'"',a=read(),rows=[["time_utc","frequency_mhz","mode","signal","note","saved_utc"],...a.map(o=>[o.time,o.freq,o.mode,o.signal,o.note,o.saved_utc])];download("x5-sdr-pozorovani.csv","\uFEFF"+rows.map(r=>r.map(esc).join(",")).join("\n"),"text/csv;charset=utf-8")});
+ $("sdrClear").addEventListener("click",()=>{if(confirm("Opravdu smazat všechna místní SDR pozorování?")){localStorage.removeItem(KEY);render()}});
+ async function load(){
+  const tasks=await Promise.allSettled([
+   fetch("https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("GOES HTTP "+r.status);return r.json()}),
+   fetch("https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("Kp HTTP "+r.status);return r.json()}),
+   fetch("https://wdc.kugi.kyoto-u.ac.jp/hapi/data?id=hour_dst&time.min="+encodeURIComponent(new Date(Date.now()-2*86400000).toISOString())+"&time.max="+encodeURIComponent(new Date(Date.now()+3600000).toISOString())+"&format=json",{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("Dst HTTP "+r.status);return r.json()}),
+   fetch("./space-weather-history.json?ts="+Date.now(),{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("Archiv větru HTTP "+r.status);return r.json()})
+  ]);
+  const errors=[];
+  if(tasks[0].status==="fulfilled"){const d=tasks[0].value;xr=(Array.isArray(d)?d:[]).filter(r=>r.energy==="0.1-0.8nm"||r.energy==="0.1-0.8 nm").map(r=>({t:time(r.time_tag),flux:Number(r.flux)})).filter(r=>r.t!==null&&r.flux>0)}else errors.push("GOES");
+  if(tasks[1].status==="fulfilled"){const d=tasks[1].value;kp=(Array.isArray(d)?d:[]).map(r=>({t:time(r.time_tag||r.time),kp:Number(r.Kp??r.kp)})).filter(r=>r.t!==null&&valid(r.kp)&&r.kp>=0&&r.kp<=9)}else errors.push("Kp");
+  if(tasks[2].status==="fulfilled"){const d=tasks[2].value;dst=(d.data||[]).map(r=>Array.isArray(r)?({t:time(r[0]),dst:Number(r[1])}):({t:time(r.Time||r.time),dst:Number(r.dstValue??r.dst)})).filter(r=>r.t!==null&&valid(r.dst)&&Math.abs(r.dst)<5000)}else errors.push("Dst");
+  if(tasks[3].status==="fulfilled"){const d=tasks[3].value;wind=(d.rows||[]).map(r=>({t:time(r.t),v:Number(r.speed_kms),bz:Number(r.bz_gsm_nt)})).filter(r=>r.t!==null)}else errors.push("vítr");
+  render();put("sdrStatus",read().length?$("sdrStatus").textContent+" · "+(errors.length?"Nedostupné zdroje: "+errors.join(", "):"Všechny zdroje načteny."):"Čekám na první SDR záznam. "+(errors.length?"Nedostupné zdroje: "+errors.join(", "):"Datové zdroje načteny."));
+ }
+ const p=$("sdrCorrelationPanel");if(!p)return;
+ const now=new Date();$("sdrTime").value=new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,16);
+ load();setInterval(()=>{if(!document.hidden)load()},5*60*1000);
+ render();
+})();
+</script>
+
 </body></html>
