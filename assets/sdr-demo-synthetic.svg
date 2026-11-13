@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="480" viewBox="0 0 960 480">
+<defs>
+ <linearGradient id="bg" x2="0" y2="1"><stop stop-color="#07101d"/><stop offset="1" stop-color="#101c2b"/></linearGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<rect width="960" height="480" fill="url(#bg)"/>
+<g stroke="#29445e" stroke-width="1" opacity=".58">
+ <path d="M 40 26 V 440"/><path d="M 112 26 V 440"/><path d="M 184 26 V 440"/><path d="M 256 26 V 440"/><path d="M 328 26 V 440"/><path d="M 400 26 V 440"/><path d="M 472 26 V 440"/><path d="M 544 26 V 440"/><path d="M 616 26 V 440"/><path d="M 688 26 V 440"/><path d="M 760 26 V 440"/><path d="M 832 26 V 440"/><path d="M 904 26 V 440"/>
+ <path d="M 40 35 H 920"/><path d="M 40 91 H 920"/><path d="M 40 147 H 920"/><path d="M 40 203 H 920"/><path d="M 40 259 H 920"/><path d="M 40 315 H 920"/><path d="M 40 371 H 920"/><path d="M 40 427 H 920"/>
+</g>
+<g fill="none" stroke="#6d91ad" stroke-width="1" opacity=".28">
+ <path d="M40 420H920M40 26V420"/>
+</g>
+<g fill="none" stroke-linecap="round" filter="url(#glow)">
+ <path d="M55 326 C170 320 210 282 310 270 S470 255 560 205 S760 168 910 88" stroke="#77e5ff" stroke-width="4" opacity=".95"/>
+ <path d="M55 362 C180 352 245 332 340 302 S520 285 620 250 S790 222 910 190" stroke="#a6f2cf" stroke-width="3" opacity=".9"/>
+ <path d="M55 142 C190 142 245 160 340 185 S510 215 610 205 S790 140 910 128" stroke="#ffd17c" stroke-width="3.2" opacity=".9"/>
+ <path d="M55 395 C210 390 290 380 385 360 S560 325 655 310 S820 290 910 270" stroke="#5db7ff" stroke-width="2.5" opacity=".75"/>
+</g>
+<g fill="none" stroke="#eaf7ff" stroke-width="1.3" opacity=".6">
+ <path d="M55 326 C170 320 210 282 310 270 S470 255 560 205 S760 168 910 88"/>
+ <path d="M55 142 C190 142 245 160 340 185 S510 215 610 205 S790 140 910 128"/>
+</g>
+<g fill="#b8cce0" font-family="Arial,sans-serif" font-size="14" opacity=".75">
+ <text x="44" y="18">UKÁZKOVÝ SDR SPEKTROGRAM · SYNTETICKÁ DATA</text>
+ <text x="420" y="466">Čas →</text><text transform="translate(18 280) rotate(-90)">Relativní frekvence →</text>
+ <text x="48" y="455" font-size="11">NEJDE O SKUTEČNÉ MĚŘENÍ</text>
+</g>
+</svg>
