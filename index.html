@@ -1126,7 +1126,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
 
 
 <section class="panel" id="ionosphereGlobePanel">
- <h2>3D globus ionosféry X-5 – živá data</h2>
+ <h2>3D globus ionosféry X-5 – živé a modelové vrstvy</h2>
  <div class="small">Interaktivní globus s globální vrstvou NOAA D-RAP (HAF – modelová absorpce HF) a skutečnými staničními měřeními GIRO. Otoč glóbus tažením prstu nebo myší. Barevný povrch je model D-RAP, body jsou měření ionosond; nejde o přímé globální měření výšky vrstev.</div>
  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">
   <button id="ionoGlobeRefresh" type="button">Obnovit reálná data</button><button id="ionoGlobeReset" type="button">Výchozí pohled</button><button id="ionoTimePlay" type="button">▶ Přehrát 6 hodin</button><button id="ionoTimeNow" type="button">Nyní</button>
@@ -1140,14 +1140,14 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  <div style="background:#081a2c;border:1px solid #294765;border-radius:10px;padding:12px;margin:10px 0"><strong>Schematický řez ionosférou</strong><canvas id="ionoLayerCanvas" width="900" height="230" style="width:100%;height:auto;display:block"></canvas><div class="small">Výšky D/E/F1/F2 jsou orientační. Změna intenzity je kvalitativní ilustrace podle GOES toku, nikoli měřený profil elektronové hustoty.</div></div>
  <div id="irtamLivePanel" style="background:#061426;border:1px solid #37617f;border-radius:12px;padding:14px;margin:12px 0">
  <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><strong>Globální elektronová hustota – IRTAM / GIRO</strong><span class="small">oficiální externí model</span></div>
- <p class="small">Externí portál IRTAM nepovoluje spolehlivé vložení do této stránky (prohlížeč zobrazuje prázdný rám). Proto zde nezobrazuji nefunkční okno ani falešnou mapu. Otevři živé mapy přímo v datovém centru GIRO.</p>
+ <p class="small">Globální modelová mřížka IRTAM/GAMBIT se načítá přímo do glóbu X-5. Oficiální mapy GIRO jsou k dispozici také v samostatném portálu.</p>
  <div style="background:#020916;border:1px solid #294765;border-radius:10px;padding:16px">
   <div style="font-size:15px;font-weight:700;margin-bottom:8px">Oficiální globální mapy IRTAM</div>
   <div class="small" style="margin-bottom:12px">FoF2 – kritická frekvence vrstvy F2 · hmF2 – výška maxima vrstvy F2</div>
   <a href="https://giro.uml.edu/IRTAM/" target="_blank" rel="noopener" style="display:inline-block;background:#087ca8;color:#fff;padding:12px 16px;border-radius:8px;text-decoration:none;font-weight:700">Otevřít živé mapy IRTAM ↗</a>
   <div class="small" style="margin-top:10px">Mapy se otevřou samostatně; návratem do X-5 zůstaneš v observatoři.</div>
  </div>
- <div class="small" style="margin-top:10px">Poznámka: tento odkaz zatím nepředává numerická data do našeho 3D glóbusu. Barevná globální vrstva na glóbusu bude doplněna až po získání ověřitelného datového výstupu IRTAM/GAMBIT.</div>
+ <div class="small" style="margin-top:10px">Glóbus používá numerickou mřížku PyIRTAM/GAMBIT ze souboru irtam-density.json; nejde o přímé měření v každém bodě. Stav a čas platnosti dat jsou uvedeny v panelu kvality níže.</div>
  </div>
 <div style="position:relative;background:#030b18;border:1px solid #294765;border-radius:14px;overflow:hidden">
   <canvas id="ionoGlobeCanvas" width="900" height="650" aria-label="Interaktivní globus ionosféry s vrstvou NOAA D-RAP a stanicemi GIRO" style="width:100%;height:auto;display:block;touch-action:pan-y"></canvas>
@@ -1168,7 +1168,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;margin-top:10px">
   <span>🟦 D-RAP HAF nízký</span><span>🟩 střední</span><span>🟨 zvýšený</span><span>🟥 vysoký</span><span>● GIRO foF2/MUF měření</span><span>🔵→🟡 IRTAM Ne: 0–2 × 10⁶ cm⁻³</span>
  </div>
- <div class="small">Barevná vrstva zobrazuje globální elektronovou hustotu IRTAM v hladině 300 km, v jednotkách 10⁶ cm⁻³. Data jsou z veřejných koeficientů GAMBIT se zpožděním 48 hodin, model je vypočten přes PyIRTAM. Mřížka má rozlišení 10°; kruhové buňky jsou vizualizací mřížky, nikoli přímým měřením v každém bodě. GIRO stanice jsou nadále samostatné měřicí body.</div>
+ <div class="small">Barevná vrstva zobrazuje globální elektronovou hustotu IRTAM ve zvolené výšce (200, 300, 400 nebo 500 km), v jednotkách 10⁶ cm⁻³. Model je vypočten přes PyIRTAM z veřejných koeficientů GAMBIT. Skutečné stáří modelových dat se počítá z času platnosti v archivu; nejde o živé měření. Mřížka má rozlišení 10° a GIRO stanice jsou samostatné měřicí body.</div>
  <div id="irtamDataQuality" style="margin-top:10px;padding:11px 12px;border:1px solid #315674;border-radius:10px;background:linear-gradient(120deg,#07172a,#0b2540)">
   <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><strong style="color:#d9f3ff">IRTAM · KVALITA A STÁŘÍ DAT</strong><span id="irtamQualityState" class="small">Čekám na archiv…</span></div>
   <div style="height:10px;border-radius:8px;margin:9px 0;background:linear-gradient(90deg,#0f2382 0%,#1c41e0 18%,#7319dc 38%,#de0069 58%,#ff4114 76%,#ffaf14 90%,#fff582 100%)"></div>
@@ -1197,6 +1197,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  function parseCoastGeo(json){if(!json||!Array.isArray(json.features))throw Error("Neplatný GeoJSON pobřeží");return json.features.map(f=>f.geometry).filter(g=>g&&g.coordinates).map(g=>({type:g.type,coordinates:g.coordinates}));}
  function parseAurora(json){if(!json||!Array.isArray(json.coordinates))throw Error("Neplatná odpověď OVATION");const pts=[];for(const q of json.coordinates){if(!Array.isArray(q)||q.length<3)continue;let lon=Number(q[0]),lat=Number(q[1]),v=Number(q[2]);if(!Number.isFinite(lon)||!Number.isFinite(lat)||!Number.isFinite(v)||lat< -90||lat>90||v<0||v>100)continue;if(lon>180)lon-=360;pts.push({lon,lat,v})}if(pts.length<1000)throw Error("OVATION mřížka je neúplná");return pts;}
  function parseIrtam(json){if(!json||json.model!=="IRTAM"||!Array.isArray(json.points))throw Error("Neplatný archiv IRTAM");const clean=a=>a.map(q=>({lat:Number(q.lat),lon:Number(q.lon),v:Number(q.ne_1e6_cm3)})).filter(q=>Number.isFinite(q.lat)&&Number.isFinite(q.lon)&&Number.isFinite(q.v)&&q.lat>=-90&&q.lat<=90&&q.lon>=-180&&q.lon<=180&&q.v>=0&&q.v<=10);irtamLevels={};if(json.levels&&typeof json.levels==="object")for(const h of [200,300,400,500]){const a=json.levels[String(h)];if(Array.isArray(a)){const pts=clean(a);if(pts.length>=250)irtamLevels[h]=pts}}const base=irtamLevels[300]||clean(json.points);if(base.length<250)throw Error("IRTAM mřížka je neúplná");if(!irtamLevels[300])irtamLevels[300]=base;return base;}
+ function irtamDelayHours(){const target=Date.parse(irtamMeta?.target_utc||"");const generated=Date.parse(irtamMeta?.generated_utc||"");return Number.isFinite(target)&&Number.isFinite(generated)?Math.max(0,(generated-target)/3600000):NaN;}
  let irtamTextureCache=null;
  function drawIrtamDensity(){
   if(!irtamPoints.length||!$("ionoNeToggle")?.checked)return;
@@ -1248,9 +1249,9 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  if(qState&&qDetails){
   if(irtamPoints.length&&irtamMeta){
    const vals=irtamPoints.map(p=>p.v).filter(Number.isFinite),min=Math.min(...vals),max=Math.max(...vals);
-   const generated=Date.parse(irtamMeta.generated_utc||""),age=Number.isFinite(generated)?Math.max(0,(Date.now()-generated)/3600000):null;
-   qState.textContent="MŘÍŽKA NAČTENA · "+irtamPoints.length+" BODŮ";
-   qDetails.textContent="Modelový čas: "+(irtamMeta.target_utc||"neuveden")+" · výpočet: "+(irtamMeta.generated_utc||"neuveden")+" · stáří výpočtu: "+(age===null?"neznámé":age.toFixed(1)+" h")+" · výška: "+(irtamMeta.altitude_km??"—")+" km · krok: "+(irtamMeta.grid_step_deg??"—")+"° · rozsah: "+min.toFixed(3)+" až "+max.toFixed(3)+" × 10⁶ cm⁻³ · zdroj: PyIRTAM/GAMBIT";
+   const target=Date.parse(irtamMeta.target_utc||""),modelAge=Number.isFinite(target)?Math.max(0,(Date.now()-target)/3600000):null,delay=irtamDelayHours();
+   qState.textContent="MŘÍŽKA NAČTENA · "+irtamPoints.length+" BODŮ · "+(modelAge===null?"STÁŘÍ NEZNÁMÉ":modelAge>24?"ZPOŽDĚNÁ DATA":"MODEL");
+   qDetails.textContent="Čas modelu: "+(irtamMeta.target_utc||"neuveden")+" · výpočet: "+(irtamMeta.generated_utc||"neuveden")+" · stáří modelových dat: "+(modelAge===null?"neznámé":modelAge.toFixed(1)+" h")+" · prodleva výpočtu: "+(Number.isFinite(delay)?delay.toFixed(1)+" h":"neznámá")+" · výška: "+(irtamMeta.altitude_km??"—")+" km · krok: "+(irtamMeta.grid_step_deg??"—")+"° · rozsah: "+min.toFixed(3)+" až "+max.toFixed(3)+" × 10⁶ cm⁻³ · zdroj: PyIRTAM/GAMBIT";
   }else{qState.textContent="ARCHIV NEDOSTUPNÝ";qDetails.textContent="Barevná vrstva IRTAM není aktivní. Zobrazení nevyplňuje chybějící hodnoty odhadem."}
  }
  draw();
@@ -1262,7 +1263,8 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   irtamAltitude=h;irtamPoints=pts;irtamTextureCache=null;if(irtamMeta)irtamMeta={...irtamMeta,altitude_km:h};
   const vals=pts.map(p=>p.v).filter(Number.isFinite),min=Math.min(...vals),max=Math.max(...vals);
   $("irtamQualityState").textContent="MŘÍŽKA NAČTENA · "+pts.length+" BODŮ · "+h+" KM";
-  $("irtamQualityDetails").textContent="Modelový čas: "+(irtamMeta?.target_utc||"neuveden")+" · výška: "+h+" km · krok: "+(irtamMeta?.grid_step_deg??"—")+"° · rozsah: "+min.toFixed(3)+" až "+max.toFixed(3)+" × 10⁶ cm⁻³ · zdroj: PyIRTAM/GAMBIT";
+  const target=Date.parse(irtamMeta?.target_utc||""),modelAge=Number.isFinite(target)?Math.max(0,(Date.now()-target)/3600000):null;
+  $("irtamQualityDetails").textContent="Čas modelu: "+(irtamMeta?.target_utc||"neuveden")+" · stáří modelových dat: "+(modelAge===null?"neznámé":modelAge.toFixed(1)+" h")+" · prodleva výpočtu: "+(Number.isFinite(irtamDelayHours())?irtamDelayHours().toFixed(1)+" h":"neznámá")+" · výška: "+h+" km · krok: "+(irtamMeta?.grid_step_deg??"—")+"° · rozsah: "+min.toFixed(3)+" až "+max.toFixed(3)+" × 10⁶ cm⁻³ · zdroj: PyIRTAM/GAMBIT";
   draw();
  });
  function parseDrap(text){
@@ -1346,7 +1348,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   // Vnější kontura s atmosférickým lemem.
   ctx.strokeStyle="rgba(129,218,255,.88)";ctx.lineWidth=2;ctx.shadowColor="#38bdf8";ctx.shadowBlur=16;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;
   ctx.textAlign="center";ctx.fillStyle="#e7f6ff";ctx.font="700 20px system-ui,sans-serif";ctx.shadowColor="#4bc7ff";ctx.shadowBlur=14;ctx.fillText("GLOBÁLNÍ IONOSFÉRA",cx,36);ctx.shadowBlur=0;
-  ctx.font="12px system-ui,sans-serif";ctx.fillStyle="#9cc9e6";ctx.fillText(irtamPoints.length&&$("ionoNeToggle")?.checked?"IRTAM Ne • 300 km • 48h zpoždění • UTC":"NOAA D-RAP • GIRO foF2/MUF • UTC",cx,H-22);
+  ctx.font="12px system-ui,sans-serif";ctx.fillStyle="#9cc9e6";ctx.fillText(irtamPoints.length&&$("ionoNeToggle")?.checked?"IRTAM Ne • "+irtamAltitude+" km • "+(irtamMeta?irtamDelayHours().toFixed(1)+" h zpoždění":"čas neznámý")+" • UTC":"NOAA D-RAP • GIRO foF2/MUF • UTC",cx,H-22);
   $("ionoGlobeOverlay").textContent=(drap?"D-RAP načten":"D-RAP nedostupný")+" · "+stations.length+" stanic GIRO";
  }
  function detail(i){const s=stations[i];if(!s)return;selected=i;const f=v=>v===null?"—":v.toFixed(2);$("ionoGlobeDetail").textContent=s.name+" ("+s.code+") · "+s.lat.toFixed(2)+"°, "+s.lon.toFixed(2)+"° · foF2 "+f(s.fof2)+" MHz · MUF "+f(s.muf)+" MHz · foE "+f(s.foe)+" MHz · hmF2 "+f(s.hmf2)+" km · čas "+(s.time||"neuveden");draw();drawStationHistory()}
