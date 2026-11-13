@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#071426">
+<title>Polární vír X-5 | Kosmická observatoř</title>
+<style>
+:root{color-scheme:dark;--bg:#071426;--panel:#11263f;--line:#294563;--text:#edf6ff;--muted:#a9bfd5;--cyan:#63dfff;--orange:#ffbd76;--red:#ff8585}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% 0%,#17385b 0,#071426 55%);color:var(--text);font:15px Arial,sans-serif;padding:16px}
+main{max-width:1180px;margin:auto}header{text-align:center;padding:20px 8px}h1{font-size:clamp(26px,5vw,40px);margin:6px}h2{font-size:20px;margin:0 0 12px}h3{font-size:16px;margin:18px 0 8px}.sub,.muted{color:var(--muted);line-height:1.5}
+.panel{background:linear-gradient(145deg,#142e4a,#0d2037);border:1px solid var(--line);border-radius:16px;padding:17px;margin:12px 0;min-width:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:10px}.metric{font-size:clamp(23px,4vw,32px);font-weight:700;color:var(--cyan);margin:6px 0}.unit{font-size:12px;color:var(--muted)}
+.status{padding:12px;border-radius:10px;background:#0b1c30;border:1px solid var(--line);line-height:1.5}
+.tag{display:inline-block;border:1px solid #47708f;border-radius:20px;padding:5px 9px;margin:3px;color:#c7eaff;font-size:12px}
+canvas{width:100%;height:auto;display:block;background:#07182a;border-radius:12px}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}.controls label{display:block;color:var(--muted);font-size:13px}.controls input{width:100%;accent-color:var(--cyan)}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{color:#c7eaff}
+a{color:#75dcff}footer{text-align:center;color:var(--muted);font-size:12px;padding:20px}
+.warn{color:var(--orange)}.good{color:#9ce5b5}
+@media(max-width:600px){body{padding:9px}.panel{padding:13px}table{font-size:12px}}
+</style>
+</head>
+<body><main>
+<header><div class="tag">OBSERVATOŘ X-5</div><div class="tag">SEVERNÍ POLOKOULE</div><h1>🌀 Model polárního víru</h1><div class="sub">Stratosférická diagnostika · měření, reanalýza a předpověď odděleně</div></header>
+<div class="status" id="dataStatus"><b>Stav dat:</b> První referenční hodnoty načtené z publikovaného výstupu ECMWF HRES. Nejde o živé připojení k datovému API. Čas zdroje: 12. 11. 2026 12 UTC.</div>
+<section class="panel"><h2>Aktuální diagnostické hodnoty</h2><div class="grid">
+<div><div class="unit">Zonální vítr · 10 hPa / 60° N</div><div class="metric" id="wind">−2 m/s</div><div class="muted">Referenční normál +28 m/s</div></div>
+<div><div class="unit">Teplota polární oblasti · 10 hPa</div><div class="metric" id="temp">216 K</div><div class="muted">Přibližně −57,2 °C</div></div>
+<div><div class="unit">Nejnižší teplota · 50 hPa</div><div class="metric">202 K</div><div class="muted">Přibližně −71,2 °C</div></div>
+<div><div class="unit">Diagnostický stav</div><div class="metric" id="state">Narušený</div><div class="muted">Záporný zonální vítr v referenčním bodě</div></div>
+</div><p class="muted">Zdroj: ECMWF HRES analýza, běh 12. 11. 2026 12 UTC. Referenční hodnoty jsou převzaty z veřejného přehledu polárního víru; před nasazením živého datového adaptéru je nutné ověřit novější běh.</p></section>
+<section class="panel"><h2>Polární projekce – diagnostický náčrt</h2><canvas id="polar" width="1000" height="700" role="img" aria-label="Schematická polární projekce deformace polárního víru"></canvas><p class="muted">Schematická vizualizace odvozená z diagnostických parametrů a ovládacích prvků níže. Není to skutečná mapa geopotenciálu ani satelitní snímek.</p>
+<div class="controls">
+<label>Rychlost zonálního větru 10 hPa: <b id="windOut">−2 m/s</b><input id="windCtl" type="range" min="-40" max="60" value="-2" step="1"></label>
+<label>Teplota polární oblasti: <b id="tempOut">216 K</b><input id="tempCtl" type="range" min="190" max="240" value="216" step="1"></label>
+<label>Deformace víru: <b id="shapeOut">1,8</b><input id="shapeCtl" type="range" min="1" max="3" value="1.8" step=".1"></label>
+<label>Dominantní vlna: <b id="waveOut">Vlna 1</b><input id="waveCtl" type="range" min="1" max="2" value="1" step="1"></label>
+</div></section>
+<section class="panel"><h2>Diagnostické hladiny</h2><table><thead><tr><th>Hladina</th><th>Co budeme měřit</th><th>Význam</th></tr></thead><tbody>
+<tr><td>10 hPa</td><td>U60, teplota polární oblasti, geopotenciál, PV</td><td>Hlavní indikátor síly a obratu víru</td></tr>
+<tr><td>30 hPa</td><td>U60, teplota, geopotenciál, PV</td><td>Vertikální struktura a sestup anomálií</td></tr>
+<tr><td>50 hPa</td><td>U60, teplota, ozon, PV</td><td>Dolní stratosféra a podmínky PSC</td></tr>
+<tr><td>100 hPa</td><td>Teplota, v'T', EP flux</td><td>Vlnové buzení a přenos energie</td></tr>
+<tr><td>500 hPa</td><td>Geopotenciál, tlakové útvary</td><td>Propojení stratosféry s troposférou</td></tr>
+</tbody></table></section>
+<section class="panel"><h2>Datové zdroje k zapojení</h2><table><thead><tr><th>Zdroj</th><th>Data</th><th>Režim</th><th>Odkaz</th></tr></thead><tbody>
+<tr><td>ECMWF HRES / Open Data</td><td>Teplota, geopotenciál, U/V vítr, PV, ozon</td><td>Analýza + předpověď</td><td><a href="https://www.ecmwf.int/en/forecasts/datasets/open-data" target="_blank" rel="noopener">ECMWF Open Data</a></td></tr>
+<tr><td>Copernicus ERA5</td><td>Historie tlakových hladin, teplota, vítr, geopotenciál, PV, ozon</td><td>Reanalýza / klimatologie</td><td><a href="https://cds.climate.copernicus.eu/" target="_blank" rel="noopener">Climate Data Store</a></td></tr>
+<tr><td>NOAA GFS / GEFS</td><td>Výškové pole, vítr, teplota a ansámblová nejistota</td><td>Analýza + předpověď</td><td><a href="https://www.ncei.noaa.gov/products/weather-climate-models/global-forecast" target="_blank" rel="noopener">NOAA modely</a></td></tr>
+<tr><td>NASA MERRA-2 / GEOS FP</td><td>Polární teplota, vítr, vlnový tepelný tok, historické anomálie</td><td>Reanalýza + experimentální předpověď</td><td><a href="https://gmao.gsfc.nasa.gov/reanalysis/MERRA-2/" target="_blank" rel="noopener">NASA MERRA-2</a></td></tr>
+<tr><td>NASA Aura MLS</td><td>Vertikální profily ozonu, teploty a stopových plynů</td><td>Satelitní měření</td><td><a href="https://mls.jpl.nasa.gov/" target="_blank" rel="noopener">Aura MLS</a></td></tr>
+<tr><td>NOAA CPC</td><td>Stratosférické teploty, zonální vítr a cirkulace</td><td>Diagnostické produkty</td><td><a href="https://www.cpc.ncep.noaa.gov/products/stratosphere/" target="_blank" rel="noopener">NOAA CPC</a></td></tr>
+<tr><td>Kyoto WDC</td><td>Geomagnetický Dst jako oddělený kontext</td><td>Pozorování</td><td><a href="https://wdc.kugi.kyoto-u.ac.jp/dstdir/" target="_blank" rel="noopener">World Data Center</a></td></tr>
+</tbody></table>
+<p class="muted">Klimatologická základna: ERA5 1991–2020. Model bude uchovávat čas UTC, čas běhu, čas platnosti, zdroj, úroveň zpracování a kontrolu chybějících hodnot. Dst, Kp, sluneční vítr a geomagnetické parametry budou pouze doplňkovým kontextem, nikoli přímým měřením polárního víru.</p></section>
+<section class="panel"><h2>Automaticky počítané diagnostiky</h2><div class="grid">
+<div><b>U60 / 10 hPa</b><p class="muted">Zonální průměr zonálního větru na 60° N. Záporná hodnota znamená východní vítr.</p></div>
+<div><b>Teplota polární čepičky</b><p class="muted">Plošně vážený průměr 60–90° N na 10, 30 a 50 hPa.</p></div>
+<div><b>Vlnový tepelný tok v'T'</b><p class="muted">45–75° N na 100 hPa; kladný tok značí vzestupnou aktivitu planetárních vln.</p></div>
+<div><b>Vlna 1 / vlna 2</b><p class="muted">Fourierova amplituda geopotenciálu pro rozlišení posunu a rozštěpení víru.</p></div>
+<div><b>PV a okraj víru</b><p class="muted">Potenciální vířivost, poloha a plocha oblasti víru.</p></div>
+<div><b>SSW diagnostika</b><p class="muted">Kombinace obratu U60, oteplení polární oblasti a vertikálního vývoje. Samotný záporný U60 nestačí k potvrzení celé události.</p></div>
+</div></section>
+<section class="panel"><h2>Historie a kvalita dat</h2><div id="quality" class="status">Historický archiv zatím není připojen. Po zapojení automatického sběru budou ukládány analýzy, předpovědi a klimatologické normály odděleně.</div><p class="muted">Každý datový bod ponese příznak: MĚŘENÍ / ANALÝZA / REANALÝZA / PŘEDPOVĚĎ / KLIMATOLOGIE. Chybějící hodnoty se nebudou nahrazovat nulou. Zastaralá data budou viditelně označena.</p></section>
+<footer>Kosmická observatoř X-5 · Polární vír · Česká rozhraní · Bez loga NOAA</footer>
+</main>
+<script>
+const $=id=>document.getElementById(id),c=$('polar'),ctx=c.getContext('2d');
+function draw(){const w=c.width,h=c.height,cx=w/2,cy=h/2,R=260,wind=+$('windCtl').value,temp=+$('tempCtl').value,shape=+$('shapeCtl').value,wave=+$('waveCtl').value;
+$('windOut').textContent=wind+' m/s';$('tempOut').textContent=temp+' K';$('shapeOut').textContent=shape.toFixed(1).replace('.',',');$('waveOut').textContent='Vlna '+wave;
+ctx.clearRect(0,0,w,h);ctx.fillStyle='#07182a';ctx.fillRect(0,0,w,h);
+for(let r of [70,140,210,260]){ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle='#29445e';ctx.lineWidth=1;ctx.stroke()}
+for(let a=0;a<360;a+=30){let q=a*Math.PI/180;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+R*Math.cos(q),cy+R*Math.sin(q));ctx.strokeStyle='#203a55';ctx.stroke()}
+ctx.fillStyle='#c5d8e9';ctx.font='16px Arial';ctx.fillText('90° N',cx+10,cy-12);ctx.fillText('60° N',cx+R+12,cy+5);ctx.fillText('30° N',cx+R+12,cy+145);
+let amp=wind<0?0.22:Math.max(.04,(45-wind)/150),stretch=shape*(1+amp),phase=wave===1?.35:1.1;
+ctx.beginPath();for(let i=0;i<=720;i++){let a=i/720*Math.PI*2,rad=155+35*Math.sin(wave*a+phase)+18*Math.cos(2*a-phase),x=cx+Math.cos(a)*rad*stretch,y=cy+Math.sin(a)*rad/Math.sqrt(stretch);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}
+ctx.closePath();let grad=ctx.createRadialGradient(cx,cy,30,cx,cy,260);grad.addColorStop(0,temp>213?'rgba(255,150,90,.24)':'rgba(70,180,255,.25)');grad.addColorStop(1,'rgba(40,130,210,.04)');ctx.fillStyle=grad;ctx.fill();ctx.strokeStyle=wind<0?'#ff9b73':'#63dfff';ctx.lineWidth=4;ctx.stroke();
+ctx.fillStyle='#edf6ff';ctx.font='bold 22px Arial';ctx.textAlign='center';ctx.fillText(wind<0?'Obrácený zonální vítr':'Západní cirkulace',cx,cy+310);ctx.textAlign='left';
+}
+['windCtl','tempCtl','shapeCtl','waveCtl'].forEach(id=>$(id).addEventListener('input',draw));draw();
+</script></body></html>
