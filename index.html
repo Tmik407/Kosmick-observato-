@@ -913,7 +913,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   for(const url of urls)for(let attempt=0;attempt<2;attempt++)try{
    const r=await fetch(url+"? _=".replace(" ","")+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);
    const body=await r.text();let d;try{d=JSON.parse(body)}catch(e){throw Error("neplatný/neúplný JSON: "+e.message)}
-   if(!Array.isArray(d)||!d.some(o=>o&&valid(o.flux)&&o.time_tag))throw Error("bez platných vzorků");return d;
+   if(!Array.isArray(d)||!d.some(o=>o&&num(o.flux)&&o.time_tag))throw Error("bez platných vzorků");return d;
   }catch(e){last=e;if(attempt===0)await new Promise(resolve=>setTimeout(resolve,700))}
   throw Error("Primární i záložní GOES zdroj selhal: "+(last?last.message:"neznámá chyba"));
  }
