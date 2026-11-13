@@ -1251,8 +1251,8 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   if(irtamPoints.length&&irtamMeta){
    const vals=irtamPoints.map(p=>p.v).filter(Number.isFinite),min=Math.min(...vals),max=Math.max(...vals);
    const target=Date.parse(irtamMeta.target_utc||""),modelAge=Number.isFinite(target)?Math.max(0,(Date.now()-target)/3600000):null,delay=irtamDelayHours();
-   qState.textContent="MŘÍŽKA NAČTENA · "+irtamPoints.length+" BODŮ · "+(modelAge===null?"STÁŘÍ NEZNÁMÉ":modelAge>24?"ZPOŽDĚNÁ DATA":"MODEL");
-   qDetails.textContent="Čas modelu: "+(irtamMeta.target_utc||"neuveden")+" · výpočet: "+(irtamMeta.generated_utc||"neuveden")+" · stáří modelových dat: "+(modelAge===null?"neznámé":modelAge.toFixed(1)+" h")+" · prodleva výpočtu: "+(Number.isFinite(delay)?delay.toFixed(1)+" h":"neznámá")+" · výška: "+(irtamMeta.altitude_km??"—")+" km · krok: "+(irtamMeta.grid_step_deg??"—")+"° · rozsah: "+min.toFixed(3)+" až "+max.toFixed(3)+" × 10⁶ cm⁻³ · zdroj: PyIRTAM/GAMBIT";
+   qState.textContent="MŘÍŽKA NAČTENA · "+irtamPoints.length+" BODŮ · "+(modelAge===null?"STÁŘÍ NEZNÁMÉ":modelAge>72?"ARCHIV ZASTARALÝ":modelAge>24?"OČEKÁVANÁ PRODLEVA ~48 H":"MODEL");
+   qDetails.textContent="Čas modelu: "+(irtamMeta.target_utc||"neuveden")+" · výpočet: "+(irtamMeta.generated_utc||"neuveden")+" · stáří modelových dat: "+(modelAge===null?"neznámé":modelAge.toFixed(1)+" h")+" (IRTAM/GAMBIT má plánovanou prodlevu 48 h; archiv označíme za zastaralý až po 72 h) · prodleva výpočtu: "+(Number.isFinite(delay)?delay.toFixed(1)+" h":"neznámá")+" · výška: "+(irtamMeta.altitude_km??"—")+" km · krok: "+(irtamMeta.grid_step_deg??"—")+"° · rozsah: "+min.toFixed(3)+" až "+max.toFixed(3)+" × 10⁶ cm⁻³ · zdroj: PyIRTAM/GAMBIT";
   }else{qState.textContent="ARCHIV NEDOSTUPNÝ";qDetails.textContent="Barevná vrstva IRTAM není aktivní. Zobrazení nevyplňuje chybějící hodnoty odhadem."}
  }
  draw();
@@ -1264,9 +1264,9 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   irtamAltitude=h;irtamPoints=pts;irtamTextureCache=null;if(irtamMeta)irtamMeta={...irtamMeta,altitude_km:h};
   const vals=pts.map(p=>p.v).filter(Number.isFinite),min=Math.min(...vals),max=Math.max(...vals);
   const target=Date.parse(irtamMeta?.target_utc||""),generated=irtamMeta?.generated_utc||"neuveden",modelAge=Number.isFinite(target)?Math.max(0,(Date.now()-target)/3600000):null;
-  $("irtamQualityState").textContent="MŘÍŽKA NAČTENA · "+pts.length+" BODŮ · "+(modelAge===null?"STÁŘÍ NEZNÁMÉ":modelAge>24?"ZPOŽDĚNÁ DATA":h+" KM");
+  $("irtamQualityState").textContent="MŘÍŽKA NAČTENA · "+pts.length+" BODŮ · "+(modelAge===null?"STÁŘÍ NEZNÁMÉ":modelAge>72?"ARCHIV ZASTARALÝ":modelAge>24?"OČEKÁVANÁ PRODLEVA ~48 H":h+" KM");
   const label=$("ionoNeLabel");if(label)label.textContent="Elektronová hustota IRTAM – "+h+" km";
-  $("irtamQualityDetails").textContent="Čas modelu: "+(irtamMeta?.target_utc||"neuveden")+" · výpočet: "+generated+" · stáří modelových dat: "+(modelAge===null?"neznámé":modelAge.toFixed(1)+" h")+" · prodleva výpočtu: "+(Number.isFinite(irtamDelayHours())?irtamDelayHours().toFixed(1)+" h":"neznámá")+" · výška: "+h+" km · krok: "+(irtamMeta?.grid_step_deg??"—")+"° · rozsah: "+min.toFixed(3)+" až "+max.toFixed(3)+" × 10⁶ cm⁻³ · zdroj: PyIRTAM/GAMBIT";
+  $("irtamQualityDetails").textContent="Čas modelu: "+(irtamMeta?.target_utc||"neuveden")+" · výpočet: "+generated+" · stáří modelových dat: "+(modelAge===null?"neznámé":modelAge.toFixed(1)+" h")+" (plánovaná prodleva 48 h; zastaralý po 72 h) · prodleva výpočtu: "+(Number.isFinite(irtamDelayHours())?irtamDelayHours().toFixed(1)+" h":"neznámá")+" · výška: "+h+" km · krok: "+(irtamMeta?.grid_step_deg??"—")+"° · rozsah: "+min.toFixed(3)+" až "+max.toFixed(3)+" × 10⁶ cm⁻³ · zdroj: PyIRTAM/GAMBIT";
   draw();
  });
  function parseDrap(text){
