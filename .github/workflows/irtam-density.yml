@@ -1,5 +1,9 @@
 name: IRTAM electron density archive
 on:
+  push:
+    paths:
+      - "scripts/update_irtam_density.py"
+      - ".github/workflows/irtam-density.yml"
   schedule:
     - cron: "17 */6 * * *"
   workflow_dispatch:
