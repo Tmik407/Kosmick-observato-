@@ -426,5 +426,12 @@ loadNasaMirror();
 loadNasaVerticalWind();
 loadNasaVerticalTemp();
 loadNasaCombinedProfile();
+function refreshX5Infographic(){
+ const stamp=new Date().toLocaleString('cs-CZ',{timeZone:'UTC',dateStyle:'short',timeStyle:'medium'})+' UTC';
+ const el=$('dataStatus');if(el)el.innerHTML='<b>Automatická kontrola:</b> '+stamp+'. Data se obnovují podle dostupnosti nových běhů zdrojů.';
+ gfsPayload=null;loadGfsGrid(true);
+ loadArchive();loadNoaaArchive();loadNasaMirror();loadNasaVerticalWind();loadNasaVerticalTemp();loadNasaCombinedProfile();
+}
+setInterval(refreshX5Infographic,30*60*1000);
 
 </script></body></html>
