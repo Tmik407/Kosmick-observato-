@@ -24,10 +24,10 @@ def listing(url):
     p=Links(); p.feed(html); return p.hrefs
 
 def newest_product():
-    years=sorted([x.strip("/") for x in listing(BASE) if re.fullmatch(r"20\\d{2}/",x)], reverse=True)
+    years=sorted([x.strip("/") for x in listing(BASE) if re.fullmatch(r"20\\d{2}",x)], reverse=True)
     for year in years:
         yu=BASE+year+"/"
-        months=sorted([x.strip("/") for x in listing(yu) if re.fullmatch(r"\\d{2}/",x)], reverse=True)
+        months=sorted([x.strip("/") for x in listing(yu) if re.fullmatch(r"\\d{2}",x)], reverse=True)
         for month in months:
             mu=yu+month+"/"
             days=sorted([x.strip("/") for x in listing(mu) if re.fullmatch(r"\\d{2}/",x)], reverse=True)
@@ -69,10 +69,10 @@ def parse_file(url, filename):
             e=ext[i] if i<len(ext) else [None]*4
             area=areas[i] if i<len(areas) else None
             holes.append({"id":i+1,"area_px2":area if area is not None and np.isfinite(area) else None,
-                          "north_deg":e[0] if np.isfinite(e[0]) else None,
-                          "south_deg":e[1] if np.isfinite(e[1]) else None,
-                          "east_deg":e[2] if np.isfinite(e[2]) else None,
-                          "west_deg":e[3] if np.isfinite(e[3]) else None})
+                          "north_deg":float(e[0]) if e[0] is not None and np.isfinite(float(e[0])) else None,
+                          "south_deg":float(e[1]) if e[1] is not None and np.isfinite(float(e[1])) else None,
+                          "east_deg":float(e[2]) if e[2] is not None and np.isfinite(float(e[2])) else None,
+                          "west_deg":float(e[3]) if e[3] is not None and np.isfinite(float(e[3])) else None})
         return {"source":"NOAA GOES-19 SUVI L2 CHBND","product":filename,"url":url,
                 "observed_utc":observed,"retrieved_utc":datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
                 "num_coronal_holes":n,"degraded_status":degraded,"holes":holes}
