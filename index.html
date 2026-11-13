@@ -1279,7 +1279,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  }
  function parseStations(list){
   if(!Array.isArray(list))throw Error("GIRO: API nevrátilo seznam měření.");
-  const diag={total:list.length,withStation:0,validCoords:0,withParameters:0,latest:null};
+  const diag={total:list.length,withStation:0,validCoords:0,withParameters:0,staleRecords:0,latest:null};
   const rows=list.map(o=>{
    if(!o||typeof o!=="object")return null;
    const st=o.station||{},lat=Number(st.latitude),lon0=Number(st.longitude),lon=lon0>180?lon0-360:lon0;
@@ -1293,7 +1293,11 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
    if(typeof raw==="number")t=new Date(raw<1e12?raw*1000:raw).getTime();
    else if(raw)t=Date.parse(raw);
    const row={code:st.code||"?",name:st.name||st.code||"Ionosonda",lat,lon,fof2:val("fof2"),muf:val("mufd","muf"),foe:val("foe"),hmf2:val("hmf2"),confidence:val("fof2_confidence","fof2_conf","confidence"),time:Number.isFinite(t)?new Date(t).toISOString():null};
-   if(row.fof2!==null||row.muf!==null||row.foe!==null){diag.withParameters++;if(row.time&&(!diag.latest||Date.parse(row.time)>Date.parse(diag.latest)))diag.latest=row.time;return row}
+   if(row.fof2!==null||row.muf!==null||row.foe!==null){
+    const age=row.time?Date.now()-Date.parse(row.time):Infinity;
+    if(age>=-5*60000&&age<=6*3600000){diag.withParameters++;if(row.time&&(!diag.latest||Date.parse(row.time)>Date.parse(diag.latest)))diag.latest=row.time;return row}
+    diag.staleRecords++;return null;
+   }
    return null;
   }).filter(Boolean);
   stationDiagnostics=diag;
@@ -1392,11 +1396,12 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
    const d=stationDiagnostics;
    const apiLine=stations.length
     ?"API: "+d.total+" záznamů · "+d.validCoords+" se souřadnicemi · "+d.withParameters+" s platným foF2/MUF/foE · poslední měření "+(d.latest||"čas neuveden")+"."
-    :"API: "+d.total+" záznamů · "+d.withStation+" s metadaty stanic · "+d.validCoords+" s platnými souřadnicemi · 0 s platným foF2/MUF/foE.";
+    :"API: "+d.total+" záznamů · "+d.withStation+" s metadaty stanic · "+d.validCoords+" s platnými souřadnicemi · "+d.staleRecords+" zastaralých nebo bez času · 0 aktuálních foF2/MUF/foE.";
+   const freshnessLine=stations.length?" Aktuální výběr: měření nejvýše 6 hodin stará.":" Aktuální výběr vyžaduje měření nejvýše 6 hodin stará.";
    const provider=giroPayload&&!Array.isArray(giroPayload)?giroPayload.provider:null;
    let providerLine="Stav poskytovatele: nelze ověřit.";
    if(provider){
-    const stamp=provider.last_data_utc||null,parsed=stamp?Date.parse(stamp):NaN;
+    const stamp=provider.last_data_utc||provider.last_data_text||null,parsed=provider.last_data_utc?Date.parse(provider.last_data_utc):NaN;
     const age=Number.isFinite(parsed)?Math.max(0,(Date.now()-parsed)/3600000):null;
     providerLine=(provider.stale?"Poskytovatel hlásí ZASTARALÁ DATA. ":provider.status_text||"Stav poskytovatele načten.")+(stamp?" Poslední příjem GIRO: "+stamp+" UTC"+(age!==null?" · stáří "+age.toFixed(1)+" h.":"."):"");
     if(provider.error)providerLine+=" Kontrola stavu: "+provider.error;
@@ -1405,7 +1410,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
     const stamp=(page.match(/Last data was at\s*([^<\n]+)/i)||[])[1]?.trim();
     providerLine=stale?"Poskytovatel hlásí ZASTARALÁ DATA. "+(stamp?"Poslední příjem GIRO: "+stamp+" UTC.":""):"Stav poskytovatele načten přímo.";
    }
-   gd.textContent=apiLine+" "+providerLine;
+   gd.textContent=apiLine+freshnessLine+" "+providerLine;
   }
   if(tasks[2].status==="fulfilled"){xray=(Array.isArray(tasks[2].value)?tasks[2].value:[]).filter(r=>r.energy==="0.1-0.8nm"||r.energy==="0.1-0.8 nm").map(r=>({t:Date.parse(r.time_tag),flux:Number(r.flux)})).filter(r=>Number.isFinite(r.t)&&Number.isFinite(r.flux)&&r.flux>0).sort((a,b)=>a.t-b.t);if(!xray.length)errors.push("GOES bez platných vzorků")}else errors.push("GOES X-ray nedostupné");
   updated=new Date().toISOString();$("ionoGlobeTime").textContent=drap?drap.valid:"nedostupné";
