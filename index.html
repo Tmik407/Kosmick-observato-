@@ -1124,6 +1124,77 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  <p><a href="./space-weather-history.json" target="_blank" rel="noopener">Zdrojový archiv měření X-5</a> · <a href="https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json" target="_blank" rel="noopener">NOAA – Kp</a></p>
 </section>
 
+<section class="panel" id="ionospherePanel">
+ <h2>Ionosféra a HF šíření – diagnostika X-5</h2>
+ <div class="small">Živý globální model NOAA D-RAP: nejvyšší frekvence zasažená odhadovaným útlumem 1 dB (HAF). Zadej polohu a provozní frekvenci; panel vybere nejbližší buňku modelové mřížky. Výsledek je modelový odhad, nikoli měření ionosondou.</div>
+ <div class="grid" style="margin-top:12px">
+  <label class="small">Zeměpisná šířka (°)<input id="ionoLat" type="number" min="-90" max="90" step="0.1" value="50.5" style="display:block;width:100%;margin-top:5px;padding:10px;background:#081a2c;color:#fff;border:1px solid #45627e;border-radius:7px"></label>
+  <label class="small">Zeměpisná délka (°)<input id="ionoLon" type="number" min="-180" max="180" step="0.1" value="13.6" style="display:block;width:100%;margin-top:5px;padding:10px;background:#081a2c;color:#fff;border:1px solid #45627e;border-radius:7px"></label>
+  <label class="small">Sledovaná frekvence (MHz)<input id="ionoFreq" type="number" min="0.1" max="30" step="0.1" value="7.1" style="display:block;width:100%;margin-top:5px;padding:10px;background:#081a2c;color:#fff;border:1px solid #45627e;border-radius:7px"></label>
+ </div>
+ <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button id="ionoRefresh" type="button">Aktualizovat model</button></div>
+ <div class="grid" style="margin-top:14px">
+  <div><div class="small">HAF – hranice útlumu 1 dB</div><div id="ionoHaf" class="metric">—</div><div id="ionoGrid" class="small">Nejbližší buňka: —</div></div>
+  <div><div class="small">Odhad útlumu na zadané frekvenci</div><div id="ionoAbs" class="metric">—</div><div class="small">Empirický přepočet z HAF pro vertikální průchod</div></div>
+  <div><div class="small">Rentgenová aktivita NOAA</div><div id="ionoXray" class="metric">—</div><div id="ionoXrayMsg" class="small"></div></div>
+  <div><div class="small">Protonový stav NOAA</div><div id="ionoProton" class="metric">—</div><div id="ionoRecovery" class="small"></div></div>
+ </div>
+ <div id="ionoStatus" class="status">Načítám tabulku NOAA D-RAP…</div>
+ <h3>Vyhodnocení zadané frekvence</h3><div id="ionoAssessment" class="small">Čekám na data modelu.</div>
+ <div class="small">D-RAP modeluje absorpci v D-oblasti (přibližně 50–90 km) zejména vlivem rentgenového záření a energetických protonů. Neurčuje sám o sobě MUF ani spolehlivost konkrétního HF spojení. Skutečné MUF/foF2 vyžaduje data ionosondy; dostupnost stanic a posledních ionogramů se liší.</div>
+ <p><a href="https://services.swpc.noaa.gov/text/drap_global_frequencies.txt" target="_blank" rel="noopener">NOAA – živá tabulka D-RAP</a> · <a href="https://www.swpc.noaa.gov/products/d-region-absorption-predictions-d-rap" target="_blank" rel="noopener">NOAA – vysvětlení D-RAP</a> · <a href="https://www.ngdc.noaa.gov/stp/iono/rt-iono/" target="_blank" rel="noopener">NOAA NCEI – ionosondy a mapy MUF</a></p>
+</section>
+<script>
+(function(){
+ const $=id=>document.getElementById(id), put=(id,v)=>{const e=$(id);if(e)e.textContent=v};
+ const url="https://services.swpc.noaa.gov/text/drap_global_frequencies.txt";
+ const valid=n=>Number.isFinite(n)&&n>=0&&n<1000;
+ function parse(text){
+  const lines=text.split(/\r?\n/), head=lines.find(l=>/^\s*-?\d+(?:\s+-?\d+){20,}\s*$/.test(l));
+  if(!head)throw Error("V tabulce nebyla nalezena hlavička zeměpisných délek.");
+  const lons=head.trim().split(/\s+/).map(Number), data=[];
+  for(const line of lines){
+   const m=line.match(/^\s*(-?\d{1,2})\s*\|\s*(.*)$/);if(!m)continue;
+   const vals=m[2].trim().split(/\s+/).map(Number);
+   if(vals.length>=lons.length&&vals.every(valid))data.push({lat:Number(m[1]),vals});
+  }
+  if(!data.length)throw Error("Tabulka neobsahuje platné řádky souřadnic.");
+  return {lons,data,validAt:(text.match(/Product Valid At\s*:\s*(.+)/i)||[])[1]||"čas neuveden",
+   xray:(text.match(/X-RAY Message\s*:\s*(.+)/i)||[])[1]||"neuvedeno",
+   proton:(text.match(/Proton Message\s*:\s*(.+)/i)||[])[1]||"neuvedeno",
+   recovery:(text.match(/Estimated Recovery Time\s*:\s*(.+)/i)||[])[1]||"neuvedeno"};
+ }
+ function lonDist(a,b){return Math.abs(((a-b+540)%360)-180)}
+ function evaluate(d){
+  const lat=Number($("ionoLat").value),lon=Number($("ionoLon").value),freq=Number($("ionoFreq").value);
+  if(!Number.isFinite(lat)||lat < -90||lat>90||!Number.isFinite(lon)||lon < -180||lon>180||!Number.isFinite(freq)||freq<=0||freq>30)throw Error("Zkontroluj souřadnice a frekvenci 0–30 MHz.");
+  let row=d.data.reduce((a,b)=>Math.abs(b.lat-lat)<Math.abs(a.lat-lat)?b:a),ix=0;
+  for(let i=1;i<d.lons.length;i++)if(lonDist(d.lons[i],lon)<lonDist(d.lons[ix],lon))ix=i;
+  const haf=row.vals[ix],abs=haf>0?Math.pow(haf/freq,1.5):0;
+  put("ionoHaf",haf.toFixed(1)+" MHz");put("ionoAbs",abs.toFixed(2)+" dB");
+  put("ionoGrid","Buňka modelu: "+row.lat.toFixed(0)+"° / "+d.lons[ix].toFixed(0)+"°");
+  put("ionoXray",d.xray.replace(/\s+/g," ").trim());put("ionoXrayMsg","Stav podle NOAA D-RAP");
+  put("ionoProton",d.proton.replace(/\s+/g," ").trim());put("ionoRecovery","Odhad obnovy: "+d.recovery.trim());
+  let msg;
+  if(haf<=0)msg="Model v nejbližší buňce nyní neukazuje hranici 1 dB pro absorpci způsobenou D-RAP.";
+  else if(freq<=haf)msg="Frekvence leží pod hranicí HAF. Model indikuje nejméně přibližně 1 dB absorpce při vertikálním průchodu; nižší HF frekvence mohou být zasaženy výrazněji.";
+  else msg="Frekvence leží nad hranicí HAF 1 dB. Podle D-RAP je modelovaný útlum v této buňce pod 1 dB.";
+  put("ionoAssessment",msg+" Odhad pro "+freq.toFixed(2)+" MHz je "+abs.toFixed(2)+" dB; skutečná šikmá HF trasa může mít jiný útlum.");
+  put("ionoStatus","Model NOAA platný: "+d.validAt+" UTC · tabulka "+d.data.length+" zeměpisných šířek × "+d.lons.length+" délek.");
+ }
+ async function load(){
+  put("ionoStatus","Stahuji aktuální tabulku NOAA D-RAP…");
+  try{
+   const r=await fetch(url+"?t="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);
+   const d=parse(await r.text());evaluate(d);window.__ionoDrapData=d;
+  }catch(e){put("ionoStatus","Data D-RAP nejsou dostupná: "+e.message);put("ionoAssessment","Zkus aktualizaci později nebo otevři přímou tabulku NOAA.");}
+ }
+ $("ionoRefresh").addEventListener("click",load);
+ ["ionoLat","ionoLon","ionoFreq"].forEach(id=>$(id).addEventListener("change",()=>{if(window.__ionoDrapData)try{evaluate(window.__ionoDrapData)}catch(e){put("ionoAssessment",e.message)}}));
+ load();setInterval(()=>{if(!document.hidden)load()},5*60*1000);
+})();
+</script>
+
 <section class="panel" id="sdrCorrelationPanel">
  <h2>SDR × kosmické počasí – časová korelace X-5</h2>
  <div class="small">Zadej vlastní pozorování SDR. Záznamy se ukládají pouze v tomto prohlížeči a zařízení; exportuj si zálohu JSON/CSV. Čas zadávej v UTC, aby šlo porovnávat data bez posunu časových pásem.</div>
