@@ -1232,7 +1232,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   <label class="small">Vzorkovací / časové rozlišení (volitelné)<input id="sdrImageMeta" type="text" placeholder="např. 10 s/div, 2 MHz span" style="display:block;width:100%;margin-top:5px;padding:10px;background:#081a2c;color:#fff;border:1px solid #45627e;border-radius:7px"></label>
   <label class="small">Pozorovaná frekvence (MHz, volitelné)<input id="sdrImageFreq" type="number" min="0" step="0.001" placeholder="např. 7.100" style="display:block;width:100%;margin-top:5px;padding:10px;background:#081a2c;color:#fff;border:1px solid #45627e;border-radius:7px"></label>
  </div>
- <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button id="sdrAnalyzeImage" type="button" disabled>Analyzovat spektrogram</button><button id="sdrDownloadAnalysis" type="button" disabled>Export analýzy JSON</button></div>
+ <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button id="sdrLoadDemo" type="button">Načíst ukázkový spektrogram</button><button id="sdrAnalyzeImage" type="button" disabled>Analyzovat spektrogram</button><button id="sdrDownloadAnalysis" type="button" disabled>Export analýzy JSON</button></div><div class="small">Nemáš vlastní snímek? Tlačítkem načti připravený syntetický příklad se zakřivenými stopami. Je určen pouze k otestování analytického modulu.</div>
  <div id="sdrImageStatus" class="status">Vyber obrázek spektrogramu.</div>
  <div class="grid">
   <div><div class="small">Detekované vodorovné stopy</div><div id="sdrHorizontal" class="metric">—</div></div>
@@ -1298,6 +1298,12 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   img.onload=()=>{image=img;$("sdrOriginalPreview").src=url;$("sdrOriginalPreview").style.display="block";$("sdrAnalyzeImage").disabled=false;put("sdrImageStatus","Obrázek načten: "+file.name+" · "+img.width+" × "+img.height+" px.");};
   img.onerror=()=>put("sdrImageStatus","Obrázek nelze načíst.");
   img.src=url;
+ });
+ $("sdrLoadDemo").addEventListener("click",()=>{
+  const img=new Image();
+  img.onload=()=>{image=img;$("sdrOriginalPreview").src=img.src;$("sdrOriginalPreview").style.display="block";$("sdrAnalyzeImage").disabled=false;$("sdrDownloadAnalysis").disabled=true;result=null;put("sdrImageStatus","Načten syntetický demonstrační spektrogram · nejde o skutečné měření.");};
+  img.onerror=()=>put("sdrImageStatus","Ukázkový obrázek se nepodařilo načíst.");
+  img.src="./assets/sdr-demo-synthetic.svg";
  });
  $("sdrAnalyzeImage").addEventListener("click",()=>{try{analyze()}catch(e){put("sdrImageStatus","Analýza selhala: "+e.message)}});
  $("sdrDownloadAnalysis").addEventListener("click",()=>{
