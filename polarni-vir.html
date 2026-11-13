@@ -67,7 +67,19 @@ a{color:#75dcff}footer{text-align:center;color:var(--muted);font-size:12px;paddi
 <tr><td>Kyoto WDC</td><td>Geomagnetický Dst jako oddělený kontext</td><td>Pozorování</td><td><a href="https://wdc.kugi.kyoto-u.ac.jp/dstdir/" target="_blank" rel="noopener">World Data Center</a></td></tr>
 </tbody></table>
 <p class="muted">Klimatologická základna: ERA5 1991–2020. Model bude uchovávat čas UTC, čas běhu, čas platnosti, zdroj, úroveň zpracování a kontrolu chybějících hodnot. Dst, Kp, sluneční vítr a geomagnetické parametry budou pouze doplňkovým kontextem, nikoli přímým měřením polárního víru.</p></section>
-<section class="panel"><h2>Automaticky počítané diagnostiky</h2><div class="grid">
+
+<section class="panel"><h2>Nezávislé ověření NASA</h2>
+<p class="muted">Doplňková kontrola proti samostatným systémům NASA. Tyto zdroje nejsou zaměňovány s ERA5 a jejich hodnoty se do hlavních grafů přidají až po úspěšném stažení a kontrole kvality.</p>
+<table><thead><tr><th>Zdroj</th><th>Parametry</th><th>Časové pokrytí / dostupnost</th><th>Stav zapojení</th></tr></thead><tbody>
+<tr><td><b>NASA MERRA-2</b></td><td>Teplota, geopotenciál, zonální a meridionální vítr, tlakové hladiny</td><td>Od roku 1980; reanalýza</td><td id="merraStatus" class="warn">Zdroj připraven · vyžaduje Earthdata Login a přístupový token</td></tr>
+<tr><td><b>NASA GEOS / MLS DMP</b></td><td>Geopotenciál, teplota, ekvivalentní šířka a okraj víru</td><td>Odvozené meteorologické produkty MLS</td><td id="geosStatus" class="warn">Metadatový zdroj připraven · přímý odběr čeká na autorizaci</td></tr>
+<tr><td><b>Aura MLS</b></td><td>Vertikální profily teploty, ozonu a stopových plynů</td><td>Od 2. 8. 2004; NRT verze s latencí typicky 2–4 h, online archiv NRT posledních 7 dnů</td><td id="mlsStatus" class="warn">Satelitní zdroj připraven · vyžaduje autorizovaný přístup NASA</td></tr>
+</tbody></table>
+<p><a href="https://search.earthdata.nasa.gov/search?q=MERRA-2" target="_blank" rel="noopener">NASA Earthdata Search – MERRA-2</a> ·
+<a href="https://mls.jpl.nasa.gov/eos-aura-mls/data.php" target="_blank" rel="noopener">Aura MLS – data a NRT</a> ·
+<a href="https://access.earthdata.nasa.gov/" target="_blank" rel="noopener">Earthdata Access</a></p>
+<div class="status">NASA GES DISC přešel na distribuci Earthdata Cloud. Automatický odběr chráněných dat nesmí používat anonymní staré adresy. Pro bezpečné připojení bude potřeba vytvořit token NASA Earthdata jako GitHub Actions Secret; heslo se do stránky ani repozitáře neukládá.</div>
+</section>\n<section class="panel"><h2>Automaticky počítané diagnostiky</h2><div class="grid">
 <div><b>U60 / 10 hPa</b><p class="muted">Zonální průměr zonálního větru na 60° N. Záporná hodnota znamená východní vítr.</p></div>
 <div><b>Teplota polární čepičky</b><p class="muted">Plošně vážený průměr 60–90° N na 10, 30 a 50 hPa.</p></div>
 <div><b>Vlnový tepelný tok v'T'</b><p class="muted">45–75° N na 100 hPa; kladný tok značí vzestupnou aktivitu planetárních vln.</p></div>
@@ -107,13 +119,13 @@ async function loadArchive(){
  ]);
  const u=parseCSV(uText),wv=parseCSV(wText);
  const dateIdx=pick(u.headers,[/^date$/,/^day$/]);
- const uIdx=pick(u.headers,[/u.*10.*60n/,/60n.*u.*10/,/north.*u.*10/,/^u10n$/,/^u60n$/]);
- const tIdx=pick(u.headers,[/t.*10.*north/,/north.*t.*10/,/cap.*temp/,/t10.*n/,/^t10n$/]);
+ const uIdx=pick(u.headers,[/^u6010hpa60nms$/, /^u60.*10.*60n/, /u.*10.*60n/]);
+ const tIdx=pick(u.headers,[/^cap.*10.*n/,/cap.*10hpa.*n/,/t.*10.*n/]);
  const dates=u.rows.map(r=>r[dateIdx>=0?dateIdx:0]);
  const seriesU=u.rows.map((r,i)=>({d:dates[i],v:parseFloat(r[uIdx])})).filter(x=>x.d&&Number.isFinite(x.v));
  const seriesT=u.rows.map((r,i)=>({d:dates[i],v:parseFloat(r[tIdx])})).filter(x=>x.d&&Number.isFinite(x.v));
  const wDate=pick(wv.headers,[/^date$/,/^day$/]);
- const hIdx=pick(wv.headers,[/vt.*45.*75/,/45.*75.*vt/,/heat.*flux/,/eddy.*heat/,/vt/]);
+ const hIdx=pick(wv.headers,[/^vt100n/,/vt.*100.*n/,/heat.*flux/,/eddy.*heat/]);
  const seriesH=wv.rows.map(r=>({d:r[wDate>=0?wDate:0],v:parseFloat(r[hIdx])})).filter(x=>x.d&&Number.isFinite(x.v));
  const last=a=>a.length?a[a.length-1]:null,lu=last(seriesU),lt=last(seriesT),lh=last(seriesH);
  if(!lu)throw Error('Soubor U60 byl načten, ale nepodařilo se rozpoznat sloupec zonálního větru. Hlavička: '+u.headers.join(', '));
