@@ -80,6 +80,7 @@ a{color:#75dcff}footer{text-align:center;color:var(--muted);font-size:12px;paddi
 <div><div class="unit">Vlnový tepelný tok · 100 hPa / 45–75° N</div><div class="metric" id="nasaMirrorHeat">—</div><div class="muted" id="nasaMirrorHeatDate">—</div></div>
 </div>
 <h3>NASA GSFC · zonální vítr U60</h3><canvas id="nasaMirrorWindChart" width="1000" height="280"></canvas>
+<h3>Vertikální profil U60 · NASA Ozone Watch / 10–30–50 hPa</h3><canvas id="nasaVerticalWindChart" width="1000" height="300"></canvas><div class="status" id="nasaVerticalWindStatus">Načítám vertikální řady U60…</div>
 <h3>NASA GSFC · teplota polární čepičky</h3><canvas id="nasaMirrorTempChart" width="1000" height="280"></canvas>
 <h3>NASA GSFC · vlnový tepelný tok</h3><canvas id="nasaMirrorHeatChart" width="1000" height="280"></canvas>
 <div class="status" id="nasaMirrorStatus">Načítám číselné řady NASA GSFC…</div>
@@ -266,7 +267,22 @@ $('nasaFile').addEventListener('change',async ev=>{
   status.innerHTML='<b class="good">Import úspěšný.</b> '+file.name+' · '+rows.length.toLocaleString('cs-CZ')+' dní · hladiny '+found+' hPa. Soubor zůstal pouze v tomto prohlížeči.';
  }catch(err){status.innerHTML='<b class="warn">Import se nepodařil.</b> '+String(err.message||err);}
 });
-\nasync function loadNasaMirror(){
+\nasync function loadNasaVerticalWind(){
+ const status=$("nasaVerticalWindStatus"),cv=$("nasaVerticalWindChart"),g=cv.getContext("2d"),w=cv.width,h=cv.height,p=55;
+ try{
+  const levels=[10,30,50],series=await Promise.all(levels.map(async lev=>{const r=await fetch("./data/nasa-gsfc/u60_"+lev+"hpa_60n_ozonewatch.csv?v="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("U60 "+lev+" hPa HTTP "+r.status);const lines=(await r.text()).trim().split(/\r?\n/);return {lev,rows:lines.slice(1).map(line=>{const a=line.split(",");return {date:a[0],v:Number(a[1]),fc:Number(a[2])}}).filter(x=>x.date&&Number.isFinite(x.v))};}));
+  g.clearRect(0,0,w,h);g.fillStyle="#07182a";g.fillRect(0,0,w,h);
+  const colors={10:"#63dfff",30:"#ffbd76",50:"#b69cff"},all=series.flatMap(q=>q.rows.map(x=>x.v));let min=Math.min(0,...all),max=Math.max(0,...all);if(min===max){min-=1;max+=1;}
+  const y=v=>h-p-(v-min)/(max-min)*(h-2*p);
+  for(let i=0;i<5;i++){const v=max-i*(max-min)/4,yy=y(v);g.strokeStyle="#29445e";g.beginPath();g.moveTo(p,yy);g.lineTo(w-p,yy);g.stroke();g.fillStyle="#a9bfd5";g.font="13px Arial";g.fillText(v.toFixed(1),5,yy+4);}
+  g.strokeStyle="#ffbd76";g.setLineDash([5,5]);g.beginPath();g.moveTo(p,y(0));g.lineTo(w-p,y(0));g.stroke();g.setLineDash([]);
+  for(const q of series){const a=q.rows.slice(-120);g.beginPath();a.forEach((x,i)=>{const xx=p+i*(w-2*p)/Math.max(1,a.length-1);if(i===0)g.moveTo(xx,y(x.v));else g.lineTo(xx,y(x.v));});g.strokeStyle=colors[q.lev];g.lineWidth=3;g.stroke();}
+  let legend="";for(const q of series){const last=q.rows[q.rows.length-1],hist=q.rows.filter(x=>x.fc===0),analysis=hist[hist.length-1],forecast=q.rows.filter(x=>x.fc>0);legend+=q.lev+" hPa: poslední "+last.date+" = "+last.v.toFixed(2)+" m/s"+(last.fc>0?" (předpověď +"+last.fc+" h)":" (analýza)")+"; ";}
+  g.fillStyle="#edf6ff";g.font="bold 14px Arial";g.fillText("U60 na 60° N · m/s · posledních až 120 dní",p,22);
+  status.innerHTML="<b class=\\"good\\">Vertikální řady NASA Ozone Watch načteny.</b><br>"+legend+"<br>Data s forecast_hour = 0 jsou analýza; kladné forecast_hour označuje předpověď. "+series.map(q=>q.lev+" hPa: "+q.rows.length+" řádků").join(" · ");
+ }catch(e){status.innerHTML="<b class=\\"warn\\">Vertikální řady zatím nejsou dostupné.</b> "+String(e.message||e)+". Zkontroluj běh NASA archivační úlohy.";}
+}
+async function loadNasaMirror(){
  const status=$('nasaMirrorStatus');
  const specs=[
   {file:'u60_10hpa_60n.csv',value:'nasaMirrorWind',date:'nasaMirrorWindDate',chart:'nasaMirrorWindChart',label:'U60 · 10 hPa',unit:'m/s',zero:true},
@@ -314,5 +330,6 @@ $('nasaFile').addEventListener('change',async ev=>{
 
 loadArchive();
 loadNoaaArchive();\nloadNasaMirror();
+loadNasaVerticalWind();
 
 </script></body></html>
