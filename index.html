@@ -1271,7 +1271,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
    const d=await r.json(),latest=d.latest||{},rows=Array.isArray(d.rows)?d.rows:[];
    put("chTrackCount",String(latest.num_coronal_holes??"—"));
    put("chTrackTime",fmt(latest.observed_utc));
-   put("chTrackQuality",latest.degraded_status===undefined?"—":String(latest.degraded_status));
+   put("chTrackQuality",latest.degraded_status===undefined?"—":(["false","0","no"].includes(String(latest.degraded_status).toLowerCase())?"Bez degradace":(["true","1","yes"].includes(String(latest.degraded_status).toLowerCase())?"DEGRADED":String(latest.degraded_status))));
    put("chTrackHistoryCount",String(rows.length));
    const age=latest.observed_utc?Math.max(0,(Date.now()-Date.parse(latest.observed_utc))/3600000):null;
    let status="Zdroj: "+(d.source||"NOAA SUVI L2")+" · poslední stažení "+fmt(d.updated_utc)+". ";
@@ -1284,7 +1284,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
     const n=v=>Number.isFinite(Number(v))?Number(v).toFixed(1)+"°":"—";
     const area=Number.isFinite(Number(q.area_px2))?Math.round(q.area_px2).toLocaleString("cs-CZ")+" pix²":"—";
     return "Díra "+q.id+": plocha "+area+" · N "+n(q.north_deg)+" · S "+n(q.south_deg)+" · E "+n(q.east_deg)+" · W "+n(q.west_deg);
-   }).join("\\n"):"NOAA v posledním produktu neidentifikovala žádnou koronální díru.");
+   }).join(" · "):"NOAA v posledním produktu neidentifikovala žádnou koronální díru.");
    draw(rows);
   }catch(e){put("chTrackStatus","Archiv NOAA zatím není dostupný: "+e.message+". Automatický sběr čeká na první úspěšný běh GitHub Actions.");draw([])}
  }
