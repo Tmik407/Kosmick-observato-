@@ -81,6 +81,10 @@ a{color:#75dcff}footer{text-align:center;color:var(--muted);font-size:12px;paddi
 </div>
 <h3>NASA GSFC · zonální vítr U60</h3><canvas id="nasaMirrorWindChart" width="1000" height="280"></canvas>
 <h3>Vertikální profil U60 · NASA Ozone Watch / 10–30–50 hPa</h3><canvas id="nasaVerticalWindChart" width="1000" height="300"></canvas><div class="status" id="nasaVerticalWindStatus">Načítám vertikální řady U60…</div>\n<h3>Vertikální teplotní profil polární čepičky · 10–30–50 hPa</h3><canvas id="nasaVerticalTempChart" width="1000" height="300"></canvas><div class="status" id="nasaVerticalTempStatus">Načítám teplotní řady…</div>
+<h3>Společná diagnostika vertikální struktury · vítr + teplota</h3>
+<div class="status" id="nasaCombinedStatus">Porovnávám shodná data analýzy na 10, 30 a 50 hPa…</div>
+<div style="overflow-x:auto"><table id="nasaCombinedTable"><thead><tr><th>Hladina</th><th>U60</th><th>ΔU / 7 dní</th><th>Teplota 60–90° N</th><th>ΔT / 7 dní</th><th>Interpretace</th></tr></thead><tbody><tr><td colspan="6">Čekám na data NASA Ozone Watch…</td></tr></tbody></table></div>
+<p class="muted">Výpočet používá pouze řádky s forecast_hour = 0 a datum společné pro vítr i teplotu. Změny za 7 dní se počítají proti přesnému datu před sedmi dny; chybějící den se nenahrazuje nejbližší hodnotou. Jde o diagnostický indikátor, nikoli automatické potvrzení náhlého stratosférického oteplení.</p>
 <h3>NASA GSFC · teplota polární čepičky</h3><canvas id="nasaMirrorTempChart" width="1000" height="280"></canvas>
 <h3>NASA GSFC · vlnový tepelný tok</h3><canvas id="nasaMirrorHeatChart" width="1000" height="280"></canvas>
 <div class="status" id="nasaMirrorStatus">Načítám číselné řady NASA GSFC…</div>
@@ -303,7 +307,38 @@ async function loadNasaVerticalTemp(){
   g.fillStyle="#edf6ff";g.font="bold 14px Arial";g.fillText("Teplota polární čepičky 60–90° N · K · posledních až 120 dní",p,22);
   status.innerHTML='<b class="good">NASA Ozone Watch · teplotní řady načteny.</b><br>'+legend+series.map(q=>q.lev+" hPa: "+q.rows.length+" řádků").join(" · ")+'<br>Kladný forecast_hour označuje předpověď, nikoli pozorovanou analýzu.';
  }catch(e){status.innerHTML='<b class="warn">Teplotní řady zatím nejsou dostupné.</b> '+String(e.message||e)+'. Zkontroluj běh NASA archivační úlohy.';}
-}\nasync function loadNasaMirror(){
+}\nasync function loadNasaCombinedProfile(){
+ const box=$("nasaCombinedStatus"),body=document.querySelector("#nasaCombinedTable tbody");
+ const levels=[10,30,50];
+ const read=async(file,valueKey)=>{const r=await fetch("./data/nasa-gsfc/"+file+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error(file+" HTTP "+r.status);const lines=(await r.text()).trim().split(/\r?\n/);return new Map(lines.slice(1).map(line=>{const a=line.split(",");return [a[0],{v:Number(a[1]),fc:Number(a[2])}]}).filter(([d,x])=>d&&Number.isFinite(x.v)&&x.v>-9000&&x.fc===0));};
+ const fmt=(v,unit)=>Number.isFinite(v)?(v>0?"+":"")+v.toFixed(2).replace(".",",")+" "+unit:"—");
+ try{
+  const records=await Promise.all(levels.map(async lev=>{
+   const [wind,temp]=await Promise.all([
+    read("u60_"+lev+"hpa_60n_ozonewatch.csv"),
+    read("tcap_"+lev+"hpa_60_90n_ozonewatch.csv")
+   ]);
+   const dates=[...wind.keys()].filter(d=>temp.has(d)).sort(),date=dates[dates.length-1];
+   if(!date)throw Error("Bez společného analytického data na "+lev+" hPa");
+   const ago=new Date(date+"T00:00:00Z");ago.setUTCDate(ago.getUTCDate()-7);const key=ago.toISOString().slice(0,10);
+   const w=wind.get(date),t=temp.get(date),w0=wind.get(key),t0=temp.get(key);
+   return {lev,date,w:w.v,t:t.v,dw:w0?w.v-w0.v:null,dt:t0?t.v-t0.v:null,has7:!!(w0&&t0)};
+  }));
+  const date=records.map(x=>x.date).sort()[0];
+  body.innerHTML=records.map(x=>{
+   const state=x.w<0?"Východní vítr":x.w<15?"Slabý západní vítr":"Západní vítr";
+   const thermal=x.dt===null?"změna T bez srovnání":x.dt>0.5?"oteplení za 7 dní":x.dt<-.5?"ochlazení za 7 dní":"malá změna T";
+   return "<tr><td><b>"+x.lev+" hPa</b><br>"+x.date+"</td><td>"+fmt(x.w,"m/s")+"</td><td>"+fmt(x.dw,"m/s")+"</td><td>"+fmt(x.t,"K")+"<br>"+fmt(x.t-273.15,"°C")+"</td><td>"+fmt(x.dt,"K")+"</td><td>"+state+"; "+thermal+"</td></tr>";
+  }).join("");
+  const top=records[0],mid=records[1],low=records[2];
+  let conclusion;
+  if(top.w<0&&mid.w>=0&&low.w>=0)conclusion="Na 10 hPa je analyticky zaznamenán záporný U60, zatímco 30 a 50 hPa zůstávají kladné. Obrat větru je tedy v tomto profilu omezen na horní sledovanou hladinu; nelze tvrdit, že se záporný vítr rozšířil do celé stratosférické vrstvy.";
+  else if(records.every(x=>x.w<0))conclusion="Záporný U60 je přítomen na všech třech hladinách. Jde o výraznější vertikální rozsah obratu, ale samotný profil stále nestačí k potvrzení major SSW.";
+  else conclusion="Vertikální profil vykazuje rozdílné větrné režimy mezi hladinami. Pro posouzení vývoje je nutné sledovat další denní běhy a související dynamiku.";
+  box.innerHTML='<b class="good">Společná diagnostika načtena.</b> Poslední společné analytické datum: '+date+'.<br>'+conclusion+'<br>ΔU a ΔT jsou změny vůči přesnému datu o 7 dní dříve; pomlčka znamená chybějící srovnávací den.';
+ }catch(e){box.innerHTML='<b class="warn">Společnou diagnostiku se nepodařilo sestavit.</b> '+String(e.message||e);body.innerHTML='<tr><td colspan="6">Data nejsou kompletní; hodnoty nebyly dopočítány.</td></tr>';}
+}
+async function loadNasaMirror(){
  const status=$('nasaMirrorStatus');
  const specs=[
   {file:'u60_10hpa_60n.csv',value:'nasaMirrorWind',date:'nasaMirrorWindDate',chart:'nasaMirrorWindChart',label:'U60 · 10 hPa',unit:'m/s',zero:true},
@@ -352,5 +387,6 @@ async function loadNasaVerticalTemp(){
 loadArchive();
 loadNoaaArchive();\nloadNasaMirror();
 loadNasaVerticalWind();\nloadNasaVerticalTemp();
+loadNasaCombinedProfile();
 
 </script></body></html>
