@@ -22,13 +22,13 @@ a{color:#75dcff}footer{text-align:center;color:var(--muted);font-size:12px;paddi
 </head>
 <body><main>
 <header><div class="tag">OBSERVATOŘ X-5</div><div class="tag">SEVERNÍ POLOKOULE</div><h1>🌀 Model polárního víru</h1><div class="sub">Stratosférická diagnostika · měření, reanalýza a předpověď odděleně</div></header>
-<div class="status" id="dataStatus"><b>Stav dat:</b> První referenční hodnoty načtené z publikovaného výstupu ECMWF HRES. Nejde o živé připojení k datovému API. Čas zdroje: 12. 11. 2026 12 UTC.</div>
+<div class="status" id="dataStatus"><b>Stav dat:</b> Načítám poslední dostupná denní data ERA5…</div>
 <section class="panel"><h2>Aktuální diagnostické hodnoty</h2><div class="grid">
-<div><div class="unit">Zonální vítr · 10 hPa / 60° N</div><div class="metric" id="wind">−2 m/s</div><div class="muted">Referenční normál +28 m/s</div></div>
-<div><div class="unit">Teplota polární oblasti · 10 hPa</div><div class="metric" id="temp">216 K</div><div class="muted">Přibližně −57,2 °C</div></div>
-<div><div class="unit">Nejnižší teplota · 50 hPa</div><div class="metric">202 K</div><div class="muted">Přibližně −71,2 °C</div></div>
-<div><div class="unit">Diagnostický stav</div><div class="metric" id="state">Narušený</div><div class="muted">Záporný zonální vítr v referenčním bodě</div></div>
-</div><p class="muted">Zdroj: ECMWF HRES analýza, běh 12. 11. 2026 12 UTC. Referenční hodnoty jsou převzaty z veřejného přehledu polárního víru; před nasazením živého datového adaptéru je nutné ověřit novější běh.</p></section>
+<div><div class="unit">Zonální vítr · 10 hPa / 60° N</div><div class="metric" id="wind">—</div><div class="muted">Hodnota bude načtena z datového archivu</div></div>
+<div><div class="unit">Teplota polární oblasti · 10 hPa</div><div class="metric" id="temp">—</div><div class="muted">Denní průměr polární oblasti</div></div>
+<div><div class="unit">Nejnižší teplota · 50 hPa</div><div class="metric" id="tmin">—</div><div class="muted">Minimální teplota bude doplněna, pokud ji zdroj poskytne</div></div>
+<div><div class="unit">Diagnostický stav</div><div class="metric" id="state">Čeká na data</div><div class="muted">Vyhodnocení podle posledního dostupného U60</div></div>
+</div><p class="muted" id="metricSource">Zdroj a čas posledního záznamu se načtou z datového archivu. ERA5 je reanalýza, nikoli přímé měření v atmosféře.</p></section>
 <section class="panel"><h2>Polární projekce – diagnostický náčrt</h2><canvas id="polar" width="1000" height="700" role="img" aria-label="Schematická polární projekce deformace polárního víru"></canvas><p class="muted">Schematická vizualizace odvozená z diagnostických parametrů a ovládacích prvků níže. Není to skutečná mapa geopotenciálu ani satelitní snímek.</p>
 <div class="controls">
 <label>Rychlost zonálního větru 10 hPa: <b id="windOut">−2 m/s</b><input id="windCtl" type="range" min="-40" max="60" value="-2" step="1"></label>
@@ -36,7 +36,21 @@ a{color:#75dcff}footer{text-align:center;color:var(--muted);font-size:12px;paddi
 <label>Deformace víru: <b id="shapeOut">1,8</b><input id="shapeCtl" type="range" min="1" max="3" value="1.8" step=".1"></label>
 <label>Dominantní vlna: <b id="waveOut">Vlna 1</b><input id="waveCtl" type="range" min="1" max="2" value="1" step="1"></label>
 </div></section>
-<section class="panel"><h2>Diagnostické hladiny</h2><table><thead><tr><th>Hladina</th><th>Co budeme měřit</th><th>Význam</th></tr></thead><tbody>
+
+<section class="panel"><h2>Archiv měření a časové řady</h2>
+<p class="muted">Automaticky stahovaný denní archiv ERA5 od roku 1959. Jde o reanalýzu založenou na pozorováních a modelu, nikoli o přímé měření jedním přístrojem. Aktualizace archivu probíhá denně; datum posledního záznamu se zobrazuje samostatně.</p>
+<div class="grid">
+<div><div class="unit">U60 · 10 hPa / 60° N</div><div class="metric" id="u60latest">—</div><div class="muted" id="u60date">—</div></div>
+<div><div class="unit">Teplota polární čepičky · 10 hPa</div><div class="metric" id="capLatest">—</div><div class="muted" id="capDate">—</div></div>
+<div><div class="unit">Vlnový tepelný tok · 100 hPa</div><div class="metric" id="heatLatest">—</div><div class="muted" id="heatDate">—</div></div>
+<div><div class="unit">Záznamů v archivu</div><div class="metric" id="recordCount">—</div><div class="muted" id="archiveRange">—</div></div>
+</div>
+<h3>Vývoj zonálního větru U60</h3><canvas id="u60Chart" width="1000" height="300"></canvas>
+<h3>Teplota polární čepičky</h3><canvas id="tempChart" width="1000" height="260"></canvas>
+<h3>Vlnový tepelný tok</h3><canvas id="heatChart" width="1000" height="260"></canvas>
+<div class="status" id="archiveStatus">Připojuji archiv…</div>
+<p class="muted">Zdroj: <a href="https://www.polarvortex.earth/data" target="_blank" rel="noopener">polarvortex.earth – datové soubory ERA5</a>. Metodika a definice U60: <a href="https://www.polarvortex.earth/methods" target="_blank" rel="noopener">metodika</a>. Data se uchovávají v repozitáři X-5 ve verzích Git, aby bylo možné dohledat denní změny.</p>
+</section>\n<section class="panel"><h2>Diagnostické hladiny</h2><table><thead><tr><th>Hladina</th><th>Co budeme měřit</th><th>Význam</th></tr></thead><tbody>
 <tr><td>10 hPa</td><td>U60, teplota polární oblasti, geopotenciál, PV</td><td>Hlavní indikátor síly a obratu víru</td></tr>
 <tr><td>30 hPa</td><td>U60, teplota, geopotenciál, PV</td><td>Vertikální struktura a sestup anomálií</td></tr>
 <tr><td>50 hPa</td><td>U60, teplota, ozon, PV</td><td>Dolní stratosféra a podmínky PSC</td></tr>
@@ -77,5 +91,42 @@ ctx.beginPath();for(let i=0;i<=720;i++){let a=i/720*Math.PI*2,rad=155+35*Math.si
 ctx.closePath();let grad=ctx.createRadialGradient(cx,cy,30,cx,cy,260);grad.addColorStop(0,temp>213?'rgba(255,150,90,.24)':'rgba(70,180,255,.25)');grad.addColorStop(1,'rgba(40,130,210,.04)');ctx.fillStyle=grad;ctx.fill();ctx.strokeStyle=wind<0?'#ff9b73':'#63dfff';ctx.lineWidth=4;ctx.stroke();
 ctx.fillStyle='#edf6ff';ctx.font='bold 22px Arial';ctx.textAlign='center';ctx.fillText(wind<0?'Obrácený zonální vítr':'Západní cirkulace',cx,cy+310);ctx.textAlign='left';
 }
-['windCtl','tempCtl','shapeCtl','waveCtl'].forEach(id=>$(id).addEventListener('input',draw));draw();
+['windCtl','tempCtl','shapeCtl','waveCtl'].forEach(id=>$(id).addEventListener('input',draw));draw();\n
+async function loadArchive(){
+ const status=$('archiveStatus'),mainStatus=$('dataStatus');
+ const fmt=v=>Number.isFinite(v)?v.toFixed(1).replace('.',','):'—';
+ const parseCSV=t=>{const lines=t.trim().split(/\r?\n/);const headers=lines.shift().split(',').map(x=>x.trim().replace(/^"|"$/g,''));return {headers,rows:lines.map(l=>l.split(',').map(x=>x.trim().replace(/^"|"$/g,'')))}};
+ const pick=(headers,tests)=>headers.findIndex(h=>tests.some(re=>re.test(h.toLowerCase().replace(/[^a-z0-9]/g,''))));
+ const drawLine=(id,series,label,unit,zero=false)=>{const cv=$(id),cx=cv.getContext('2d'),w=cv.width,h=cv.height,p=48;cx.clearRect(0,0,w,h);cx.fillStyle='#07182a';cx.fillRect(0,0,w,h);const vals=series.map(x=>x.v).filter(Number.isFinite);if(!vals.length){cx.fillStyle='#a9bfd5';cx.fillText('Data pro tento graf nebyla nalezena',p,40);return}let min=Math.min(...vals),max=Math.max(...vals);if(zero){min=Math.min(0,min);max=Math.max(0,max)}if(max===min){max+=1;min-=1}const y=v=>h-p-(v-min)/(max-min)*(h-2*p);for(let i=0;i<5;i++){const yy=p+i*(h-2*p)/4;cx.strokeStyle='#29445e';cx.beginPath();cx.moveTo(p,yy);cx.lineTo(w-p,yy);cx.stroke();cx.fillStyle='#a9bfd5';cx.font='13px Arial';cx.fillText((max-i*(max-min)/4).toFixed(1),5,yy+4)}if(zero&&min<0&&max>0){cx.strokeStyle='#ffbd76';cx.setLineDash([5,5]);cx.beginPath();cx.moveTo(p,y(0));cx.lineTo(w-p,y(0));cx.stroke();cx.setLineDash([])}cx.strokeStyle='#63dfff';cx.lineWidth=2.5;cx.beginPath();series.forEach((d,i)=>{const x=p+i*(w-2*p)/Math.max(1,series.length-1);if(i===0)cx.moveTo(x,y(d.v));else cx.lineTo(x,y(d.v))});cx.stroke();cx.fillStyle='#edf6ff';cx.font='bold 14px Arial';cx.fillText(label+' ('+unit+')',p,22);cx.fillStyle='#a9bfd5';cx.fillText(series[0].d,p,h-12);cx.fillText(series[series.length-1].d,w-p-90,h-12)};
+ try{
+ const [uText,wText,metaText]=await Promise.all([
+ fetch('./data/u60_daily.csv?x='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('u60_daily.csv HTTP '+r.status);return r.text()}),
+ fetch('./data/wave_forcing_daily.csv?x='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('wave_forcing_daily.csv HTTP '+r.status);return r.text()}),
+ fetch('./data/archive-meta.json?x='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{})
+ ]);
+ const u=parseCSV(uText),wv=parseCSV(wText);
+ const dateIdx=pick(u.headers,[/^date$/,/^day$/]);
+ const uIdx=pick(u.headers,[/u.*10.*60n/,/60n.*u.*10/,/north.*u.*10/,/^u10n$/,/^u60n$/]);
+ const tIdx=pick(u.headers,[/t.*10.*north/,/north.*t.*10/,/cap.*temp/,/t10.*n/,/^t10n$/]);
+ const dates=u.rows.map(r=>r[dateIdx>=0?dateIdx:0]);
+ const seriesU=u.rows.map((r,i)=>({d:dates[i],v:parseFloat(r[uIdx])})).filter(x=>x.d&&Number.isFinite(x.v));
+ const seriesT=u.rows.map((r,i)=>({d:dates[i],v:parseFloat(r[tIdx])})).filter(x=>x.d&&Number.isFinite(x.v));
+ const wDate=pick(wv.headers,[/^date$/,/^day$/]);
+ const hIdx=pick(wv.headers,[/vt.*45.*75/,/45.*75.*vt/,/heat.*flux/,/eddy.*heat/]);
+ const seriesH=wv.rows.map(r=>({d:r[wDate>=0?wDate:0],v:parseFloat(r[hIdx])})).filter(x=>x.d&&Number.isFinite(x.v));
+ const last=a=>a.length?a[a.length-1]:null,lu=last(seriesU),lt=last(seriesT),lh=last(seriesH);
+ if(!lu)throw Error('Soubor U60 byl načten, ale nepodařilo se rozpoznat sloupec zonálního větru. Hlavička: '+u.headers.join(', '));
+ $('wind').textContent=fmt(lu.v)+' m/s';$('u60latest').textContent=fmt(lu.v)+' m/s';$('u60date').textContent=lu.d+' · ERA5';
+ if(lt){$('temp').textContent=fmt(lt.v)+' K';$('capLatest').textContent=fmt(lt.v)+' K';$('capDate').textContent=lt.d+' · ERA5';}
+ if(lh){$('heatLatest').textContent=fmt(lh.v)+' K·m/s';$('heatDate').textContent=lh.d+' · ERA5';}
+ $('state').textContent=lu.v<0?'Východní vítr':'Západní vítr';
+ $('recordCount').textContent=u.rows.length.toLocaleString('cs-CZ');$('archiveRange').textContent=(dates.find(Boolean)||'')+' až '+(lu.d||'');
+ $('metricSource').textContent='ERA5 · denní průměry. Poslední dostupný záznam: '+lu.d+'. Nejde o okamžité měření ani předpověď.';
+ drawLine('u60Chart',seriesU.slice(-365),'U60','m/s',true);drawLine('tempChart',seriesT.slice(-365),'Teplota polární čepičky','K');drawLine('heatChart',seriesH.slice(-365),'Vlnový tepelný tok','K·m/s',true);
+ status.innerHTML='<b class="good">Archiv načten.</b> '+u.rows.length.toLocaleString('cs-CZ')+' denních záznamů U60; poslední datum '+lu.d+'. '+(lh?'Tepelný tok poslední dostupný '+lh.d+'.':'Tepelný tok nebyl rozpoznán.')+'<br>Rozpoznané sloupce: U60 = '+(u.headers[uIdx]||'nenalezen')+'; teplota = '+(u.headers[tIdx]||'nenalezena')+'; tepelný tok = '+(wv.headers[hIdx]||'nenalezen')+'.';
+ mainStatus.innerHTML='<b>Stav dat:</b> Archiv ERA5 načten · poslední datum '+lu.d+' · denní aktualizace přes GitHub Actions.';
+ }catch(e){status.innerHTML='<b class="warn">Archiv zatím není dostupný.</b> '+String(e.message||e)+'<br>Grafy zůstávají bez hodnot; žádná chybějící data nejsou nahrazena nulou.';mainStatus.innerHTML='<b>Stav dat:</b> Archiv se nepodařilo načíst. Zobrazené hodnoty zůstávají prázdné.';}
+}
+loadArchive();
+
 </script></body></html>
