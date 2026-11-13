@@ -107,6 +107,15 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
   <div><div class="small">Nejvyšší tok za 24 hodin</div><div id="flarePeak" class="metric">—</div><div id="flarePeakTime" class="small"></div></div>
   <div><div class="small">Výrazné vrcholy toku ≥ C1</div><div id="flareCount" class="metric">—</div><div class="small">Automatická detekce z měření GOES</div></div>
  </div>
+ <h3>Rozdělení tříd sluneční aktivity – posledních 24 hodin</h3>
+ <div id="flareClassPercent" class="grid">
+  <div><div class="small">Třída A</div><div id="flarePctA" class="metric">—</div><div style="height:9px;background:#263d58;border-radius:8px;overflow:hidden"><div id="flareBarA" style="height:100%;width:0%;background:#8aa6c1"></div></div></div>
+  <div><div class="small">Třída B</div><div id="flarePctB" class="metric">—</div><div style="height:9px;background:#263d58;border-radius:8px;overflow:hidden"><div id="flareBarB" style="height:100%;width:0%;background:#65dcff"></div></div></div>
+  <div><div class="small">Třída C</div><div id="flarePctC" class="metric">—</div><div style="height:9px;background:#263d58;border-radius:8px;overflow:hidden"><div id="flareBarC" style="height:100%;width:0%;background:#9ce5b5"></div></div></div>
+  <div><div class="small">Třída M</div><div id="flarePctM" class="metric">—</div><div style="height:9px;background:#263d58;border-radius:8px;overflow:hidden"><div id="flareBarM" style="height:100%;width:0%;background:#ffd08a"></div></div></div>
+  <div><div class="small">Třída X</div><div id="flarePctX" class="metric">—</div><div style="height:9px;background:#263d58;border-radius:8px;overflow:hidden"><div id="flareBarX" style="height:100%;width:0%;background:#ff8d8d"></div></div></div>
+ </div>
+ <div id="flarePercentNote" class="small">Procenta se počítají z platných vzorků GOES, nikoli z počtu samostatných erupcí.</div>
  <h3>Rentgenový tok GOES a detekované vrcholy</h3>
  <canvas id="flareChart" width="900" height="260"></canvas>
  <div id="flareEvents" class="small">Načítám poslední měření…</div>
@@ -1013,6 +1022,10 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
    const raw=await r.json(),rows=raw.filter(o=>String(o.energy||o.energy_band||"").toLowerCase().includes("0.1-0.8")&&valid(o.flux)&&o.time_tag&&Number.isFinite(Date.parse(o.time_tag))).map(o=>({time:o.time_tag,flux:Number(o.flux)})).sort((a,b)=>Date.parse(a.time)-Date.parse(b.time));
    if(!rows.length)throw Error("GOES nemá platné vzorky pásma 0,1–0,8 nm");
    const last=rows[rows.length-1],max=rows.reduce((a,b)=>b.flux>a.flux?b:a,rows[0]),peaks=[];
+   const counts={A:0,B:0,C:0,M:0,X:0};
+   rows.forEach(q=>{const v=q.flux,k=v>=1e-4?"X":v>=1e-5?"M":v>=1e-6?"C":v>=1e-7?"B":"A";counts[k]++});
+   Object.keys(counts).forEach(k=>{const pct=100*counts[k]/rows.length;el("flarePct"+k).textContent=pct.toFixed(1)+" %";el("flareBar"+k).style.width=pct.toFixed(2)+"%"});
+   el("flarePercentNote").textContent="Podíl ze "+rows.length.toLocaleString("cs-CZ")+" platných minutových vzorků GOES v pásmu 0,1–0,8 nm za posledních 24 hodin. Jde o rozložení intenzity toku v čase, nikoli o procentuální četnost samostatných erupcí.";
    for(let i=1;i<rows.length-1;i++){const q=rows[i];if(q.flux>=1e-6&&q.flux>rows[i-1].flux&&q.flux>=rows[i+1].flux&&(!peaks.length||Date.parse(q.time)-Date.parse(peaks[peaks.length-1].time)>20*60*1000))peaks.push(q)}
    el("flareClass").textContent=flareClass(last.flux);el("flareTime").textContent="Poslední vzorek: "+last.time.replace("T"," ").replace("Z","")+" UTC";
    el("flarePeak").textContent=flareClass(max.flux);el("flarePeakTime").textContent=max.time.replace("T"," ").replace("Z","")+" UTC";el("flareCount").textContent=String(peaks.length);
