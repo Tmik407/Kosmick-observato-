@@ -1,11 +1,10 @@
-name: Publikovat model polárního víru X-5
+name: Aktualizace dat a publikace modelu polárního víru X-5
 
 on:
   push:
     branches: [main]
     paths:
       - 'polarni-vir.html'
-      - 'data/**'
       - '.github/workflows/polarni-vir-pages.yml'
   schedule:
     - cron: '17 7 * * *'
@@ -16,12 +15,13 @@ permissions:
   pages: write
   id-token: write
 
+# Sdílí zámek s hlavním pages.yml, aby se dvě nasazení nepřepisovala.
 concurrency:
-  group: polarni-vir-pages
-  cancel-in-progress: true
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  update-and-deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -31,8 +31,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
+          fetch-depth: 0
 
-      - name: Stáhnout nejnovější archiv ERA5
+      - name: Stáhnout a ověřit denní archiv ERA5
         run: |
           set -euo pipefail
           mkdir -p data
@@ -46,60 +47,78 @@ jobs:
           import csv, json
           from datetime import datetime, timezone
           from pathlib import Path
-          files = ["u60_daily.csv", "wave_forcing_daily.csv"]
+          specs = {
+              "u60_daily.csv": {"required": {"date", "u60_10hpa_60n_ms", "capt_10hpa_n_k"}},
+              "wave_forcing_daily.csv": {"required": {"date", "vt100_n_kms", "z10_wave1_60n_m", "z10_wave2_60n_m"}}
+          }
           meta = {
               "retrieved_utc": datetime.now(timezone.utc).isoformat(),
-              "source": "ERA5 daily derived datasets, served by polarvortex.earth",
-              "attribution": "Contains modified Copernicus Climate Change Service information 2026. ERA5: Hersbach et al. (2020).",
+              "source": "ERA5-derived daily diagnostics distributed by polarvortex.earth",
+              "classification": "REANALYSIS_DERIVED",
+              "attribution": "Contains modified Copernicus Climate Change Service information. ERA5: Hersbach et al. (2020).",
               "files": {}
           }
-          for name in files:
+          for name, spec in specs.items():
               path = Path("data") / name
               with path.open(encoding="utf-8-sig", newline="") as f:
-                  reader = csv.reader(f)
-                  header = next(reader, [])
-                  rows = sum(1 for _ in reader)
-              if not header or rows < 1000:
-                  raise SystemExit(f"Data validation failed for {name}: {rows} rows")
+                  reader = csv.DictReader(f)
+                  header = set(reader.fieldnames or [])
+                  missing = spec["required"] - header
+                  if missing:
+                      raise SystemExit(f"{name}: missing required columns {sorted(missing)}; got {sorted(header)}")
+                  rows = list(reader)
+              if len(rows) < 1000:
+                  raise SystemExit(f"{name}: too few records ({len(rows)})")
+              dates = [r.get("date", "") for r in rows if r.get("date")]
+              if not dates:
+                  raise SystemExit(f"{name}: no valid dates")
               meta["files"][name] = {
-                  "rows": rows,
-                  "columns": header,
+                  "rows": len(rows),
+                  "columns": list(reader.fieldnames or []),
+                  "first_date": dates[0],
+                  "last_date": dates[-1],
                   "bytes": path.stat().st_size
               }
           (Path("data") / "archive-meta.json").write_text(
-              json.dumps(meta, ensure_ascii=False, indent=2),
+              json.dumps(meta, ensure_ascii=False, indent=2) + "\\n",
               encoding="utf-8"
           )
           print(json.dumps(meta, ensure_ascii=False, indent=2))
           PY
 
-      - name: Uložit denní verzi archivu do Git
+      - name: Uložit archiv do historie Git
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/u60_daily.csv data/wave_forcing_daily.csv data/archive-meta.json
           if ! git diff --cached --quiet; then
             git commit -m "Update daily polar vortex ERA5 archive"
-            git push origin main
+            git pull --rebase origin main
+            git push origin HEAD:main
           else
-            echo "Archiv se nezměnil; nový commit není potřeba."
+            echo "Archiv se nezměnil; ponechávám stávající verzi."
           fi
 
-      - name: Připravit samostatnou stránku
+      - name: Připravit celý web včetně oddělené stránky polárního víru
         run: |
-          mkdir -p _site/data
-          cp polarni-vir.html _site/index.html
-          cp data/*.csv data/archive-meta.json _site/data/
+          set -euo pipefail
+          mkdir -p _site
+          rsync -a --exclude='.git/' --exclude='.github/' --exclude='_site/' ./ _site/
           touch _site/.nojekyll
+          test -s _site/index.html
+          test -s _site/polarni-vir.html
+          test -s _site/data/u60_daily.csv
+          test -s _site/data/wave_forcing_daily.csv
 
       - name: Nastavit GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Nahrát web
+      - name: Nahrát kompletní web
         uses: actions/upload-pages-artifact@v3
         with:
           path: _site
 
-      - name: Publikovat
+      - name: Publikovat kompletní web X-5
         id: deployment
         uses: actions/deploy-pages@v4
