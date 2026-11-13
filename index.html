@@ -1169,6 +1169,12 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   <span>🟦 D-RAP HAF nízký</span><span>🟩 střední</span><span>🟨 zvýšený</span><span>🟥 vysoký</span><span>● GIRO foF2/MUF měření</span><span>🔵→🟡 IRTAM Ne: 0–2 × 10⁶ cm⁻³</span>
  </div>
  <div class="small">Barevná vrstva zobrazuje globální elektronovou hustotu IRTAM v hladině 300 km, v jednotkách 10⁶ cm⁻³. Data jsou z veřejných koeficientů GAMBIT se zpožděním 48 hodin, model je vypočten přes PyIRTAM. Mřížka má rozlišení 10°; kruhové buňky jsou vizualizací mřížky, nikoli přímým měřením v každém bodě. GIRO stanice jsou nadále samostatné měřicí body.</div>
+ <div id="irtamDataQuality" style="margin-top:10px;padding:11px 12px;border:1px solid #315674;border-radius:10px;background:linear-gradient(120deg,#07172a,#0b2540)">
+  <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><strong style="color:#d9f3ff">IRTAM · KVALITA A STÁŘÍ DAT</strong><span id="irtamQualityState" class="small">Čekám na archiv…</span></div>
+  <div style="height:10px;border-radius:8px;margin:9px 0;background:linear-gradient(90deg,#0f2382 0%,#1c41e0 18%,#7319dc 38%,#de0069 58%,#ff4114 76%,#ffaf14 90%,#fff582 100%)"></div>
+  <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:11px;color:#b8d4e8"><span>0.0</span><span>0.5</span><span>1.0</span><span>1.5</span><span>2.0 × 10⁶ cm⁻³</span></div>
+  <div id="irtamQualityDetails" class="small" style="margin-top:8px">Globální modelová mřížka bude ověřena po načtení archivu.</div>
+ </div>
  <div id="ionoGlobeDetail" class="small" style="margin-top:10px">Klikni na bod stanice pro podrobnosti. Čas a kvalita dat se zobrazují samostatně.</div><div id="ionoHistoryPanel" style="margin-top:12px;background:#081a2c;border:1px solid #294765;border-radius:10px;padding:12px"><strong>Historie skutečných měření ionosond</strong><span id="ionoHistoryCount" class="small" style="float:right">Vyber stanici</span><div id="ionoHistoryInfo" class="small" style="margin:6px 0">Lokální historie tohoto prohlížeče.</div><canvas id="ionoHistoryCanvas" width="900" height="300" style="width:100%;height:auto;display:block"></canvas><div class="grid" style="margin-top:8px"><div><div class="small">Poslední foF2</div><div id="ionoHistFof2" class="metric">—</div></div><div><div class="small">Poslední hmF2</div><div id="ionoHistHmf2" class="metric">—</div></div><div><div class="small">Poslední MUF</div><div id="ionoHistMuf" class="metric">—</div></div><div><div class="small">Confidence</div><div id="ionoHistQuality" class="metric">—</div></div></div><div class="small">Historie se tvoří z nově načtených aktuálních vzorků GIRO na tomto zařízení. Starší data před prvním uložením nejsou dostupná. Mezery se neinterpolují.</div><div class="small">Lokální automatický záznam je oddělen od archivních dat GIRO. Níže lze stáhnout skutečnou historickou řadu z archivu DIDBase pro právě vybranou stanici.</div>
  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:10px">
   <label class="small">Od (UTC)<input id="ionoArchiveFrom" type="date" style="display:block;padding:8px;background:#081a2c;color:#fff;border:1px solid #45627e;border-radius:7px"></label>
@@ -1213,7 +1219,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
    const cr=Math.cos(tilt),sr=Math.sin(tilt);
    for(let py=0;py<size;py++)for(let px=0;px<size;px++){
     const nx=(px/(size-1))*2-1,ny=1-(py/(size-1))*2,r2=nx*nx+ny*ny;if(r2>1)continue;
-    const nz=Math.sqrt(1-r2),sinP=ny*cr+nz*sr,cosLon= nz*cr-ny*sr;
+    const nz=Math.sqrt(1-r2),sinP=-ny*cr+nz*sr,cosLon=ny*sr+nz*cr;
     const lat=Math.asin(Math.max(-1,Math.min(1,sinP)))*180/Math.PI;
     const lon=(Math.atan2(nx,cosLon)-rotation)*180/Math.PI;
     const v=sample(lat,lon);if(v===null)continue;
@@ -1237,6 +1243,15 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  if(jobs[1].status==="fulfilled"){try{auroraGrid=parseAurora(jobs[1].value);auroraMeta={observed:jobs[1].value["Observation Time"],forecast:jobs[1].value["Forecast Time"]}}catch(e){issues.push("OVATION: "+e.message)}}else issues.push("OVATION nedostupný");
  if(jobs[2].status==="fulfilled"){try{irtamPoints=parseIrtam(jobs[2].value);irtamMeta=jobs[2].value}catch(e){issues.push("IRTAM: "+e.message)}}else issues.push("IRTAM archiv nedostupný");
  status.textContent=(coastGeo?"Pobřeží načteno":"Pobřeží bez dat")+" · "+(auroraGrid.length?auroraGrid.length.toLocaleString("cs-CZ")+" bodů OVATION":"OVATION bez dat")+" · "+(irtamPoints.length?irtamPoints.length.toLocaleString("cs-CZ")+" bodů IRTAM · "+(irtamMeta?.target_utc||"čas neuveden"):"IRTAM bez dat")+(issues.length?" · "+issues.join("; "):"");
+ const qState=$("irtamQualityState"),qDetails=$("irtamQualityDetails");
+ if(qState&&qDetails){
+  if(irtamPoints.length&&irtamMeta){
+   const vals=irtamPoints.map(p=>p.v).filter(Number.isFinite),min=Math.min(...vals),max=Math.max(...vals);
+   const generated=Date.parse(irtamMeta.generated_utc||""),age=Number.isFinite(generated)?Math.max(0,(Date.now()-generated)/3600000):null;
+   qState.textContent="MŘÍŽKA NAČTENA · "+irtamPoints.length+" BODŮ";
+   qDetails.textContent="Modelový čas: "+(irtamMeta.target_utc||"neuveden")+" · výpočet: "+(irtamMeta.generated_utc||"neuveden")+" · stáří výpočtu: "+(age===null?"neznámé":age.toFixed(1)+" h")+" · výška: "+(irtamMeta.altitude_km??"—")+" km · krok: "+(irtamMeta.grid_step_deg??"—")+"° · rozsah: "+min.toFixed(3)+" až "+max.toFixed(3)+" × 10⁶ cm⁻³ · zdroj: PyIRTAM/GAMBIT";
+  }else{qState.textContent="ARCHIV NEDOSTUPNÝ";qDetails.textContent="Barevná vrstva IRTAM není aktivní. Zobrazení nevyplňuje chybějící hodnoty odhadem."}
+ }
  draw();
  }
  function parseDrap(text){
@@ -1282,8 +1297,8 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   const bg=ctx.createLinearGradient(0,0,W,H);bg.addColorStop(0,"#020817");bg.addColorStop(.55,"#071b31");bg.addColorStop(1,"#020611");ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
   for(let i=0;i<95;i++){const x=(i*197.3%W),y=(i*83.7%H);ctx.globalAlpha=.18+(i%5)*.09;ctx.fillStyle="#b9ddff";ctx.beginPath();ctx.arc(x,y,i%11===0?1.8:.8,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;
   // Atmosférický lem a měkký stín glóbu.
-  const halo=ctx.createRadialGradient(cx,cy,R*.88,cx,cy,R*1.17);halo.addColorStop(0,"rgba(46,174,255,0)");halo.addColorStop(.72,"rgba(47,174,255,.13)");halo.addColorStop(1,"rgba(47,174,255,0)");ctx.fillStyle=halo;ctx.beginPath();ctx.arc(cx,cy,R*1.2,0,Math.PI*2);ctx.fill();
-  const sphere=ctx.createRadialGradient(cx-R*.42,cy-R*.48,R*.025,cx+R*.28,cy+R*.28,R*1.22);sphere.addColorStop(0,"#397fa0");sphere.addColorStop(.22,"#205b80");sphere.addColorStop(.52,"#123d67");sphere.addColorStop(.82,"#092342");sphere.addColorStop(1,"#020817");ctx.fillStyle=sphere;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fill();
+  const halo=ctx.createRadialGradient(cx,cy,R*.82,cx,cy,R*1.22);halo.addColorStop(0,"rgba(46,174,255,0)");halo.addColorStop(.58,"rgba(47,174,255,.10)");halo.addColorStop(.84,"rgba(47,174,255,.22)");halo.addColorStop(1,"rgba(47,174,255,0)");ctx.fillStyle=halo;ctx.beginPath();ctx.arc(cx,cy,R*1.2,0,Math.PI*2);ctx.fill();
+  const sphere=ctx.createRadialGradient(cx-R*.42,cy-R*.48,R*.025,cx+R*.28,cy+R*.28,R*1.22);sphere.addColorStop(0,"#4c91ad");sphere.addColorStop(.18,"#286b91");sphere.addColorStop(.42,"#174a73");sphere.addColorStop(.72,"#0b2c4d");sphere.addColorStop(.92,"#061b34");sphere.addColorStop(1,"#020817");ctx.fillStyle=sphere;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fill();
   ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.clip();
   const sun=sunPosition(animTime);
   // Zjednodušené obrysy pevnin – pouze orientační podklad, nikoli geografická vrstva dat.
