@@ -21,33 +21,30 @@ ALT_KM = 300.0
 
 
 def get_f107(day):
-    url = "https://services.swpc.noaa.gov/json/solar-cycle/observed-solar-cycle-indices.json"
+    # Canadian Space Weather daily Penticton observations (observed flux, not monthly mean).
+    url = "https://www.spaceweather.gc.ca/solar_flux_data/daily_flux_values/fluxtable.txt"
     req = urllib.request.Request(url, headers={"User-Agent": "X5-Ionosphere/1.0"})
-    with urllib.request.urlopen(req, timeout=30) as response:
-        rows = json.loads(response.read().decode("utf-8"))
-    candidates = []
-    for row in rows:
-        raw = row.get("time-tag") or row.get("time_tag") or row.get("date")
-        try:
-            d = datetime.fromisoformat(str(raw).replace("Z", "+00:00")).date()
-        except Exception:
-            try:
-                d = datetime.strptime(str(raw)[:10], "%Y-%m-%d").date()
-            except Exception:
-                continue
-        val = row.get("f10.7") or row.get("f107") or row.get("f10_7")
-        try:
-            v = float(val)
-        except (TypeError, ValueError):
+    with urllib.request.urlopen(req, timeout=45) as response:
+        lines = response.read().decode("utf-8", errors="replace").splitlines()
+    daily = {}
+    for line in lines:
+        cols = line.split()
+        if len(cols) < 7 or not cols[0].isdigit() or len(cols[0]) != 8:
             continue
-        if d <= day and math.isfinite(v) and 40 <= v <= 400:
-            candidates.append((d, v))
-    if not candidates:
-        raise RuntimeError("NOAA: nelze získat platný denní F10.7 index")
-    d, value = max(candidates, key=lambda x: x[0])
-    if (day - d).days > 10:
-        raise RuntimeError("NOAA F10.7 je starší než 10 dní")
-    return value, d.isoformat()
+        try:
+            d = datetime.strptime(cols[0], "%Y%m%d").date()
+            observed = float(cols[4])
+        except (ValueError, TypeError):
+            continue
+        if d <= day and math.isfinite(observed) and 40 <= observed <= 400:
+            daily.setdefault(d, []).append(observed)
+    if not daily:
+        raise RuntimeError("Kanadská databáze: žádný platný pozorovaný F10.7 index")
+    d = max(daily)
+    if (day - d).days > 7:
+        raise RuntimeError("Poslední pozorovaný F10.7 je starší než 7 dní")
+    # Use the mean of all actual observations on the most recent available day.
+    return float(np.mean(daily[d])), d.isoformat()
 
 
 def main():
