@@ -599,6 +599,12 @@ setInterval(refreshX5Infographic,30*60*1000);
   g.textAlign='center';g.fillStyle='#a9bfd5';g.font='12px Arial';[0,7,14,21,29].forEach(i=>g.fillText(days[i].slice(5),x(i),h-20));
   g.textAlign='left';let lx=p.l;[10,30,50].forEach(l=>{g.fillStyle=cols[l];g.fillRect(lx,34,12,12);g.fillStyle='#dceaf5';g.fillText(l+' hPa',lx+17,45);lx+=115;});
  }
+ function emptyImportCanvas(id,title){
+  const c=$(id);if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height;g.clearRect(0,0,w,h);g.fillStyle='#081a2b';g.fillRect(0,0,w,h);g.strokeStyle='#29445e';g.strokeRect(20,20,w-40,h-40);g.fillStyle='#dceaf5';g.font='bold 18px Arial';g.fillText(title,42,68);g.fillStyle='#9db5ca';g.font='16px Arial';g.fillText('Zatím nebyl nahrán vlastní datový soubor NASA.',42,108);g.fillText('Nahraj ASCII / CSV export v importním panelu výše.',42,140);
+ }
+ emptyImportCanvas('nasaWindChart','Importovaná časová řada · U60 na 60° N');
+ emptyImportCanvas('nasaTempChart','Importovaná časová řada · teplota 60–90° N');
+ if($('nasaLatest'))$('nasaLatest').textContent='Čeká na ruční import souboru NASA GSFC. Automatické archivní grafy jsou zobrazeny v samostatném panelu NASA GSFC výše.';
  function shiftDate(d,n){const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);}
  load();setInterval(load,30*60*1000);
 })();
