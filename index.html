@@ -1650,7 +1650,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  function download(name,content,type){const b=new Blob([content],{type}),u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download=name;a.click();URL.revokeObjectURL(u)}
  $("sdrSave").addEventListener("click",()=>{
   const raw=$("sdrTime").value;if(!raw){put("sdrStatus","Vyplň datum a čas pozorování v UTC.");return}
-  const o={id:Date.now(),time:new Date(raw).toISOString(),freq:$("sdrFreq").value?Number($("sdrFreq").value):null,mode:$("sdrMode").value.trim(),signal:$("sdrSignal").value.trim(),note:$("sdrNote").value.trim(),saved_utc:new Date().toISOString()};
+  const o={id:Date.now(),time:new Date(raw+"Z").toISOString(),freq:$("sdrFreq").value?Number($("sdrFreq").value):null,mode:$("sdrMode").value.trim(),signal:$("sdrSignal").value.trim(),note:$("sdrNote").value.trim(),saved_utc:new Date().toISOString()};
   const a=read();a.push(o);localStorage.setItem(KEY,JSON.stringify(a));$("sdrNote").value="";$("sdrSignal").value="";render();
  });
  $("sdrExportJson").addEventListener("click",()=>download("x5-sdr-pozorovani.json",JSON.stringify({exported_utc:new Date().toISOString(),observations:read()},null,2),"application/json"));
@@ -1666,12 +1666,12 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   const errors=[];
   if(tasks[0].status==="fulfilled"){const d=tasks[0].value;xr=(Array.isArray(d)?d:[]).filter(r=>r.energy==="0.1-0.8nm"||r.energy==="0.1-0.8 nm").map(r=>({t:time(r.time_tag),flux:Number(r.flux)})).filter(r=>r.t!==null&&r.flux>0)}else errors.push("GOES");
   if(tasks[1].status==="fulfilled"){const d=tasks[1].value;kp=(Array.isArray(d)?d:[]).map(r=>({t:time(r.time_tag||r.time),kp:Number(r.Kp??r.kp)})).filter(r=>r.t!==null&&valid(r.kp)&&r.kp>=0&&r.kp<=9)}else errors.push("Kp");
-  if(tasks[2].status==="fulfilled"){const d=tasks[2].value;dst=(d.data||[]).map(r=>Array.isArray(r)?({t:time(r[0]),dst:Number(r[1])}):({t:time(r.Time||r.time),dst:Number(r.dstValue??r.dst)})).filter(r=>r.t!==null&&valid(r.dst)&&Math.abs(r.dst)<5000)}else errors.push("Dst");
+  if(tasks[2].status==="fulfilled"){const d=tasks[2].value;dst=(d.data||[]).map(r=>Array.isArray(r)?({t:time(r[0]),dst:Number(r[1])}):({t:time(r.Time||r.time),dst:Number(r.dstValue??r.dst)})).filter(r=>r.t!==null&&valid(r.dst)&&Math.abs(r.dst)<500&&r.dst!==-999.9&&r.dst!==-999&&r.dst!==-9999)}else errors.push("Dst");
   if(tasks[3].status==="fulfilled"){const d=tasks[3].value;wind=(d.rows||[]).map(r=>({t:time(r.t),v:Number(r.speed_kms),bz:Number(r.bz_gsm_nt)})).filter(r=>r.t!==null)}else errors.push("vítr");
   render();put("sdrStatus",read().length?$("sdrStatus").textContent+" · "+(errors.length?"Nedostupné zdroje: "+errors.join(", "):"Všechny zdroje načteny."):"Čekám na první SDR záznam. "+(errors.length?"Nedostupné zdroje: "+errors.join(", "):"Datové zdroje načteny."));
  }
  const p=$("sdrCorrelationPanel");if(!p)return;
- const now=new Date();$("sdrTime").value=new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,16);
+ const now=new Date();$("sdrTime").value=now.toISOString().slice(0,16);
  load();setInterval(()=>{if(!document.hidden)load()},5*60*1000);
  render();
 })();
