@@ -1154,7 +1154,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  <div style="display:flex;gap:12px;flex-wrap:wrap;padding:9px 12px;background:#07182b;border-top:1px solid #294765;font-size:13px">
   <label><input id="ionoCoastToggle" type="checkbox" checked> Pobřeží a kontinenty</label>
   <label><input id="ionoAuroraToggle" type="checkbox" checked> Aurorální ovál NOAA OVATION</label>
-  <label><input id="ionoNeToggle" type="checkbox" checked> Elektronová hustota IRTAM – 300 km</label>
+  <label><input id="ionoNeToggle" type="checkbox" checked> <span id="ionoNeLabel">Elektronová hustota IRTAM – 300 km</span></label>
   <span id="ionoOverlayStatus" class="small">Pobřeží / OVATION; IRTAM globální mapy jsou zobrazeny výše.</span>
  </div>
   <div id="ionoGlobeOverlay" style="position:absolute;left:10px;top:10px;background:#07182bdc;padding:8px 10px;border-radius:8px;font-size:12px">Načítám globální data…</div>
@@ -1262,9 +1262,10 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   if(!pts){altSelect.value=String(irtamAltitude);$("irtamQualityState").textContent="TATO VÝŠKA NENÍ V ARCHIVU";return}
   irtamAltitude=h;irtamPoints=pts;irtamTextureCache=null;if(irtamMeta)irtamMeta={...irtamMeta,altitude_km:h};
   const vals=pts.map(p=>p.v).filter(Number.isFinite),min=Math.min(...vals),max=Math.max(...vals);
-  $("irtamQualityState").textContent="MŘÍŽKA NAČTENA · "+pts.length+" BODŮ · "+h+" KM";
-  const target=Date.parse(irtamMeta?.target_utc||""),modelAge=Number.isFinite(target)?Math.max(0,(Date.now()-target)/3600000):null;
-  $("irtamQualityDetails").textContent="Čas modelu: "+(irtamMeta?.target_utc||"neuveden")+" · stáří modelových dat: "+(modelAge===null?"neznámé":modelAge.toFixed(1)+" h")+" · prodleva výpočtu: "+(Number.isFinite(irtamDelayHours())?irtamDelayHours().toFixed(1)+" h":"neznámá")+" · výška: "+h+" km · krok: "+(irtamMeta?.grid_step_deg??"—")+"° · rozsah: "+min.toFixed(3)+" až "+max.toFixed(3)+" × 10⁶ cm⁻³ · zdroj: PyIRTAM/GAMBIT";
+  const target=Date.parse(irtamMeta?.target_utc||""),generated=irtamMeta?.generated_utc||"neuveden",modelAge=Number.isFinite(target)?Math.max(0,(Date.now()-target)/3600000):null;
+  $("irtamQualityState").textContent="MŘÍŽKA NAČTENA · "+pts.length+" BODŮ · "+(modelAge===null?"STÁŘÍ NEZNÁMÉ":modelAge>24?"ZPOŽDĚNÁ DATA":h+" KM");
+  const label=$("ionoNeLabel");if(label)label.textContent="Elektronová hustota IRTAM – "+h+" km";
+  $("irtamQualityDetails").textContent="Čas modelu: "+(irtamMeta?.target_utc||"neuveden")+" · výpočet: "+generated+" · stáří modelových dat: "+(modelAge===null?"neznámé":modelAge.toFixed(1)+" h")+" · prodleva výpočtu: "+(Number.isFinite(irtamDelayHours())?irtamDelayHours().toFixed(1)+" h":"neznámá")+" · výška: "+h+" km · krok: "+(irtamMeta?.grid_step_deg??"—")+"° · rozsah: "+min.toFixed(3)+" až "+max.toFixed(3)+" × 10⁶ cm⁻³ · zdroj: PyIRTAM/GAMBIT";
   draw();
  });
  function parseDrap(text){
