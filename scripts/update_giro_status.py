@@ -65,7 +65,7 @@ def main():
         )
         match = re.search(r"Last data was at\s*([^<\r\n]+)", page, re.I)
         if match:
-            stamp = re.sub(r"\s+", " ", match.group(1)).strip()
+            stamp = re.sub(r"\s+", " ", match.group(1)).strip().rstrip(".;")
             try:
                 dt = datetime.strptime(stamp, "%Y-%m-%d %H:%M UTC").replace(tzinfo=timezone.utc)
                 out["provider"]["last_data_utc"] = dt.isoformat().replace("+00:00", "Z")
