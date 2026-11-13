@@ -1062,7 +1062,11 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   <div><div class="small">Rychlost slunečního větru</div><div id="auroraSpeed" class="metric">—</div><div id="auroraSpeedTime" class="small"></div></div>
   <div><div class="small">IMF Bz (GSM)</div><div id="auroraBz" class="metric">—</div><div id="auroraBzTime" class="small"></div></div>
   <div><div class="small">GOES rentgenový tok</div><div id="auroraXray" class="metric">—</div><div id="auroraXrayTime" class="small"></div></div>
+  <div><div class="small">Elektrické pole Ey – vazební proxy</div><div id="auroraEy" class="metric">—</div><div id="auroraEyTime" class="small">V = rychlost větru, Bz = GSM</div></div>
+  <div><div class="small">Dynamický tlak slunečního větru</div><div id="auroraPressure" class="metric">—</div><div id="auroraPressureTime" class="small">Výpočet z hustoty a rychlosti</div></div>
+  <div><div class="small">Geomagnetická úroveň podle Kp</div><div id="auroraKpLevel" class="metric">—</div><div id="auroraKpLevelNote" class="small">Samostatný index NOAA</div></div>
  </div>
+ <div id="auroraContextStatus" class="small">Kontrola časové návaznosti měření…</div>
  <div id="auroraInterpretation" class="small">Vyhodnocení čeká na platná data NOAA.</div>
  <div class="small">Vysvětlení: OVATION poskytuje krátkodobou předpověď polohy a intenzity polární záře, obvykle 30–90 minut dopředu. Zobrazená procenta jsou modelový odhad, nikoli jistota pozorování. Kp, rychlost slunečního větru, Bz a GOES tok jsou samostatné kontextové ukazatele; nenahrazují OVATION.</div>
  <p><a href="https://services.swpc.noaa.gov/json/ovation_aurora_latest.json" target="_blank" rel="noopener">Data NOAA OVATION</a> · <a href="https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json" target="_blank" rel="noopener">Kp</a> · <a href="https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json" target="_blank" rel="noopener">IMF RTSW</a> · <a href="https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json" target="_blank" rel="noopener">Sluneční vítr RTSW</a> · <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noopener">Metodika NOAA</a></p>
@@ -1154,14 +1158,25 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
    polar("auroraNorthMap",pts,"N");polar("auroraSouthMap",pts,"S");
    put("auroraKp",kp===null?"Nedostupné":kp.toFixed(1));put("auroraKpTime",kpRow?"Čas: "+fmtTime(getTime(kpRow)):"Zdroj Kp není dostupný");
    const speed=wind&&num(wind.speed)?Number(wind.speed):null,bz=mag&&num(mag.bz_gsm??mag.bz)?Number(mag.bz_gsm??mag.bz):null;
+   const density=wind&&num(wind.density??wind.proton_density??wind.np)?Number(wind.density??wind.proton_density??wind.np):null;
+   const ey=(speed!==null&&bz!==null)?speed*Math.max(0,-bz)*0.001:null;
+   const pressure=(speed!==null&&density!==null)?1.6726e-6*density*speed*speed:null;
    put("auroraSpeed",speed===null?"Nedostupné":speed.toFixed(0)+" km/s");put("auroraSpeedTime",wind?"Čas: "+fmtTime(getTime(wind)):"RTSW nedostupné");
    put("auroraBz",bz===null?"Nedostupné":bz.toFixed(2)+" nT");put("auroraBzTime",mag?"Čas: "+fmtTime(getTime(mag)):"RTSW nedostupné");
    put("auroraXray",xray===null?"Nedostupné":xray.toExponential(2)+" W/m²");put("auroraXrayTime",xrayTime?"Čas: "+fmtTime(xrayTime):"GOES X-ray nedostupné");
+   put("auroraEy",ey===null?"Nedostupné":ey.toFixed(2)+" mV/m");put("auroraEyTime",ey===null?"Chybí platné V nebo Bz":(bz<0?"Bz jižní · orientační Ey":"Bz není jižní · Ey = 0"));
+   put("auroraPressure",pressure===null?"Nedostupné":pressure.toFixed(2)+" nPa");put("auroraPressureTime",pressure===null?"Chybí hustota nebo rychlost":"n = "+density.toFixed(1)+" cm⁻³ · výpočet z RTSW");
+   const kpLevel=kp===null?"Nedostupné":kp<4?"Klid":kp<5?"Nestálé":kp<6?"G1 – slabá":kp<7?"G2 – mírná":kp<8?"G3 – silná":kp<9?"G4 – velmi silná":"G5 – extrémní";
+   put("auroraKpLevel",kpLevel);put("auroraKpLevelNote",kp===null?"Kp není dostupné":"Kp "+kp.toFixed(1)+" · klasifikace NOAA");
+   const tw=wind?Date.parse(getTime(wind)):NaN,tm=mag?Date.parse(getTime(mag)):NaN;
+   const skew=Number.isFinite(tw)&&Number.isFinite(tm)?Math.abs(tw-tm)/60000:null;
+   put("auroraContextStatus",skew===null?"Časová návaznost V/Bz nelze ověřit – chybí časové razítko jednoho z měření.":skew<=5?"Časová kontrola V/Bz: rozdíl "+skew.toFixed(1)+" min · dobrá návaznost.":"Upozornění: rozdíl časů V/Bz je "+skew.toFixed(1)+" min. Ey je pouze orientační a nemá se chápat jako přesně souběžné měření.");
    infographic({n:maxN,s:maxS,strong,kp,speed,bz,xray,forecast:fmtTime(d["Forecast Time"])});
    let msg="Globální OVATION mřížka načtena: "+pts.length.toLocaleString("cs-CZ")+" platných bodů. ";
    msg+="Maximum severní polokoule "+maxN.toFixed(1)+" %, jižní "+maxS.toFixed(1)+" %. ";
    msg+=strong+" bodů dosahuje intenzity alespoň 50 %. ";
-   msg+="Kp, sluneční vítr, Bz a GOES jsou samostatné kontextové veličiny; jejich časová razítka se mohou lišit.";
+   msg+=ey===null?"Vazební proxy Ey nelze vypočítat. ":("Orientační Ey = "+ey.toFixed(2)+" mV/m; "+(bz<0?"jižní Bz podporuje magnetosférickou vazbu. ":"Bz není jižní, proto je Ey proxy nulové. "));
+   msg+="Tyto veličiny nenahrazují OVATION ani nepředstavují pravděpodobnost pozorování polární záře.";
    put("auroraInterpretation",msg);
   }catch(e){put("auroraState","Chyba načtení");put("auroraInterpretation","Aktualizace modelu se nezdařila: "+e.message+". Neplatná data nejsou nahrazována odhadem.");}
  }
