@@ -454,14 +454,19 @@ function updateCoupling(windRows,magRows){
  }
  const latest=paired[paired.length-1];
  const peak=paired.reduce((a,b)=>b.e>a.e?b:a,paired[0]);
- out.textContent=latest.e.toFixed(2)+" mV/m";
- $("couplingSpeed").textContent=latest.v.toFixed(0)+" km/s";
- $("couplingBs").textContent=latest.bs.toFixed(2)+" nT";
- $("couplingTime").textContent="Spárovaný vzorek: "+new Date(latest.t).toISOString().replace("T"," ").slice(0,19)+" UTC · časový rozdíl "+Math.round(latest.delta/1000)+" s";
- const south=latest.bz<0;
- status.textContent=(south?"Jižní Bz přispívá k vazbě se zemskou magnetosférou. ":"Bz není jižní, Bs = 0. ")+
-  "Maximum v zobrazeném souboru: "+peak.e.toFixed(2)+" mV/m ("+new Date(peak.t).toISOString().replace("T"," ").slice(0,16)+" UTC).";
- status.className="small "+(south?"warn":"good");
+ const ageMin=Math.max(0,(Date.now()-latest.t)/60000),fresh=ageMin<=5;
+ if(fresh){
+  out.textContent=latest.e.toFixed(2)+" mV/m";
+  $("couplingSpeed").textContent=latest.v.toFixed(0)+" km/s";$("couplingBs").textContent=latest.bs.toFixed(2)+" nT";
+  const south=latest.bz<0;
+  $("couplingTime").textContent="Aktuální spárovaný vzorek: "+new Date(latest.t).toISOString().replace("T"," ").slice(0,19)+" UTC · stáří "+ageMin.toFixed(1)+" min · rozdíl V/Bz "+Math.round(latest.delta/1000)+" s";
+  status.textContent=(south?"Jižní Bz přispívá k vazbě se zemskou magnetosférou. ":"Bz není jižní, Bs = 0. ")+"Historické maximum v načteném souboru: "+peak.e.toFixed(2)+" mV/m ("+new Date(peak.t).toISOString().replace("T"," ").slice(0,16)+" UTC).";
+  status.className="small "+(south?"warn":"good");
+ }else{
+  out.textContent="— · zastaralé";$("couplingSpeed").textContent="—";$("couplingBs").textContent="—";
+  $("couplingTime").textContent="Poslední spárovaný vzorek: "+new Date(latest.t).toISOString().replace("T"," ").slice(0,19)+" UTC · stáří "+ageMin.toFixed(1)+" min · není použit jako aktuální hodnota.";
+  status.textContent="Aktuální E se nezobrazuje, protože poslední společný vzorek V/Bz je starší než 5 minut. Historické maximum: "+peak.e.toFixed(2)+" mV/m ("+new Date(peak.t).toISOString().replace("T"," ").slice(0,16)+" UTC).";status.className="small warn";
+ }
  draw("couplingChart",[{data:paired.slice(-180).map(p=>({x:new Date(p.t).toISOString(),y:p.e})),color:"#ffbd6b"}]);
  return paired.length;
 }
