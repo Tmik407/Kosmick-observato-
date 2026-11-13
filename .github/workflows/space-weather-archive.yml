@@ -1,5 +1,10 @@
 name: Archiv kosmického počasí X-5
 on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/update_space_weather_archive.py"
+      - ".github/workflows/space-weather-archive.yml"
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
