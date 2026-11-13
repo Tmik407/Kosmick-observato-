@@ -70,21 +70,23 @@ def main():
     edp = np.asarray(result[-1], dtype=float)
     if edp.ndim != 3 or edp.shape[0] < 1 or edp.shape[1] != len(altitudes):
         raise RuntimeError(f"Nečekaný rozměr IRTAM EDP: {edp.shape}")
-    alt_idx = int(np.where(altitudes == ALT_KM)[0][0])
-    ne_m3 = edp[0, alt_idx, :]
-    if not np.isfinite(ne_m3).any():
-        raise RuntimeError("IRTAM vrátil prázdnou elektronovou hustotu")
-    points = []
-    for lat, lon, val in zip(alat, alon, ne_m3):
-        if not np.isfinite(val) or val < 0 or val > 5e12:
-            continue
-        points.append({
-            "lat": round(float(lat), 1),
-            "lon": round(float(lon), 1),
-            "ne_1e6_cm3": round(float(val) / 1e12, 5),
-        })
-    if len(points) < 250:
-        raise RuntimeError(f"Příliš málo platných bodů IRTAM: {len(points)}")
+    levels = {}
+    for altitude in (200., 300., 400., 500.):
+        alt_idx = int(np.where(altitudes == altitude)[0][0])
+        ne_m3 = edp[0, alt_idx, :]
+        points = []
+        for lat, lon, val in zip(alat, alon, ne_m3):
+            if not np.isfinite(val) or val < 0 or val > 5e12:
+                continue
+            points.append({
+                "lat": round(float(lat), 1),
+                "lon": round(float(lon), 1),
+                "ne_1e6_cm3": round(float(val) / 1e12, 5),
+            })
+        if len(points) < 250:
+            raise RuntimeError(f"Příliš málo platných bodů IRTAM ve výšce {altitude} km: {len(points)}")
+        levels[str(int(altitude))] = points
+    points = levels["300"]
     payload = {
         "source": "PyIRTAM / GIRO GAMBIT coefficients; IRTAM electron density profile",
         "source_url": "https://lgdc.uml.edu/rix/gambit-coeffs",
@@ -93,6 +95,8 @@ def main():
         "generated_utc": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "delay_hours": round((now - target.replace(tzinfo=timezone.utc)).total_seconds()/3600, 2),
         "altitude_km": ALT_KM,
+        "available_altitudes_km": [200, 300, 400, 500],
+        "levels": levels,
         "f107_sfu": f107,
         "f107_date": f107_day,
         "grid_step_deg": STEP_DEG,
