@@ -1075,6 +1075,13 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
    <div><div class="small">OVATION po záznamu</div><div id="linkAfter" class="metric">—</div><div id="linkAfterTime" class="small">—</div></div>
    <div><div class="small">Dostupnost párových dat</div><div id="linkCoverage" class="metric">—</div><div id="linkCoverageDetail" class="small">—</div></div>
   </div>
+  <h3>Kontrola následných měření slunečního větru</h3>
+  <div class="grid">
+   <div><div class="small">Průměrná rychlost po záznamu SUVI</div><div id="linkWindMean" class="metric">—</div><div id="linkWindCount" class="small">—</div></div>
+   <div><div class="small">Nejnižší Bz po záznamu SUVI</div><div id="linkBzMin" class="metric">—</div><div class="small">IMF Bz v GSM</div></div>
+   <div><div class="small">Vzorky s Bz ≤ −5 nT</div><div id="linkSouthCount" class="metric">—</div><div class="small">Po záznamu koronální díry</div></div>
+   <div><div class="small">Poslední dostupné měření</div><div id="linkWindLast" class="metric" style="font-size:16px">—</div><div class="small">Čas UTC</div></div>
+  </div>
   <div id="linkConclusion" class="status">Načítám časové řady…</div>
   <div class="small">Důležité omezení: aktuální archiv SUVI L2 obsahuje pouze jednotlivé snímky koronálních děr a archiv OVATION samostatné předpovědi. Pro fyzikální korelaci je nutná souvislá historie rychlosti větru, IMF Bz a Kp; následně je třeba zohlednit dobu šíření od Slunce k L1 a od L1 k Zemi. Heliografické souřadnice se zde nepřevádějí na čas průchodu středovým meridiánem.</div>
   <p><a href="./coronal-hole-history.json" target="_blank" rel="noopener">Archiv koronálních děr</a> · <a href="./aurora-history.json" target="_blank" rel="noopener">Archiv OVATION</a></p>
@@ -1360,13 +1367,15 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  const stamp=t=>new Date(t).toISOString().replace("T"," ").slice(0,16)+" UTC";
  async function loadLink(){
   try{
-   const [cr,ar]=await Promise.all([
+   const [cr,ar,wr]=await Promise.all([
     fetch("./coronal-hole-history.json?ts="+Date.now(),{cache:"no-store"}),
-    fetch("./aurora-history.json?ts="+Date.now(),{cache:"no-store"})
+    fetch("./aurora-history.json?ts="+Date.now(),{cache:"no-store"}),
+    fetch("./space-weather-history.json?ts="+Date.now(),{cache:"no-store"})
    ]);
    if(!cr.ok)throw Error("Archiv SUVI HTTP "+cr.status);
    if(!ar.ok)throw Error("Archiv OVATION HTTP "+ar.status);
-   const [cd,ad]=await Promise.all([cr.json(),ar.json()]);
+   if(!wr.ok)throw Error("Archiv slunečního větru HTTP "+wr.status);
+   const [cd,ad,wd]=await Promise.all([cr.json(),ar.json(),wr.json()]);
    const ch=cd.latest||((cd.rows||[]).slice().sort((a,b)=>(validTime(b.observed_utc)||0)-(validTime(a.observed_utc)||0))[0]);
    const rows=Array.isArray(ad.rows)?ad.rows.map(r=>({...r,_t:validTime(r.forecast||r.observed)})).filter(r=>r._t!==null&&Number.isFinite(Number(r.north_max))&&Number.isFinite(Number(r.south_max))).sort((a,b)=>a._t-b._t):[];
    if(!ch||!validTime(ch.observed_utc))throw Error("V archivu SUVI není platný čas posledního pozorování.");
@@ -1379,14 +1388,28 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
    const label=r=>r?("N "+Number(r.north_max).toFixed(1)+" % · J "+Number(r.south_max).toFixed(1)+" %"):"—";
    put("linkBefore",label(before));put("linkBeforeTime",before?stamp(before._t)+" · "+Math.round((ct-before._t)/60000)+" min před":"Předchozí záznam není dostupný");
    put("linkAfter",label(after));put("linkAfterTime",after?stamp(after._t)+" · "+Math.round((after._t-ct)/60000)+" min po":"Následující záznam zatím není dostupný");
+   const windRows=Array.isArray(wd.rows)?wd.rows.map(r=>({...r,_t:validTime(r.t)})).filter(r=>r._t!==null).sort((a,b)=>a._t-b._t):[];
+   const afterWind=windRows.filter(r=>r._t>=ct&&r._t<=ct+24*3600000);
+   const speeds=afterWind.map(r=>Number(r.speed_kms)).filter(Number.isFinite);
+   const bzvals=afterWind.map(r=>Number(r.bz_gsm_nt)).filter(Number.isFinite);
+   const south=afterWind.filter(r=>Number.isFinite(Number(r.bz_gsm_nt))&&Number(r.bz_gsm_nt)<=-5).length;
+   const meanSpeed=speeds.length?speeds.reduce((a,b)=>a+b,0)/speeds.length:null;
+   put("linkWindMean",meanSpeed===null?"—":meanSpeed.toFixed(1)+" km/s");
+   put("linkWindCount",speeds.length+" platných vzorků rychlosti v okně 0–24 h");
+   put("linkBzMin",bzvals.length?Math.min(...bzvals).toFixed(1)+" nT":"—");
+   put("linkSouthCount",south+" / "+afterWind.length+" vzorků");
+   put("linkWindLast",windRows.length?stamp(windRows[windRows.length-1]._t):"—");
    const near=rows.filter(r=>Math.abs(r._t-ct)<=24*3600000);
    put("linkCoverage",near.length+" záznamů");
    put("linkCoverageDetail","OVATION v okně ±24 h · celkem "+rows.length+" archivovaných předpovědí");
    const status=el("linkConclusion");
+   const windNote=afterWind.length
+    ?" Následně je v archivu "+afterWind.length+" vzorků větru; průměrná rychlost "+(meanSpeed===null?"není dostupná":meanSpeed.toFixed(1)+" km/s")+", minimum Bz "+(bzvals.length?Math.min(...bzvals).toFixed(1)+" nT":"není dostupné")+"."
+    :" V archivu zatím nejsou následná měření v okně 0–24 h.";
    if(status){
     status.textContent=rows.length<2
-     ?"NEDOSTATEK DAT · K dispozici je méně než 2 platné záznamy OVATION. Korelaci nelze vyhodnotit."
-     :("ČASOVÉ POROVNÁNÍ · Poslední SUVI L2: "+stamp(ct)+". "+(before?"Nejbližší předchozí OVATION: "+Math.round((ct-before._t)/60000)+" min. ":"Bez předchozího OVATION. ")+(after?"Nejbližší následující OVATION: "+Math.round((after._t-ct)/60000)+" min. ":"Bez následujícího OVATION. ")+"Jde pouze o časové sousedství; příčinná souvislost ani vliv koronální díry nejsou prokázány.");
+     ?"OMEZENÁ HISTORIE · K dispozici je méně než 2 platné záznamy OVATION. Korelaci nelze vyhodnotit."+windNote
+     :("ČASOVÉ POROVNÁNÍ · Poslední SUVI L2: "+stamp(ct)+". "+(before?"Nejbližší předchozí OVATION: "+Math.round((ct-before._t)/60000)+" min. ":"Bez předchozího OVATION. ")+(after?"Nejbližší následující OVATION: "+Math.round((after._t-ct)/60000)+" min. ":"Bez následujícího OVATION. ")+windNote+" Časová shoda sama neprokazuje vliv koronální díry; je nutné zohlednit dobu šíření slunečního větru.");
     status.className="status "+(near.length>=2?"warn":"warn");
    }
   }catch(e){put("linkConclusion","ARCHIV NEDOSTUPNÝ · "+e.message);put("linkCoverage","—");}
