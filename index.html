@@ -1140,6 +1140,9 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   <div><div class="small">Protonový stav NOAA</div><div id="ionoProton" class="metric">—</div><div id="ionoRecovery" class="small"></div></div>
  </div>
  <div id="ionoStatus" class="status">Načítám tabulku NOAA D-RAP…</div>
+ <h3>Skutečná měření ionosond GIRO</h3>
+ <div class="small">Následující hodnoty pocházejí z jednotlivých pozemních ionosond, nikoli z interpolované mapy. Zobrazujeme nejbližší dostupné stanice podle souřadnic a jejich publikované parametry.</div>
+ <div id="ionoStationList" class="small">Načítám stanice GIRO…</div>
  <h3>Vyhodnocení zadané frekvence</h3><div id="ionoAssessment" class="small">Čekám na data modelu.</div>
  <div class="small">D-RAP modeluje absorpci v D-oblasti (přibližně 50–90 km) zejména vlivem rentgenového záření a energetických protonů. Neurčuje sám o sobě MUF ani spolehlivost konkrétního HF spojení. Skutečné MUF/foF2 vyžaduje data ionosondy; dostupnost stanic a posledních ionogramů se liší.</div>
  <p><a href="https://services.swpc.noaa.gov/text/drap_global_frequencies.txt" target="_blank" rel="noopener">NOAA – živá tabulka D-RAP</a> · <a href="https://www.swpc.noaa.gov/products/d-region-absorption-predictions-d-rap" target="_blank" rel="noopener">NOAA – vysvětlení D-RAP</a> · <a href="https://www.ngdc.noaa.gov/stp/iono/rt-iono/" target="_blank" rel="noopener">NOAA NCEI – ionosondy a mapy MUF</a></p>
@@ -1148,6 +1151,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
 (function(){
  const $=id=>document.getElementById(id), put=(id,v)=>{const e=$(id);if(e)e.textContent=v};
  const url="https://services.swpc.noaa.gov/text/drap_global_frequencies.txt";
+ const stationUrl="https://prop.kc2g.com/api/stations.json";
  const valid=n=>Number.isFinite(n)&&n>=0&&n<1000;
  function parse(text){
   const lines=text.split(/\r?\n/), head=lines.find(l=>/^\s*-?\d+(?:\s+-?\d+){20,}\s*$/.test(l));
@@ -1181,6 +1185,31 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   else msg="Frekvence leží nad hranicí HAF 1 dB. Podle D-RAP je modelovaný útlum v této buňce pod 1 dB.";
   put("ionoAssessment",msg+" Odhad pro "+freq.toFixed(2)+" MHz je "+abs.toFixed(2)+" dB; skutečná šikmá HF trasa může mít jiný útlum.");
   put("ionoStatus","Model NOAA platný: "+d.validAt+" UTC · tabulka "+d.data.length+" zeměpisných šířek × "+d.lons.length+" délek.");
+ }
+ function haversine(a,b,c,d){
+  const rad=x=>x*Math.PI/180,R=6371,dl=rad(c-a),dn=rad(d-b);
+  const q=Math.sin(dl/2)**2+Math.cos(rad(a))*Math.cos(rad(c))*Math.sin(dn/2)**2;
+  return 2*R*Math.asin(Math.sqrt(q));
+ }
+ function stationValue(o,keys){
+  for(const k of keys){const v=Number(o&&o[k]);if(o&&o[k]!==null&&o[k]!==""&&Number.isFinite(v)&&v>0&&v<1000)return v;}
+  return null;
+ }
+ function renderStations(list){
+  const lat=Number($("ionoLat").value),lon=Number($("ionoLon").value);
+  if(!Array.isArray(list))throw Error("Formát seznamu stanic není pole.");
+  const parsed=list.map(o=>{
+   const st=o.station||{},la=Number(st.latitude),lo0=Number(st.longitude),lo=lo0>=180?lo0-360:lo0;
+   if(!Number.isFinite(la)||!Number.isFinite(lo))return null;
+   return {code:st.code||"—",name:st.name||st.code||"Stanice",lat:la,lon:lo,
+    muf:stationValue(o,["mufd","muf"]),fof2:stationValue(o,["fof2"]),hmf2:stationValue(o,["hmf2"]),
+    foe:stationValue(o,["foe"]),tec:stationValue(o,["tec"]),confidence:stationValue(o,["confidence"]),
+    timestamp:o.time||o.datetime||o.timestamp||o.time_tag||o.updated||null,
+    distance:haversine(lat,lon,la,lo)};
+  }).filter(Boolean).sort((a,b)=>a.distance-b.distance).slice(0,6);
+  if(!parsed.length){$("ionoStationList").textContent="GIRO momentálně neposkytuje stanice s platnými souřadnicemi.";return;}
+  $("ionoStationList").innerHTML='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="text-align:left;padding:6px">Stanice</th><th>Vzdál.</th><th>MUF D (MHz)</th><th>foF2 (MHz)</th><th>hmF2 (km)</th><th>foE (MHz)</th></tr></thead><tbody>'+parsed.map(x=>'<tr><td style="padding:6px;border-top:1px solid #29415e">'+String(x.name).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))+' <span style="color:#9bb1c8">('+x.code+')</span></td><td style="text-align:center;border-top:1px solid #29415e">'+x.distance.toFixed(0)+' km</td><td style="text-align:center;border-top:1px solid #29415e">'+(x.muf===null?"—":x.muf.toFixed(1))+'</td><td style="text-align:center;border-top:1px solid #29415e">'+(x.fof2===null?"—":x.fof2.toFixed(2))+'</td><td style="text-align:center;border-top:1px solid #29415e">'+(x.hmf2===null?"—":x.hmf2.toFixed(0))+'</td><td style="text-align:center;border-top:1px solid #29415e">'+(x.foe===null?"—":x.foe.toFixed(2))+'</td></tr>').join("")+'</tbody></table></div><div class="small">Nejbližší stanice: '+parsed[0].name+' ('+parsed[0].code+'), '+parsed[0].distance.toFixed(0)+' km. Počet stanic v seznamu: '+list.length+'. Dostupnost jednotlivých parametrů se liší.</div>';
+  window.__ionoStations=parsed;
  }
  async function load(){
   put("ionoStatus","Stahuji aktuální tabulku NOAA D-RAP…");
