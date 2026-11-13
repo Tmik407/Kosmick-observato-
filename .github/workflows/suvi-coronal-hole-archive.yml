@@ -1,5 +1,9 @@
 name: NOAA SUVI coronal-hole archive
 on:
+  push:
+    paths:
+      - "scripts/update_coronal_holes.py"
+      - ".github/workflows/suvi-coronal-hole-archive.yml"
   schedule:
     - cron: "17 */6 * * *"
   workflow_dispatch:
