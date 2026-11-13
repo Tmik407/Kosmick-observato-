@@ -29,7 +29,9 @@ a{color:#75dcff;text-decoration:none}a:hover{text-decoration:underline;color:#b9
 <div><div class="unit">Nejnižší teplota · 50 hPa</div><div class="metric" id="tmin">—</div><div class="muted">Minimální teplota bude doplněna, pokud ji zdroj poskytne</div></div>
 <div><div class="unit">Diagnostický stav</div><div class="metric" id="state">Čeká na data</div><div class="muted">Vyhodnocení podle posledního dostupného U60</div></div>
 </div><p class="muted" id="metricSource">Zdroj a čas posledního záznamu se načtou z datového archivu. ERA5 je reanalýza, nikoli přímé měření v atmosféře.</p></section>
-<section class="panel" id="real-polar-map"><h2>Interaktivní meteorologická mapa polární stratosféry</h2><p class="muted">Prostorová pole numerického modelu NOAA GFS přes Open-Meteo. Barevné body jsou modelové hodnoty ve vzorkovaných bodech severní polokoule.</p><div class="controls"><label><b>Tlaková hladina</b><select id="gfsLevel"><option value="10">10 hPa</option><option value="30">30 hPa</option><option value="50">50 hPa</option></select></label><label><b>Zobrazené pole</b><select id="gfsField"><option value="temperature">Teplota (°C)</option><option value="geopotential">Geopotenciální výška (m)</option><option value="wind">Rychlost větru (km/h)</option></select></label><label><b>Čas UTC</b><select id="gfsTime"><option value="0">Načítání…</option></select></label></div><canvas id="gfsGridMap" width="1100" height="820" style="display:block;width:100%;height:auto;border:1px solid #315674;border-radius:16px;background:#061525"></canvas><div class="status" id="gfsMapStatus">Načítám modelová pole…</div><div class="grid"><div><div class="unit">Rozsah teploty</div><div class="metric" id="gfsTempRange">—</div></div><div><div class="unit">Rozsah geopotenciálu</div><div class="metric" id="gfsZRange">—</div></div><div><div class="unit">Rozsah větru</div><div class="metric" id="gfsWindRange">—</div></div><div><div class="unit">Platné body</div><div class="metric" id="gfsPointCount">—</div></div></div><p class="muted">Bílé šipky ukazují směr proudění. Prostorové vzorkování není plné nativní rozlišení GFS. Zdroj: <a href="https://open-meteo.com/en/docs/gfs-api" target="_blank" rel="noopener">Open-Meteo GFS API</a>. Jde o modelová data, nikoli přímá měření.</p></section>
+<section class="panel" id="real-polar-map"><h2>Interaktivní meteorologická mapa polární stratosféry</h2><p class="muted">Prostorová pole numerického modelu NOAA GFS přes Open-Meteo. Barevné body jsou modelové hodnoty ve vzorkovaných bodech severní polokoule.</p><div class="controls"><label><b>Tlaková hladina</b><select id="gfsLevel"><option value="10">10 hPa</option><option value="30">30 hPa</option><option value="50">50 hPa</option></select></label><label><b>Zobrazené pole</b><select id="gfsField"><option value="temperature">Teplota (°C)</option><option value="geopotential">Geopotenciální výška (m)</option><option value="wind">Rychlost větru (km/h)</option></select></label><label><b>Čas UTC</b><select id="gfsTime"><option value="0">Načítání…</option></select></label></div><canvas id="gfsGridMap" width="1100" height="820" style="display:block;width:100%;height:auto;border:1px solid #315674;border-radius:16px;background:#061525"></canvas>
+<img id="gfsArchiveFallback" src="./data/noaa-gfs/gfs_t10_nh_f00.png" alt="Archivovaná meteorologická mapa NOAA GFS 10 hPa – severní polokoule" style="display:block;width:100%;height:auto;max-height:760px;object-fit:contain;border:1px solid #315674;border-radius:16px;background:#061525;margin-top:10px">
+<div id="gfsFallbackNote" class="muted">Záložní mapa NOAA GFS se načítá z místního archivu observatoře.</div><div class="status" id="gfsMapStatus">Načítám modelová pole…</div><div class="grid"><div><div class="unit">Rozsah teploty</div><div class="metric" id="gfsTempRange">—</div></div><div><div class="unit">Rozsah geopotenciálu</div><div class="metric" id="gfsZRange">—</div></div><div><div class="unit">Rozsah větru</div><div class="metric" id="gfsWindRange">—</div></div><div><div class="unit">Platné body</div><div class="metric" id="gfsPointCount">—</div></div></div><p class="muted">Bílé šipky ukazují směr proudění. Prostorové vzorkování není plné nativní rozlišení GFS. Zdroj: <a href="https://open-meteo.com/en/docs/gfs-api" target="_blank" rel="noopener">Open-Meteo GFS API</a>. Jde o modelová data, nikoli přímá měření.</p></section>
 
 <section class="panel"><h2>Archiv měření a časové řady</h2>
 <p class="muted">Automaticky stahovaný denní archiv ERA5 od roku 1959. Jde o reanalýzu založenou na pozorováních a modelu, nikoli o přímé měření jedním přístrojem. Aktualizace archivu probíhá denně; datum posledního záznamu se zobrazuje samostatně.</p>
@@ -183,7 +185,7 @@ $('gfsLevel').addEventListener('change',()=>loadGfsGrid(true));$('gfsField').add
 async function loadArchive(){
  const status=$('archiveStatus'),mainStatus=$('dataStatus');
  const fmt=v=>Number.isFinite(v)?v.toFixed(1).replace('.',','):'—';
- const parseCSV=t=>{const lines=t.trim().split(/\\r?\\n/);const headers=lines.shift().split(',').map(x=>x.trim().replace(/^"|"$/g,''));return {headers,rows:lines.map(l=>l.split(',').map(x=>x.trim().replace(/^"|"$/g,'')))}};
+ const parseCSV=t=>{const lines=t.trim().split(/\r?\n/);const headers=lines.shift().split(',').map(x=>x.trim().replace(/^"|"$/g,''));return {headers,rows:lines.map(l=>l.split(',').map(x=>x.trim().replace(/^"|"$/g,'')))}};
  const pick=(headers,tests)=>headers.findIndex(h=>tests.some(re=>re.test(h.toLowerCase().replace(/[^a-z0-9]/g,''))));
  const drawLine=(id,series,label,unit,zero=false)=>{const cv=$(id),cx=cv.getContext('2d'),w=cv.width,h=cv.height,p=48;cx.clearRect(0,0,w,h);cx.fillStyle='#07182a';cx.fillRect(0,0,w,h);const vals=series.map(x=>x.v).filter(Number.isFinite);if(!vals.length){cx.fillStyle='#a9bfd5';cx.fillText('Data pro tento graf nebyla nalezena',p,40);return}let min=Math.min(...vals),max=Math.max(...vals);if(zero){min=Math.min(0,min);max=Math.max(0,max)}if(max===min){max+=1;min-=1}const y=v=>h-p-(v-min)/(max-min)*(h-2*p);for(let i=0;i<5;i++){const yy=p+i*(h-2*p)/4;cx.strokeStyle='#29445e';cx.beginPath();cx.moveTo(p,yy);cx.lineTo(w-p,yy);cx.stroke();cx.fillStyle='#a9bfd5';cx.font='13px Arial';cx.fillText((max-i*(max-min)/4).toFixed(1),5,yy+4)}if(zero&&min<0&&max>0){cx.strokeStyle='#ffbd76';cx.setLineDash([5,5]);cx.beginPath();cx.moveTo(p,y(0));cx.lineTo(w-p,y(0));cx.stroke();cx.setLineDash([])}cx.strokeStyle='#63dfff';cx.lineWidth=2.5;cx.beginPath();series.forEach((d,i)=>{const x=p+i*(w-2*p)/Math.max(1,series.length-1);if(i===0)cx.moveTo(x,y(d.v));else cx.lineTo(x,y(d.v))});cx.stroke();cx.fillStyle='#edf6ff';cx.font='bold 14px Arial';cx.fillText(label+' ('+unit+')',p,22);cx.fillStyle='#a9bfd5';cx.fillText(series[0].d,p,h-12);cx.fillText(series[series.length-1].d,w-p-90,h-12)};
  try{
@@ -217,7 +219,7 @@ async function loadArchive(){
 }
 
 function parseNasaFixedWidth(text){
- const lines=text.replace(/^\uFEFF/,'').split(/\\r?\\n/);
+ const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/);
  const chunks=line=>{const out=[];for(let i=0;i<line.length;i+=10)out.push(line.slice(i,i+10).trim());return out;};
  const header=lines.slice(0,4).map(chunks);
  const columns=[],max=Math.max(...header.map(x=>x.length));
@@ -302,7 +304,7 @@ $('nasaFile').addEventListener('change',async ev=>{
 async function loadNasaVerticalWind(){
  const status=$("nasaVerticalWindStatus"),cv=$("nasaVerticalWindChart"),g=cv.getContext("2d"),w=cv.width,h=cv.height,p=55;
  try{
-  const levels=[10,30,50],series=await Promise.all(levels.map(async lev=>{const r=await fetch("./data/nasa-gsfc/u60_"+lev+"hpa_60n_ozonewatch.csv?v="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("U60 "+lev+" hPa HTTP "+r.status);const lines=(await r.text()).trim().split(/\\r?\\n/);return {lev,rows:lines.slice(1).map(line=>{const a=line.split(",");return {date:a[0],v:Number(a[1]),fc:Number(a[2])}}).filter(x=>x.date&&Number.isFinite(x.v)&&x.v>-9000&&x.fc>=0)};}));
+  const levels=[10,30,50],series=await Promise.all(levels.map(async lev=>{const r=await fetch("./data/nasa-gsfc/u60_"+lev+"hpa_60n_ozonewatch.csv?v="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("U60 "+lev+" hPa HTTP "+r.status);const lines=(await r.text()).trim().split(/\r?\n/);return {lev,rows:lines.slice(1).map(line=>{const a=line.split(",");return {date:a[0],v:Number(a[1]),fc:Number(a[2])}}).filter(x=>x.date&&Number.isFinite(x.v)&&x.v>-9000&&x.fc>=0)};}));
   g.clearRect(0,0,w,h);g.fillStyle="#07182a";g.fillRect(0,0,w,h);
   const colors={10:"#63dfff",30:"#ffbd76",50:"#b69cff"},all=series.flatMap(q=>q.rows.map(x=>x.v-273.15));let min=Math.min(0,...all),max=Math.max(0,...all);if(min===max){min-=1;max+=1;}
   const y=v=>h-p-(v-min)/(max-min)*(h-2*p);
@@ -320,7 +322,7 @@ async function loadNasaVerticalTemp(){
   const levels=[10,30,50],series=await Promise.all(levels.map(async lev=>{
    const r=await fetch("./data/nasa-gsfc/tcap_"+lev+"hpa_60_90n_ozonewatch.csv?v="+Date.now(),{cache:"no-store"});
    if(!r.ok)throw Error("Teplota "+lev+" hPa HTTP "+r.status);
-   const lines=(await r.text()).trim().split(/\\r?\\n/);
+   const lines=(await r.text()).trim().split(/\r?\n/);
    return {lev,rows:lines.slice(1).map(line=>{const a=line.split(",");return {date:a[0],v:Number(a[1]),fc:Number(a[2])};}).filter(x=>x.date&&Number.isFinite(x.v)&&x.v>-9000&&x.fc>=0)};
   }));
   g.clearRect(0,0,w,h);g.fillStyle="#07182a";g.fillRect(0,0,w,h);
@@ -339,7 +341,7 @@ async function loadNasaVerticalTemp(){
 async function loadNasaCombinedProfile(){
  const box=$("nasaCombinedStatus"),body=document.querySelector("#nasaCombinedTable tbody");
  const levels=[10,30,50];
- const read=async(file,valueKey)=>{const r=await fetch("./data/nasa-gsfc/"+file+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error(file+" HTTP "+r.status);const lines=(await r.text()).trim().split(/\\r?\\n/);return new Map(lines.slice(1).map(line=>{const a=line.split(",");return [a[0],{v:Number(a[1]),fc:Number(a[2])}]}).filter(([d,x])=>d&&Number.isFinite(x.v)&&x.v>-9000&&x.fc===0));};
+ const read=async(file,valueKey)=>{const r=await fetch("./data/nasa-gsfc/"+file+"?v="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error(file+" HTTP "+r.status);const lines=(await r.text()).trim().split(/\r?\n/);return new Map(lines.slice(1).map(line=>{const a=line.split(",");return [a[0],{v:Number(a[1]),fc:Number(a[2])}]}).filter(([d,x])=>d&&Number.isFinite(x.v)&&x.v>-9000&&x.fc===0));};
  const fmt=(v,unit)=>Number.isFinite(v)?(v>0?"+":"")+v.toFixed(2).replace(".",",")+" "+unit:"—");
  try{
   const records=await Promise.all(levels.map(async lev=>{
@@ -374,7 +376,7 @@ async function loadNasaMirror(){
   {file:'tcap_10hpa_60_90n.csv',value:'nasaMirrorTemp',date:'nasaMirrorTempDate',chart:'nasaMirrorTempChart',label:'Teplota 60–90° N · 10 hPa',unit:'K'},
   {file:'wave_heat_flux_100hpa_45_75n.csv',value:'nasaMirrorHeat',date:'nasaMirrorHeatDate',chart:'nasaMirrorHeatChart',label:'Vlnový tepelný tok · 100 hPa',unit:'K·m/s',zero:true}
  ];
- const parse=t=>{const lines=t.trim().split(/\\r?\\n/);return lines.slice(1).map(l=>{const a=l.split(',');return {d:a[0],v:Number(a[1]),flags:a[3]||''}}).filter(x=>x.d&&Number.isFinite(x.v));};
+ const parse=t=>{const lines=t.trim().split(/\r?\n/);return lines.slice(1).map(l=>{const a=l.split(',');return {d:a[0],v:Number(a[1]),flags:a[3]||''}}).filter(x=>x.d&&Number.isFinite(x.v));};
  const plot=(id,series,label,unit,zero=false)=>{
   const cv=$(id),g=cv.getContext('2d'),w=cv.width,h=cv.height,p=48;g.clearRect(0,0,w,h);g.fillStyle='#07182a';g.fillRect(0,0,w,h);
   const a=series.slice(-365),vals=a.map(x=>x.v);if(!vals.length){g.fillStyle='#a9bfd5';g.fillText('Bez dat',p,40);return;}
@@ -428,4 +430,19 @@ function refreshX5Infographic(){
 }
 setInterval(refreshX5Infographic,30*60*1000);
 
+</script>
+<script>
+(function(){
+ const img=document.getElementById('gfsArchiveFallback'),note=document.getElementById('gfsFallbackNote'),level=document.getElementById('gfsLevel');
+ if(!img||!note)return;
+ function selectArchive(){
+  const l=level?level.value:'10';img.src='./data/noaa-gfs/gfs_t'+l+'_nh_f00.png';
+  img.alt='Archivovaná meteorologická mapa NOAA GFS '+l+' hPa – severní polokoule';
+  note.textContent='Záložní skutečná mapa NOAA GFS · '+l+' hPa · analýza f00. Numerický model, nikoli přímé měření.';
+ }
+ img.onload=function(){note.textContent='Archivovaná mapa NOAA GFS načtena. Zobrazená hladina odpovídá volbě výše.';};
+ img.onerror=function(){note.textContent='Archivovaná mapa pro tuto hladinu zatím není v úložišti. Zkontroluj běh archivu NOAA GFS.';};
+ if(level)level.addEventListener('change',selectArchive);
+ selectArchive();
+})();
 </script></body></html>
