@@ -112,7 +112,7 @@ async function loadArchive(){
  const seriesU=u.rows.map((r,i)=>({d:dates[i],v:parseFloat(r[uIdx])})).filter(x=>x.d&&Number.isFinite(x.v));
  const seriesT=u.rows.map((r,i)=>({d:dates[i],v:parseFloat(r[tIdx])})).filter(x=>x.d&&Number.isFinite(x.v));
  const wDate=pick(wv.headers,[/^date$/,/^day$/]);
- const hIdx=pick(wv.headers,[/vt.*45.*75/,/45.*75.*vt/,/heat.*flux/,/eddy.*heat/]);
+ const hIdx=pick(wv.headers,[/vt.*45.*75/,/45.*75.*vt/,/heat.*flux/,/eddy.*heat/,/vt/]);
  const seriesH=wv.rows.map(r=>({d:r[wDate>=0?wDate:0],v:parseFloat(r[hIdx])})).filter(x=>x.d&&Number.isFinite(x.v));
  const last=a=>a.length?a[a.length-1]:null,lu=last(seriesU),lt=last(seriesT),lh=last(seriesH);
  if(!lu)throw Error('Soubor U60 byl načten, ale nepodařilo se rozpoznat sloupec zonálního větru. Hlavička: '+u.headers.join(', '));
