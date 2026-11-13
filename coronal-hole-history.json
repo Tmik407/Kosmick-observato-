@@ -1,12 +1,12 @@
 {
   "source": "NOAA NCEI GOES-19 SUVI Level 2 Coronal Hole Boundaries",
-  "updated_utc": "2026-11-13T16:06:08.919221Z",
+  "updated_utc": "2026-11-13T16:10:48.032876Z",
   "latest": {
     "source": "NOAA GOES-19 SUVI L2 CHBND",
     "product": "dn_suvi-l2-chbnd_g19_s20261112T235600Z_e20261113T000000Z_v2-0-0.nc",
     "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes19/l2/data/suvi-l2-chbnd/2026/11/12/dn_suvi-l2-chbnd_g19_s20261112T235600Z_e20261113T000000Z_v2-0-0.nc",
     "observed_utc": "2026-11-12T23:56:00Z",
-    "retrieved_utc": "2026-11-13T16:06:08.918873Z",
+    "retrieved_utc": "2026-11-13T16:10:48.032518Z",
     "num_coronal_holes": 1,
     "degraded_status": "False",
     "holes": [
