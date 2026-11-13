@@ -69,6 +69,19 @@ a{color:#75dcff}footer{text-align:center;color:var(--muted);font-size:12px;paddi
 <tr><td>100 hPa</td><td>Teplota, v'T', EP flux</td><td>Vlnové buzení a přenos energie</td></tr>
 <tr><td>500 hPa</td><td>Geopotenciál, tlakové útvary</td><td>Propojení stratosféry s troposférou</td></tr>
 </tbody></table></section>
+<section class="panel" id="verticalSeries">
+<h2>Vertikální vývoj polárního víru · 10 / 30 / 50 hPa</h2>
+<p class="muted">Pro společné porovnání tří tlakových hladin lze načíst denní datový výstup NASA GSFC. Výstup obsahuje zonální vítr U na 60° N a teplotu polární čepičky 60–90° N. Importovaný soubor se zpracuje přímo v tomto prohlížeči; nikam se neodesílá.</p>
+<div class="status"><b>Jak získat data:</b> Otevři <a href="https://acd-ext.gsfc.nasa.gov/Data_services/met/ann_data.html" target="_blank" rel="noopener">NASA GSFC – Annual Meteorological Statistics</a> a v části Data Request vyber období, proměnné „Temperature between 60° and 90°“ a „Zonal Wind at 60°“, Northern Hemisphere a hladiny 10, 30 a 50 hPa. Stáhni textový výstup (ASCII/fixed-width) a nahraj jej níže. NASA uvádí MERRA‑2 pro historická data a GEOS‑5 FP pro near-real-time doplnění; datum a zdroj importu proto vždy ověř podle metadat NASA.</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:14px 0">
+<label class="muted">Import dat NASA (TXT / DAT / CSV)<input id="nasaFile" type="file" accept=".txt,.dat,.csv,.asc,text/plain,text/csv" style="display:block;width:100%;margin-top:8px;color:var(--text)"></label>
+<div class="status" id="nasaImportStatus">Zatím nebyl načten žádný soubor NASA. Stávající ERA5 archiv zůstává beze změny.</div>
+</div>
+<h3>Zonální vítr U na 60° N</h3><canvas id="nasaWindChart" width="1000" height="330"></canvas>
+<h3>Teplota polární čepičky 60–90° N</h3><canvas id="nasaTempChart" width="1000" height="330"></canvas>
+<div class="status" id="nasaLatest">Po importu se zde zobrazí poslední datum, hodnoty a dostupnost jednotlivých hladin.</div>
+<p class="muted">Poznámka: tento panel nezaměňuje NASA data s ERA5. Importované časové řady zůstávají označeny jako NASA GSFC/NCEP meteorologické statistiky. Chybějící hodnoty se nevykreslují jako nula. Grafy zobrazují pouze hladiny a proměnné skutečně nalezené v souboru.</p>
+</section>
 <section class="panel"><h2>Datové zdroje k zapojení</h2><table><thead><tr><th>Zdroj</th><th>Data</th><th>Režim</th><th>Odkaz</th></tr></thead><tbody>
 <tr><td>ECMWF HRES / Open Data</td><td>Teplota, geopotenciál, U/V vítr, PV, ozon</td><td>Analýza + předpověď</td><td><a href="https://www.ecmwf.int/en/forecasts/datasets/open-data" target="_blank" rel="noopener">ECMWF Open Data</a></td></tr>
 <tr><td>Copernicus ERA5</td><td>Historie tlakových hladin, teplota, vítr, geopotenciál, PV, ozon</td><td>Reanalýza / klimatologie</td><td><a href="https://cds.climate.copernicus.eu/" target="_blank" rel="noopener">Climate Data Store</a></td></tr>
@@ -152,6 +165,73 @@ async function loadArchive(){
  mainStatus.innerHTML='<b>Stav dat:</b> Archiv ERA5 načten · poslední datum '+lu.d+' · denní aktualizace přes GitHub Actions.';
  }catch(e){status.innerHTML='<b class="warn">Archiv zatím není dostupný.</b> '+String(e.message||e)+'<br>Grafy zůstávají bez hodnot; žádná chybějící data nejsou nahrazena nulou.';mainStatus.innerHTML='<b>Stav dat:</b> Archiv se nepodařilo načíst. Zobrazené hodnoty zůstávají prázdné.';}
 }
-loadArchive();
+
+function parseNasaFixedWidth(text){
+ const lines=text.replace(/^\\uFEFF/,'').split(/\\r?\\n/);
+ const header=lines.slice(0,4).map(line=>{const a=[];for(let i=0;i<line.length;i+=10)a.push(line.slice(i,i+10).trim());return a;});
+ const columns=[];
+ const max=Math.max(...header.map(x=>x.length));
+ for(let i=1;i<max;i++){
+  const variable=(header[0][i]||'').replace(/\\s+/g,' ').trim();
+  const region=(header[1][i]||'').replace(/\\s+/g,' ').trim();
+  const level=(header[2][i]||'').replace(/\\s+/g,' ').trim();
+  const unit=(header[3][i]||'').replace(/\\s+/g,' ').trim();
+  const lev=+(level.match(/(10|30|50)\\s*hPa/i)||[])[1];
+  if(!lev)continue;
+  const isWind=/^U$/i.test(variable)&&/60\\s*N/i.test(region);
+  const isTemp=/^T$/i.test(variable)&&/60\\s*[-–]\\s*90\\s*N/i.test(region);
+  if(isWind||isTemp)columns.push({index:i-1,level:lev,type:isWind?'wind':'temp',unit});
+ }
+ const rows=[];
+ for(const line of lines.slice(5)){
+  if(!/^\\s*\\d{4}-\\d{2}-\\d{2}/.test(line))continue;
+  const date=line.slice(0,10).trim(),rest=line.slice(10),values=[];
+  for(let i=0;i<rest.length;i+=10){const raw=rest.slice(i,i+10).trim();values.push(raw===''?null:Number(raw));}
+  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))continue;
+  const row={date,wind:{},temp:{}};
+  for(const col of columns){const v=values[col.index];if(Number.isFinite(v))row[col.type][col.level]=v;}
+  rows.push(row);
+ }
+ return {columns,rows};
+}
+function drawNasaSeries(canvasId,rows,type,title,unit){
+ const cv=$(canvasId),g=cv.getContext('2d'),w=cv.width,h=cv.height,p=55;
+ g.clearRect(0,0,w,h);g.fillStyle='#07182a';g.fillRect(0,0,w,h);
+ const colors={10:'#63dfff',30:'#ffbd76',50:'#b69cff'};
+ const levels=[10,30,50],all=[];
+ for(const lev of levels)for(const r of rows)if(Number.isFinite(r[type][lev]))all.push(r[type][lev]);
+ if(!all.length){g.fillStyle='#a9bfd5';g.font='16px Arial';g.fillText('V importovaném souboru nebyla nalezena odpovídající řada.',p,42);return;}
+ let min=Math.min(...all),max=Math.max(...all);if(min===max){min-=1;max+=1;}
+ const y=v=>h-p-(v-min)/(max-min)*(h-2*p),start=Math.max(0,rows.length-365),shown=rows.slice(start);
+ for(let i=0;i<5;i++){const val=max-i*(max-min)/4,yy=y(val);g.strokeStyle='#29445e';g.beginPath();g.moveTo(p,yy);g.lineTo(w-p,yy);g.stroke();g.fillStyle='#a9bfd5';g.font='13px Arial';g.fillText(val.toFixed(1),6,yy+4);}
+ for(const lev of levels){
+  let begun=false;g.beginPath();
+  shown.forEach((r,i)=>{const v=r[type][lev];if(!Number.isFinite(v)){begun=false;return;}const x=p+i*(w-2*p)/Math.max(1,shown.length-1);if(!begun){g.moveTo(x,y(v));begun=true;}else g.lineTo(x,y(v));});
+  g.strokeStyle=colors[lev];g.lineWidth=2.8;g.stroke();
+ }
+ g.fillStyle='#edf6ff';g.font='bold 15px Arial';g.fillText(title+' ('+unit+')',p,23);
+ levels.forEach((lev,i)=>{const x=p+i*155;g.fillStyle=colors[lev];g.fillRect(x,34,18,4);g.fillStyle='#edf6ff';g.font='13px Arial';g.fillText(lev+' hPa',x+25,41);});
+ g.fillStyle='#a9bfd5';g.font='13px Arial';g.fillText(shown[0]?.date||'',p,h-14);g.fillText(shown[shown.length-1]?.date||'',w-p-90,h-14);
+}
+$('nasaFile').addEventListener('change',async ev=>{
+ const file=ev.target.files&&ev.target.files[0];if(!file)return;
+ const status=$('nasaImportStatus');status.textContent='Načítám '+file.name+'…';
+ try{
+  const parsed=parseNasaFixedWidth(await file.text());
+  if(!parsed.rows.length)throw Error('Nenašel jsem žádné denní řádky ve formátu YYYY-MM-DD.');
+  if(!parsed.columns.length)throw Error('Nenašel jsem požadované sloupce U (60° N) nebo T (60–90° N) pro 10/30/50 hPa. Zkontroluj volby ve formuláři NASA.');
+  const rows=parsed.rows.sort((a,b)=>a.date.localeCompare(b.date));
+  drawNasaSeries('nasaWindChart',rows,'wind','Zonální vítr U60','m/s');
+  drawNasaSeries('nasaTempChart',rows,'temp','Teplota polární čepičky','K');
+  const last=rows[rows.length-1],parts=[];
+  for(const type of ['wind','temp'])for(const lev of [10,30,50]){
+   const val=last[type][lev];parts.push(type==='wind'?'U '+lev+' hPa: '+(Number.isFinite(val)?val.toFixed(2)+' m/s':'chybí'):'T '+lev+' hPa: '+(Number.isFinite(val)?val.toFixed(2)+' K':'chybí'));
+  }
+  $('nasaLatest').innerHTML='<b>Poslední datum v souboru: '+last.date+'</b><br>'+parts.join(' · ')+'<br>Celkem '+rows.length.toLocaleString('cs-CZ')+' denních záznamů. Zobrazeno nejvýše posledních 365 dní.';
+  const found=[...new Set(parsed.columns.map(c=>c.level))].sort((a,b)=>a-b).join(', ');
+  status.innerHTML='<b class="good">Import úspěšný.</b> '+file.name+' · '+rows.length.toLocaleString('cs-CZ')+' dní · hladiny '+found+' hPa. Soubor zůstal pouze v tomto prohlížeči.';
+ }catch(err){status.innerHTML='<b class="warn">Import se nepodařil.</b> '+String(err.message||err);}
+});
+\nloadArchive();
 
 </script></body></html>
