@@ -67,7 +67,7 @@ jobs:
                   "bytes": path.stat().st_size
               }
           (Path("data") / "archive-meta.json").write_text(
-              json.dumps(meta, ensure_ascii=False, indent=2) + "\\n",
+              json.dumps(meta, ensure_ascii=False, indent=2),
               encoding="utf-8"
           )
           print(json.dumps(meta, ensure_ascii=False, indent=2))
