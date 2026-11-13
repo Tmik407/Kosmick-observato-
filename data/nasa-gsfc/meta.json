@@ -1,5 +1,5 @@
 {
-  "retrieved_utc": "2026-11-13T21:23:11.777395+00:00",
+  "retrieved_utc": "2026-11-13T21:25:58.739722+00:00",
   "source": "NASA GSFC Annual Meteorological Statistics, redistributed as open JSON by Observatoire des phénomènes naturels",
   "upstream": "https://acd-ext.gsfc.nasa.gov/Data_services/met/ann_data.html",
   "mirror": "https://observatory.lelama.digital/en/open-data",
@@ -32,6 +32,36 @@
       "last_date": "2026-11-11",
       "source_json_sha256": "ad37ad6bdaf2af6d235881ae2312a4cc6b28f041f26f4eacc2cd271b8eb73fc4",
       "csv_bytes": 353799
+    },
+    "u60_10hpa_60n_ozonewatch": {
+      "source": "https://ozonewatch.gsfc.nasa.gov/meteorology/figures/merra2/wind/u60n_10_2026_merra2.txt",
+      "unit": "m/s",
+      "rows": 184,
+      "first_date": "2026-07-01",
+      "last_date": "2026-12-31",
+      "forecast_rows": 11,
+      "source_sha256": "d0abfb274168c119164b289be1bbf04b305da98c95fb28b8d80c712a3d93a407",
+      "classification": "NASA_MERRA2_ANALYSIS_AND_GEOS_FP_FORECAST"
+    },
+    "u60_30hpa_60n_ozonewatch": {
+      "source": "https://ozonewatch.gsfc.nasa.gov/meteorology/figures/merra2/wind/u60n_30_2026_merra2.txt",
+      "unit": "m/s",
+      "rows": 184,
+      "first_date": "2026-07-01",
+      "last_date": "2026-12-31",
+      "forecast_rows": 11,
+      "source_sha256": "076ad5c5dc9983fa8106a5dcbd1ec8b92ee84d70450b5b05db22c8c5a85a5d1e",
+      "classification": "NASA_MERRA2_ANALYSIS_AND_GEOS_FP_FORECAST"
+    },
+    "u60_50hpa_60n_ozonewatch": {
+      "source": "https://ozonewatch.gsfc.nasa.gov/meteorology/figures/merra2/wind/u60n_50_2026_merra2.txt",
+      "unit": "m/s",
+      "rows": 184,
+      "first_date": "2026-07-01",
+      "last_date": "2026-12-31",
+      "forecast_rows": 11,
+      "source_sha256": "351c088a845601b6755765589656d3287d60466332f014c744d75ae9b97c9cc6",
+      "classification": "NASA_MERRA2_ANALYSIS_AND_GEOS_FP_FORECAST"
     }
   }
-}
+}\n
