@@ -150,6 +150,23 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
   <div><img id="ch284" class="space" data-src="https://services.swpc.noaa.gov/images/animations/suvi/primary/284/latest.png" alt="Slunce v pásmu SUVI 284 angströmů" loading="lazy"><div class="small">SUVI 284 Å – hlavní obrazový kanál pro vyhledávání kandidátů koronálních děr.</div></div>
  </div>
  <div id="coronalHoleStatus" class="small">Snímky se načtou při otevření této sekce. Koronální díry se nebudou automaticky označovat bez ověřeného katalogu nebo obrazové analýzy.</div>
+
+ <div class="panel" id="coronalHoleTracker" style="background:#10233a">
+  <h3>Automatické sledování koronálních děr – NOAA SUVI L2</h3>
+  <div class="grid">
+   <div><div class="small">Počet děr v posledním produktu</div><div id="chTrackCount" class="metric">—</div></div>
+   <div><div class="small">Čas pozorování</div><div id="chTrackTime" class="metric" style="font-size:18px">—</div></div>
+   <div><div class="small">Příznak kvality NOAA</div><div id="chTrackQuality" class="metric">—</div></div>
+   <div><div class="small">Historické záznamy</div><div id="chTrackHistoryCount" class="metric">—</div></div>
+  </div>
+  <div id="chTrackStatus" class="small">Čekám na archiv NOAA SUVI L2…</div>
+  <h3>Detekované hranice a rozsah jednotlivých děr</h3>
+  <div id="chTrackList" class="small">Zatím bez záznamu.</div>
+  <h3>Vývoj celkové plochy koronálních děr</h3>
+  <canvas id="chTrackChart" width="900" height="220"></canvas>
+  <div class="small">Plocha je uváděna v pix² podle NOAA. Zeměpisné rozsahy jsou Heliographic Stonyhurst (N, S, E, W). Zobrazení sleduje skutečné soubory NOAA, nikoli automaticky odhadované hranice z tmavých míst EUV snímků.</div>
+  <p><a href="https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes19/l2/data/suvi-l2-chbnd/" target="_blank" rel="noopener">Otevřít originální distribuci NOAA SUVI L2 CHBND</a> · <a href="https://www.ncei.noaa.gov/products/goes-r-solar-ultraviolet-imager-suvi" target="_blank" rel="noopener">Popis dat NOAA NCEI</a></p>
+ </div>
  <h3>Ověření koronálních děr – oficiální analýza NOAA</h3>
  <div class="grid">
   <div><div class="small">Primární kanál pro identifikaci děr</div><div class="metric">SUVI Fe 284 Å</div><div class="small">NOAA uvádí pásmo 284 Å jako kanál pro identifikaci koronálních děr.</div></div>
@@ -1231,4 +1248,47 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  if("IntersectionObserver"in window){const io=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){load();io.disconnect()}});io.observe(panel)}else load();
 })();
 </script>
-</body></html>
+
+<script>
+(function(){
+ const panel=document.getElementById("coronalHoleTracker");if(!panel)return;
+ const el=id=>document.getElementById(id);
+ const put=(id,v)=>{const n=el(id);if(n)n.textContent=v};
+ const fmt=t=>{if(!t)return "—";const d=new Date(t);return Number.isFinite(d.getTime())?d.toISOString().replace("T"," ").slice(0,16)+" UTC":"—"};
+ function draw(rows){
+  const c=el("chTrackChart");if(!c)return;const x=c.getContext("2d"),w=c.width,h=c.height,p={l:68,r:20,t:25,b:42};
+  x.clearRect(0,0,w,h);x.fillStyle="#071426";x.fillRect(0,0,w,h);
+  const pts=rows.map(r=>({t:Date.parse(r.observed_utc),a:(r.holes||[]).reduce((s,q)=>s+(Number(q.area_px2)||0),0)})).filter(q=>Number.isFinite(q.t)&&Number.isFinite(q.a)).sort((a,b)=>a.t-b.t);
+  if(!pts.length){x.fillStyle="#b9cde0";x.font="15px Arial";x.fillText("Historie se naplní po získání platných NOAA produktů.",p.l,h/2);return}
+  const max=Math.max(1,...pts.map(q=>q.a)),t0=pts[0].t,t1=pts[pts.length-1].t,span=Math.max(1,t1-t0),pw=w-p.l-p.r,ph=h-p.t-p.b;
+  for(let i=0;i<=4;i++){const v=max*i/4,y=p.t+ph*(1-i/4);x.strokeStyle="#29445e";x.beginPath();x.moveTo(p.l,y);x.lineTo(w-p.r,y);x.stroke();x.fillStyle="#b9cde0";x.font="12px Arial";x.fillText(Math.round(v).toLocaleString("cs-CZ"),5,y+4)}
+  x.strokeStyle="#65dcff";x.lineWidth=2;x.beginPath();pts.forEach((q,i)=>{const xx=p.l+(q.t-t0)/span*pw,yy=p.t+ph*(1-q.a/max);if(i===0)x.moveTo(xx,yy);else x.lineTo(xx,yy)});x.stroke();
+  x.fillStyle="#b9cde0";x.font="12px Arial";x.fillText(new Date(t0).toISOString().slice(0,10),p.l,h-12);x.fillText(new Date(t1).toISOString().slice(0,10),w-p.r-78,h-12);
+ }
+ async function load(){
+  try{
+   const r=await fetch("./coronal-hole-history.json?ts="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);
+   const d=await r.json(),latest=d.latest||{},rows=Array.isArray(d.rows)?d.rows:[];
+   put("chTrackCount",String(latest.num_coronal_holes??"—"));
+   put("chTrackTime",fmt(latest.observed_utc));
+   put("chTrackQuality",latest.degraded_status===undefined?"—":String(latest.degraded_status));
+   put("chTrackHistoryCount",String(rows.length));
+   const age=latest.observed_utc?Math.max(0,(Date.now()-Date.parse(latest.observed_utc))/3600000):null;
+   let status="Zdroj: "+(d.source||"NOAA SUVI L2")+" · poslední stažení "+fmt(d.updated_utc)+". ";
+   if(age!==null)status+="Věk posledního produktu: "+(age<48?age.toFixed(1)+" h":(age/24).toFixed(1)+" dne")+". ";
+   if(age!==null&&age>48)status+="Pozor: produkt je starší než 48 hodin; nejde o aktuální stav Slunce.";
+   else status+="Data jsou převzata z oficiální automatické klasifikace NOAA SUVI L2.";
+   put("chTrackStatus",status);
+   const holes=Array.isArray(latest.holes)?latest.holes:[];
+   put("chTrackList",holes.length?holes.map(q=>{
+    const n=v=>Number.isFinite(Number(v))?Number(v).toFixed(1)+"°":"—";
+    const area=Number.isFinite(Number(q.area_px2))?Math.round(q.area_px2).toLocaleString("cs-CZ")+" pix²":"—";
+    return "Díra "+q.id+": plocha "+area+" · N "+n(q.north_deg)+" · S "+n(q.south_deg)+" · E "+n(q.east_deg)+" · W "+n(q.west_deg);
+   }).join("\\n"):"NOAA v posledním produktu neidentifikovala žádnou koronální díru.");
+   draw(rows);
+  }catch(e){put("chTrackStatus","Archiv NOAA zatím není dostupný: "+e.message+". Automatický sběr čeká na první úspěšný běh GitHub Actions.");draw([])}
+ }
+ if("IntersectionObserver"in window){const io=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting)){load();io.disconnect()}});io.observe(panel)}else load();
+})();
+</script>
+\n</body></html>
