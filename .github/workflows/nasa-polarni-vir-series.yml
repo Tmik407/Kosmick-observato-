@@ -117,6 +117,40 @@ jobs:
               }
           (root / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
           print(json.dumps(meta, ensure_ascii=False, indent=2))
+          # Direct NASA Ozone Watch daily U60 series: 10, 30 and 50 hPa.
+          import urllib.request
+          for level in (10, 30, 50):
+              url = f"https://ozonewatch.gsfc.nasa.gov/meteorology/figures/merra2/wind/u60n_{level}_2026_merra2.txt"
+              req = urllib.request.Request(url, headers={"User-Agent": "X5-polar-vortex-observatory/1.0"})
+              with urllib.request.urlopen(req, timeout=45) as response:
+                  raw = response.read()
+              if len(raw) < 1000 or b"60N Zonal Mean Zonal Wind" not in raw[:1000]:
+                  raise SystemExit(f"NASA Ozone Watch {level} hPa: unexpected response")
+              rows = []
+              for line in raw.decode("utf-8", errors="replace").splitlines():
+                  parts = line.split()
+                  if len(parts) < 10 or not parts[0].startswith("2026-"):
+                      continue
+                  try:
+                      vals = [float(x) for x in parts[1:]]
+                  except ValueError:
+                      continue
+                  rows.append((parts[0], vals[0], vals[-1]))
+              if not rows:
+                  raise SystemExit(f"NASA Ozone Watch {level} hPa: no daily rows parsed")
+              out = root / f"u60_{level}hpa_60n_ozonewatch.csv"
+              with out.open("w", newline="", encoding="utf-8") as f:
+                  w = csv.writer(f)
+                  w.writerow(["date", "u60_ms", "forecast_hour"])
+                  w.writerows(rows)
+              meta["series"][f"u60_{level}hpa_60n_ozonewatch"] = {
+                  "source": url, "unit": "m/s", "rows": len(rows),
+                  "first_date": rows[0][0], "last_date": rows[-1][0],
+                  "forecast_rows": sum(1 for x in rows if x[2] > 0),
+                  "source_sha256": hashlib.sha256(raw).hexdigest(),
+                  "classification": "NASA_MERRA2_ANALYSIS_AND_GEOS_FP_FORECAST"
+              }
+          (root / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
           PY
 
       - name: Commit numerical series
