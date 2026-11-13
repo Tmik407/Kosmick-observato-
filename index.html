@@ -1138,13 +1138,19 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   <div class="grid" style="margin-top:8px"><div><div class="small">GOES 0,1–0,8 nm</div><div id="ionoXrayValue" class="metric">—</div></div><div><div class="small">Třída erupce</div><div id="ionoXrayClass" class="metric">—</div></div><div><div class="small">Subsolární bod</div><div id="ionoDayNight" class="metric">—</div></div><div><div class="small">Modelová odezva</div><div id="ionoLayerResponse" class="metric">—</div></div></div>
  </div>
  <div style="background:#081a2c;border:1px solid #294765;border-radius:10px;padding:12px;margin:10px 0"><strong>Schematický řez ionosférou</strong><canvas id="ionoLayerCanvas" width="900" height="230" style="width:100%;height:auto;display:block"></canvas><div class="small">Výšky D/E/F1/F2 jsou orientační. Změna intenzity je kvalitativní ilustrace podle GOES toku, nikoli měřený profil elektronové hustoty.</div></div>
- <div style="position:relative;background:#030b18;border:1px solid #294765;border-radius:14px;overflow:hidden">
+ <div id="irtamLivePanel" style="background:#061426;border:1px solid #37617f;border-radius:12px;padding:12px;margin:12px 0">
+ <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><strong>Globální elektronová hustota – oficiální IRTAM / GIRO</strong><span class="small">modelová analýza • aktualizace přibližně po 15 min</span></div>
+ <p class="small">Toto je živý zdroj globálních map IRTAM (foF2 a hmF2), který asimiluje dostupná měření ionosond GIRO. Je to skutečný globální model, nikoli D-RAP. Zobrazení poskytuje přímo datové centrum GIRO; pokrytí oceánů a vysokých šířek je omezené a model tam více vychází z klimatologie IRI.</p>
+ <div style="background:#020916;border-radius:8px;overflow:hidden;min-height:360px"><iframe title="Oficiální živé globální mapy IRTAM z GIRO" src="https://giro.uml.edu/IRTAM/" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" style="display:block;width:100%;height:520px;border:0;background:#020916"></iframe></div>
+ <div class="small" style="margin-top:8px">Pokud se vložená stránka nenačte, otevři <a href="https://giro.uml.edu/IRTAM/" target="_blank" rel="noopener">oficiální mapy IRTAM přímo</a>. Přístup k numerickým koeficientům GAMBIT je samostatný a může vyžadovat přihlášení.</div>
+ </div>
+<div style="position:relative;background:#030b18;border:1px solid #294765;border-radius:14px;overflow:hidden">
   <canvas id="ionoGlobeCanvas" width="900" height="650" aria-label="Interaktivní globus ionosféry s vrstvou NOAA D-RAP a stanicemi GIRO" style="width:100%;height:auto;display:block;touch-action:pan-y"></canvas>
  <div style="display:flex;gap:12px;flex-wrap:wrap;padding:9px 12px;background:#07182b;border-top:1px solid #294765;font-size:13px">
   <label><input id="ionoCoastToggle" type="checkbox" checked> Pobřeží a kontinenty</label>
   <label><input id="ionoAuroraToggle" type="checkbox" checked> Aurorální ovál NOAA OVATION</label>
   <label><input id="ionoNeToggle" type="checkbox" checked> Elektronová koncentrace NmF2 – GIRO</label>
-  <span id="ionoOverlayStatus" class="small">Načítám geografii a OVATION…</span>
+  <span id="ionoOverlayStatus" class="small">Pobřeží / OVATION; IRTAM globální mapy jsou zobrazeny výše.</span>
  </div>
   <div id="ionoGlobeOverlay" style="position:absolute;left:10px;top:10px;background:#07182bdc;padding:8px 10px;border-radius:8px;font-size:12px">Načítám globální data…</div>
  </div>
@@ -1157,7 +1163,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;margin-top:10px">
   <span>🟦 D-RAP HAF nízký</span><span>🟩 střední</span><span>🟨 zvýšený</span><span>🟥 vysoký</span><span>● GIRO foF2/MUF měření</span><span>🟣→🟡 NmF2: nízká → vysoká (pouze stanice)</span>
  </div>
- <div class="small">NmF2 se počítá z naměřeného foF2 podle NmF2 ≈ 1,24×10⁴ · foF2² cm⁻³. Barva zobrazuje skutečné hodnoty v místech stanic GIRO; mezi stanicemi se data neinterpolují. Nejde o souvislou globální mapu ani o plný 3D profil.</div>
+ <div class="small">NmF2 se počítá z naměřeného foF2 podle NmF2 ≈ 1,24×10⁴ · foF2² cm⁻³. Barva zobrazuje skutečné hodnoty pouze v místech stanic GIRO; mezi stanicemi se data neinterpolují. Souvislé globální mapy zajišťuje oficiální model IRTAM ve vloženém panelu výše; stávající glóbus níže zůstává samostatnou vizualizací NOAA D-RAP.</div>
  <div id="ionoGlobeDetail" class="small" style="margin-top:10px">Klikni na bod stanice pro podrobnosti. Čas a kvalita dat se zobrazují samostatně.</div><div id="ionoHistoryPanel" style="margin-top:12px;background:#081a2c;border:1px solid #294765;border-radius:10px;padding:12px"><strong>Historie skutečných měření ionosond</strong><span id="ionoHistoryCount" class="small" style="float:right">Vyber stanici</span><div id="ionoHistoryInfo" class="small" style="margin:6px 0">Lokální historie tohoto prohlížeče.</div><canvas id="ionoHistoryCanvas" width="900" height="300" style="width:100%;height:auto;display:block"></canvas><div class="grid" style="margin-top:8px"><div><div class="small">Poslední foF2</div><div id="ionoHistFof2" class="metric">—</div></div><div><div class="small">Poslední hmF2</div><div id="ionoHistHmf2" class="metric">—</div></div><div><div class="small">Poslední MUF</div><div id="ionoHistMuf" class="metric">—</div></div><div><div class="small">Confidence</div><div id="ionoHistQuality" class="metric">—</div></div></div><div class="small">Historie se tvoří z nově načtených aktuálních vzorků GIRO na tomto zařízení. Starší data před prvním uložením nejsou dostupná. Mezery se neinterpolují.</div><div class="small">Lokální automatický záznam je oddělen od archivních dat GIRO. Níže lze stáhnout skutečnou historickou řadu z archivu DIDBase pro právě vybranou stanici.</div>
  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:10px">
   <label class="small">Od (UTC)<input id="ionoArchiveFrom" type="date" style="display:block;padding:8px;background:#081a2c;color:#fff;border:1px solid #45627e;border-radius:7px"></label>
