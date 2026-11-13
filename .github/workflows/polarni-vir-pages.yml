@@ -1,15 +1,18 @@
-name: Publikovat samostatný model polárního víru
+name: Publikovat model polárního víru X-5
 
 on:
   push:
     branches: [main]
     paths:
       - 'polarni-vir.html'
+      - 'data/**'
       - '.github/workflows/polarni-vir-pages.yml'
+  schedule:
+    - cron: '17 7 * * *'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -26,11 +29,67 @@ jobs:
     steps:
       - name: Načíst repozitář
         uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Stáhnout nejnovější archiv ERA5
+        run: |
+          set -euo pipefail
+          mkdir -p data
+          curl --fail --location --retry 3 --retry-delay 5 \
+            https://www.polarvortex.earth/data/u60_daily.csv \
+            -o data/u60_daily.csv
+          curl --fail --location --retry 3 --retry-delay 5 \
+            https://www.polarvortex.earth/data/wave_forcing_daily.csv \
+            -o data/wave_forcing_daily.csv
+          python - <<'PY'
+          import csv, json
+          from datetime import datetime, timezone
+          from pathlib import Path
+          files = ["u60_daily.csv", "wave_forcing_daily.csv"]
+          meta = {
+              "retrieved_utc": datetime.now(timezone.utc).isoformat(),
+              "source": "ERA5 daily derived datasets, served by polarvortex.earth",
+              "attribution": "Contains modified Copernicus Climate Change Service information 2026. ERA5: Hersbach et al. (2020).",
+              "files": {}
+          }
+          for name in files:
+              path = Path("data") / name
+              with path.open(encoding="utf-8-sig", newline="") as f:
+                  reader = csv.reader(f)
+                  header = next(reader, [])
+                  rows = sum(1 for _ in reader)
+              if not header or rows < 1000:
+                  raise SystemExit(f"Data validation failed for {name}: {rows} rows")
+              meta["files"][name] = {
+                  "rows": rows,
+                  "columns": header,
+                  "bytes": path.stat().st_size
+              }
+          (Path("data") / "archive-meta.json").write_text(
+              json.dumps(meta, ensure_ascii=False, indent=2) + "\\n",
+              encoding="utf-8"
+          )
+          print(json.dumps(meta, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Uložit denní verzi archivu do Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/u60_daily.csv data/wave_forcing_daily.csv data/archive-meta.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update daily polar vortex ERA5 archive"
+            git push origin main
+          else
+            echo "Archiv se nezměnil; nový commit není potřeba."
+          fi
 
       - name: Připravit samostatnou stránku
         run: |
-          mkdir -p _site
+          mkdir -p _site/data
           cp polarni-vir.html _site/index.html
+          cp data/*.csv data/archive-meta.json _site/data/
           touch _site/.nojekyll
 
       - name: Nastavit GitHub Pages
