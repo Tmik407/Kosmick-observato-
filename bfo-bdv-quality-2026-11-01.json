@@ -1,0 +1,56 @@
+{
+  "source_file": "BFO_BDV_2026-11-01_synchronizovana_data.csv",
+  "source": "Uživatelem dodaný synchronizovaný CSV soubor; kontrola nad celým původním souborem",
+  "date_utc": "2026-11-01",
+  "expected_minutes": 1440,
+  "sampling_interval_seconds": 60,
+  "invalid_values": [
+    "prázdné buňky"
+  ],
+  "interpolation": false,
+  "bdv": {
+    "complete_vectors": 600,
+    "coverage_percent": 41.67,
+    "first_utc": "2026-11-01T00:00:00Z",
+    "last_utc": "2026-11-01T09:59:00Z",
+    "gaps_over_90s": 0,
+    "max_gap_seconds": 60,
+    "component_counts": {
+      "X": 600,
+      "Y": 600,
+      "Z": 600,
+      "F": 600
+    },
+    "magnitude_check": {
+      "mean_abs_difference": 2.87,
+      "max_abs_difference": 2.953,
+      "unit": "souborová jednotka"
+    }
+  },
+  "bfo": {
+    "complete_vectors": 709,
+    "coverage_percent": 49.24,
+    "first_utc": "2026-11-01T00:00:00Z",
+    "last_utc": "2026-11-01T11:48:00Z",
+    "gaps_over_90s": 0,
+    "max_gap_seconds": 60,
+    "component_counts": {
+      "X": 715,
+      "Y": 715,
+      "Z": 716,
+      "F": 709
+    },
+    "magnitude_check": {
+      "mean_abs_difference": 0.539,
+      "max_abs_difference": 0.827,
+      "unit": "souborová jednotka"
+    }
+  },
+  "synchronized": {
+    "complete_bdv_bfo_minutes": 600,
+    "coverage_percent": 41.67,
+    "first_utc": "2026-11-01T00:00:00Z",
+    "last_utc": "2026-11-01T09:59:00Z"
+  },
+  "note": "V původním souboru jsou časové řádky po minutě pro celý den, ale měřicí hodnoty jsou dostupné jen pro část dne. BDV má kompletní vektory 00:00–09:59 UTC; BFO 00:00–11:48 UTC (s několika neúplnými koncovými složkami). Zbytek dne je prázdný. Nulový počet vnitřních mezer mezi platnými vzorky neznamená úplné pokrytí 24 hodin. Kontrola velikosti F porovnává uvedenou F s odmocninou ze součtu čtverců X/Y/Z; bez deklarované tolerance nejde o kalibrační certifikaci."
+}
