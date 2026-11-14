@@ -704,30 +704,44 @@ function updateSourceHealth(results){
   {key:"Dst",name:"Dst",index:4,fields:["dst","Dst",1],warn:240,stale:480}
  ];
  const now=Date.now(),issues=[];
+ const memory=window.__x5SourceHealth||(window.__x5SourceHealth={});
+ const utc=t=>Number.isFinite(t)?new Date(t).toISOString().replace("T"," ").slice(0,19)+" UTC":"—";
  for(const spec of specs){
-  const result=results[spec.index],state=$( "src"+spec.key+"State"),meta=$( "src"+spec.key+"Meta");
+  const result=results[spec.index],state=$("src"+spec.key+"State"),meta=$("src"+spec.key+"Meta");
   if(!state||!meta)continue;
-  if(!result||result.status!=="fulfilled"){
-   state.textContent="NEDOSTUPNÉ";state.className="metric bad";
-   meta.textContent=result&&result.reason?String(result.reason.message||result.reason):"Zdroj nevrátil data";
-   issues.push(spec.name+": zdroj nedostupný");continue;
+  const saved=memory[spec.key]||(memory[spec.key]={lastGoodFetch:null,lastGoodSample:null,lastError:null});
+  let sample=null,rows=[];
+  if(result&&result.status==="fulfilled"){
+   rows=rowsOf(result.value);
+   sample=newest(rows,spec.fields);
+   if(sample&&Number.isFinite(Date.parse(timeOf(sample)))){
+    saved.lastGoodFetch=now;
+    saved.lastGoodSample=Date.parse(timeOf(sample));
+    saved.lastError=null;
+   }else{
+    const detail=rows.length?"Odpověď dorazila, ale neobsahuje platnou hodnotu s časem UTC":"Zdroj vrátil prázdnou odpověď";
+    saved.lastError={at:now,type:"invalid",message:detail};
+    state.textContent=rows.length?"NEPLATNÁ DATA":"PRÁZDNÁ ODPOVĚĎ";
+    state.className="metric bad";
+    meta.textContent=detail+" · poslední úspěšné načtení: "+utc(saved.lastGoodFetch)+" · poslední platný vzorek: "+utc(saved.lastGoodSample);
+    issues.push(spec.name+": "+detail.toLowerCase());
+    continue;
+   }
+  }else{
+   const error=result&&result.reason?String(result.reason.message||result.reason):"Zdroj nevrátil data";
+   const http=error.match(/HTTP\s+(\d{3})/i);
+   const type=http?"HTTP "+http[1]:"SÍŤOVÁ / CORS CHYBA";
+   saved.lastError={at:now,type,message:error};
+   state.textContent=http?"CHYBA "+http[1]:"VÝPADEK SPOJENÍ";
+   state.className="metric bad";
+   meta.textContent=error+" · poslední úspěšné načtení: "+utc(saved.lastGoodFetch)+" · poslední platný vzorek: "+utc(saved.lastGoodSample);
+   issues.push(spec.name+": "+type.toLowerCase());
+   continue;
   }
-  const rows=rowsOf(result.value);
-  const sample=newest(rows,spec.fields);
-  if(!sample){
-   state.textContent="BEZ PLATNÉHO VZORKU";state.className="metric bad";
-   meta.textContent="Řádků: "+rows.length+" · chybí platná hodnota nebo čas UTC";
-   issues.push(spec.name+": bez platného vzorku");continue;
-  }
-  const stamp=Date.parse(timeOf(sample));
-  if(!Number.isFinite(stamp)){
-   state.textContent="CHYBNÝ ČAS";state.className="metric bad";
-   meta.textContent="Řádků: "+rows.length+" · časová značka není čitelná";
-   issues.push(spec.name+": chybná časová značka");continue;
-  }
-  const age=(now-stamp)/60000;
+  const stamp=Date.parse(timeOf(sample)),age=(now-stamp)/60000;
   const ageText=age<0?"čas v budoucnosti o "+Math.abs(age).toFixed(1)+" min":age.toFixed(1)+" min";
-  meta.textContent="Nejnovější vzorek: "+new Date(stamp).toISOString().replace("T"," ").slice(0,19)+" UTC · stáří "+ageText+" · platné řádky "+rows.filter(r=>timeOf(r)&&spec.fields.some(k=>valid(r&&r[k]))).length+"/"+rows.length;
+  const validRows=rows.filter(r=>timeOf(r)&&Number.isFinite(Date.parse(timeOf(r)))&&spec.fields.some(k=>valid(r&&r[k]))).length;
+  meta.textContent="Poslední úspěšné načtení: "+utc(saved.lastGoodFetch)+" · nejnovější platný vzorek: "+utc(stamp)+" · stáří vzorku "+ageText+" · platné řádky "+validRows+"/"+rows.length;
   if(age < -5){
    state.textContent="ČASOVÁ ANOMÁLIE";state.className="metric bad";issues.push(spec.name+": čas vzorku je v budoucnosti");
   }else if(age>spec.stale){
@@ -739,7 +753,7 @@ function updateSourceHealth(results){
   }
  }
  const summary=$("sourceHealthSummary");
- if(summary)summary.textContent=issues.length?"Kontrola dokončena · "+issues.length+" upozornění: "+issues.join(" · "):"Kontrola dokončena · všech 5 zdrojů má platné a časově čerstvé vzorky. Čas kontroly: "+new Date(now).toISOString().replace("T"," ").slice(0,19)+" UTC.";
+ if(summary)summary.textContent=issues.length?"Kontrola dokončena · "+issues.length+" upozornění: "+issues.join(" · ")+" · čas kontroly "+utc(now)+".":"Kontrola dokončena · všech 5 zdrojů má platné vzorky. Čas kontroly: "+utc(now)+".";
 }
 async function loadHistoryQuality(){
  const put=(id,value,cls)=>{const e=$(id);if(e){e.textContent=value;if(cls)e.className="metric "+cls}};
