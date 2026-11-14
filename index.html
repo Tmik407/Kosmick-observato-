@@ -125,6 +125,19 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
  <div id="sourceHealthSummary" class="small">Vyhodnocení se provede po načtení živých dat. Časové značky jsou porovnávány s UTC.</div>
  <div class="small">Stav „čerstvá“ znamená pouze přijetí dat s platnou hodnotou a časovou značkou v nastaveném limitu; nepotvrzuje správnost měřicího přístroje. RTSW limit 5/15 min, GOES 15/45 min, Kp a Dst 4/8 h (varování / zastaralá data).</div>
 </section>
+<section class="panel" id="historyQualityPanel">
+ <h2>Kontrola historických archivů a magnetometrů BFO / BDV</h2>
+ <div class="grid">
+  <div><div class="small">Archiv kosmického počasí NOAA</div><div id="histSpaceState" class="metric">Načítám…</div><div id="histSpaceMeta" class="small">—</div></div>
+  <div><div class="small">Archiv ACE MAG</div><div id="histAceState" class="metric">Načítám…</div><div id="histAceMeta" class="small">—</div></div>
+  <div><div class="small">BDV – úplné minutové vektory</div><div id="histBdvState" class="metric">Načítám…</div><div id="histBdvMeta" class="small">—</div></div>
+  <div><div class="small">BFO – úplné minutové vektory</div><div id="histBfoState" class="metric">Načítám…</div><div id="histBfoMeta" class="small">—</div></div>
+  <div><div class="small">Synchronizované BFO + BDV</div><div id="histPairState" class="metric">Načítám…</div><div id="histPairMeta" class="small">—</div></div>
+ </div>
+ <div id="historyQualitySummary" class="small">Vyhodnocení historických archivů…</div>
+ <div class="small">BFO/BDV: kontrola celého původního souboru z 1. 11. 2026; očekáváno 1 440 minut. Počty jsou počítány jen z kompletních X/Y/Z/F vektorů. Chybějící hodnoty se nedoplňují interpolací. Jde o historický soubor, nikoli živé měření.</div>
+ <p><a href="./bfo-bdv-quality-2026-11-01.json" target="_blank" rel="noopener">Otevřít protokol kvality BFO/BDV</a> · <a href="./space-weather-history.json" target="_blank" rel="noopener">Archiv NOAA</a> · <a href="./ace-mag-archive.json" target="_blank" rel="noopener">Archiv ACE MAG</a></p>
+</section>
 <section class="panel"><h2>Průběh slunečního větru – poslední dostupné záznamy</h2><canvas id="speedChart" width="900" height="220"></canvas><div class="small">Rychlost v km/s · čas UTC · mezery v datech se nepovažují za nulové hodnoty.</div></section>
 <section class="panel"><h2>Dynamický tlak slunečního větru – časový průběh</h2><canvas id="pressureChart" width="900" height="220"></canvas><div class="small">Pdyn = 1,6726 × 10⁻⁶ × n × V² (nPa), kde n je hustota protonů v cm⁻³ a V rychlost v km/s. Výpočet používá pouze časově spárovaná měření do 90 sekund.</div></section>
 <section class="panel"><h2>Meziplanetární magnetické pole – Bz a Bt</h2><canvas id="magChart" width="900" height="220"></canvas><div class="small">Bz v GSM (nT) a celková intenzita Bt (nT). Záporné Bz znamená jižní orientaci.</div></section>
@@ -725,6 +738,46 @@ function updateSourceHealth(results){
  const summary=$("sourceHealthSummary");
  if(summary)summary.textContent=issues.length?"Kontrola dokončena · "+issues.length+" upozornění: "+issues.join(" · "):"Kontrola dokončena · všech 5 zdrojů má platné a časově čerstvé vzorky. Čas kontroly: "+new Date(now).toISOString().replace("T"," ").slice(0,19)+" UTC.";
 }
+async function loadHistoryQuality(){
+ const put=(id,value,cls)=>{const e=$(id);if(e){e.textContent=value;if(cls)e.className="metric "+cls}};
+ const meta=(id,value)=>{const e=$(id);if(e)e.textContent=value};
+ const fmt=t=>new Date(t).toISOString().replace("T"," ").slice(0,19)+" UTC";
+ const checkArchive=async(path,kind)=>{
+  try{
+   const r=await fetch(path+"?ts="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);
+   const d=await r.json(),rows=Array.isArray(d.rows)?d.rows:[];
+   const times=rows.map(o=>kind==="ace"?Number(o.t):Date.parse(o.t||"")).filter(t=>Number.isFinite(t)&&(kind!=="ace"||t>1e12)).sort((a,b)=>a-b);
+   if(!rows.length||!times.length)throw Error("Archiv neobsahuje časové vzorky");
+   const first=times[0],last=times[times.length-1],age=(Date.now()-last)/60000;
+   let gaps=0,maxGap=0;for(let i=1;i<times.length;i++){const delta=times[i]-times[i-1];if(delta>600000){gaps++;maxGap=Math.max(maxGap,delta)}}
+   const label=age>1440?"STARŠÍ ARCHIV":age>180?"ZPOŽDĚNÝ ARCHIV":"ČERSTVÝ POSLEDNÍ VZOREK";
+   const cls=age>180?"warn":"good",prefix=kind==="ace"?"histAce":"histSpace";
+   put(prefix+"State",label+" · "+rows.length.toLocaleString("cs-CZ")+" vzorků",cls);
+   meta(prefix+"Meta","Rozsah "+fmt(first)+" – "+fmt(last)+" · stáří posledního vzorku "+age.toFixed(0)+" min · mezery >10 min: "+gaps+" (max "+(maxGap/60000).toFixed(0)+" min) · aktualizace archivu "+(d.updated_utc||d.updated||"neuvedena"));
+   return {ok:true,rows:rows.length,first,last,age,gaps,maxGap};
+  }catch(e){const prefix=kind==="ace"?"histAce":"histSpace";put(prefix+"State","NEDOSTUPNÝ / CHYBNÝ","bad");meta(prefix+"Meta",e.message);return {ok:false,error:e.message}}
+ };
+ const [space,ace,bfoBdv]=await Promise.all([
+  checkArchive("./space-weather-history.json","space"),
+  checkArchive("./ace-mag-archive.json","ace"),
+  fetch("./bfo-bdv-quality-2026-11-01.json?ts="+Date.now(),{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("HTTP "+r.status);return r.json()}).catch(e=>({error:e.message}))
+ ]);
+ if(bfoBdv.error){
+  ["histBdvState","histBfoState","histPairState"].forEach(id=>put(id,"NEDOSTUPNÉ","bad"));
+  meta("histBdvMeta",bfoBdv.error);
+  const summary=$("historyQualitySummary");if(summary)summary.textContent="Protokol BFO/BDV není dostupný: "+bfoBdv.error;
+  return;
+ }
+ const b=bfoBdv.bdv,f=bfoBdv.bfo,p=bfoBdv.synchronized;
+ put("histBdvState",b.complete_vectors.toLocaleString("cs-CZ")+" / 1 440 min ("+b.coverage_percent.toFixed(1)+" %)",b.coverage_percent>=90?"good":"warn");
+ meta("histBdvMeta","Rozsah "+fmt(Date.parse(b.first_utc))+" – "+fmt(Date.parse(b.last_utc))+" · mezery uvnitř pokrytí >90 s: "+b.gaps_over_90s+" · kontrola F: průměrná odchylka "+b.magnitude_check.mean_abs_difference.toFixed(2));
+ put("histBfoState",f.complete_vectors.toLocaleString("cs-CZ")+" / 1 440 min ("+f.coverage_percent.toFixed(1)+" %)",f.coverage_percent>=90?"good":"warn");
+ meta("histBfoMeta","Rozsah "+fmt(Date.parse(f.first_utc))+" – "+fmt(Date.parse(f.last_utc))+" · mezery uvnitř pokrytí >90 s: "+f.gaps_over_90s+" · kontrola F: průměrná odchylka "+f.magnitude_check.mean_abs_difference.toFixed(2));
+ put("histPairState",p.complete_bdv_bfo_minutes.toLocaleString("cs-CZ")+" společných minut ("+p.coverage_percent.toFixed(1)+" %)",p.coverage_percent>=90?"good":"warn");
+ meta("histPairMeta","Oba magnetometry mají současně kompletní X/Y/Z/F · "+fmt(Date.parse(p.first_utc))+" – "+fmt(Date.parse(p.last_utc)));
+ const summary=$("historyQualitySummary");
+ if(summary)summary.textContent="Kontrola dokončena. BDV má "+b.complete_vectors+" kompletních minut, BFO "+f.complete_vectors+" a společně "+p.complete_bdv_bfo_minutes+" z 1 440 očekávaných minut. V datech je souvislé pokrytí bez vnitřních mezer, ale po konci uvedených intervalů chybí měření. Historické archivy NOAA a ACE jsou kontrolovány odděleně; stáří archivu není totéž co stáří živého zdroje.";
+}
 async function refresh(){
  try{
  const failures=[];
@@ -783,6 +836,7 @@ async function refresh(){
  }
 }
 refresh();setInterval(refresh,60000);
+loadHistoryQuality();setInterval(()=>{if(!document.hidden)loadHistoryQuality()},5*60*1000);
 function updateAceDiagnostics(parsed){
  const set=(id,value,cls)=>{const el=$(id);if(el){el.textContent=value;if(cls)el.className="metric "+cls}};
  const now=Date.now(),start=now-24*3600000;
