@@ -687,8 +687,17 @@ function updateQuality(windRows,cleaned,aceLatest,couplingCount){
  spikeEl.textContent=String(cleaned.rejected);
  gapEl.textContent=String(gaps)+(maxGap?" · max "+Math.round(maxGap/60000)+" min":"");
  const aceEl=$("qualityAce");
- if(aceLatest){aceEl.textContent="S = "+aceLatest.statusFlag;aceEl.className="metric "+(aceLatest.statusFlag===0?"good":"warn")}
- else {aceEl.textContent="nedostupné";aceEl.className="metric bad"}
+ const aceAge=Number.isFinite(window.__aceLatestQualityFetch)?(Date.now()-window.__aceLatestQualityFetch)/60000:Infinity;
+ if(aceLatest){
+  const validAce=aceLatest.statusFlag===0&&[aceLatest.bx,aceLatest.by,aceLatest.bz,aceLatest.bt].every(v=>valid(v));
+  if(aceAge<=5){
+   aceEl.textContent=validAce?"OK · S = 0":"S = "+aceLatest.statusFlag+" · neplatný záznam";
+   aceEl.className="metric "+(validAce?"good":"warn");
+  }else{
+   aceEl.textContent="POSLEDNÍ ZNÁMÝ STAV · S = "+aceLatest.statusFlag+" · "+(Number.isFinite(aceAge)?aceAge.toFixed(0)+" min":"stáří neznámé");
+   aceEl.className="metric warn";
+  }
+ }else {aceEl.textContent="čeká na první platný odečet";aceEl.className="metric warn"}
  $("qualityCoupling").textContent=String(couplingCount||0)+" spárovaných vzorků";
  pairEl.className="metric "+(paired.length?"good":"warn");
  spikeEl.className="metric "+(cleaned.rejected?"warn":"good");
@@ -916,6 +925,8 @@ async function refreshAce(){
   updateAceDiagnostics(parsed);
   const last=parsed[parsed.length-1];
   window.__aceLatestQuality=last;
+  window.__aceLatestQualityFetch=Date.now();
+  window.__aceLatestQualityError=null;
   const good=last.statusFlag===0;
   const validValue=v=>Number.isFinite(v)&&v!==-999.9&&v!==-999.0&&v!==-9999;
   const recordValid=good&&[last.bx,last.by,last.bz,last.bt].every(validValue);
@@ -1002,12 +1013,17 @@ async function refreshAce(){
    {data:goodRows.map(r=>({x:r.stamp,y:r.bz})),color:"#ff8d9a"}
   ]);
  }catch(e){
-  window.__aceLatestQuality=null;
+  window.__aceLatestQualityError={at:Date.now(),message:e.message};
   status.textContent="Nedostupné";status.className="metric bad";
   info.textContent="ACE MAG se nepodařilo načíst: "+e.message;
   $("aceVectorCheck").textContent="Kontrola Bt není dostupná – zdroj ACE MAG se nepodařilo načíst.";
   $("aceVectorCheck").className="small bad";
-  $("qualityAce").textContent="nedostupné";$("qualityAce").className="metric bad";
+  const qa=$("qualityAce");
+  if(qa&&window.__aceLatestQuality){
+   const age=Number.isFinite(window.__aceLatestQualityFetch)?(Date.now()-window.__aceLatestQualityFetch)/60000:Infinity;
+   qa.textContent="POSLEDNÍ ZNÁMÝ STAV · S = "+window.__aceLatestQuality.statusFlag+" · "+(Number.isFinite(age)?age.toFixed(0)+" min":"stáří neznámé");
+   qa.className="metric warn";
+  }else if(qa){qa.textContent="čeká na první platný odečet";qa.className="metric warn";}
  }
 }
 function startWhenNear(id,task,interval){
