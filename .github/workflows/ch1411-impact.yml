@@ -1,0 +1,31 @@
+name: CH1411 impact analysis
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/build_ch1411_impact.py"
+      - ".github/workflows/ch1411-impact.yml"
+      - "space-weather-history.json"
+      - "coronal-hole-history.json"
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: ch1411-impact
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build CH1411 impact comparison
+        run: python scripts/build_ch1411_impact.py
+      - name: Save report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ch1411-impact.json
+          git diff --cached --quiet || (git commit -m "Update CH1411 impact analysis" && git push)
