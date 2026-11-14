@@ -160,6 +160,11 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
    <div><div class="small">Historické záznamy</div><div id="chTrackHistoryCount" class="metric">—</div></div>
   </div>
   <div id="chTrackStatus" class="small">Čekám na archiv NOAA SUVI L2…</div>
+  <div id="chEventCard" style="margin:10px 0;padding:12px;border:1px solid #47749c;border-radius:10px;background:#0a1d32">
+   <strong style="color:#8fe1ff">EVIDOVANÁ UDÁLOST · KORONÁLNÍ DÍRA</strong>
+   <div id="chEventTitle" class="metric" style="font-size:20px">Čekám na katalog událostí…</div>
+   <div id="chEventDetail" class="small"></div>
+  </div>
   <h3>Detekované hranice a rozsah jednotlivých děr</h3>
   <div id="chTrackList" class="small">Zatím bez záznamu.</div>
   <h3>Vývoj celkové plochy koronálních děr</h3>
@@ -1933,6 +1938,12 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
    if(age!==null&&age>48)status+="Pozor: produkt je starší než 48 hodin; nejde o aktuální stav Slunce.";
    else status+="Data jsou převzata z oficiální automatické klasifikace NOAA SUVI L2.";
    put("chTrackStatus",status);
+   const event=(Array.isArray(d.events)?d.events:[]).find(q=>q.id==="CH1411");
+   if(event){
+    put("chEventTitle",event.name_cs+" · "+event.date_utc+" · polarita "+event.polarity);
+    const inf=event.independent_detection||{},suvi=event.noaa_suvi_snapshot||{},forecast=event.forecast||{};
+    put("chEventDetail","Poloha: jižní polokoule · Země-facing interval: "+(event.earth_facing_interval_utc||[]).join(" až ")+" UTC · SpaceWeatherLive: "+(inf.detected_holes??"—")+" oblastí, pokrytí "+(inf.solar_disk_coverage_percent??"—")+" % disku; hlavní jižní kandidát "+(inf.primary_southern_candidate?.location||"—")+" ("+(inf.primary_southern_candidate?.area_percent??"—")+" %). NOAA SUVI samostatný snímek: "+(suvi.observed_utc||"—")+", "+(suvi.num_coronal_holes??"—")+" hranic, degradace "+(suvi.degraded_status??"—")+". Očekávaný vliv: "+(forecast.expected_arrival_window_utc||[]).join(" až ")+"; "+(forecast.expected_conditions||"—")+". Identifikátor CH1411 je katalogový a není zaměňován s automatickými štítky CH_1/CH_7.");
+   }else{put("chEventTitle","Žádná kurátorovaná událost");put("chEventDetail","Katalog CH1411 není v archivu.");}
    const holes=Array.isArray(latest.holes)?latest.holes:[];
    put("chTrackList",holes.length?holes.map(q=>{
     const n=v=>Number.isFinite(Number(v))?Number(v).toFixed(1)+"°":"—";
