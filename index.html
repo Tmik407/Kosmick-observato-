@@ -113,6 +113,18 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
  </div>
  <div id="qualityNote" class="small">Kontrola čeká na první platné vzorky. Časové značky jsou vyhodnocovány v UTC.</div>
 </section>
+<section class="panel" id="sourceHealthPanel">
+ <h2>Stav a čerstvost datových zdrojů</h2>
+ <div class="grid">
+  <div><div class="small">NOAA RTSW – sluneční vítr</div><div id="srcWindState" class="metric">Čekám…</div><div id="srcWindMeta" class="small">—</div></div>
+  <div><div class="small">NOAA RTSW – magnetické pole</div><div id="srcMagState" class="metric">Čekám…</div><div id="srcMagMeta" class="small">—</div></div>
+  <div><div class="small">NOAA – planetární Kp</div><div id="srcKpState" class="metric">Čekám…</div><div id="srcKpMeta" class="small">—</div></div>
+  <div><div class="small">NOAA GOES – rentgenový tok</div><div id="srcXrayState" class="metric">Čekám…</div><div id="srcXrayMeta" class="small">—</div></div>
+  <div><div class="small">Kyoto – index Dst</div><div id="srcDstState" class="metric">Čekám…</div><div id="srcDstMeta" class="small">—</div></div>
+ </div>
+ <div id="sourceHealthSummary" class="small">Vyhodnocení se provede po načtení živých dat. Časové značky jsou porovnávány s UTC.</div>
+ <div class="small">Stav „čerstvá“ znamená pouze přijetí dat s platnou hodnotou a časovou značkou v nastaveném limitu; nepotvrzuje správnost měřicího přístroje. RTSW limit 5/15 min, GOES 15/45 min, Kp a Dst 4/8 h (varování / zastaralá data).</div>
+</section>
 <section class="panel"><h2>Průběh slunečního větru – poslední dostupné záznamy</h2><canvas id="speedChart" width="900" height="220"></canvas><div class="small">Rychlost v km/s · čas UTC · mezery v datech se nepovažují za nulové hodnoty.</div></section>
 <section class="panel"><h2>Dynamický tlak slunečního větru – časový průběh</h2><canvas id="pressureChart" width="900" height="220"></canvas><div class="small">Pdyn = 1,6726 × 10⁻⁶ × n × V² (nPa), kde n je hustota protonů v cm⁻³ a V rychlost v km/s. Výpočet používá pouze časově spárovaná měření do 90 sekund.</div></section>
 <section class="panel"><h2>Meziplanetární magnetické pole – Bz a Bt</h2><canvas id="magChart" width="900" height="220"></canvas><div class="small">Bz v GSM (nT) a celková intenzita Bt (nT). Záporné Bz znamená jižní orientaci.</div></section>
@@ -667,6 +679,52 @@ function updateQuality(windRows,cleaned,aceLatest,couplingCount){
  gapEl.className="metric "+(gaps?"warn":"good");
  note.textContent="RTSW: "+paired.length+" společných vzorků rychlosti a hustoty; "+gaps+" mezer delších než 90 s. Izolované špičky rychlosti vyřazeny: "+cleaned.rejected+". Párování rychlosti a Bz používá rozdíl nejvýše 90 s a jeden vzorek rychlosti nelze použít opakovaně. ACE MAG se započítává jen při S = 0 a platných hodnotách.";
 }
+function updateSourceHealth(results){
+ const specs=[
+  {key:"Wind",name:"RTSW vítr",index:0,fields:["proton_speed","proton_density"],warn:5,stale:15},
+  {key:"Mag",name:"RTSW magnetické pole",index:1,fields:["bz_gsm","bt","bx_gsm","by_gsm"],warn:5,stale:15},
+  {key:"Kp",name:"planetární Kp",index:2,fields:["kp","Kp"],warn:240,stale:480},
+  {key:"Xray",name:"GOES X-ray",index:3,fields:["flux"],warn:15,stale:45},
+  {key:"Dst",name:"Dst",index:4,fields:["dst","Dst",1],warn:240,stale:480}
+ ];
+ const now=Date.now(),issues=[];
+ for(const spec of specs){
+  const result=results[spec.index],state=$( "src"+spec.key+"State"),meta=$( "src"+spec.key+"Meta");
+  if(!state||!meta)continue;
+  if(!result||result.status!=="fulfilled"){
+   state.textContent="NEDOSTUPNÉ";state.className="metric bad";
+   meta.textContent=result&&result.reason?String(result.reason.message||result.reason):"Zdroj nevrátil data";
+   issues.push(spec.name+": zdroj nedostupný");continue;
+  }
+  const rows=rowsOf(result.value);
+  const sample=newest(rows,spec.fields);
+  if(!sample){
+   state.textContent="BEZ PLATNÉHO VZORKU";state.className="metric bad";
+   meta.textContent="Řádků: "+rows.length+" · chybí platná hodnota nebo čas UTC";
+   issues.push(spec.name+": bez platného vzorku");continue;
+  }
+  const stamp=Date.parse(timeOf(sample));
+  if(!Number.isFinite(stamp)){
+   state.textContent="CHYBNÝ ČAS";state.className="metric bad";
+   meta.textContent="Řádků: "+rows.length+" · časová značka není čitelná";
+   issues.push(spec.name+": chybná časová značka");continue;
+  }
+  const age=(now-stamp)/60000;
+  const ageText=age<0?"čas v budoucnosti o "+Math.abs(age).toFixed(1)+" min":age.toFixed(1)+" min";
+  meta.textContent="Nejnovější vzorek: "+new Date(stamp).toISOString().replace("T"," ").slice(0,19)+" UTC · stáří "+ageText+" · platné řádky "+rows.filter(r=>timeOf(r)&&spec.fields.some(k=>valid(r&&r[k]))).length+"/"+rows.length;
+  if(age < -5){
+   state.textContent="ČASOVÁ ANOMÁLIE";state.className="metric bad";issues.push(spec.name+": čas vzorku je v budoucnosti");
+  }else if(age>spec.stale){
+   state.textContent="ZASTARALÁ DATA";state.className="metric bad";issues.push(spec.name+": data starší než "+spec.stale+" min");
+  }else if(age>spec.warn){
+   state.textContent="ZPOŽDĚNÍ";state.className="metric warn";issues.push(spec.name+": zpoždění "+age.toFixed(0)+" min");
+  }else{
+   state.textContent="ČERSTVÁ DATA";state.className="metric good";
+  }
+ }
+ const summary=$("sourceHealthSummary");
+ if(summary)summary.textContent=issues.length?"Kontrola dokončena · "+issues.length+" upozornění: "+issues.join(" · "):"Kontrola dokončena · všech 5 zdrojů má platné a časově čerstvé vzorky. Čas kontroly: "+new Date(now).toISOString().replace("T"," ").slice(0,19)+" UTC.";
+}
 async function refresh(){
  try{
  const failures=[];
@@ -709,6 +767,7 @@ async function refresh(){
  updateRisk(k,b,latestPressure, p);
  const couplingCount=updateCoupling(speedCheck.rows,mag);
  updateQuality(wind,speedCheck,window.__aceLatestQuality||null,couplingCount);
+ updateSourceHealth(results);
  updateAlerts(speedCheck.rows,mag,kp);
  updateHistory24h(wind,mag);
  updateCumulative24h(wind,mag);
