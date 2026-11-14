@@ -67,7 +67,7 @@ jobs:
             esac
             echo "OK: $path"
           done
-          curl --fail --silent --show-error --location "$SITE_URLindex.html" -o /tmp/x5-index.html
+          curl --fail --silent --show-error --location "${SITE_URL}index.html" -o /tmp/x5-index.html
           grep -q 'Kosmická observatoř X-5' /tmp/x5-index.html
           grep -q 'ch1411ImpactPanel' /tmp/x5-index.html
           echo "Smoke test X-5 dokončen."
