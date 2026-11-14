@@ -48,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$SITE_URL"
-          for path in index.html polarni-vir.html ch1411-impact.json space-weather-history.json coronal-hole-history.json giro-status.json irtam-density.json aurora-history.json; do
+          for path in index.html polarni-vir.html ch1411-impact.json space-weather-history.json coronal-hole-history.json giro-status.json irtam-density.json aurora-history.json bfo-bdv-quality-2026-11-01.json; do
             ok=0
             for attempt in $(seq 1 12); do
               code=$(curl --silent --show-error --location --output "/tmp/x5-check" --write-out "%{http_code}" "$SITE_URL$path" || true)
@@ -70,4 +70,6 @@ jobs:
           curl --fail --silent --show-error --location "${SITE_URL}index.html" -o /tmp/x5-index.html
           grep -q 'Kosmická observatoř X-5' /tmp/x5-index.html
           grep -q 'ch1411ImpactPanel' /tmp/x5-index.html
+          grep -q 'historyQualityPanel' /tmp/x5-index.html
+          grep -q 'loadHistoryQuality' /tmp/x5-index.html
           echo "Smoke test X-5 dokončen."
