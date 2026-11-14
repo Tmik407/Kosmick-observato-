@@ -42,3 +42,32 @@ jobs:
       - name: Publikovat web
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Ověřit nasazený web a datové panely
+        env:
+          SITE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          test -n "$SITE_URL"
+          for path in index.html polarni-vir.html ch1411-impact.json space-weather-history.json coronal-hole-history.json giro-status.json irtam-density.json aurora-history.json; do
+            ok=0
+            for attempt in $(seq 1 12); do
+              code=$(curl --silent --show-error --location --output "/tmp/x5-check" --write-out "%{http_code}" "$SITE_URL$path" || true)
+              if [ "$code" = "200" ] && [ -s /tmp/x5-check ]; then
+                ok=1
+                break
+              fi
+              sleep 10
+            done
+            if [ "$ok" != "1" ]; then
+              echo "Kontrola selhala: $path (HTTP $code)"
+              exit 1
+            fi
+            case "$path" in
+              *.json) python -c 'import json,sys; json.load(open(sys.argv[1], encoding="utf-8"))' /tmp/x5-check ;;
+            esac
+            echo "OK: $path"
+          done
+          curl --fail --silent --show-error --location "$SITE_URLindex.html" -o /tmp/x5-index.html
+          grep -q 'Kosmická observatoř X-5' /tmp/x5-index.html
+          grep -q 'ch1411ImpactPanel' /tmp/x5-index.html
+          echo "Smoke test X-5 dokončen."
