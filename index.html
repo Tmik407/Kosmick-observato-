@@ -1039,7 +1039,7 @@ function startWhenNear(id,task,interval){
  },{rootMargin:"700px 0px"});
  observer.observe(target);
 }
-startWhenNear("acePanel",refreshAce,3*60*1000);
+startWhenNear("qualityPanel",refreshAce,3*60*1000);
 
 async function refreshAceComparison(){
  const put=(id,v)=>{const e=$(id);if(e)e.textContent=v};
