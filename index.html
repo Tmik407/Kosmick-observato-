@@ -10,6 +10,9 @@ body{margin:0;background:#081426;color:#edf5ff;font-family:Arial,sans-serif;padd
 header{text-align:center;padding:18px 8px 12px}h1{font-size:clamp(25px,5vw,36px);margin:8px 0}
 .sub{color:#b9cbe0;margin:8px 0 18px}.wrap{max-width:1050px;margin:auto}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.history-quality-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.history-quality-grid .metric{font-size:clamp(22px,3.2vw,29px);overflow-wrap:anywhere}
+@media(max-width:640px){.history-quality-grid{grid-template-columns:1fr}}
 .panel{background:#142740;border:1px solid #29415e;border-radius:15px;padding:17px;margin:12px 0;min-width:0}
 .panel h2{font-size:19px;margin:0 0 12px}.metric{font-size:29px;font-weight:700;color:#65dcff}
 .small{font-size:12px;color:#b7c9dc;margin-top:8px;line-height:1.5}
@@ -127,7 +130,7 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
 </section>
 <section class="panel" id="historyQualityPanel">
  <h2>Kontrola historických archivů a magnetometrů BFO / BDV</h2>
- <div class="grid">
+ <div class="grid history-quality-grid">
   <div><div class="small">Archiv kosmického počasí NOAA</div><div id="histSpaceState" class="metric">Načítám…</div><div id="histSpaceMeta" class="small">—</div></div>
   <div><div class="small">Archiv ACE MAG</div><div id="histAceState" class="metric">Načítám…</div><div id="histAceMeta" class="small">—</div></div>
   <div><div class="small">BDV – úplné minutové vektory</div><div id="histBdvState" class="metric">Načítám…</div><div id="histBdvMeta" class="small">—</div></div>
