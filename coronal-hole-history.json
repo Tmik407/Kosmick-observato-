@@ -12,7 +12,7 @@
     "holes": [
       {
         "id": 1,
-        "area_px2": 5096.0,
+        "area_px2": 5096,
         "north_deg": -11.539726257324219,
         "south_deg": -31.326274871826172,
         "east_deg": -26.37723159790039,
@@ -32,12 +32,83 @@
       "holes": [
         {
           "id": 1,
-          "area_px2": 5096.0,
+          "area_px2": 5096,
           "north_deg": -11.539726257324219,
           "south_deg": -31.326274871826172,
           "east_deg": -26.37723159790039,
           "west_deg": 0.38423192501068115
         }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "CH1411",
+      "date_utc": "2026-11-13",
+      "name_cs": "Jižní koronální díra CH1411",
+      "hemisphere": "southern",
+      "polarity": "+",
+      "earth_facing_interval_utc": [
+        "2026-11-13",
+        "2026-11-14"
+      ],
+      "status": "observed_earth_facing",
+      "recurrence": "recurrent; reference CH1405",
+      "classification_source": "Solen.info coronal hole history",
+      "independent_detection": {
+        "source": "SpaceWeatherLive",
+        "description": "Automated Earth-facing detection reported a southern hemisphere coronal hole on 2026-11-13",
+        "detected_holes": 7,
+        "solar_disk_coverage_percent": 4.64,
+        "primary_southern_candidate": {
+          "id": "CH_1",
+          "location": "S26E08",
+          "area_percent": 2.33,
+          "area_MH": 11627
+        },
+        "secondary_southern_candidate": {
+          "id": "CH_7",
+          "location": "S38W09",
+          "area_percent": 0.08,
+          "area_MH": 424
+        },
+        "equatorial_candidate": {
+          "id": "CH_2",
+          "location": "S12E16",
+          "area_percent": 0.77,
+          "area_MH": 3855
+        }
+      },
+      "noaa_suvi_snapshot": {
+        "product": "dn_suvi-l2-chbnd_g19_s20261112T235600Z_e20261113T000000Z_v2-0-0.nc",
+        "observed_utc": "2026-11-12T23:56:00Z",
+        "num_coronal_holes": 1,
+        "degraded_status": "False",
+        "holes": [
+          {
+            "id": 1,
+            "area_px2": 5096,
+            "north_deg": -11.5397,
+            "south_deg": -31.3263,
+            "east_deg": -26.3772,
+            "west_deg": 0.3842
+          }
+        ],
+        "interpretation": "NOAA SUVI boundary product is a separate snapshot and does not itself assign the SIDC event ID CH1411."
+      },
+      "forecast": {
+        "expected_arrival_window_utc": [
+          "2026-11-16",
+          "2026-11-17"
+        ],
+        "expected_conditions": "mostly quiet to active; small chance of G1",
+        "source": "Solen.info forecast updated 2026-11-13"
+      },
+      "notes": "CH1411 is the event-catalog identifier from Solen.info; SpaceWeatherLive CH_1/CH_7 are separate image-detection labels and are not assumed to be the same numbered feature.",
+      "sources": [
+        "https://www.solen.info/solar/coronal_holes.html",
+        "https://www.spaceweatherlive.com/en/solar-activity/coronal-holes.html",
+        "https://www.solen.info/solar/"
       ]
     }
   ]
