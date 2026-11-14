@@ -677,6 +677,7 @@ function updateAlerts(windRows,magRows,kpRows){
  list.textContent=rows.join("\n");
 }
 function updateQuality(windRows,cleaned,aceLatest,couplingCount){
+ aceLatest=aceLatest||window.__aceLatestQuality||null;
  const pairEl=$("qualityWindPair"),spikeEl=$("qualitySpikes"),gapEl=$("qualityGaps");
  const note=$("qualityNote");
  const paired=windRows.filter(r=>r.active===true&&timeOf(r)&&valid(r.proton_speed)&&valid(r.proton_density))
