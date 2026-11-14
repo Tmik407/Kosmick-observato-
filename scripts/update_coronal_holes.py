@@ -95,9 +95,11 @@ def main():
     rows=old.get("rows",[])
     if not any(x.get("product")==filename for x in rows): rows.append(current)
     rows=rows[-180:]
+    # Preserve curated event annotations across automatic NOAA archive refreshes.
+    events=old.get("events",[]) if isinstance(old,dict) else []
     payload={"source":"NOAA NCEI GOES-19 SUVI Level 2 Coronal Hole Boundaries",
              "updated_utc":datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
-             "latest":current,"rows":rows}
+             "latest":current,"rows":rows,"events":events}
     OUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     print(f"NOAA product {filename}: {current['num_coronal_holes']} holes; degraded_status={current['degraded_status']}")
 
