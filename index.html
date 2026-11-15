@@ -28,6 +28,33 @@ button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px
 <body><div class="wrap">
 <header><h1>🌍 Kosmická observatoř X-5</h1><div class="sub">Živé monitorování kosmického počasí · data NOAA SWPC</div></header>
 <div id="stav" class="status">Navazuji spojení s NOAA…</div>
+<section class="panel" id="guidePanel">
+ <h2>📘 Jak číst Kosmickou observatoř X-5</h2>
+ <p><strong>Jste tu poprvé?</strong> Observatoř sleduje kosmické počasí – proud částic ze Slunce a změny meziplanetárního magnetického pole. Níže najdete vysvětlení hlavních pojmů. Ne každý ukazatel je předpověď.</p>
+ <div class="grid">
+  <div><h3>☀️ Sluneční vítr</h3><p class="small">Proud nabitých částic ze Slunce. Rychlost uvádíme v km/s. Vyšší rychlost sama o sobě ještě neznamená geomagnetickou bouři.</p></div>
+  <div><h3>🧭 Bz – směr pole</h3><p class="small">Záporné (jižní) Bz může usnadnit přenos energie do zemské magnetosféry. Důležitá je velikost i doba trvání, nejen jeden odečet.</p></div>
+  <div><h3>💪 Bt – síla pole</h3><p class="small">Celková intenzita meziplanetárního magnetického pole v nT. Silnější pole může mít větší vliv, ale záleží také na orientaci Bz.</p></div>
+  <div><h3>🌍 Kp a Dst – odezva Země</h3><p class="small">Kp vyjadřuje geomagnetickou aktivitu na stupnici 0–9. Dst sleduje změny magnetického pole během bouří; výrazně zápornější Dst obvykle odpovídá silnější bouři.</p></div>
+  <div><h3>🛰️ ACE a L1</h3><p class="small">Sonda ACE měří sluneční vítr a magnetické pole v oblasti L1 mezi Zemí a Sluncem. Pomáhá odhadovat blížící se podmínky, neměří přímo stav magnetosféry u Země.</p></div>
+  <div><h3>☀️ GOES – rentgenové záření</h3><p class="small">GOES sleduje rentgenové záblesky Slunce. Třídy C, M a X označují rostoucí intenzitu; X je nejsilnější z těchto běžně používaných tříd.</p></div>
+ </div>
+ <h3>Jak rozumět barvám?</h3>
+ <ul>
+  <li><strong class="good">Zelená:</strong> data mají platnou hodnotu a časovou značku v nastaveném limitu. Neznamená to automaticky bezchybný přístroj.</li>
+  <li><strong class="warn">Oranžová:</strong> upozornění, zpoždění, neobvyklá hodnota nebo překročený orientační práh.</li>
+  <li><strong class="bad">Červená:</strong> neplatný údaj, výrazně zastaralá data nebo závažnější upozornění. Přečtěte si i vysvětlující text.</li>
+ </ul>
+ <h3>Malý slovníček</h3>
+ <p class="small"><strong>nT</strong> = nanotesla, jednotka magnetického pole · <strong>km/s</strong> = kilometry za sekundu · <strong>UTC</strong> = světový čas · <strong>IMF</strong> = meziplanetární magnetické pole · <strong>RTSW</strong> = data slunečního větru v reálném čase.</p>
+ <h3>Jak začít – tři kroky</h3>
+ <ol>
+  <li>Nejdříve zkontrolujte <a href="#sourceHealthPanel">stav a čerstvost dat</a>. Zastaralá nebo neplatná data nepoužívejte jako aktuální měření.</li>
+  <li>Podívejte se na <a href="#alertsPanel">automatická upozornění</a>. Upozornění označuje jev ke sledování, samo o sobě nepotvrzuje bouři.</li>
+  <li>Porovnejte <a href="#history24Panel">24hodinové grafy</a> a <a href="#cumulativePanel">souhrn vývoje</a>. Důležitý je průběh v čase, nejen jedna hodnota.</li>
+ </ol>
+ <p class="small"><strong>Důležité:</strong> Polární záři ani geomagnetickou bouři nelze spolehlivě určit z jediné hodnoty Bz, Bt nebo rychlosti větru. Sledujte společně sluneční vítr, magnetické pole, Kp, Dst, aktuálnost dat a jejich vývoj. Grafy a prahy X-5 jsou informační pomůcky, nikoli oficiální výstraha.</p>
+</section>
 <h2>Aktuální měření u L1</h2>
 <div class="grid">
  <section class="panel"><h2>Rychlost slunečního větru</h2><div id="speed" class="metric">—</div><div id="speedtime" class="small"></div></section>
