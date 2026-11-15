@@ -1,5 +1,5 @@
 {
-  "retrieved_utc": "2026-11-14T19:29:09.831717+00:00",
+  "retrieved_utc": "2026-11-15T19:57:13.505050+00:00",
   "source": "NASA GSFC Annual Meteorological Statistics, redistributed as open JSON by Observatoire des phénomènes naturels",
   "upstream": "https://acd-ext.gsfc.nasa.gov/Data_services/met/ann_data.html",
   "mirror": "https://observatory.lelama.digital/en/open-data",
@@ -9,29 +9,29 @@
     "u60_10hpa_60n": {
       "source_code": "nasa.u60n.10.daily",
       "unit": "m/s",
-      "rows": 17471,
+      "rows": 17472,
       "first_date": "1979-01-01",
-      "last_date": "2026-11-12",
-      "source_json_sha256": "011f5dcca0202b288d73ca5bb164b73536eb09d76a56d198a0fd7cc5cf86a1cd",
-      "csv_bytes": 365013
+      "last_date": "2026-11-13",
+      "source_json_sha256": "0619e2cbe98bf539fcff76c1bf55fa840add1214336c832094bb57353aa593dc",
+      "csv_bytes": 365033
     },
     "tcap_10hpa_60_90n": {
       "source_code": "nasa.t6090n.10.daily",
       "unit": "K",
-      "rows": 17471,
+      "rows": 17472,
       "first_date": "1979-01-01",
-      "last_date": "2026-11-12",
-      "source_json_sha256": "cff6450a665607be5d3ebce950be4794d8ef2f9c2451d3eab6dba1159f294f59",
-      "csv_bytes": 382337
+      "last_date": "2026-11-13",
+      "source_json_sha256": "cbe7c3c58de5061f009126caa2d996111dc1415e9a94e6ea155e2df8d3b9e0d1",
+      "csv_bytes": 382359
     },
     "wave_heat_flux_100hpa_45_75n": {
       "source_code": "nasa.vt4575n.100.daily",
       "unit": "K m/s",
-      "rows": 17471,
+      "rows": 17472,
       "first_date": "1979-01-01",
-      "last_date": "2026-11-12",
-      "source_json_sha256": "b15a86d97ec5df5b12c19486f2eb681fee082a40006c54219134127d28d7467e",
-      "csv_bytes": 353819
+      "last_date": "2026-11-13",
+      "source_json_sha256": "39dc8bc3e91ac93531a21edb8e32134a8302c8b617c729e87ccf1bee756bfcef",
+      "csv_bytes": 353839
     },
     "u60_10hpa_60n_ozonewatch": {
       "source": "https://ozonewatch.gsfc.nasa.gov/meteorology/figures/merra2/wind/u60n_10_2026_merra2.txt",
@@ -40,7 +40,7 @@
       "first_date": "2026-07-01",
       "last_date": "2026-12-31",
       "forecast_rows": 11,
-      "source_sha256": "35a84841ad392704e3e4e5f2e5817a0a9f29ac1a1f859834ab78caf140e1111a",
+      "source_sha256": "8e5dc76d519b665355a8e86057ca3a8f334321c7b8369e5bb6bece1d6f9b9dcb",
       "classification": "NASA_MERRA2_ANALYSIS_AND_GEOS_FP_FORECAST"
     },
     "u60_30hpa_60n_ozonewatch": {
@@ -50,7 +50,7 @@
       "first_date": "2026-07-01",
       "last_date": "2026-12-31",
       "forecast_rows": 11,
-      "source_sha256": "7bd5215baafa96e95affd192e629d166900dfbc78f9aebd86ba2fe8b467c1e18",
+      "source_sha256": "82bce86df85d12ad77fb91d3f3da7825cccd350bc0f56bc24203d4660501a8f4",
       "classification": "NASA_MERRA2_ANALYSIS_AND_GEOS_FP_FORECAST"
     },
     "u60_50hpa_60n_ozonewatch": {
@@ -60,7 +60,7 @@
       "first_date": "2026-07-01",
       "last_date": "2026-12-31",
       "forecast_rows": 11,
-      "source_sha256": "97a778082b01c949362265d8d858514f0e2f14a9a8bdd54341136599730cc74a",
+      "source_sha256": "86717dcc2fc85117e095f9b064af571638e1ea58d94ab91b452617f6e8c997dd",
       "classification": "NASA_MERRA2_ANALYSIS_AND_GEOS_FP_FORECAST"
     },
     "tcap_10hpa_60_90n_ozonewatch": {
@@ -70,7 +70,7 @@
       "first_date": "2026-07-01",
       "last_date": "2026-12-31",
       "forecast_rows": 11,
-      "source_sha256": "08bda31856b1d5af6b370d895c1b1014733c1257d07240069651f1a9780e67aa",
+      "source_sha256": "2c135f467040046f0ba938dfe55142dc4b0825a3611cae6b0461ad3dc6d12c91",
       "classification": "NASA_MERRA2_ANALYSIS_AND_GEOS_FP_FORECAST"
     },
     "tcap_30hpa_60_90n_ozonewatch": {
@@ -80,7 +80,7 @@
       "first_date": "2026-07-01",
       "last_date": "2026-12-31",
       "forecast_rows": 11,
-      "source_sha256": "07d9b3ab92bde1eb333391b12710eac159e9994315a2ab7ad2a75770e3024a87",
+      "source_sha256": "12b27b6c8144cb561c9b8783dfb02d37a559fcd25cf893d694aee630fed81ee8",
       "classification": "NASA_MERRA2_ANALYSIS_AND_GEOS_FP_FORECAST"
     },
     "tcap_50hpa_60_90n_ozonewatch": {
@@ -90,7 +90,7 @@
       "first_date": "2026-07-01",
       "last_date": "2026-12-31",
       "forecast_rows": 11,
-      "source_sha256": "b957d885468b5fe3ded1fbcdb647e2031d0040b3aa8b5d33cf5e2eb7d83fdd69",
+      "source_sha256": "51cfabe69a58ceebac73a62a227e3c01a6d64419c085c9d2f7f29542f57f165e",
       "classification": "NASA_MERRA2_ANALYSIS_AND_GEOS_FP_FORECAST"
     }
   }
