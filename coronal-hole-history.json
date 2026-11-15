@@ -1,22 +1,30 @@
 {
   "source": "NOAA NCEI GOES-19 SUVI Level 2 Coronal Hole Boundaries",
-  "updated_utc": "2026-11-15T06:41:43.594780Z",
+  "updated_utc": "2026-11-15T18:34:23.018862Z",
   "latest": {
     "source": "NOAA GOES-19 SUVI L2 CHBND",
-    "product": "dn_suvi-l2-chbnd_g19_s20261113T235600Z_e20261114T000000Z_v2-0-0.nc",
-    "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes19/l2/data/suvi-l2-chbnd/2026/11/13/dn_suvi-l2-chbnd_g19_s20261113T235600Z_e20261114T000000Z_v2-0-0.nc",
-    "observed_utc": "2026-11-13T23:56:00Z",
-    "retrieved_utc": "2026-11-15T06:41:43.594453Z",
-    "num_coronal_holes": 1,
+    "product": "dn_suvi-l2-chbnd_g19_s20261114T235600Z_e20261115T000000Z_v2-0-0.nc",
+    "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes19/l2/data/suvi-l2-chbnd/2026/11/14/dn_suvi-l2-chbnd_g19_s20261114T235600Z_e20261115T000000Z_v2-0-0.nc",
+    "observed_utc": "2026-11-14T23:56:00Z",
+    "retrieved_utc": "2026-11-15T18:34:23.018507Z",
+    "num_coronal_holes": 2,
     "degraded_status": "False",
     "holes": [
       {
         "id": 1,
-        "area_px2": 7928.5,
-        "north_deg": -11.399092674255371,
-        "south_deg": -34.64961624145508,
-        "east_deg": -14.226785659790039,
-        "west_deg": 14.232667922973633
+        "area_px2": 3283.5,
+        "north_deg": -41.9276237487793,
+        "south_deg": -64.61642456054688,
+        "east_deg": -71.66621398925781,
+        "west_deg": -26.155452728271484
+      },
+      {
+        "id": 2,
+        "area_px2": 6310.5,
+        "north_deg": -11.111809730529785,
+        "south_deg": -33.79998016357422,
+        "east_deg": 0.43369054794311523,
+        "west_deg": 26.604917526245117
       }
     ]
   },
@@ -56,6 +64,33 @@
           "south_deg": -34.64961624145508,
           "east_deg": -14.226785659790039,
           "west_deg": 14.232667922973633
+        }
+      ]
+    },
+    {
+      "source": "NOAA GOES-19 SUVI L2 CHBND",
+      "product": "dn_suvi-l2-chbnd_g19_s20261114T235600Z_e20261115T000000Z_v2-0-0.nc",
+      "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes19/l2/data/suvi-l2-chbnd/2026/11/14/dn_suvi-l2-chbnd_g19_s20261114T235600Z_e20261115T000000Z_v2-0-0.nc",
+      "observed_utc": "2026-11-14T23:56:00Z",
+      "retrieved_utc": "2026-11-15T18:34:23.018507Z",
+      "num_coronal_holes": 2,
+      "degraded_status": "False",
+      "holes": [
+        {
+          "id": 1,
+          "area_px2": 3283.5,
+          "north_deg": -41.9276237487793,
+          "south_deg": -64.61642456054688,
+          "east_deg": -71.66621398925781,
+          "west_deg": -26.155452728271484
+        },
+        {
+          "id": 2,
+          "area_px2": 6310.5,
+          "north_deg": -11.111809730529785,
+          "south_deg": -33.79998016357422,
+          "east_deg": 0.43369054794311523,
+          "west_deg": 26.604917526245117
         }
       ]
     }
