@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#081426">
+<meta name="description" content="Kosmická observatoř X-5 – živé sledování slunečního větru, magnetického pole Země, geomagnetické aktivity a polární záře.">
+<meta name="application-name" content="Kosmická observatoř X-5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icon.svg">
 <title>Kosmická observatoř X-5</title>
 <style>
 :root{color-scheme:dark}*{box-sizing:border-box}
@@ -23,10 +30,12 @@ img.space{width:100%;height:auto;display:block;border-radius:10px;background:#07
 .imagegrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
 a{color:#7bdcff}footer{text-align:center;color:#9eb2c9;font-size:12px;padding:20px}
 button{background:#24527a;color:white;border:1px solid #47749c;border-radius:8px;padding:9px 14px;font-weight:bold}
+.pwa-bar{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;margin:10px 0 14px}.pwa-bar button{cursor:pointer}.pwa-help{font-size:12px;color:#b9cbe0;text-align:center;margin:6px auto 14px;max-width:760px}.pwa-state{font-size:12px;color:#9ce5b5}.pwa-state.offline{color:#ffd08a}
 </style>
 </head>
 <body><div class="wrap">
 <header><h1>🌍 Kosmická observatoř X-5</h1><div class="sub">Živé monitorování kosmického počasí · data NOAA SWPC</div></header>
+<div class="pwa-bar"><button id="pwaInstall" type="button" hidden>＋ Nainstalovat aplikaci</button><span id="pwaState" class="pwa-state">Připravuji aplikaci…</span></div><p id="pwaHelp" class="pwa-help">Aplikaci lze přidat na plochu telefonu přes nabídku prohlížeče: „Instalovat aplikaci“ nebo „Přidat na plochu“.</p>
 <div id="stav" class="status">Navazuji spojení s NOAA…</div>
 <section class="panel" id="guidePanel">
  <h2>📘 Jak číst Kosmickou observatoř X-5</h2>
@@ -2477,6 +2486,44 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
   }catch(e){put("ch1411Assessment","Analýza zatím není dostupná: "+e.message);}
  }
  load();setInterval(()=>{if(!document.hidden)load()},5*60*1000);
+})();
+</script>
+<script>
+(function(){
+ const installBtn=document.getElementById("pwaInstall");
+ const state=document.getElementById("pwaState");
+ const help=document.getElementById("pwaHelp");
+ let installPrompt=null;
+ function networkState(){
+  const offline=!navigator.onLine;
+  state.textContent=offline?"Offline režim · zobrazuji uloženou aplikaci":"Online · živá data se načítají ze zdrojů";
+  state.classList.toggle("offline",offline);
+ }
+ window.addEventListener("online",networkState);
+ window.addEventListener("offline",networkState);
+ networkState();
+ window.addEventListener("beforeinstallprompt",event=>{
+  event.preventDefault();installPrompt=event;installBtn.hidden=false;
+ });
+ installBtn.addEventListener("click",async()=>{
+  if(!installPrompt){
+   help.textContent="V nabídce prohlížeče zvolte „Instalovat aplikaci“ nebo „Přidat na plochu“. Na iPhonu použijte Sdílet → Přidat na plochu.";
+   return;
+  }
+  installPrompt.prompt();
+  await installPrompt.userChoice;
+  installPrompt=null;installBtn.hidden=true;
+ });
+ window.addEventListener("appinstalled",()=>{
+  installBtn.hidden=true;state.textContent="Aplikace X-5 je nainstalována";
+ });
+ if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{
+   navigator.serviceWorker.register("./sw.js",{scope:"./"})
+    .then(()=>{state.dataset.sw="ready";if(navigator.onLine)state.textContent="Online · aplikace připravena k instalaci"})
+    .catch(()=>{state.dataset.sw="error";state.textContent="Online · offline ukládání se nepodařilo zapnout"});
+  });
+ }
 })();
 </script>
 </body></html>
