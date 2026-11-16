@@ -17,7 +17,7 @@ self.addEventListener("fetch",event=>{
    if(response&&response.ok){const copy=response.clone();caches.open(CACHE_NAME).then(cache=>cache.put("./index.html",copy));}
    return response;
   }).catch(async()=>{
-   const cached=await caches.match("./index.html");
+   const cached=await caches.match("./index.html")||await caches.match("./");
    return cached||await caches.match("./offline.html");
   }));
   return;
