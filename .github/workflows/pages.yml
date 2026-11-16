@@ -48,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$SITE_URL"
-          for path in index.html polarni-vir.html ch1411-impact.json space-weather-history.json coronal-hole-history.json giro-status.json irtam-density.json aurora-history.json bfo-bdv-quality-2026-11-01.json; do
+          for path in index.html polarni-vir.html ch1411-impact.json space-weather-history.json coronal-hole-history.json giro-status.json irtam-density.json aurora-history.json bfo-bdv-quality-2026-11-01.json manifest.webmanifest sw.js offline.html icon.svg; do
             ok=0
             for attempt in $(seq 1 12); do
               code=$(curl --silent --show-error --location --output "/tmp/x5-check" --write-out "%{http_code}" "$SITE_URL$path" || true)
@@ -63,7 +63,7 @@ jobs:
               exit 1
             fi
             case "$path" in
-              *.json) python -c 'import json,sys; json.load(open(sys.argv[1], encoding="utf-8"))' /tmp/x5-check ;;
+              *.json|*.webmanifest) python -c 'import json,sys; json.load(open(sys.argv[1], encoding="utf-8"))' /tmp/x5-check ;;
             esac
             echo "OK: $path"
           done
@@ -72,4 +72,8 @@ jobs:
           grep -q 'ch1411ImpactPanel' /tmp/x5-index.html
           grep -q 'historyQualityPanel' /tmp/x5-index.html
           grep -q 'loadHistoryQuality' /tmp/x5-index.html
+          grep -q 'manifest.webmanifest' /tmp/x5-index.html
+          grep -q 'serviceWorker.register' /tmp/x5-index.html
+          grep -q 'beforeinstallprompt' /tmp/x5-index.html
+          echo "PWA manifest, service worker, offline stránka a instalační rozhraní ověřeny."
           echo "Smoke test X-5 dokončen."
