@@ -49,12 +49,22 @@ function draw(){
 async function load(){
  if(busy)return;busy=true;stop();status('Stahuji hodinová pole GFS pro hladiny 10, 30 a 50 hPa…');
  try{
-  const lat=points.map(p=>p.lat).join(','),lon=points.map(p=>p.lon).join(',');
+  // Open-Meteo obsluhuje více souřadnic, ale velké dávky mohou být odmítnuty.
+  // Menší dávky zkracují URL a umožňují přesně určit problematickou odpověď.
+  const batchSize=8;
   const results=await Promise.all(levels.map(async lev=>{
-   const url='https://api.open-meteo.com/v1/gfs?latitude='+lat+'&longitude='+lon+'&hourly='+keys(lev).join(',')+'&forecast_days=2&timezone=GMT';
-   const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error('GFS '+lev+' hPa HTTP '+r.status);
-   const raw=await r.json(),rows=Array.isArray(raw)?raw:[raw];if(rows.length!==points.length||!rows[0]?.hourly?.time)throw Error('Neúplná síť na '+lev+' hPa');
-   return {lev,rows,times:rows[0].hourly.time};
+   const batches=[];
+   for(let i=0;i<points.length;i+=batchSize)batches.push(points.slice(i,i+batchSize));
+   const parts=await Promise.all(batches.map(async batch=>{
+    const lat=batch.map(p=>p.lat).join(','),lon=batch.map(p=>p.lon).join(',');
+    const url='https://api.open-meteo.com/v1/gfs?latitude='+encodeURIComponent(lat)+'&longitude='+encodeURIComponent(lon)+'&hourly='+encodeURIComponent(keys(lev).join(','))+'&forecast_days=2&timezone=GMT';
+    const r=await fetch(url,{cache:'no-store'});
+    if(!r.ok){let detail='';try{const e=await r.json();detail=e.reason||e.message||JSON.stringify(e);}catch(_){detail=(await r.text()).slice(0,240);}throw Error('GFS '+lev+' hPa HTTP '+r.status+(detail?' · '+detail:''));}
+    const raw=await r.json(),rows=Array.isArray(raw)?raw:[raw];
+    if(rows.length!==batch.length||!rows[0]?.hourly?.time)throw Error('Neúplná dávka GFS '+lev+' hPa ('+rows.length+'/'+batch.length+' bodů).');
+    return rows;
+   }));
+   const rows=parts.flat();return {lev,rows,times:rows[0]?.hourly?.time||[]};
   }));
   const base=results[0].times;if(results.some(x=>x.times.length!==base.length||x.times.some((t,i)=>t!==base[i])))throw Error('Časové osy hladin se neshodují; společná animace není bezpečná.');
   data={};results.forEach(x=>data[x.lev]=x);times=base;idx=0;
