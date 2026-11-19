@@ -66,7 +66,7 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
 <div><div class="unit">Teplota polární oblasti · 10 hPa (°C)</div><div class="metric" id="temp">—</div><div class="muted">Denní průměr polární oblasti</div></div>
 <div><div class="unit">Nejnižší teplota · 50 hPa</div><div class="metric" id="tmin">—</div><div class="muted">Minimální teplota bude doplněna, pokud ji zdroj poskytne</div></div>
 <div><div class="unit">Diagnostický stav</div><div class="metric" id="state">Čeká na data</div><div class="muted">Vyhodnocení podle posledního dostupného U60</div></div>
-</div><p class="muted" id="metricSource">Zdroj a čas posledního záznamu se načtou z datového archivu. ERA5 je reanalýza, nikoli přímé měření v atmosféře.</p></section>
+</div><p class="muted" id="metricSource">Zdroj a čas posledního záznamu se načtou z datového archivu. ERA5 je reanalýza, nikoli přímé měření v atmosféře.</p><div id="nasaCurrentDiagnostics" class="status" role="status" aria-live="polite">Načítám společnou diagnostiku NASA Ozone Watch pro 10 / 30 / 50 hPa…</div></section>
 <section class="panel" id="polar3dModel">
 <h2>3D vertikální model polárního víru · 10 / 30 / 50 hPa</h2>
 <p class="muted">Prostorové zobrazení propojuje tři tlakové hladiny z numerického modelu NOAA GFS. Barva plochy vyjadřuje teplotu, svislé spojnice propojují odpovídající vzorkovací body. Data jsou vzorkovaná v bodech a plocha mezi nimi je interpolovaná; nejde o nativní plné rozlišení GFS ani o přímé měření.</p>
@@ -553,7 +553,18 @@ setInterval(refreshX5Infographic,30*60*1000);
  async function loadNasa(){
   const levels=[10,30,50];
   try{
-   const series=await Promise.all(levels.map(async l=>{const [u,t]=await Promise.all([csv('./data/nasa-gsfc/u60_'+l+'hpa_60n_ozonewatch.csv'),csv('./data/nasa-gsfc/tcap_'+l+'hpa_60_90n_ozonewatch.csv')]);return {l,u:u.filter(x=>num(x.forecast_hour)===0&&num(x.u60_ms)!==null),t:t.filter(x=>num(x.forecast_hour)===0&&num(x.temp_k)!==null)};}));
+   const series=await Promise.all(levels.map(async l=>{const [u,t]=await Promise.all([csv('./data/nasa-gsfc/u60_'+l+'hpa_60n_ozonewatch.csv'),csv('./data/nasa-gsfc/tcap_'+l+'hpa_60_90n_ozonewatch.csv')]);return {l,u:u.filter(x=>num(x.forecast_hour)===0&&num(x.u60_ms)!==null&&num(x.u60_ms)>-9000),t:t.filter(x=>num(x.forecast_hour)===0&&num(x.temp_k)!==null&&num(x.temp_k)>-9000)};}));
+   const diagRows=series.map(q=>{const u=q.u[q.u.length-1],t=q.t[q.t.length-1];return {level:q.l,u:u?num(u.u60_ms):null,ud:u?.date||null,temp:t?num(t.temp_k)-273.15:null,td:t?.date||null};});
+   const commonDates=diagRows.map(x=>x.ud&&x.td&&x.ud===x.td?x.ud:null).filter(Boolean);
+   const diagDate=commonDates.length?commonDates.sort().slice(-1)[0]:null;
+   const fmtDiag=v=>Number.isFinite(v)?v.toFixed(2).replace('.',','):'—';
+   const diagHtml=diagRows.map(x=>'<tr><td>'+x.level+' hPa</td><td>'+fmtDiag(x.u)+' m/s</td><td>'+fmtDiag(x.temp)+' °C</td><td>'+((x.ud===x.td&&x.ud)||'rozdílné datum')+'</td></tr>').join('');
+   const diag=$('nasaCurrentDiagnostics');
+   if(diag){
+    const all=diagRows.length===3&&diagRows.every(x=>Number.isFinite(x.u)&&Number.isFinite(x.temp)&&x.ud===x.td);
+    const neg=diagRows.filter(x=>Number.isFinite(x.u)&&x.u<0).map(x=>x.level+' hPa');
+    diag.innerHTML='<b>'+(all?'NASA Ozone Watch · společná diagnostika 10 / 30 / 50 hPa':'NASA Ozone Watch · neúplná data')+'</b><div style="overflow-x:auto"><table><thead><tr><th>Hladina</th><th>U60 · 60° N</th><th>Teplota oblasti</th><th>Datum analýzy</th></tr></thead><tbody>'+diagHtml+'</tbody></table></div><p class="muted">'+(diagDate?'Společné datum: '+diagDate+'. ':'Data nejsou ve všech sloupcích ze stejného dne. ')+(neg.length?'Záporný U60: '+neg.join(', ')+'. ':'U60 je na všech dostupných hladinách kladný. ')+'Záporný U60 na jedné hladině sám o sobě nepotvrzuje náhlé stratosférické oteplení (SSW). Zdroj: NASA Ozone Watch; analýza, nikoli přímé měření.</p>';
+   }
    const [mirrorU,mirrorT,mirrorW]=await Promise.all([
     csv('./data/nasa-gsfc/u60_10hpa_60n.csv'),
     csv('./data/nasa-gsfc/tcap_10hpa_60_90n.csv'),
