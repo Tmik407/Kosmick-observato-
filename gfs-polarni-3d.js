@@ -24,7 +24,9 @@ function draw(){
  // polar reference grid
  g.strokeStyle='rgba(139,190,220,.30)';g.lineWidth=1.2;
  for(const lat of [60,70,80]){g.beginPath();for(let j=0;j<=72;j++){const p=project(lat,j*5, 0,cx,cy,scale);if(j===0)g.moveTo(p.x,p.y);else g.lineTo(p.x,p.y);}g.stroke();}
- const zBy={10:190,30:0,50:-190},faces=[],temps=[];\n const zonal={10:levelZonalWind(10),30:levelZonalWind(30),50:levelZonalWind(50)},twist={};\n for(const lev of levels)twist[lev]=Number.isFinite(zonal[lev])?Math.max(-28,Math.min(28,zonal[lev]*.55)):0;
+ const zBy={10:190,30:0,50:-190},faces=[],temps=[];
+ const zonal={10:levelZonalWind(10),30:levelZonalWind(30),50:levelZonalWind(50)},twist={};
+ for(const lev of levels)twist[lev]=Number.isFinite(zonal[lev])?Math.max(-28,Math.min(28,zonal[lev]*.55)):0;
  for(const lev of levels){for(let p=0;p<points.length;p++){const t=value(lev,p,keys(lev)[0]);if(Number.isFinite(t))temps.push(t);}}
  if(!temps.length){g.fillStyle='#e6f4ff';g.font='22px Arial';g.fillText('Čekám na tři hladiny NOAA GFS…',40,55);return;}
  const min=Math.min(...temps),max=Math.max(...temps);
