@@ -9,6 +9,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+concurrency:
+  group: irtam-density
+  cancel-in-progress: false
 jobs:
   build-irtam:
     runs-on: ubuntu-latest
