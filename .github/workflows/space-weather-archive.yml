@@ -19,6 +19,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Aktualizovat archiv NOAA
         run: python scripts/update_space_weather_archive.py
       - name: Uložit archiv bezpečně proti souběžným změnám
