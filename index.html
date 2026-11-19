@@ -381,7 +381,7 @@ function newest(rows,keys,activeOnly=false){
 }
 function ageMinutes(row){const t=row?Date.parse(timeOf(row)):NaN;return Number.isFinite(t)?(Date.now()-t)/60000:Infinity}
 function setMetric(id,v,unit,did,stamp,maxAge=Infinity){$(id).textContent=v===null?"Nedostupné":v.toFixed(id==="speed"?0:2)+" "+unit;const age=stamp?ageMinutes({time_tag:stamp}):Infinity;$(did).textContent=stamp?"Měření: "+stamp.replace("T"," ")+" UTC"+(age>maxAge?" · ZASTARALÉ ("+age.toFixed(0)+" min)":""):"Čas měření není dostupný"}
-async function get(url){const r=await fetch(url,{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);return r.json()}
+async function get(url){const separator=url.includes("?")?"&":"?";const freshUrl=url+separator+"_x5="+Date.now();const r=await fetch(freshUrl,{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);return r.json()}
 async function getXrayData(){
  const urls=[
   U.xray,
