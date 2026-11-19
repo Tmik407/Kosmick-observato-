@@ -423,15 +423,26 @@ function newestForDisplay(liveRows,archiveRows,fields){
  return live;
 }
 function markArchiveFallback(fallback){
- const specs=[["Wind","wind","RTSW vítr"],["Mag","mag","RTSW magnetické pole"],["Kp","kp","planetární Kp"]];
- for(const [key,kind,label] of specs){
+ const specs=[
+  ["Wind","wind","RTSW vítr",15,15],
+  ["Mag","mag","RTSW magnetické pole",5,15],
+  ["Kp","kp","planetární Kp",240,480]
+ ];
+ const notes=[];
+ for(const [key,kind,label,warnLimit,staleLimit] of specs){
   const row=fallback[kind];if(!row)continue;
   const state=$("src"+key+"State"),meta=$("src"+key+"Meta");
-  if(state){state.textContent="ARCHIVNÍ ZÁLOHA";state.className="metric warn";}
-  if(meta)meta.textContent+=" · Zobrazen novější archivní vzorek "+timeOf(row).replace("T"," ")+" UTC; živý zdroj NOAA zůstává označen jako zastaralý. Archiv aktualizován "+(fallback.updated||"čas neuveden")+".";
+  const age=(Date.now()-Date.parse(timeOf(row)))/60000;
+  const ageText=Number.isFinite(age)?age.toFixed(1)+" min":"neznámé";
+  const stale=age>staleLimit,delayed=age>warnLimit;
+  const status=stale?"ARCHIVNÍ · ZASTARALÁ DATA":delayed?"ARCHIVNÍ · ZPOŽDĚNÍ":"ARCHIVNÍ ZÁLOHA";
+  const cls=stale?"bad":delayed?"warn":"warn";
+  if(state){state.textContent=status;state.className="metric "+cls;}
+  if(meta)meta.textContent+=" · Zobrazen novější archivní vzorek "+timeOf(row).replace("T"," ")+" UTC; jeho stáří "+ageText+". "+(stale?"I archivní vzorek překračuje limit zastarání.":delayed?"Archivní vzorek překračuje varovný limit.":"Archivní vzorek je v nastaveném limitu.")+" Živý zdroj NOAA zůstává označen jako zastaralý. Archiv aktualizován "+(fallback.updated||"čas neuveden")+".";
+  notes.push(label+": "+status.toLowerCase()+" ("+ageText+")");
  }
  const summary=$("sourceHealthSummary");
- if(summary)summary.textContent+=" Archivní záloha se používá pouze pro zobrazení hodnot a grafů; výpočty rizika, výstrah a časového párování nadále používají živé vzorky.";
+ if(summary&&notes.length)summary.textContent+=" Archivní záloha: "+notes.join(" · ")+". Archivní vzorky jsou pouze náhradou pro zobrazení hodnot a grafů; výpočty rizika, výstrah a časového párování nadále používají živé vzorky.";
 }
 function draw(id,series,log=false){
  const c=$(id),ctx=c.getContext("2d"),w=c.width,h=c.height,p=35;
