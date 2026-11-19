@@ -10,7 +10,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: irtam-density
+  group: repository-main-writes
   cancel-in-progress: false
 jobs:
   build-irtam:
