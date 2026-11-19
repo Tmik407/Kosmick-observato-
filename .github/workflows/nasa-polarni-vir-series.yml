@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: polar-vortex-nasa-series
+  group: repository-main-writes
   cancel-in-progress: false
 
 jobs:
@@ -118,11 +118,22 @@ jobs:
           (root / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
           print(json.dumps(meta, ensure_ascii=False, indent=2))
           # Direct NASA Ozone Watch daily U60 series: 10, 30 and 50 hPa.
-          import urllib.request
+          import urllib.request, time
+          from urllib.error import URLError
+          def nasa_open(req, timeout=45, attempts=5):
+              last = None
+              for attempt in range(attempts):
+                  try:
+                      return urllib.request.urlopen(req, timeout=timeout)
+                  except (URLError, TimeoutError, OSError) as exc:
+                      last = exc
+                      if attempt + 1 < attempts:
+                          time.sleep(8 * (attempt + 1))
+              raise last
           for level in (10, 30, 50):
               url = f"https://ozonewatch.gsfc.nasa.gov/meteorology/figures/merra2/wind/u60n_{level}_2026_merra2.txt"
               req = urllib.request.Request(url, headers={"User-Agent": "X5-polar-vortex-observatory/1.0"})
-              with urllib.request.urlopen(req, timeout=45) as response:
+              with nasa_open(req, timeout=60) as response:
                   raw = response.read()
               if len(raw) < 1000 or b"60N Zonal Mean Zonal Wind" not in raw[:1000]:
                   raise SystemExit(f"NASA Ozone Watch {level} hPa: unexpected response")
