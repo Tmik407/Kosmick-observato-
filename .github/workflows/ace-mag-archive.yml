@@ -56,5 +56,15 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cp ace-mag-archive.json /tmp/ace-mag-archive.json
+          git restore -- ace-mag-archive.json
+          git pull --rebase origin main
+          cp /tmp/ace-mag-archive.json ace-mag-archive.json
           git add ace-mag-archive.json
-          git diff --cached --quiet || (git commit -m "Aktualizace archivu ACE MAG" && git push)
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Aktualizace archivu ACE MAG"
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then exit 0; fi
+            git pull --rebase origin main
+          done
+          exit 1
