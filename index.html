@@ -1300,6 +1300,14 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  <div class="small">Vysvětlení: OVATION poskytuje krátkodobou předpověď polohy a intenzity polární záře, obvykle 30–90 minut dopředu. Zobrazená procenta jsou modelový odhad, nikoli jistota pozorování. Kp, rychlost slunečního větru, Bz a GOES tok jsou samostatné kontextové ukazatele; nenahrazují OVATION.</div>
  <p><a href="https://services.swpc.noaa.gov/json/ovation_aurora_latest.json" target="_blank" rel="noopener">Data NOAA OVATION</a> · <a href="https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json" target="_blank" rel="noopener">Kp</a> · <a href="https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json" target="_blank" rel="noopener">IMF RTSW</a> · <a href="https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json" target="_blank" rel="noopener">Sluneční vítr RTSW</a> · <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noopener">Metodika NOAA</a></p>
 </section>
+<section class="panel" id="sourceFreshnessPanel">
+ <h2>Diagnostika aktuálnosti zdrojů · X-5</h2>
+ <div class="small">U každého archivu se odděluje čas zdrojového měření, čas stažení a stáří dat při kontrole. Upozornění neznamená chybu vědeckého výpočtu; pouze označuje stáří nebo nedostupnost zdroje.</div>
+ <div id="sourceFreshnessRows" class="grid" style="margin-top:10px">
+  <div class="status">Načítám časové údaje archivů…</div>
+ </div>
+ <div id="sourceFreshnessChecked" class="small" style="margin-top:8px">Kontrola zatím neproběhla.</div>
+</section>
 <section class="panel" id="spaceWeatherArchivePanel">
  <h2>Historický archiv kosmického počasí X-5 · NOAA</h2>
  <div class="grid">
@@ -2524,6 +2532,52 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
     .catch(()=>{state.dataset.sw="error";state.textContent="Online · offline ukládání se nepodařilo zapnout"});
   });
  }
+})();
+</script>
+<script>
+(async function(){
+ const root=document.getElementById("sourceFreshnessRows");
+ const checked=document.getElementById("sourceFreshnessChecked");
+ if(!root)return;
+ const fmt=v=>{const n=Date.parse(v||"");return Number.isFinite(n)?new Date(n).toISOString().replace("T"," ").slice(0,19)+" UTC":"čas neuveden"};
+ const ageText=ms=>!Number.isFinite(ms)?"neznámé":ms<0?"čas v budoucnosti":ms<3600000?Math.round(ms/60000)+" min":ms<86400000?(ms/3600000).toFixed(1)+" h":(ms/86400000).toFixed(1)+" dne";
+ function card(name,measurement,retrieved,limitMinutes,extra){
+  const now=Date.now(),t=Date.parse(measurement||""),f=Date.parse(retrieved||""),age=Number.isFinite(t)?now-t:NaN;
+  const stale=!Number.isFinite(age)||age>limitMinutes*60000;
+  const state=stale?"ZPOŽDĚNÁ / NEZNÁMÁ DATA":"V LIMITU";
+  const color=stale?"#ffb35c":"#74dfad";
+  return '<div style="padding:11px;border:1px solid #315674;border-radius:9px;background:#081a2c;min-width:0">'+
+   '<strong>'+name+'</strong><div style="font-weight:700;color:'+color+';margin-top:5px">'+state+'</div>'+
+   '<div class="small" style="margin-top:6px">Poslední měření: '+fmt(measurement)+'</div>'+
+   '<div class="small">Načteno: '+fmt(retrieved)+'</div>'+
+   '<div class="small">Skutečné stáří: '+ageText(age)+' · limit '+limitMinutes+' min</div>'+
+   (extra?'<div class="small">'+extra+'</div>':'')+'</div>';
+ }
+ async function load(){
+  const tasks=await Promise.allSettled([
+   fetch("./space-weather-history.json?ts="+Date.now(),{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("NOAA archive HTTP "+r.status);return r.json()}),
+   fetch("./irtam-status.json?ts="+Date.now(),{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("IRTAM status HTTP "+r.status);return r.json()})
+  ]);
+  const cards=[];
+  if(tasks[0].status==="fulfilled"){
+   const d=tasks[0].value,ss=d.source_status||{};
+   for(const [key,label,limit] of [["wind","NOAA · sluneční vítr",10],["mag","NOAA · IMF",10],["kp","NOAA · Kp",240]]){
+    const x=ss[key]||{};
+    cards.push(card(label,x.last_measurement_utc,x.fetched_utc||d.fetched_utc||d.updated_utc,x.freshness_limit_minutes||limit,
+      x.status==="stale_or_missing"?"Zdroj byl při stažení již opožděný.":""));
+   }
+  }else cards.push('<div class="status bad">Archiv NOAA nedostupný: '+tasks[0].reason.message+'</div>');
+  if(tasks[1].status==="fulfilled"){
+   const d=tasks[1].value,ageLimit=72*60;
+   cards.push(card("IRTAM · GAMBIT",d.actual_model_target_utc||d.requested_target_utc,d.generated_utc||d.checked_utc,ageLimit,
+     d.status==="failed"?"Poslední výpočet selhal; předchozí modelový soubor zůstal zachován. "+(d.error||""):
+     d.status==="success_with_older_epoch"?"Použit starší dostupný modelový epoch. Počet dnů zpět: "+d.coefficient_fallback_days:
+     "Stav výpočtu: "+(d.status||"neuveden")));
+  }else cards.push('<div class="status">IRTAM status zatím není k dispozici. Po prvním běhu se zobrazí podrobnosti.</div>');
+  root.innerHTML=cards.join("");
+  checked.textContent="Poslední kontrola: "+new Date().toISOString().replace("T"," ").slice(0,19)+" UTC. Stáří se počítá z času měření/modelové epochy, nikoli z času načtení stránky.";
+ }
+ load();setInterval(()=>{if(!document.hidden)load()},5*60*1000);
 })();
 </script>
 </body></html>
