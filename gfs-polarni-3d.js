@@ -36,8 +36,45 @@ function shapeAt(lat,lon,level){
  const direction=Number.isFinite(dr)?dr*Math.PI/180:0;
  const flowShape=localSpeed*Math.cos(2*(lon*Math.PI/180-direction));
  const ellipse=Math.max(.84,Math.min(1.16,1+flowShape*.075+heightAnomaly*.055));
- const spiral=Number.isFinite(wind.u)?Math.max(-18,Math.min(18,wind.u*.22)):0;
+ const localTurn=Number.isFinite(sp)&&Number.isFinite(dr)?Math.max(-12,Math.min(12,(sp/70)*Math.sin((dr-lon)*Math.PI/180)*9)):0;
+ const spiral=(Number.isFinite(wind.u)?Math.max(-18,Math.min(18,wind.u*.22)):0)+localTurn;
  return shapeCache[cacheKey]={ellipse,spiral};
+}
+function levelDiagnostics(level){
+ const gh=points.map((_,p)=>value(level,p,keys(level)[1])).filter(Number.isFinite);
+ const sp=points.map((_,p)=>value(level,p,keys(level)[2])).filter(Number.isFinite);
+ const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+ const avg=mean(gh),spread=gh.length?Math.sqrt(mean(gh.map(x=>(x-avg)**2))):null;
+ const min=gh.length?Math.min(...gh):null,max=gh.length?Math.max(...gh):null;
+ return {heightMean:avg,heightSpread:spread,heightRange:min!==null?max-min:null,windMean:mean(sp)};
+}
+function nearestWind(level,lat,lon){
+ let best=0,dist=Infinity;
+ points.forEach((p,i)=>{const d=(p.lat-lat)**2+((((p.lon-lon)+540)%360)-180)**2*Math.max(.15,Math.cos(lat*Math.PI/180))**2;if(d<dist){dist=d;best=i;}});
+ const sp=value(level,best,keys(level)[2]),dr=value(level,best,keys(level)[3]);
+ if(!Number.isFinite(sp)||!Number.isFinite(dr))return null;
+ const a=dr*Math.PI/180;
+ return {u:-sp*Math.sin(a),v:-sp*Math.cos(a)};
+}
+function drawStreamlines(g,level,cx,cy,scale,twist){
+ // Diagnostické proudnice: numerická integrace interpolovaného větru
+ // z nejbližšího dostupného GFS vzorku; nejde o trajektorie částic.
+ const seeds=[[-150,66],[-105,72],[-60,78],[-15,84],[30,66],[75,72],[120,78],[165,84]];
+ g.save();g.strokeStyle='rgba(255,255,255,.34)';g.lineWidth=1.15;
+ for(const seed of seeds){
+  let lon=seed[0],lat=seed[1];g.beginPath();let started=false;
+  for(let step=0;step<15;step++){
+   if(lat<60||lat>89)break;
+   const p=shapedProject(lat,lon+twist,level,cx,cy,scale);
+   if(!started){g.moveTo(p.x,p.y);started=true;}else g.lineTo(p.x,p.y);
+   const w=nearestWind(level,lat,lon);if(!w)break;
+   const dt=1500,cos=Math.max(.2,Math.cos(lat*Math.PI/180));
+   lat+=w.v*dt/111000;
+   lon+=w.u*dt/(111000*cos);
+  }
+  if(started)g.stroke();
+ }
+ g.restore();
 }
 function shapedProject(lat,lon,level,cx,cy,scale){
  const sh=shapeAt(lat,lon,level),a=lon+sh.spiral;
@@ -120,6 +157,8 @@ function draw(){
   }
   g.beginPath();path.forEach((q,i)=>i?g.lineTo(q.x,q.y):g.moveTo(q.x,q.y));g.strokeStyle='rgba(245,250,255,.46)';g.lineWidth=1.35;g.stroke();
  }
+ // Proudnice jsou vykresleny pod vzorkovacími body.
+ for(const lev of levels)drawStreamlines(g,lev,cx,cy,scale,twist[lev]);
  // wind vectors and node dots, upper layers drawn last
  for(const lev of [50,30,10])for(let p=0;p<points.length;p++){
   const q=shapedProject(points[p].lat,points[p].lon+twist[lev],lev,cx,cy,scale),sp=value(lev,p,keys(lev)[2]),dr=value(lev,p,keys(lev)[3]);
@@ -129,7 +168,9 @@ function draw(){
  g.fillStyle='#eaf6ff';g.font='bold 22px Arial';g.fillText('3D POLÁRNÍ STRATOSFÉRA · NOAA GFS',28,36);
  g.font='bold 18px Arial';g.fillStyle='#63c9ff';g.fillText('10 hPa',cx+270,cy-145);g.fillStyle='#ffd166';g.fillText('30 hPa',cx+270,cy+5);g.fillStyle='#c6a0ff';g.fillText('50 hPa',cx+270,cy+155);
  g.font='13px Arial';g.fillStyle='#d4e8f6';g.fillText('Dynamická spirála a eliptická deformace · barva = teplota · šipky = vítr',28,h-42);
+ const d10=levelDiagnostics(10),d30=levelDiagnostics(30),d50=levelDiagnostics(50);
  g.fillText('U zonální (m/s): 10 hPa '+(zonal[10]?.toFixed(1)??'—')+' · 30 hPa '+(zonal[30]?.toFixed(1)??'—')+' · 50 hPa '+(zonal[50]?.toFixed(1)??'—')+' · '+(times[idx]||'').replace('T',' ')+' UTC',28,h-20);
+ g.fillText('Rozptyl geopotenciální výšky (m): 10 hPa '+(d10.heightSpread?.toFixed(0)??'—')+' · 30 hPa '+(d30.heightSpread?.toFixed(0)??'—')+' · 50 hPa '+(d50.heightSpread?.toFixed(0)??'—'),28,h-4);
  for(const lev of levels){const vals=points.map((_,p)=>value(lev,p,keys(lev)[0])).filter(Number.isFinite),el=$('p3d'+lev);if(el)el.textContent=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1)+' °C':'—';}
 }
 async function load(){
