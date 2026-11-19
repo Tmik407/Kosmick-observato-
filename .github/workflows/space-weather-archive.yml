@@ -11,7 +11,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: space-weather-archive
+  group: repository-main-writes
   cancel-in-progress: false
 jobs:
   archive:
