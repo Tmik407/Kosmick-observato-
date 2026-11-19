@@ -84,28 +84,25 @@ def main():
  try: old=parse_archive(OUT.read_text(encoding="utf-8"))
  except OSError: old={}
  old_rows=[r for r in old.get("rows",[]) if isinstance(r,dict) and r.get("t")]
- # If a previous archive version had trailing non-JSON bytes, recover its
- # valid JSON prefix from the parent commit and merge its 90-day history.
+ # Search recent archive revisions, not just HEAD^: a bad run may already
+ # have committed a shortened archive after the last complete historical copy.
  try:
-  previous=subprocess.check_output(["git","show","HEAD^:space-weather-history.json"],stderr=subprocess.DEVNULL,text=True)
-  recovered=parse_archive(previous)
-  recovered_rows=[r for r in recovered.get("rows",[]) if isinstance(r,dict) and r.get("t")]
-  if len(recovered_rows)>len(old_rows):
-   print(f"Recovered historical archive rows from parent commit: {len(recovered_rows)}")
-   old_rows.extend(recovered_rows)
+  revisions=subprocess.check_output(["git","log","-n","20","--format=%H","--","space-weather-history.json"],stderr=subprocess.DEVNULL,text=True).splitlines()
+  best_rows=list(old_rows)
+  for revision in revisions:
+   try:
+    raw=subprocess.check_output(["git","show",f"{revision}:space-weather-history.json"],stderr=subprocess.DEVNULL,text=True)
+    candidate=parse_archive(raw)
+    candidate_rows=[r for r in candidate.get("rows",[]) if isinstance(r,dict) and r.get("t")]
+    if len(candidate_rows)>len(best_rows):
+     best_rows=candidate_rows
+   except (subprocess.CalledProcessError, OSError):
+    continue
+  if len(best_rows)>len(old_rows):
+   print(f"Recovered historical archive rows from Git history: {len(best_rows)}")
+   old_rows=best_rows
  except (subprocess.CalledProcessError, OSError):
   pass
- rows=[]
- for w in wind:
-  m=nearest(mag,w["dt"],90); k=nearest(kp,w["dt"],5400)
-  row={"t":w["dt"].isoformat().replace("+00:00","Z"),"speed_kms":w["speed"],"density_cm3":w["density"],
-       "bx_gsm_nt":m["bx"] if m else None,"by_gsm_nt":m["by"] if m else None,
-       "bz_gsm_nt":m["bz"] if m else None,"bt_nt":m["bt"] if m else None,
-       "mag_delta_s":round(abs((m["dt"]-w["dt"]).total_seconds()),1) if m else None,
-       "kp":k["kp"] if k else None,"kp_time":k["dt"].isoformat().replace("+00:00","Z") if k else None}
-  row["pdyn_npa"]=round(1.6726e-6*w["density"]*w["speed"]**2,4) if w["density"] is not None and w["speed"] is not None else None
-  row["ey_mv_m"]=round(w["speed"]*max(0,-m["bz"])*.001,4) if m and w["speed"] is not None and m["bz"] is not None else None
-  rows.append(row)
  bytime={r["t"]:r for r in old_rows if stamp(r["t"])}
  bytime.update({r["t"]:r for r in rows})
  cutoff=now-timedelta(days=90)
