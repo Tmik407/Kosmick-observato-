@@ -7,6 +7,7 @@ import os
 import pathlib
 import sys
 import time
+import tempfile
 import requests
 import numpy as np
 from eccodes import codes_grib_new_from_file, codes_get, codes_grib_get_data, codes_release
@@ -38,7 +39,8 @@ def fetch_bytes(url):
         raise RuntimeError(f"NOMADS HTTP {response.status_code}: {response.text[:180]}")
     body = response.content
     if not body.startswith(b"GRIB"):
-        raise RuntimeError("NOMADS nevrátil GRIB2 data: " + body[:160].decode("utf-8", "replace"))
+        preview = body[:240].decode("utf-8", "replace").replace("\\n", " ")
+        raise RuntimeError("NOMADS nevrátil GRIB2 data: " + preview)
     return body
 
 def nearest_indices(lats, lons):
@@ -52,9 +54,12 @@ def nearest_indices(lats, lons):
     return result
 
 def decode_grib(body):
-    import io
     found = {}
-    with io.BytesIO(body) as stream:
+    # ecCodes' file reader requires a real file descriptor; BytesIO has no fileno().
+    # Use a temporary binary file so the GRIB decoder can read the downloaded message.
+    with tempfile.TemporaryFile(mode="w+b") as stream:
+        stream.write(body)
+        stream.seek(0)
         while True:
             gid = codes_grib_new_from_file(stream)
             if gid is None:
