@@ -35,6 +35,17 @@ jobs:
           test -s _site/index.html
           test -s _site/polarni-vir.html
           test -s _site/data/u60_daily.csv
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          html=Path("_site/index.html").read_text(encoding="utf-8")
+          scripts=re.findall(r"<script\\b[^>]*>(.*?)</script>",html,re.I|re.S)
+          for i,source in enumerate(scripts,1):
+              Path(f"/tmp/x5-inline-{i}.js").write_text(source,encoding="utf-8")
+          print(f"Extracted {len(scripts)} inline JavaScript blocks for syntax validation.")
+          PY
+          for file in /tmp/x5-inline-*.js; do node --check "$file"; done
+          echo "Inline JavaScript syntax checks passed."
       - name: Nahrát kompletní web
         uses: actions/upload-pages-artifact@v3
         with:
