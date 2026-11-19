@@ -59,11 +59,31 @@ async function load(){
  }catch(e){status.innerHTML='<b class="warn">Načtení GFS se nezdařilo:</b> '+String(e.message||e)+'. Záložní archivované mapy NOAA zůstávají dostupné.';draw();}
  finally{loading=false;}
 }
+
+function satelliteViewer(){
+ const img=$('satImage'),area=$('satArea'),type=$('satType'),status=$('satStatus'),link=$('satImageLink');
+ if(!img||!area||!type||!status)return;
+ const labels={global:'globální pohled',europe:'Evropa',atlantic_ocean:'Atlantik',mediterranean:'Středomoří',africa:'Afrika'};
+ let request=0;
+ function refresh(){
+  const id=++request,a=area.value,t=type.value;
+  status.textContent='Načítám poslední dostupný '+(t==='infrared'?'infračervený':'viditelný')+' snímek – '+(labels[a]||a)+'…';
+  img.alt='Satelitní meteorologický snímek – '+(labels[a]||a)+' – '+(t==='infrared'?'infračervené spektrum':'viditelné spektrum');
+  img.onload=()=>{if(id!==request)return;status.innerHTML='<b class="good">Satelitní snímek je načten.</b> '+(labels[a]||a)+' · '+(t==='infrared'?'IR – použitelné ve dne i v noci':'VIS – denní světlo')+'. Kontrola načtení: '+new Date().toLocaleTimeString('cs-CZ')+'. Čas pořízení určuje poskytovatel snímku.';};
+  img.onerror=()=>{if(id!==request)return;status.innerHTML='<b class="warn">Snímek se nepodařilo načíst.</b> Zdroj může být dočasně nedostupný. Zkuste jinou oblast nebo obnovte snímek.';};
+  const url='https://api.met.no/weatherapi/geosatellite/1.4/?area='+encodeURIComponent(a)+'&type='+encodeURIComponent(t)+'&v='+Date.now();
+  if(link)link.href=url;
+  img.src=url;
+ }
+ area.addEventListener('change',refresh);type.addEventListener('change',refresh);
+ const button=$('satRefresh');if(button)button.addEventListener('click',refresh);
+ refresh();setInterval(refresh,10*60*1000);
+}
 function stop(){if(timer){clearInterval(timer);timer=null;}$('gfsAnimPlay').textContent='▶ Přehrát předpověď';}
 function play(){stop();const s=$('gfsTime');if(!times.length||s.options.length<2){$('gfsAnimState').textContent='Nejdříve čekám na načtení časových kroků GFS.';return;}let i=Number(s.value)||0;timer=setInterval(()=>{i=(i+1)%times.length;s.value=String(i);s.dispatchEvent(new Event('change',{bubbles:true}));},Number($('gfsAnimSpeed').value)||800);$('gfsAnimPlay').textContent='Ⅱ Animace běží';}
 $('gfsLevel').addEventListener('change',()=>{stop();payload=[];times=[];load();});
 $('gfsField').addEventListener('change',draw);$('gfsTime').addEventListener('change',draw);
 $('gfsAnimPlay').addEventListener('click',()=>timer?stop():play());$('gfsAnimStop').addEventListener('click',stop);
 $('gfsAnimSpeed').addEventListener('change',()=>{if(timer)play();});
-draw();load();
+draw();load();satelliteViewer();
 })();
