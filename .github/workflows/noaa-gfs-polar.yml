@@ -40,5 +40,18 @@ jobs:
             echo "NOAA backup unchanged; no commit needed."
           else
             git commit -m "Update NOAA GFS polar vortex backup data"
-            git push
+            # Other archive workflows may update main at the same time.
+            # Rebase onto the latest branch and retry a non-fast-forward push.
+            for attempt in 1 2 3 4 5; do
+              git fetch origin main
+              git rebase origin/main
+              if git push origin HEAD:main; then
+                echo "NOAA backup published successfully."
+                exit 0
+              fi
+              echo "Push race detected (attempt $attempt); retrying."
+              sleep $((attempt * 2))
+            done
+            echo "Could not publish NOAA backup after 5 attempts."
+            exit 1
           fi
