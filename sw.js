@@ -1,5 +1,5 @@
 /* Kosmická observatoř X-5 – PWA service worker */
-const CACHE_NAME="x5-pwa-shell-v1";
+const CACHE_NAME="x5-pwa-shell-v2";
 const SHELL=["./","./index.html","./offline.html","./manifest.webmanifest","./icon.svg"];
 self.addEventListener("install",event=>{
  event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));
