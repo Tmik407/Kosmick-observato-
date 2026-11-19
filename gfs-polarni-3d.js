@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const $=id=>document.getElementById(id),levels=[10,30,50],lats=[60,68,76,84,88],lons=[-180,-135,-90,-45,0,45,90,135];
+const $=id=>document.getElementById(id),levels=[10,30,50],lats=[60,68,76,84,88],lons=[-157.5,-112.5,-67.5,-22.5,22.5,67.5,112.5,157.5];
 const points=[];for(const lat of lats)for(const lon of lons)points.push({lat,lon});
 const keys=l=>['temperature_'+l+'hPa','geopotential_height_'+l+'hPa','wind_speed_'+l+'hPa','wind_direction_'+l+'hPa'];
 let data={},times=[],idx=0,yaw=-.35,pitch=.22,timer=null,busy=false,drag=null;
@@ -24,14 +24,25 @@ function draw(){
  for(const lev of levels){for(let p=0;p<points.length;p++){const t=value(lev,p,keys(lev)[0]);if(Number.isFinite(t))temps.push(t);}}
  if(!temps.length){g.fillStyle='#e6f4ff';g.font='22px Arial';g.fillText('Čekám na tři hladiny NOAA GFS…',40,55);return;}
  const min=Math.min(...temps),max=Math.max(...temps);
+ // Jemnější síť vzniká interpolací mezi sousedními GFS vzorky.
+ // Nejde o nové modelové hodnoty; každý dílek je pouze vizualizace interpolace.
+ const subdivisions=5;
  for(const lev of levels){const z=zBy[lev];for(let ri=0;ri<lats.length-1;ri++)for(let li=0;li<lons.length;li++){
-  const a=ri*8+li,b=ri*8+(li+1)%8,d=(ri+1)*8+li,e=(ri+1)*8+(li+1)%8;
-  const ids=[a,b,e,d],pts=ids.map(p=>project(points[p].lat,points[p].lon,z,cx,cy,scale)),vv=ids.map(p=>value(lev,p,keys(lev)[0])).filter(Number.isFinite);
-  if(vv.length<3)continue;const avg=vv.reduce((x,y)=>x+y,0)/vv.length,t=max===min?.5:(avg-min)/(max-min);
-  faces.push({pts,fill:palette(t),depth:pts.reduce((x,p)=>x+p.depth,0)/4,lev});
+  const lj=(li+1)%lons.length,a=ri*8+li,b=ri*8+lj,d=(ri+1)*8+li,e=(ri+1)*8+lj;
+  const va=value(lev,a,keys(lev)[0]),vb=value(lev,b,keys(lev)[0]),vd=value(lev,d,keys(lev)[0]),ve=value(lev,e,keys(lev)[0]);
+  if(![va,vb,vd,ve].every(Number.isFinite))continue;
+  const lon0=lons[li],lon1=li===lons.length-1?lons[0]+360:lons[lj];
+  for(let sy=0;sy<subdivisions;sy++)for(let sx=0;sx<subdivisions;sx++){
+   const u0=sx/subdivisions,u1=(sx+1)/subdivisions,v0=sy/subdivisions,v1=(sy+1)/subdivisions;
+   const sample=(u,v)=>{const top=va*(1-u)+vb*u,bot=vd*(1-u)+ve*u;return top*(1-v)+bot*v;};
+   const temp=(u,v)=>sample(u,v),avg=(temp(u0,v0)+temp(u1,v0)+temp(u1,v1)+temp(u0,v1))/4;
+   const t=max===min?.5:(avg-min)/(max-min),lat0=lats[ri],lat1=lats[ri+1];
+   const pts=[[lat0+(lat1-lat0)*v0,lon0+(lon1-lon0)*u0],[lat0+(lat1-lat0)*v0,lon0+(lon1-lon0)*u1],[lat0+(lat1-lat0)*v1,lon0+(lon1-lon0)*u1],[lat0+(lat1-lat0)*v1,lon0+(lon1-lon0)*u0]].map(([lat,lon])=>project(lat,((lon+180)%360+360)%360-180,z,cx,cy,scale));
+   faces.push({pts,fill:palette(t),depth:pts.reduce((x,p)=>x+p.depth,0)/4,lev});
+  }
  }}
  faces.sort((a,b)=>a.depth-b.depth);
- for(const f of faces){g.beginPath();f.pts.forEach((p,i)=>i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y));g.closePath();g.fillStyle=f.fill;g.globalAlpha=.78;g.fill();g.globalAlpha=1;g.strokeStyle='rgba(220,245,255,.42)';g.lineWidth=1;g.stroke();}
+ for(const f of faces){g.beginPath();f.pts.forEach((p,i)=>i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y));g.closePath();g.fillStyle=f.fill;g.globalAlpha=.84;g.fill();g.globalAlpha=1;}
  // vertical columns joining identical grid points across all pressure levels
  for(let p=0;p<points.length;p++){const pts=levels.map(l=>project(points[p].lat,points[p].lon,zBy[l],cx,cy,scale));g.beginPath();pts.forEach((q,i)=>i?g.lineTo(q.x,q.y):g.moveTo(q.x,q.y));g.strokeStyle='rgba(245,250,255,.55)';g.lineWidth=1.2;g.stroke();}
  // wind vectors and node dots, upper layers drawn last
