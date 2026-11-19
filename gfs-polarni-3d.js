@@ -220,7 +220,7 @@ function draw(){
  for(const lev of levels){const vals=points.map((_,p)=>value(lev,p,keys(lev)[0])).filter(Number.isFinite),el=$('p3d'+lev);if(el)el.textContent=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1)+' °C':'—';}
  drawHistoryCharts();
 }
-const CACHE_KEY='x5-gfs-polar-v16-cache';
+const CACHE_KEY='x5-gfs-polar-v17-cache';
 const NOAA_BACKUP_URL='./data/polar-vortex/latest.json';
 function applyRows(rows,base,stale=false){
  invalidateDataCaches();data={};levels.forEach(lev=>data[lev]={lev,rows,times:base});
@@ -234,7 +234,7 @@ function readCache(){
  return null;
 }
 async function loadNoaaBackup(primaryError){
- const r=await fetch(NOAA_BACKUP_URL,{cache:'no-store'});
+ const r=await fetch(NOAA_BACKUP_URL,{cache:'default'});
  if(!r.ok)throw Error('NOAA záloha HTTP '+r.status);
  const payload=await r.json();
  if(!payload||payload.source!=='NOAA NOMADS GFS 0.25° GRIB2'||!Array.isArray(payload.rows)||payload.rows.length!==points.length||!Array.isArray(payload.times)||!payload.times.length)throw Error('NOAA záložní soubor má neplatný formát.');
@@ -242,43 +242,38 @@ async function loadNoaaBackup(primaryError){
  for(const row of payload.rows)for(const key of expected)if(!Array.isArray(row.hourly?.[key])||row.hourly[key].length!==payload.times.length)throw Error('NOAA záloha neobsahuje úplnou časovou řadu '+key+'.');
  loadError='';applyRows(payload.rows,payload.times,true);
  const generated=payload.generated_utc||'čas neznámý';
- status('ZÁLOŽNÍ ZDROJ NOAA NOMADS GFS · '+payload.times.length+' časových kroků · cyklus '+(payload.cycle_utc||'neuveden')+' · vytvořeno '+generated+'. Primární Open-Meteo selhalo: '+String(primaryError.message||primaryError));
+ status('SPOLEČNÝ ARCHIV NOAA NOMADS GFS · '+payload.times.length+' časových kroků (krok 3 h) · cyklus '+(payload.cycle_utc||'neuveden')+' · vytvořeno '+generated+'. Zobrazená data jsou sdílena všem návštěvníkům.');
  try{localStorage.setItem(CACHE_KEY,JSON.stringify({rows:payload.rows,times:payload.times,savedAt:Date.now(),source:payload.source}));}catch(_){}
 }
 async function load(){
  if(busy)return;busy=true;stop();
  const cachedAtStart=readCache();
- if(cachedAtStart){applyRows(cachedAtStart.rows,cachedAtStart.times,true);status('Zobrazuji uloženou kopii dat; ověřuji dostupnost nových dat GFS…');}
- else{status('Stahuji společná hodinová pole GFS pro tři hladiny…');}
+ if(cachedAtStart){applyRows(cachedAtStart.rows,cachedAtStart.times,true);status('Zobrazuji místní kopii; ověřuji společný archiv NOAA…');}
+ else{status('Načítám společný archiv NOAA GFS…');}
  try{
-  // Všech 40 souřadnic a 12 proměnných posíláme v jediném požadavku.
-  // Open-Meteo podporuje vícelokační odpověď; tím se minimalizuje spotřeba kvóty.
-  const batchSize=points.length,allKeys=levels.flatMap(lev=>keys(lev));
-  const batches=[];for(let i=0;i<points.length;i+=batchSize)batches.push(points.slice(i,i+batchSize));
-  const parts=await Promise.all(batches.map(async batch=>{
-   const lat=batch.map(p=>p.lat).join(','),lon=batch.map(p=>p.lon).join(',');
+  // Nejprve použijeme jeden společný statický archiv pro všechny návštěvníky.
+  // Tím se běžné načtení modelu obejde bez individuálního vícelokačního požadavku na Open-Meteo.
+  await loadNoaaBackup(null);
+ }catch(archiveError){
+  status('Společný archiv NOAA není dostupný ('+String(archiveError.message||archiveError)+'); zkouším živý zdroj Open-Meteo…');
+  try{
+   const allKeys=levels.flatMap(lev=>keys(lev));
+   const lat=points.map(p=>p.lat).join(','),lon=points.map(p=>p.lon).join(',');
    const url='https://api.open-meteo.com/v1/gfs?latitude='+encodeURIComponent(lat)+'&longitude='+encodeURIComponent(lon)+'&hourly='+encodeURIComponent(allKeys.join(','))+'&forecast_days=2&timezone=GMT';
    const r=await fetch(url,{cache:'default'});
    if(!r.ok){const body=await r.text();let detail=body.slice(0,400);try{const e=JSON.parse(body);detail=e.reason||e.message||JSON.stringify(e);}catch(_){}throw Error('GFS HTTP '+r.status+(detail?' · '+detail:''));}
-   const raw=await r.json(),rows=Array.isArray(raw)?raw:[raw];
-   if(rows.length!==batch.length||!rows[0]?.hourly?.time)throw Error('Neúplná dávka GFS ('+rows.length+'/'+batch.length+' bodů).');
-   return rows;
-  }));
-  const rows=parts.flat(),base=rows[0]?.hourly?.time||[];
-  if(rows.length!==points.length||!base.length||rows.some(r=>!r.hourly?.time||r.hourly.time.length!==base.length||r.hourly.time.some((t,i)=>t!==base[i])))throw Error('Neúplná nebo nesouhlasná časová osa GFS.');
-  loadError='';applyRows(rows,base,false);
-  try{localStorage.setItem(CACHE_KEY,JSON.stringify({rows,times:base,savedAt:Date.now()}));}catch(_){status('Data načtena; místní mezipaměť se nepodařilo uložit.');}
- }catch(e){
-  loadError=String(e.message||e);
-  try{await loadNoaaBackup(e);}
-  catch(noaaError){
+   const raw=await r.json(),rows=Array.isArray(raw)?raw:[raw],base=rows[0]?.hourly?.time||[];
+   if(rows.length!==points.length||!base.length||rows.some(row=>!row.hourly?.time||row.hourly.time.length!==base.length||row.hourly.time.some((t,i)=>t!==base[i])))throw Error('Neúplná nebo nesouhlasná časová osa GFS.');
+   loadError='';applyRows(rows,base,false);
+   try{localStorage.setItem(CACHE_KEY,JSON.stringify({rows,times:base,savedAt:Date.now(),source:'Open-Meteo GFS'}));}catch(_){}
+  }catch(liveError){
+   loadError=String(liveError.message||liveError);
    const cached=readCache();
-   if(cached){applyRows(cached.rows,cached.times,true);const age=Math.max(0,Math.round((Date.now()-(cached.savedAt||0))/3600000));status('Open-Meteo selhalo: '+String(e.message||e)+'. NOAA záloha není dostupná: '+String(noaaError.message||noaaError)+'. Zobrazuji místní kopii (přibližné stáří '+age+' h).');}
-   else{data={};times=[];status('Open-Meteo selhalo: '+String(e.message||e)+'. NOAA záloha zatím nebyla vytvořena nebo není dostupná: '+String(noaaError.message||noaaError)+'.');draw();}
+   if(cached){applyRows(cached.rows,cached.times,true);const age=Math.max(0,Math.round((Date.now()-(cached.savedAt||0))/3600000));status('Společný archiv NOAA i živý zdroj jsou nedostupné. Zobrazuji místní kopii (přibližné stáří '+age+' h).');}
+   else{data={};times=[];status('Společný archiv NOAA i živý zdroj Open-Meteo jsou nedostupné: '+String(liveError.message||liveError)+'.');draw();}
   }
  }finally{busy=false;}
 }
-
 function stop(){if(timer)clearInterval(timer);timer=null;}
 function play(){if(!times.length)return;stop();timer=setInterval(()=>{idx=(idx+1)%times.length;$('p3dTime').value=idx;invalidateDataCaches();requestDraw();},Number($('p3dSpeed')?.value||800));}
 $('p3dLoad')?.addEventListener('click',load);$('p3dPlay')?.addEventListener('click',play);$('p3dPause')?.addEventListener('click',stop);
