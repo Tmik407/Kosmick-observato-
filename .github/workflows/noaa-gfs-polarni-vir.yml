@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: polar-vortex-noaa-gfs
+  group: repository-main-writes
   cancel-in-progress: false
 
 jobs:
