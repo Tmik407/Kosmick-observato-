@@ -103,6 +103,17 @@ def main():
    old_rows=best_rows
  except (subprocess.CalledProcessError, OSError):
   pass
+ rows=[]
+ for w in wind:
+  m=nearest(mag,w["dt"],90); k=nearest(kp,w["dt"],5400)
+  row={"t":w["dt"].isoformat().replace("+00:00","Z"),"speed_kms":w["speed"],"density_cm3":w["density"],
+       "bx_gsm_nt":m["bx"] if m else None,"by_gsm_nt":m["by"] if m else None,
+       "bz_gsm_nt":m["bz"] if m else None,"bt_nt":m["bt"] if m else None,
+       "mag_delta_s":round(abs((m["dt"]-w["dt"]).total_seconds()),1) if m else None,
+       "kp":k["kp"] if k else None,"kp_time":k["dt"].isoformat().replace("+00:00","Z") if k else None}
+  row["pdyn_npa"]=round(1.6726e-6*w["density"]*w["speed"]**2,4) if w["density"] is not None and w["speed"] is not None else None
+  row["ey_mv_m"]=round(w["speed"]*max(0,-m["bz"])*.001,4) if m and w["speed"] is not None and m["bz"] is not None else None
+  rows.append(row)
  bytime={r["t"]:r for r in old_rows if stamp(r["t"])}
  bytime.update({r["t"]:r for r in rows})
  cutoff=now-timedelta(days=90)
