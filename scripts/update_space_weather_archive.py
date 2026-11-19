@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 OUT=Path("space-weather-history.json")
+STATUS=Path("space-weather-status.json")
 SOURCES={
  "wind":"https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
  "mag":"https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json",
@@ -147,6 +148,19 @@ def main():
  tmp=OUT.with_suffix(".json.tmp")
  tmp.write_text(json.dumps(payload,ensure_ascii=False,separators=(",",":"))+"\n",encoding="utf-8")
  tmp.replace(OUT)
+ status_payload={
+  "source":"NOAA SWPC real-time solar wind, IMF and planetary Kp",
+  "updated_utc":payload["updated_utc"],
+  "fetched_utc":payload["fetched_utc"],
+  "sampling_interval_minutes":payload["sampling_interval_minutes"],
+  "workflow_schedule_interval_minutes":payload["workflow_schedule_interval_minutes"],
+  "archive_records":len(kept),
+  "archive_latest_measurement_utc":kept[-1]["t"] if kept else None,
+  "source_status":source_status
+ }
+ status_tmp=STATUS.with_suffix(".json.tmp")
+ status_tmp.write_text(json.dumps(status_payload,ensure_ascii=False,separators=(",",":"))+"\\n",encoding="utf-8")
+ status_tmp.replace(STATUS)
  print("NOAA fetch status:",json.dumps({k:{"ok":v["ok"],"error":v["error"]} for k,v in fetch_state.items()}))
  print(f"NOAA records wind={len(wind)}, mag={len(mag)}, Kp={len(kp)}; archive={len(kept)}")
 if __name__=="__main__": main()
