@@ -765,9 +765,9 @@ function updateSourceHealth(results){
   if(!state||!meta)continue;
   const saved=memory[spec.key]||(memory[spec.key]={lastGoodFetch:null,lastGoodSample:null,lastError:null});
   let sample=null,rows=[];
+  const activeOnly=spec.key==="Wind"||spec.key==="Mag";
   if(result&&result.status==="fulfilled"){
    rows=rowsOf(result.value);
-   const activeOnly=spec.key==="Wind"||spec.key==="Mag";
    sample=newest(rows,spec.fields,activeOnly);
    if(sample&&Number.isFinite(Date.parse(timeOf(sample)))){
     saved.lastGoodFetch=now;
