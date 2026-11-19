@@ -404,6 +404,35 @@ async function getXrayData(){
  throw Error("GOES X-ray: primární i záložní zdroje selhaly. "+(lastError?lastError.message:"neznámá chyba"));
 }
 function rowsOf(d){return Array.isArray(d)?d:[]}
+function archiveRowsForDisplay(payload){
+ const rows=Array.isArray(payload?.rows)?payload.rows:[];
+ const wind=[],mag=[],kp=[];
+ for(const r of rows){
+  if(!r||!r.t||!Number.isFinite(Date.parse(r.t)))continue;
+  const t=r.t;
+  if(valid(r.speed_kms)||valid(r.density_cm3))wind.push({time_tag:t,active:true,proton_speed:r.speed_kms,proton_density:r.density_cm3,_archive:true});
+  if([r.bx_gsm_nt,r.by_gsm_nt,r.bz_gsm_nt,r.bt_nt].some(valid))mag.push({time_tag:t,active:true,bx_gsm:r.bx_gsm_nt,by_gsm:r.by_gsm_nt,bz_gsm:r.bz_gsm_nt,bt:r.bt_nt,_archive:true});
+  if(valid(r.kp))kp.push({time_tag:r.kp_time||t,kp:r.kp,_archive:true});
+ }
+ return {wind,mag,kp,updated:payload?.updated_utc||payload?.updated||null};
+}
+function newestForDisplay(liveRows,archiveRows,fields){
+ const live=newest(liveRows,fields,true),arch=newest(archiveRows,fields,true);
+ if(!arch)return live;
+ if(!live||Date.parse(timeOf(arch))>Date.parse(timeOf(live)))return arch;
+ return live;
+}
+function markArchiveFallback(fallback){
+ const specs=[["Wind","wind","RTSW vítr"],["Mag","mag","RTSW magnetické pole"],["Kp","kp","planetární Kp"]];
+ for(const [key,kind,label] of specs){
+  const row=fallback[kind];if(!row)continue;
+  const state=$("src"+key+"State"),meta=$("src"+key+"Meta");
+  if(state){state.textContent="ARCHIVNÍ ZÁLOHA";state.className="metric warn";}
+  if(meta)meta.textContent+=" · Zobrazen novější archivní vzorek "+timeOf(row).replace("T"," ")+" UTC; živý zdroj NOAA zůstává označen jako zastaralý. Archiv aktualizován "+(fallback.updated||"čas neuveden")+".";
+ }
+ const summary=$("sourceHealthSummary");
+ if(summary)summary.textContent+=" Archivní záloha se používá pouze pro zobrazení hodnot a grafů; výpočty rizika, výstrah a časového párování nadále používají živé vzorky.";
+}
 function draw(id,series,log=false){
  const c=$(id),ctx=c.getContext("2d"),w=c.width,h=c.height,p=35;
  ctx.clearRect(0,0,w,h);ctx.fillStyle="#142740";ctx.fillRect(0,0,w,h);
@@ -857,6 +886,8 @@ async function refresh(){
  try{
  const failures=[];
  const results=await Promise.allSettled([get(U.wind),get(U.mag),get(U.kp),getXrayData(),get(U.dst)]);
+ const archiveResult=await Promise.allSettled([get("./space-weather-history.json")]);
+ const archive=archiveResult[0].status==="fulfilled"?archiveRowsForDisplay(archiveResult[0].value):{wind:[],mag:[],kp:[],updated:null};
  const names=["sluneční vítr","magnetické pole","Kp","GOES X-ray","Dst"];
  results.forEach((r,i)=>{if(r.status==="rejected")failures.push(names[i]+": "+r.reason)});
  const wind=results[0].status==="fulfilled"?rowsOf(results[0].value):[];
@@ -865,8 +896,9 @@ async function refresh(){
  const xr=results[3].status==="fulfilled"?rowsOf(results[3].value):[];
  const dst=results[4].status==="fulfilled"?rowsOf(results[4].value):[];
  const speedCheck=cleanSpeedRows(wind);
-  const p=newest(speedCheck.rows,["proton_speed"],true),d=newest(wind,["proton_density"],true);
- const b=newest(mag,["bz_gsm","bt"],true),k=newest(kp,["kp","Kp"]);
+  const p=newestForDisplay(speedCheck.rows,archive.wind,["proton_speed"]),d=newestForDisplay(wind,archive.wind,["proton_density"]);
+ const b=newestForDisplay(mag,archive.mag,["bz_gsm","bt"]),k=newestForDisplay(kp,archive.kp,["kp","Kp"]);
+ const archiveFallback={updated:archive.updated,wind:p?._archive?p:null,mag:b?._archive?b:null,kp:k?._archive?k:null};
  const x=getXray(xr),z=dst.length?dst[dst.length-1]:null;
  setMetric("speed",p?val(p,"proton_speed"):null,"km/s","speedtime",p&&timeOf(p),10);
  setMetric("density",d?val(d,"proton_density"):null,"cm⁻³","densitytime",d&&timeOf(d),10);
@@ -878,7 +910,10 @@ async function refresh(){
  if(x){const flux=Number(x.flux);let cls=flux>=1e-4?"X":flux>=1e-5?"M":flux>=1e-6?"C":flux>=1e-7?"B":"A";$("xray").textContent=cls+" ("+flux.toExponential(2)+" W/m²)";$("xraytime").textContent="Měření: "+timeOf(x).replace("T"," ")+" UTC"}else{$("xray").textContent="Nedostupné"}
  if(z){let dz=val(z,"dst","Dst",1);$("dst").textContent=dz===null?"Nedostupné":dz.toFixed(0)+" nT";$("dsttime").textContent="Čas: "+timeOf(z).replace("T"," ")+" UTC · ověřit interval"}else $("dst").textContent="Nedostupné";
  // Graf používá stejný poslední platný záznam jako karta rychlosti.
+ const cutoff24=Date.now()-24*3600000;
  const speedSeries=series(speedCheck.rows,"proton_speed");
+ archive.wind.filter(r=>Date.parse(timeOf(r))>=cutoff24).forEach(r=>speedSeries.push({x:timeOf(r),y:val(r,"proton_speed")}));
+ speedSeries.sort((a,b)=>Date.parse(a.x)-Date.parse(b.x));
  if(p){
   const latestSpeed={x:timeOf(p),y:val(p,"proton_speed")};
   const existing=speedSeries.findIndex(point=>point.x===latestSpeed.x);
@@ -887,7 +922,10 @@ async function refresh(){
  }
  draw("speedChart",[{data:speedSeries,color:"#65dcff"}]);
   $("speedtime").textContent=(p?"Měření: "+timeOf(p).replace("T"," ")+" UTC":"Čas měření není dostupný")+(speedCheck.rejected?" · vyřazeno "+speedCheck.rejected+" izolované podezřelé špičky":" · kontrola skoků OK");
- draw("magChart",[{data:series(mag,"bz_gsm"),color:"#65dcff"},{data:series(mag,"bt"),color:"#ffbd6b"}]);
+ const magSeries=series(mag,"bz_gsm"),btSeries=series(mag,"bt");
+ archive.mag.filter(r=>Date.parse(timeOf(r))>=cutoff24).forEach(r=>{magSeries.push({x:timeOf(r),y:val(r,"bz_gsm")});btSeries.push({x:timeOf(r),y:val(r,"bt")})});
+ magSeries.sort((a,b)=>Date.parse(a.x)-Date.parse(b.x));btSeries.sort((a,b)=>Date.parse(a.x)-Date.parse(b.x));
+ draw("magChart",[{data:magSeries,color:"#65dcff"},{data:btSeries,color:"#ffbd6b"}]);
  draw("xrayChart",[{data:series(xr,"flux"),color:"#ff8d9a"}],true);
  updateDynamicPressure(speedCheck.rows);
  const latestPressureRow=speedCheck.rows.filter(r=>timeOf(r)&&valid(r.proton_speed)&&valid(r.proton_density)).slice(-1)[0];
@@ -896,6 +934,7 @@ async function refresh(){
  const couplingCount=updateCoupling(speedCheck.rows,mag);
  updateQuality(wind,speedCheck,window.__aceLatestQuality||null,couplingCount);
  updateSourceHealth(results);
+ markArchiveFallback(archiveFallback);
  updateAlerts(speedCheck.rows,mag,kp);
  updateHistory24h(wind,mag);
  updateCumulative24h(wind,mag);
