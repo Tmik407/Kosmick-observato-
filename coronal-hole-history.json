@@ -1,22 +1,22 @@
 {
   "source": "NOAA NCEI GOES-19 SUVI Level 2 Coronal Hole Boundaries",
-  "updated_utc": "2026-11-18T20:37:11.974406Z",
+  "updated_utc": "2026-11-19T07:32:21.754184Z",
   "latest": {
     "source": "NOAA GOES-19 SUVI L2 CHBND",
-    "product": "dn_suvi-l2-chbnd_g19_s20261117T235600Z_e20261118T000000Z_v2-0-0.nc",
-    "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes19/l2/data/suvi-l2-chbnd/2026/11/17/dn_suvi-l2-chbnd_g19_s20261117T235600Z_e20261118T000000Z_v2-0-0.nc",
-    "observed_utc": "2026-11-17T23:56:00Z",
-    "retrieved_utc": "2026-11-18T20:37:11.974095Z",
+    "product": "dn_suvi-l2-chbnd_g19_s20261118T235600Z_e20261119T000000Z_v2-0-0.nc",
+    "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes19/l2/data/suvi-l2-chbnd/2026/11/18/dn_suvi-l2-chbnd_g19_s20261118T235600Z_e20261119T000000Z_v2-0-0.nc",
+    "observed_utc": "2026-11-18T23:56:00Z",
+    "retrieved_utc": "2026-11-19T07:32:21.753760Z",
     "num_coronal_holes": 1,
     "degraded_status": "False",
     "holes": [
       {
         "id": 1,
-        "area_px2": 15055.0,
-        "north_deg": -44.0700569152832,
-        "south_deg": -79.7765121459961,
-        "east_deg": -72.56564331054688,
-        "west_deg": 21.0322208404541
+        "area_px2": 13439.5,
+        "north_deg": -46.08155059814453,
+        "south_deg": -80.70648193359375,
+        "east_deg": -65.31391906738281,
+        "west_deg": 33.573726654052734
       }
     ]
   },
@@ -140,6 +140,25 @@
           "south_deg": -79.7765121459961,
           "east_deg": -72.56564331054688,
           "west_deg": 21.0322208404541
+        }
+      ]
+    },
+    {
+      "source": "NOAA GOES-19 SUVI L2 CHBND",
+      "product": "dn_suvi-l2-chbnd_g19_s20261118T235600Z_e20261119T000000Z_v2-0-0.nc",
+      "url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes19/l2/data/suvi-l2-chbnd/2026/11/18/dn_suvi-l2-chbnd_g19_s20261118T235600Z_e20261119T000000Z_v2-0-0.nc",
+      "observed_utc": "2026-11-18T23:56:00Z",
+      "retrieved_utc": "2026-11-19T07:32:21.753760Z",
+      "num_coronal_holes": 1,
+      "degraded_status": "False",
+      "holes": [
+        {
+          "id": 1,
+          "area_px2": 13439.5,
+          "north_deg": -46.08155059814453,
+          "south_deg": -80.70648193359375,
+          "east_deg": -65.31391906738281,
+          "west_deg": 33.573726654052734
         }
       ]
     }
