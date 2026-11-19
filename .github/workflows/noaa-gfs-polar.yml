@@ -1,6 +1,10 @@
 name: NOAA GFS polar vortex backup
 
 on:
+  push:
+    paths:
+      - '.github/workflows/noaa-gfs-polar.yml'
+      - 'scripts/noaa_gfs_polar_backup.py'
   workflow_dispatch:
   schedule:
     - cron: "23 1,7,13,19 * * *"
