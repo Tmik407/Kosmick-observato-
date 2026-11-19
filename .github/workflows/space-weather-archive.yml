@@ -23,6 +23,19 @@ jobs:
           fetch-depth: 0
       - name: Aktualizovat archiv NOAA
         run: python scripts/update_space_weather_archive.py
+      - name: Ověřit integritu archivu NOAA
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("space-weather-history.json")
+          d=json.loads(p.read_text(encoding="utf-8"))
+          rows=d.get("rows")
+          assert isinstance(rows,list) and len(rows)>=9000, f"Archive unexpectedly short: {len(rows) if isinstance(rows,list) else 'invalid'}"
+          assert d.get("source_status") and all(k in d["source_status"] for k in ("wind","mag","kp"))
+          assert all(isinstance(r,dict) and r.get("t") for r in rows)
+          print(f"NOAA archive integrity OK: {len(rows)} records; {p.stat().st_size} bytes")
+          PY
       - name: Uložit archiv bezpečně proti souběžným změnám
         run: |
           git config user.name "github-actions[bot]"
