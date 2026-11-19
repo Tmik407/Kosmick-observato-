@@ -120,7 +120,7 @@ def main():
  "note":"Dst není zahrnuto: zatím není připojen a ověřen samostatný zdroj Dst.",
  "rows":kept}
  tmp=OUT.with_suffix(".json.tmp")
- tmp.write_text(json.dumps(payload,ensure_ascii=False,separators=(",",":"))+"\\n",encoding="utf-8")
+ tmp.write_text(json.dumps(payload,ensure_ascii=False,separators=(",",":"))+"\n",encoding="utf-8")
  tmp.replace(OUT)
  print("NOAA fetch status:",json.dumps({k:{"ok":v["ok"],"error":v["error"]} for k,v in fetch_state.items()}))
  print(f"NOAA records wind={len(wind)}, mag={len(mag)}, Kp={len(kp)}; archive={len(kept)}")
