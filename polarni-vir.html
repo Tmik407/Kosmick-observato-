@@ -644,7 +644,7 @@ setInterval(refreshX5Infographic,30*60*1000);
  function shiftDate(d,n){const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);}
  load();setInterval(load,30*60*1000);
 })();
-</script><script src="./polarni-vir-animace.js?v=1"></script><script src="./gfs-polarni-animace.js?v=4"></script><script src="./gfs-polarni-3d.js?v=3"></script><script>
+</script><script src="./polarni-vir-animace.js?v=1"></script><script src="./gfs-polarni-animace.js?v=4"></script><script src="./gfs-polarni-3d.js?v=4"></script><script>
 (function(){
  const sources=[
   {id:'Era5',url:'./data/archive-meta.json',label:'ERA5',date:m=>m.files?.['u60_daily.csv']?.last_date,detail:m=>'Záznam do '+(m.files?.['u60_daily.csv']?.last_date||'—')+' · '+(m.files?.['u60_daily.csv']?.rows||'—')+' řádků'},
