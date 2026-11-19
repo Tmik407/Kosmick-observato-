@@ -49,5 +49,11 @@ jobs:
             echo "No IRTAM changes"
           else
             git commit -m "Update delayed IRTAM global electron density"
-            git push origin HEAD:main
+            for attempt in 1 2 3; do
+              if git push origin HEAD:main; then exit 0; fi
+              echo "Push collision; rebasing IRTAM output (attempt $attempt)"
+              git pull --rebase origin main
+            done
+            echo "Could not safely publish IRTAM output after three attempts."
+            exit 1
           fi
