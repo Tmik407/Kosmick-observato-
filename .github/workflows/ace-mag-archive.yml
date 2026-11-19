@@ -12,6 +12,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: repository-main-writes
+  cancel-in-progress: false
+
 jobs:
   archive:
     runs-on: ubuntu-latest
