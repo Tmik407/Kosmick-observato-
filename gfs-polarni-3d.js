@@ -211,16 +211,29 @@ function draw(){
  drawHistoryCharts();
 }
 const CACHE_KEY='x5-gfs-polar-v15-cache';
+const NOAA_BACKUP_URL='./data/polar-vortex/latest.json';
 function applyRows(rows,base,stale=false){
  data={};levels.forEach(lev=>data[lev]={lev,rows,times:base});
  times=base;idx=Math.min(idx,Math.max(0,times.length-1));
  const sel=$('p3dTime');if(sel){sel.innerHTML='';times.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t.replace('T',' ')+' UTC';sel.appendChild(o);});sel.value=idx;}
- status((stale?'Použita místní kopie posledních úspěšných dat · ':'Načteny všechny tři hladiny · ')+points.length+' vzorkovacích bodů na hladinu · '+times.length+' hodinových kroků. '+times[0]+' až '+times[times.length-1]+' UTC.'+(stale?' Data mohou být starší.':''));
+ status((stale?'Použita místní kopie posledních úspěšných dat · ':'Načteny všechny tři hladiny · ')+points.length+' vzorkovacích bodů na hladinu · '+times.length+' časových kroků. '+times[0]+' až '+times[times.length-1]+' UTC.'+(stale?' Data mohou být starší.':''));
  draw();
 }
 function readCache(){
  try{const c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');if(c&&Array.isArray(c.rows)&&Array.isArray(c.times)&&c.rows.length===points.length&&c.times.length)return c;}catch(_){}
  return null;
+}
+async function loadNoaaBackup(primaryError){
+ const r=await fetch(NOAA_BACKUP_URL,{cache:'no-store'});
+ if(!r.ok)throw Error('NOAA záloha HTTP '+r.status);
+ const payload=await r.json();
+ if(!payload||payload.source!=='NOAA NOMADS GFS 0.25° GRIB2'||!Array.isArray(payload.rows)||payload.rows.length!==points.length||!Array.isArray(payload.times)||!payload.times.length)throw Error('NOAA záložní soubor má neplatný formát.');
+ const expected=levels.flatMap(lev=>keys(lev));
+ for(const row of payload.rows)for(const key of expected)if(!Array.isArray(row.hourly?.[key])||row.hourly[key].length!==payload.times.length)throw Error('NOAA záloha neobsahuje úplnou časovou řadu '+key+'.');
+ loadError='';applyRows(payload.rows,payload.times,true);
+ const generated=payload.generated_utc||'čas neznámý';
+ status('ZÁLOŽNÍ ZDROJ NOAA NOMADS GFS · '+payload.times.length+' časových kroků · cyklus '+(payload.cycle_utc||'neuveden')+' · vytvořeno '+generated+'. Primární Open-Meteo selhalo: '+String(primaryError.message||primaryError));
+ try{localStorage.setItem(CACHE_KEY,JSON.stringify({rows:payload.rows,times:payload.times,savedAt:Date.now(),source:payload.source}));}catch(_){}
 }
 async function load(){
  if(busy)return;busy=true;stop();
@@ -246,9 +259,13 @@ async function load(){
   loadError='';applyRows(rows,base,false);
   try{localStorage.setItem(CACHE_KEY,JSON.stringify({rows,times:base,savedAt:Date.now()}));}catch(_){status('Data načtena; místní mezipaměť se nepodařilo uložit.');}
  }catch(e){
-  loadError=String(e.message||e);const cached=readCache();
-  if(cached){applyRows(cached.rows,cached.times,true);const age=Math.max(0,Math.round((Date.now()-(cached.savedAt||0))/3600000));status('Aktuální API nedostupné: '+String(e.message||e)+'. Zobrazuji poslední uložená data (přibližné stáří '+age+' h).');}
-  else{data={};times=[];status('3D data nejsou dostupná: '+String(e.message||e)+'. Počkejte na obnovení limitu API nebo zkuste později.');draw();}
+  loadError=String(e.message||e);
+  try{await loadNoaaBackup(e);}
+  catch(noaaError){
+   const cached=readCache();
+   if(cached){applyRows(cached.rows,cached.times,true);const age=Math.max(0,Math.round((Date.now()-(cached.savedAt||0))/3600000));status('Open-Meteo selhalo: '+String(e.message||e)+'. NOAA záloha není dostupná: '+String(noaaError.message||noaaError)+'. Zobrazuji místní kopii (přibližné stáří '+age+' h).');}
+   else{data={};times=[];status('Open-Meteo selhalo: '+String(e.message||e)+'. NOAA záloha zatím nebyla vytvořena nebo není dostupná: '+String(noaaError.message||noaaError)+'.');draw();}
+  }
  }finally{busy=false;}
 }
 
