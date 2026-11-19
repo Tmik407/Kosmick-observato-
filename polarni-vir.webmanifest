@@ -1,0 +1,30 @@
+{
+  "id": "./polarni-vir.html",
+  "name": "Polární vír X-5",
+  "short_name": "Polární vír X-5",
+  "description": "Samostatná aplikace pro sledování polární stratosféry, teplot 10/30/50 hPa a geopotenciální diagnostiku NOAA GFS.",
+  "lang": "cs-CZ",
+  "start_url": "./polarni-vir.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "any",
+  "background_color": "#f3f7fb",
+  "theme_color": "#081426",
+  "categories": [
+    "education",
+    "science",
+    "weather"
+  ],
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
