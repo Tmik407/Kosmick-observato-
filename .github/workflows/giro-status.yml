@@ -10,7 +10,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: giro-status-archive
+  group: repository-main-writes
   cancel-in-progress: false
 jobs:
   update-giro-status:
