@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Archive NOAA SWPC solar wind, IMF and planetary Kp without interpolation."""
+"""Archive NOAA SWPC solar wind, IMF and planetary Kp without interpolation.
+
+Each upstream source is isolated: a temporary outage is recorded in metadata,
+while the last known archive rows remain available and are never relabelled fresh.
+"""
 import json, math, urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -10,18 +14,23 @@ SOURCES={
  "mag":"https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json",
  "kp":"https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json"}
 INVALID={-999.9,-999.0,-9999.0,9999.0}
+
 def fetch(url):
- req=urllib.request.Request(url,headers={"User-Agent":"Kosmicka-Observator-X5/1.0"})
- with urllib.request.urlopen(req,timeout=40) as r: return json.loads(r.read().decode("utf-8"))
+ req=urllib.request.Request(url,headers={"User-Agent":"Kosmicka-Observator-X5/1.1"})
+ with urllib.request.urlopen(req,timeout=25) as r:
+  return json.loads(r.read().decode("utf-8"))
+
 def stamp(v):
  try:
   d=datetime.fromisoformat(str(v).replace("Z","+00:00"))
   return (d if d.tzinfo else d.replace(tzinfo=timezone.utc)).astimezone(timezone.utc)
  except (ValueError,TypeError): return None
+
 def num(v,lo=-1e6,hi=1e6):
  try: x=float(v)
  except (ValueError,TypeError): return None
  return x if math.isfinite(x) and x not in INVALID and lo<=x<=hi else None
+
 def records(payload):
  if not isinstance(payload,list) or not payload:return []
  if isinstance(payload[0],dict): return payload
@@ -29,23 +38,46 @@ def records(payload):
   h=[str(x).strip() for x in payload[0]]
   return [dict(zip(h,r)) for r in payload[1:] if isinstance(r,list)]
  return []
+
 def nearest(items,t,limit):
  if not items:return None
  x=min(items,key=lambda a:abs((a["dt"]-t).total_seconds()))
  return x if abs((x["dt"]-t).total_seconds())<=limit else None
+
+def latest_cached(rows, key):
+ fields={"wind":("speed_kms","density_cm3"),"mag":("bx_gsm_nt","by_gsm_nt","bz_gsm_nt","bt_nt"),"kp":("kp",)}[key]
+ times=[stamp(r.get("t")) for r in rows if any(r.get(f) is not None for f in fields)]
+ times=[t for t in times if t is not None]
+ return max(times) if times else None
+
 def main():
  now=datetime.now(timezone.utc)
  wind=[]; mag=[]; kp=[]
- for r in records(fetch(SOURCES["wind"])):
-  t=stamp(r.get("time_tag",r.get("time"))); s=num(r.get("proton_speed",r.get("speed")),0,3000); d=num(r.get("proton_density",r.get("density")),0,10000)
-  if t and r.get("active",True) is True and (s is not None or d is not None): wind.append({"dt":t,"speed":s,"density":d})
- for r in records(fetch(SOURCES["mag"])):
-  t=stamp(r.get("time_tag",r.get("time")))
-  v={"bx":num(r.get("bx_gsm",r.get("bx")),-200,200),"by":num(r.get("by_gsm",r.get("by")),-200,200),"bz":num(r.get("bz_gsm",r.get("bz")),-200,200),"bt":num(r.get("bt"),0,300)}
-  if t and r.get("active",True) is True and any(x is not None for x in v.values()): mag.append({"dt":t,**v})
- for r in records(fetch(SOURCES["kp"])):
-  t=stamp(r.get("time_tag",r.get("time"))); k=num(r.get("Kp",r.get("kp")),0,9)
-  if t and k is not None: kp.append({"dt":t,"kp":k})
+ fetch_state={}
+ for key in ("wind","mag","kp"):
+  try:
+   payload=fetch(SOURCES[key])
+   fetch_state[key]={"ok":True,"error":None}
+   if key=="wind":
+    for r in records(payload):
+     t=stamp(r.get("time_tag",r.get("time"))); s=num(r.get("proton_speed",r.get("speed")),0,3000); d=num(r.get("proton_density",r.get("density")),0,10000)
+     if t and r.get("active",True) is True and (s is not None or d is not None): wind.append({"dt":t,"speed":s,"density":d})
+   elif key=="mag":
+    for r in records(payload):
+     t=stamp(r.get("time_tag",r.get("time")))
+     v={"bx":num(r.get("bx_gsm",r.get("bx")),-200,200),"by":num(r.get("by_gsm",r.get("by")),-200,200),"bz":num(r.get("bz_gsm",r.get("bz")),-200,200),"bt":num(r.get("bt"),0,300)}
+     if t and r.get("active",True) is True and any(x is not None for x in v.values()): mag.append({"dt":t,**v})
+   else:
+    for r in records(payload):
+     t=stamp(r.get("time_tag",r.get("time"))); k=num(r.get("Kp",r.get("kp")),0,9)
+     if t and k is not None: kp.append({"dt":t,"kp":k})
+  except Exception as exc:
+   fetch_state[key]={"ok":False,"error":f"{type(exc).__name__}: {str(exc)[:500]}"}
+   print(f"NOAA source {key} fetch failed: {fetch_state[key]['error']}")
+
+ try: old=json.loads(OUT.read_text(encoding="utf-8"))
+ except (OSError,json.JSONDecodeError): old={}
+ old_rows=[r for r in old.get("rows",[]) if isinstance(r,dict) and r.get("t")]
  rows=[]
  for w in wind:
   m=nearest(mag,w["dt"],90); k=nearest(kp,w["dt"],5400)
@@ -57,22 +89,29 @@ def main():
   row["pdyn_npa"]=round(1.6726e-6*w["density"]*w["speed"]**2,4) if w["density"] is not None and w["speed"] is not None else None
   row["ey_mv_m"]=round(w["speed"]*max(0,-m["bz"])*.001,4) if m and w["speed"] is not None and m["bz"] is not None else None
   rows.append(row)
- try: old=json.loads(OUT.read_text(encoding="utf-8"))
- except (OSError,json.JSONDecodeError): old={}
- bytime={r["t"]:r for r in old.get("rows",[]) if isinstance(r,dict) and r.get("t")}
+ bytime={r["t"]:r for r in old_rows if stamp(r["t"])}
  bytime.update({r["t"]:r for r in rows})
  cutoff=now-timedelta(days=90)
  kept=[r for r in bytime.values() if stamp(r["t"]) and stamp(r["t"])>=cutoff]
  kept.sort(key=lambda r:r["t"])
- def source_meta(items, threshold_minutes):
-  latest=max((x["dt"] for x in items),default=None)
-  age=(now-latest).total_seconds() if latest else None
-  return {"last_measurement_utc":latest.isoformat().replace("+00:00","Z") if latest else None,
-          "fetched_utc":now.isoformat().replace("+00:00","Z"),
+
+ def source_meta(key, items, limit):
+  measured=max((x["dt"] for x in items),default=None) if fetch_state[key]["ok"] else None
+  if measured is None: measured=latest_cached(kept,key)
+  age=(now-measured).total_seconds() if measured else None
+  if fetch_state[key]["ok"]:
+   state="fresh" if age is not None and age<=limit*60 else "stale_or_missing"
+  else:
+   state="fetch_failed_cached_data" if age is not None else "fetch_failed_no_data"
+  return {"last_measurement_utc":measured.isoformat().replace("+00:00","Z") if measured else None,
+          "fetched_utc":now.isoformat().replace("+00:00","Z") if fetch_state[key]["ok"] else None,
+          "last_attempt_utc":now.isoformat().replace("+00:00","Z"),
+          "request_status":"success" if fetch_state[key]["ok"] else "failed",
+          "error":fetch_state[key]["error"],
           "age_seconds_at_fetch":round(age,1) if age is not None else None,
-          "freshness_limit_minutes":threshold_minutes,
-          "status":"fresh" if age is not None and age<=threshold_minutes*60 else "stale_or_missing"}
- source_status={"wind":source_meta(wind,10),"mag":source_meta(mag,10),"kp":source_meta(kp,240)}
+          "freshness_limit_minutes":limit,"status":state,
+          "records_received":len(items) if fetch_state[key]["ok"] else 0}
+ source_status={"wind":source_meta("wind",wind,10),"mag":source_meta("mag",mag,10),"kp":source_meta("kp",kp,240)}
  payload={"source":SOURCES,"updated_utc":now.isoformat().replace("+00:00","Z"),
  "fetched_utc":now.isoformat().replace("+00:00","Z"),"source_status":source_status,"sampling_interval_minutes":5,
  "retention_days":90,"timestamp_basis":"NOAA measurement timestamps in UTC; anchored to actual wind timestamps",
@@ -80,6 +119,9 @@ def main():
  "magnetic_pair_tolerance_seconds":90,"kp_pair_tolerance_seconds":5400,"interpolation":False},
  "note":"Dst není zahrnuto: zatím není připojen a ověřen samostatný zdroj Dst.",
  "rows":kept}
- OUT.write_text(json.dumps(payload,ensure_ascii=False,separators=(",",":"))+"\n",encoding="utf-8")
+ tmp=OUT.with_suffix(".json.tmp")
+ tmp.write_text(json.dumps(payload,ensure_ascii=False,separators=(",",":"))+"\\n",encoding="utf-8")
+ tmp.replace(OUT)
+ print("NOAA fetch status:",json.dumps({k:{"ok":v["ok"],"error":v["error"]} for k,v in fetch_state.items()}))
  print(f"NOAA records wind={len(wind)}, mag={len(mag)}, Kp={len(kp)}; archive={len(kept)}")
 if __name__=="__main__": main()
