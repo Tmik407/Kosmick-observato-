@@ -559,20 +559,31 @@ setInterval(refreshX5Infographic,30*60*1000);
   if(!force&&payload.length&&loadedLevel===level){draw();return;}
   busy=true;$('gfsMapStatus').textContent='Načítám NOAA GFS · '+level+' hPa · data rozdělena do menších požadavků…';
   const vars=['temperature_'+level+'hPa','geopotential_height_'+level+'hPa','wind_speed_'+level+'hPa','wind_direction_'+level+'hPa'].join(',');
+  // Open-Meteo omezuje souběžné požadavky; malé dávky a sekvenční načítání
+  // zabraňují přetížení API na mobilních připojeních.
   const batches=[];
-  for(let i=0;i<sites.length;i+=16)batches.push(sites.slice(i,i+16));
+  for(let i=0;i<sites.length;i+=8)batches.push(sites.slice(i,i+8));
   try{
-   const received=await Promise.all(batches.map(async(batch)=>{
+   const received=[];
+   for(let bi=0;bi<batches.length;bi++){
+    const batch=batches[bi];
     const lat=batch.map(p=>p.latitude).join(','),lon=batch.map(p=>p.longitude).join(',');
     const url='https://api.open-meteo.com/v1/gfs?latitude='+encodeURIComponent(lat)+'&longitude='+encodeURIComponent(lon)+'&hourly='+encodeURIComponent(vars)+'&forecast_days=2&timezone=GMT';
-    const res=await fetch(url,{cache:'no-store'});
-    if(!res.ok){let detail='';try{const body=await res.json();detail=body.reason||body.error||JSON.stringify(body);}catch(_){detail=await res.text().catch(()=> '');}throw Error('Open-Meteo HTTP '+res.status+(detail?': '+detail:''));}
-    const raw=await res.json(),arr=Array.isArray(raw)?raw:[raw];
-    if(arr.length!==batch.length)throw Error('Nesouhlasí počet vrácených lokalit: očekáváno '+batch.length+', přijato '+arr.length+'.');
-    if(arr.some(x=>!x||!x.hourly||!Array.isArray(x.hourly.time)))throw Error('Odpověď některé lokality neobsahuje hodinová tlaková data.');
-    return arr;
-   }));
-   payload=received.flat();loadedLevel=level;times=payload[0].hourly.time||[];
+    let arr=null,lastError=null;
+    for(let attempt=0;attempt<3;attempt++){
+     try{
+      const res=await fetch(url,{cache:'no-store'});
+      if(!res.ok){let detail='';try{const body=await res.json();detail=body.reason||body.error||JSON.stringify(body);}catch(_){detail='';}throw Error('HTTP '+res.status+(detail?': '+detail:''));}
+      const raw=await res.json();arr=Array.isArray(raw)?raw:[raw];break;
+     }catch(err){lastError=err;if(attempt<2)await new Promise(resolve=>setTimeout(resolve,900*(attempt+1)));}
+    }
+    if(!arr)throw Error('Dávka '+(bi+1)+'/'+batches.length+': '+String(lastError?.message||lastError||'síťová chyba'));
+    if(arr.length!==batch.length)throw Error('Dávka '+(bi+1)+': očekáváno '+batch.length+' lokalit, přijato '+arr.length+'.');
+    if(arr.some(x=>!x||!x.hourly||!Array.isArray(x.hourly.time)))throw Error('Dávka '+(bi+1)+': odpověď neobsahuje hodinová tlaková data.');
+    received.push(...arr);
+    $('gfsMapStatus').textContent='Načítám NOAA GFS · dávka '+(bi+1)+'/'+batches.length+' · '+received.length+'/'+sites.length+' lokalit…';
+   }
+   payload=received;loadedLevel=level;times=payload[0].hourly.time||[];
    const sel=$('gfsTime'),old=sel.value;sel.innerHTML='';
    times.forEach((t,i)=>{const o=document.createElement('option');o.value=String(i);o.textContent=t.replace('T',' ')+' UTC';sel.appendChild(o);});
    sel.value=old!==''&&Number(old)<times.length?old:'0';
