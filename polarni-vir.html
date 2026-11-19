@@ -672,7 +672,7 @@ setInterval(refreshX5Infographic,30*60*1000);
    const r=await fetch(src.url+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);
    // Some archive jobs append the two literal characters "\\n" after valid JSON.
    // Strip only this terminal artifact (and an optional UTF-8 BOM); real JSON errors still fail visibly.
-   const raw=await r.text(),clean=raw.replace(/^\uFEFF/,'').replace(/(?:\\r?\\n)+\s*$/g,'');
+   const raw=await r.text(),clean=raw.replace(/^\uFEFF/,'').replace(/(?:\\r)?\\n\s*$/g,'');
    const m=JSON.parse(clean),retrieved=m.retrieved_utc||null,age=ageHours(retrieved),last=src.date(m);
    let state='Dostupná',suffix='';
    if(age===null){state='Bez času aktualizace';suffix='Nelze určit stáří metadat.';}
