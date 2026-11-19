@@ -896,16 +896,18 @@ async function refresh(){
  const xr=results[3].status==="fulfilled"?rowsOf(results[3].value):[];
  const dst=results[4].status==="fulfilled"?rowsOf(results[4].value):[];
  const speedCheck=cleanSpeedRows(wind);
-  const p=newestForDisplay(speedCheck.rows,archive.wind,["proton_speed"]),d=newestForDisplay(wind,archive.wind,["proton_density"]);
- const b=newestForDisplay(mag,archive.mag,["bz_gsm","bt"]),k=newestForDisplay(kp,archive.kp,["kp","Kp"]);
- const archiveFallback={updated:archive.updated,wind:p?._archive?p:null,mag:b?._archive?b:null,kp:k?._archive?k:null};
+  const liveP=newest(speedCheck.rows,["proton_speed"],true),liveD=newest(wind,["proton_density"],true);
+ const liveB=newest(mag,["bz_gsm","bt"],true),liveK=newest(kp,["kp","Kp"]);
+ const p=newestForDisplay(speedCheck.rows,archive.wind,["proton_speed"]),d=newestForDisplay(wind,archive.wind,["proton_density"]);
+ const bm=newestForDisplay(mag,archive.mag,["bz_gsm","bt"]),k=newestForDisplay(kp,archive.kp,["kp","Kp"]);
+ const archiveFallback={updated:archive.updated,wind:p?._archive?p:null,mag:bm?._archive?bm:null,kp:k?._archive?k:null};
  const x=getXray(xr),z=dst.length?dst[dst.length-1]:null;
  setMetric("speed",p?val(p,"proton_speed"):null,"km/s","speedtime",p&&timeOf(p),10);
  setMetric("density",d?val(d,"proton_density"):null,"cm⁻³","densitytime",d&&timeOf(d),10);
- setMetric("bz",b?val(b,"bz_gsm"):null,"nT","bztime",b&&timeOf(b),10);
- setMetric("bt",b?val(b,"bt"):null,"nT","bttime",b&&timeOf(b),10);
- setMetric("bx",b?val(b,"bx_gsm"):null,"nT","bxtime",b&&timeOf(b),10);
- setMetric("by",b?val(b,"by_gsm"):null,"nT","bytime",b&&timeOf(b),10);
+ setMetric("bz",bm?val(bm,"bz_gsm"):null,"nT","bztime",b&&timeOf(b),10);
+ setMetric("bt",bm?val(bm,"bt"):null,"nT","bttime",b&&timeOf(b),10);
+ setMetric("bx",bm?val(bm,"bx_gsm"):null,"nT","bxtime",b&&timeOf(b),10);
+ setMetric("by",bm?val(bm,"by_gsm"):null,"nT","bytime",b&&timeOf(b),10);
  setMetric("kp",k?val(k,"kp","Kp"):null,"","kptime",k&&timeOf(k),240);
  if(x){const flux=Number(x.flux);let cls=flux>=1e-4?"X":flux>=1e-5?"M":flux>=1e-6?"C":flux>=1e-7?"B":"A";$("xray").textContent=cls+" ("+flux.toExponential(2)+" W/m²)";$("xraytime").textContent="Měření: "+timeOf(x).replace("T"," ")+" UTC"}else{$("xray").textContent="Nedostupné"}
  if(z){let dz=val(z,"dst","Dst",1);$("dst").textContent=dz===null?"Nedostupné":dz.toFixed(0)+" nT";$("dsttime").textContent="Čas: "+timeOf(z).replace("T"," ")+" UTC · ověřit interval"}else $("dst").textContent="Nedostupné";
@@ -930,7 +932,7 @@ async function refresh(){
  updateDynamicPressure(speedCheck.rows);
  const latestPressureRow=speedCheck.rows.filter(r=>timeOf(r)&&valid(r.proton_speed)&&valid(r.proton_density)).slice(-1)[0];
  const latestPressure=latestPressureRow?1.6726e-6*Number(latestPressureRow.proton_density)*Number(latestPressureRow.proton_speed)**2:null;
- updateRisk(k,b,latestPressure, p);
+ updateRisk(liveK,liveB,latestPressure,liveP);
  const couplingCount=updateCoupling(speedCheck.rows,mag);
  updateQuality(wind,speedCheck,window.__aceLatestQuality||null,couplingCount);
  updateSourceHealth(results);
@@ -938,7 +940,7 @@ async function refresh(){
  updateAlerts(speedCheck.rows,mag,kp);
  updateHistory24h(wind,mag);
  updateCumulative24h(wind,mag);
- updateAnalysis(xr,k,b,p,d,latestPressure,couplingCount);
+ updateAnalysis(xr,liveK,liveB,liveP,liveD,latestPressure,couplingCount);
  $("stav").textContent=failures.length?"Některé zdroje nejsou dostupné: "+failures.join(" · "):"Spojení s datovými zdroji NOAA bylo úspěšné.";
  $("stav").className="status "+(failures.length?"warn":"good");
  $("updated").textContent="Poslední kontrola: "+new Date().toISOString().replace("T"," ").slice(0,19)+" UTC · automatická aktualizace každých 60 sekund";
