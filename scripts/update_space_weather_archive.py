@@ -4,7 +4,7 @@
 Each upstream source is isolated: a temporary outage is recorded in metadata,
 while the last known archive rows remain available and are never relabelled fresh.
 """
-import json, math, urllib.request
+import json, math, urllib.request, subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -75,9 +75,26 @@ def main():
    fetch_state[key]={"ok":False,"error":f"{type(exc).__name__}: {str(exc)[:500]}"}
    print(f"NOAA source {key} fetch failed: {fetch_state[key]['error']}")
 
- try: old=json.loads(OUT.read_text(encoding="utf-8"))
- except (OSError,json.JSONDecodeError): old={}
+ def parse_archive(raw):
+  try:
+   value,end=json.JSONDecoder().raw_decode(raw.lstrip())
+   return value if isinstance(value,dict) else {}
+  except json.JSONDecodeError:
+   return {}
+ try: old=parse_archive(OUT.read_text(encoding="utf-8"))
+ except OSError: old={}
  old_rows=[r for r in old.get("rows",[]) if isinstance(r,dict) and r.get("t")]
+ # If a previous archive version had trailing non-JSON bytes, recover its
+ # valid JSON prefix from the parent commit and merge its 90-day history.
+ try:
+  previous=subprocess.check_output(["git","show","HEAD^:space-weather-history.json"],stderr=subprocess.DEVNULL,text=True)
+  recovered=parse_archive(previous)
+  recovered_rows=[r for r in recovered.get("rows",[]) if isinstance(r,dict) and r.get("t")]
+  if len(recovered_rows)>len(old_rows):
+   print(f"Recovered historical archive rows from parent commit: {len(recovered_rows)}")
+   old_rows.extend(recovered_rows)
+ except (subprocess.CalledProcessError, OSError):
+  pass
  rows=[]
  for w in wind:
   m=nearest(mag,w["dt"],90); k=nearest(kp,w["dt"],5400)
