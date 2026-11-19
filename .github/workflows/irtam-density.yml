@@ -31,13 +31,21 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Preserve this run's generated files outside the worktree first.
+          # Another IRTAM run may have created/updated irtam-status.json while
+          # this calculation was running; rebase before restoring our outputs.
+          mkdir -p /tmp/x5-irtam-output
+          if [ -f irtam-density.json ]; then cp irtam-density.json /tmp/x5-irtam-output/irtam-density.json; fi
+          if [ -f irtam-status.json ]; then cp irtam-status.json /tmp/x5-irtam-output/irtam-status.json; fi
+          git restore -- irtam-density.json irtam-status.json 2>/dev/null || true
+          rm -f irtam-status.json
+          git pull --rebase origin main
+          if [ -f /tmp/x5-irtam-output/irtam-density.json ]; then cp /tmp/x5-irtam-output/irtam-density.json irtam-density.json; fi
+          if [ -f /tmp/x5-irtam-output/irtam-status.json ]; then cp /tmp/x5-irtam-output/irtam-status.json irtam-status.json; fi
           git add irtam-density.json irtam-status.json
           if git diff --cached --quiet; then
             echo "No IRTAM changes"
           else
             git commit -m "Update delayed IRTAM global electron density"
-            # Other scheduled archive jobs may update main while this model runs.
-            # Rebase our generated grid on the latest main before pushing.
-            git pull --rebase origin main
             git push origin HEAD:main
           fi
