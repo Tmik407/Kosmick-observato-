@@ -6,6 +6,36 @@ const fmt=(v,d=1)=>Number.isFinite(v)?v.toFixed(d).replace('.',','):'—';
 const dateFmt=s=>{const d=new Date(/[Zz]$|[+-]\\d{2}:?\\d{2}$/.test(s)?s:s+'Z');return Number.isFinite(d.getTime())?d.toLocaleString('cs-CZ',{timeZone:'UTC',dateStyle:'short',timeStyle:'short'})+' UTC':'—';};
 const val=(row,key,i)=>row?.hourly?.[key]?.[i];
 function weightedMean(values,points){let s=0,w=0;values.forEach((v,i)=>{if(Number.isFinite(v)){const q=Math.cos(points[i].lat*Math.PI/180);s+=v*q;w+=q;}});return w?s/w:null;}
+function drawTemperatureTrend(){
+ const c=$('vortexTrendCanvas'),g=c?.getContext('2d');if(!c||!g||!data)return;
+ const w=c.width,h=c.height,p={l:70,r:25,t:38,b:42};
+ g.clearRect(0,0,w,h);g.fillStyle='#fff';g.fillRect(0,0,w,h);
+ const series=levels.map(level=>({level,values:data.times.map((_,i)=>weightedMean(data.rows.map(r=>val(r,'temperature_'+level+'hPa',i)),data.points))}));
+ const nums=series.flatMap(x=>x.values).filter(Number.isFinite);
+ if(!nums.length){g.fillStyle='#52677a';g.fillText('Teplotní řada není dostupná.',p.l,80);return;}
+ let lo=Math.floor(Math.min(...nums)-2),hi=Math.ceil(Math.max(...nums)+2);if(lo===hi){lo-=1;hi+=1;}
+ const x=i=>p.l+i*(w-p.l-p.r)/Math.max(1,data.times.length-1),y=v=>h-p.b-(v-lo)/(hi-lo)*(h-p.t-p.b);
+ g.font='12px Arial';g.textAlign='right';
+ for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4,yy=y(v);g.strokeStyle='#dce5ed';g.beginPath();g.moveTo(p.l,yy);g.lineTo(w-p.r,yy);g.stroke();g.fillStyle='#52677a';g.fillText(fmt(v,0)+' °C',p.l-8,yy+4);}
+ series.forEach(a=>{g.strokeStyle=colors[a.level];g.lineWidth=3;g.beginPath();let started=false;a.values.forEach((v,i)=>{if(!Number.isFinite(v)){started=false;return;}if(!started){g.moveTo(x(i),y(v));started=true;}else g.lineTo(x(i),y(v));});g.stroke();});
+ const selected=Number($('vortexCompareTimeSelect')?.value||0);g.strokeStyle='#263b4f';g.setLineDash([5,4]);g.beginPath();g.moveTo(x(selected),p.t);g.lineTo(x(selected),h-p.b);g.stroke();g.setLineDash([]);
+ g.textAlign='center';g.fillStyle='#52677a';g.font='11px Arial';[0,Math.floor((data.times.length-1)/2),data.times.length-1].forEach(i=>g.fillText(dateFmt(data.times[i]).replace(' UTC',''),x(i),h-14));
+ g.textAlign='left';let lx=p.l;levels.forEach(l=>{g.fillStyle=colors[l];g.fillRect(lx,12,14,4);g.fillStyle='#263b4f';g.fillText(l+' hPa',lx+20,18);lx+=105;});
+}
+function updateTemperatureComparison(index){
+ const output=levels.map(level=>{
+  const temps=data.rows.map(r=>val(r,'temperature_'+level+'hPa',index));
+  const winds=data.rows.map(r=>val(r,'wind_speed_'+level+'hPa',index));
+  let min=Infinity,at=-1;temps.forEach((v,i)=>{if(Number.isFinite(v)&&v<min){min=v;at=i;}});
+  const p=at>=0?data.points[at]:null;
+  return {level,mean:weightedMean(temps,data.points),min:min===Infinity?null:min,point:p,wind:weightedMean(winds,data.points)};
+ });
+ const body=$('vortexCompareBody');
+ if(body)body.innerHTML=output.map(x=>'<tr><td><b>'+x.level+' hPa</b></td><td>'+fmt(x.mean,2)+' °C</td><td>'+fmt(x.min,2)+' °C</td><td>'+(x.point?fmt(x.point.lat,0)+'° N, '+fmt((x.point.lon+360)%360,1)+'° E':'—')+'</td><td>'+fmt(x.wind,1)+' m/s</td></tr>').join('');
+ const stamp=$('vortexCompareTime');if(stamp)stamp.textContent=dateFmt(data.times[index]);
+ const status=$('vortexCompareStatus');if(status)status.innerHTML='<b class="good">Číselné porovnání načteno.</b> '+data.rows.length+' bodů, '+data.times.length+' časových kroků. Teplotní průměr je vážen kosinem zeměpisné šířky.';
+ drawTemperatureTrend();
+}
 function analyzeCenter(level,index){
  const key='geopotential_height_'+level+'hPa',rows=data.rows,points=data.points;
  const ringMeans=new Map();
@@ -73,10 +103,10 @@ function update(index){
  if(body)body.innerHTML=centers.map(c=>c?'<tr><td><b>'+c.level+' hPa</b></td><td>'+fmt(c.lat,2)+'° N</td><td>'+fmt(c.lon,2)+'° E</td><td>'+fmt(c.displacement,0)+' km</td><td>'+fmt(c.minHeight,0)+' m²/s²</td><td>'+fmt(c.asymmetry,0)+' m²/s²</td></tr>':'<tr><td colspan="6">Data nejsou dostupná</td></tr>').join('');
  const methods=$('vortexGeoMethod');if(methods)methods.textContent=centers.map(c=>c?c.level+' hPa: '+c.method:'').filter(Boolean).join(' · ');
  const stamp=$('vortexGeoTime');if(stamp)stamp.textContent=dateFmt(data.times[index])+' · běh '+dateFmt(data.cycle_utc);
- drawPolar(index,centers);drawDisplacement();
+ updateTemperatureComparison(index);\n drawPolar(index,centers);drawDisplacement();
 }
 async function load(){
- const status=$('vortexGeoStatus');if(status)status.textContent='Načítám geopotenciální pole NOAA GFS…';
+ const status=$('vortexGeoStatus');if(status)status.textContent='Načítám geopotenciální pole NOAA GFS…';const compareStatus=$('vortexCompareStatus');if(compareStatus)compareStatus.textContent='Načítám číselná data NOAA GFS…';
  try{
   const r=await fetch(url+'?geo='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);
   const d=await r.json();if(!Array.isArray(d.points)||!Array.isArray(d.rows)||!Array.isArray(d.times)||!d.times.length)throw Error('Neplatná struktura archivu.');
@@ -87,9 +117,9 @@ async function load(){
   const select=$('vortexCompareTimeSelect');if(select&&select.options.length!==d.times.length){select.innerHTML='';d.times.forEach((t,i)=>{const o=document.createElement('option');o.value=String(i);o.textContent=dateFmt(t);select.appendChild(o);});}
   const index=Math.min(Number(select?.value||0),d.times.length-1);update(index);
   if(status)status.innerHTML='<b class="good">Geopotenciální diagnostika načtena.</b> '+d.rows.length+' bodů · '+d.times.length+' časových kroků · 3 hladiny.';
- }catch(e){if(status)status.innerHTML='<b class="warn">Geopotenciální diagnostika se nepodařila načíst:</b> '+String(e.message||e);}
+ }catch(e){if(status)status.innerHTML='<b class="warn">Geopotenciální diagnostika se nepodařila načíst:</b> '+String(e.message||e);const cs=$('vortexCompareStatus');if(cs)cs.innerHTML='<b class="warn">Číselné porovnání se nepodařilo načíst:</b> '+String(e.message||e);}
 }
 const select=$('vortexCompareTimeSelect');if(select)select.addEventListener('change',()=>{if(data)update(Number(select.value));});
-const refresh=$('vortexGeoRefresh');if(refresh)refresh.addEventListener('click',load);
+const refresh=$('vortexGeoRefresh');if(refresh)refresh.addEventListener('click',load);const compareRefresh=$('vortexCompareRefresh');if(compareRefresh)compareRefresh.addEventListener('click',load);
 load();
 })();
