@@ -223,6 +223,7 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
 </main>
 <script type="text/plain" id="legacy-page-script-disabled">
 /* Původní datový skript je dočasně vypnut: obsahuje syntaktickou chybu, která blokuje běh stránky. */
+if($('gfsGridMap')){
 const polarLevels=[60,65,70,75,80,85,88,90],polarLons=Array.from({length:16},(_,i)=>i*22.5);
 const polarPoints=[];for(const lat of polarLevels)for(const lon of polarLons)polarPoints.push({lat,lon});
 let gfsPayload=null,gfsFetchKey='';
@@ -266,6 +267,7 @@ async function loadGfsGrid(force=false){
  }catch(e){$('gfsMapStatus').innerHTML='<b class="warn">Meteorologická síť není dostupná.</b> '+String(e.message||e)+'. Archivované mapy NOAA CPC zůstávají níže na stránce.';}
 }
 $('gfsLevel').addEventListener('change',()=>loadGfsGrid(true));$('gfsField').addEventListener('change',drawGfsGrid);$('gfsTime').addEventListener('change',drawGfsGrid);drawGfsGrid();loadGfsGrid();
+}
 async function loadArchive(){
  const status=$('archiveStatus'),mainStatus=$('dataStatus');
  const fmt=v=>Number.isFinite(v)?v.toFixed(1).replace('.',','):'—';
