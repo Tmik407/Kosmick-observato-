@@ -1,0 +1,73 @@
+(()=>{'use strict';
+const $=id=>document.getElementById(id),levels=[10,30,50],lats=[60,68,76,84,88],lons=Array.from({length:8},(_,i)=>i*45);
+const points=[];for(const lat of lats)for(const lon of lons)points.push({lat,lon});
+const keys=l=>['temperature_'+l+'hPa','geopotential_height_'+l+'hPa','wind_speed_'+l+'hPa','wind_direction_'+l+'hPa'];
+let data={},times=[],idx=0,yaw=-.35,pitch=.22,timer=null,busy=false,drag=null;
+const status=t=>{if($('p3dStatus'))$('p3dStatus').textContent=t;};
+const project=(lat,lon,z,cx,cy,scale)=>{
+ const r=(90-lat)/30*scale,a=(lon+yaw*180/Math.PI-90)*Math.PI/180;
+ const x=r*Math.cos(a),y=r*Math.sin(a);
+ const yp=y*Math.cos(pitch)-z*Math.sin(pitch),zp=y*Math.sin(pitch)+z*Math.cos(pitch);
+ const xx=x*Math.cos(yaw*.15)-yp*Math.sin(yaw*.15),yy=x*Math.sin(yaw*.15)+yp*Math.cos(yaw*.15);
+ const perspective=900/(900-zp);
+ return {x:cx+xx*perspective,y:cy-yy*perspective-zp*.05,depth:zp};
+};
+const palette=t=>{const stops=[[0,[28,77,210]],[.25,[0,183,220]],[.5,[44,190,132]],[.75,[247,199,49]],[1,[225,61,54]]];for(let i=1;i<stops.length;i++)if(t<=stops[i][0]){const a=stops[i-1],b=stops[i],q=(t-a[0])/(b[0]-a[0]);return 'rgb('+a[1].map((v,j)=>Math.round(v+(b[1][j]-v)*q)).join(',')+')';}return 'rgb(225,61,54)';};
+function value(level,p,k){const arr=data[level]?.rows?.[p]?.hourly?.[k];return arr?.[idx];}
+function draw(){
+ const c=$('p3dCanvas');if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height,cx=w*.5,cy=h*.53,scale=2.05;
+ g.clearRect(0,0,w,h);const bg=g.createLinearGradient(0,0,w,h);bg.addColorStop(0,'#061526');bg.addColorStop(1,'#123653');g.fillStyle=bg;g.fillRect(0,0,w,h);
+ // polar reference grid
+ g.strokeStyle='rgba(139,190,220,.22)';g.lineWidth=1;
+ for(const lat of [60,70,80]){g.beginPath();for(let j=0;j<=72;j++){const p=project(lat,j*5, -150,cx,cy,scale);if(j===0)g.moveTo(p.x,p.y);else g.lineTo(p.x,p.y);}g.stroke();}
+ const zBy={10:115,30:0,50:-115},faces=[],temps=[];
+ for(const lev of levels){for(let p=0;p<points.length;p++){const t=value(lev,p,keys(lev)[0]);if(Number.isFinite(t))temps.push(t);}}
+ if(!temps.length){g.fillStyle='#e6f4ff';g.font='22px Arial';g.fillText('Čekám na tři hladiny NOAA GFS…',40,55);return;}
+ const min=Math.min(...temps),max=Math.max(...temps);
+ for(const lev of levels){const z=zBy[lev];for(let ri=0;ri<lats.length-1;ri++)for(let li=0;li<lons.length;li++){
+  const a=ri*8+li,b=ri*8+(li+1)%8,d=(ri+1)*8+li,e=(ri+1)*8+(li+1)%8;
+  const ids=[a,b,e,d],pts=ids.map(p=>project(points[p].lat,points[p].lon,z,cx,cy,scale)),vv=ids.map(p=>value(lev,p,keys(lev)[0])).filter(Number.isFinite);
+  if(vv.length<3)continue;const avg=vv.reduce((x,y)=>x+y,0)/vv.length,t=max===min?.5:(avg-min)/(max-min);
+  faces.push({pts,fill:palette(t),depth:pts.reduce((x,p)=>x+p.depth,0)/4,lev});
+ }}
+ faces.sort((a,b)=>a.depth-b.depth);
+ for(const f of faces){g.beginPath();f.pts.forEach((p,i)=>i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y));g.closePath();g.fillStyle=f.fill;g.globalAlpha=.66;g.fill();g.globalAlpha=1;g.strokeStyle='rgba(220,245,255,.23)';g.lineWidth=1;g.stroke();}
+ // vertical columns joining identical grid points across all pressure levels
+ for(let p=0;p<points.length;p++){const pts=levels.map(l=>project(points[p].lat,points[p].lon,zBy[l],cx,cy,scale));g.beginPath();pts.forEach((q,i)=>i?g.lineTo(q.x,q.y):g.moveTo(q.x,q.y));g.strokeStyle='rgba(245,250,255,.55)';g.lineWidth=1.2;g.stroke();}
+ // wind vectors and node dots, upper layers drawn last
+ for(const lev of [50,30,10])for(let p=0;p<points.length;p++){
+  const q=project(points[p].lat,points[p].lon,zBy[lev],cx,cy,scale),sp=value(lev,p,keys(lev)[2]),dr=value(lev,p,keys(lev)[3]);
+  g.beginPath();g.arc(q.x,q.y,3.4,0,Math.PI*2);g.fillStyle='#f7fbff';g.fill();
+  if(Number.isFinite(sp)&&Number.isFinite(dr)){const a=(dr+180)*Math.PI/180,L=8+Math.min(15,sp*.08),ex=q.x+Math.sin(a)*L,ey=q.y-Math.cos(a)*L;g.beginPath();g.moveTo(q.x,q.y);g.lineTo(ex,ey);g.strokeStyle='#ffffff';g.lineWidth=1.7;g.stroke();}
+ }
+ g.fillStyle='#eaf6ff';g.font='bold 22px Arial';g.fillText('3D POLÁRNÍ STRATOSFÉRA · NOAA GFS',28,36);
+ g.font='bold 16px Arial';g.fillStyle='#63c9ff';g.fillText('10 hPa',cx+260,cy-150);g.fillStyle='#ffd166';g.fillText('30 hPa',cx+260,cy+2);g.fillStyle='#c6a0ff';g.fillText('50 hPa',cx+260,cy+145);
+ g.font='13px Arial';g.fillStyle='#d4e8f6';g.fillText('Barevná plocha = interpolovaná teplota · bílé body a šipky = vzorky a směr větru',28,h-42);
+ g.fillText('Teplotní rozsah vzorků: '+min.toFixed(1)+' až '+max.toFixed(1)+' °C · '+(times[idx]||'').replace('T',' ')+' UTC',28,h-20);
+ for(const lev of levels){const vals=points.map((_,p)=>value(lev,p,keys(lev)[0])).filter(Number.isFinite),el=$('p3d'+lev);if(el)el.textContent=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1)+' °C':'—';}
+}
+async function load(){
+ if(busy)return;busy=true;stop();status('Stahuji hodinová pole GFS pro hladiny 10, 30 a 50 hPa…');
+ try{
+  const lat=points.map(p=>p.lat).join(','),lon=points.map(p=>p.lon).join(',');
+  const results=await Promise.all(levels.map(async lev=>{
+   const url='https://api.open-meteo.com/v1/gfs?latitude='+lat+'&longitude='+lon+'&hourly='+keys(lev).join(',')+'&forecast_days=2&timezone=GMT';
+   const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error('GFS '+lev+' hPa HTTP '+r.status);
+   const raw=await r.json(),rows=Array.isArray(raw)?raw:[raw];if(rows.length!==points.length||!rows[0]?.hourly?.time)throw Error('Neúplná síť na '+lev+' hPa');
+   return {lev,rows,times:rows[0].hourly.time};
+  }));
+  const base=results[0].times;if(results.some(x=>x.times.length!==base.length||x.times.some((t,i)=>t!==base[i])))throw Error('Časové osy hladin se neshodují; společná animace není bezpečná.');
+  data={};results.forEach(x=>data[x.lev]=x);times=base;idx=0;
+  const sel=$('p3dTime');sel.innerHTML='';times.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t.replace('T',' ')+' UTC';sel.appendChild(o);});
+  status('Načteny všechny tři hladiny · '+points.length+' vzorkovacích bodů na hladinu · '+times.length+' hodinových kroků. '+times[0]+' až '+times[times.length-1]+' UTC.');draw();
+ }catch(e){data={};status('3D data nejsou kompletní: '+String(e.message||e)+'. Zobrazení zůstává bez doplněných hodnot.');draw();}
+ finally{busy=false;}
+}
+function stop(){if(timer)clearInterval(timer);timer=null;}
+function play(){if(!times.length)return;stop();timer=setInterval(()=>{idx=(idx+1)%times.length;$('p3dTime').value=idx;draw();},Number($('p3dSpeed')?.value||800));}
+$('p3dLoad')?.addEventListener('click',load);$('p3dPlay')?.addEventListener('click',play);$('p3dPause')?.addEventListener('click',stop);
+$('p3dTime')?.addEventListener('change',e=>{idx=Number(e.target.value)||0;draw();});
+$('p3dSpeed')?.addEventListener('change',()=>{if(timer)play();});
+const canvas=$('p3dCanvas');if(canvas){canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);});canvas.addEventListener('pointermove',e=>{if(!drag)return;yaw+=(e.clientX-drag.x)*.008;pitch=Math.max(-.65,Math.min(.65,pitch+(e.clientY-drag.y)*.006));drag={x:e.clientX,y:e.clientY};draw();});canvas.addEventListener('pointerup',()=>drag=null);canvas.addEventListener('pointercancel',()=>drag=null);}
+draw();load();
+})();
