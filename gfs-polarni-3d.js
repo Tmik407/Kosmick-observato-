@@ -9,18 +9,18 @@ const project=(lat,lon,z,cx,cy,scale)=>{
  const x=r*Math.cos(a),y=r*Math.sin(a);
  const yp=y*Math.cos(pitch)-z*Math.sin(pitch),zp=y*Math.sin(pitch)+z*Math.cos(pitch);
  const xx=x*Math.cos(yaw*.15)-yp*Math.sin(yaw*.15),yy=x*Math.sin(yaw*.15)+yp*Math.cos(yaw*.15);
- const perspective=900/(900-zp);
- return {x:cx+xx*perspective,y:cy-yy*perspective-zp*.05,depth:zp};
+ const perspective=1200/(1200-zp);
+ return {x:cx+xx*perspective,y:cy-yy*perspective-zp*.66,depth:zp};
 };
 const palette=t=>{const stops=[[0,[28,77,210]],[.25,[0,183,220]],[.5,[44,190,132]],[.75,[247,199,49]],[1,[225,61,54]]];for(let i=1;i<stops.length;i++)if(t<=stops[i][0]){const a=stops[i-1],b=stops[i],q=(t-a[0])/(b[0]-a[0]);return 'rgb('+a[1].map((v,j)=>Math.round(v+(b[1][j]-v)*q)).join(',')+')';}return 'rgb(225,61,54)';};
 function value(level,p,k){const arr=data[level]?.rows?.[p]?.hourly?.[k];return arr?.[idx];}
 function draw(){
- const c=$('p3dCanvas');if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height,cx=w*.5,cy=h*.53,scale=2.05;
+ const c=$('p3dCanvas');if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height,cx=w*.5,cy=h*.51,scale=155;
  g.clearRect(0,0,w,h);const bg=g.createLinearGradient(0,0,w,h);bg.addColorStop(0,'#061526');bg.addColorStop(1,'#123653');g.fillStyle=bg;g.fillRect(0,0,w,h);
  // polar reference grid
- g.strokeStyle='rgba(139,190,220,.22)';g.lineWidth=1;
- for(const lat of [60,70,80]){g.beginPath();for(let j=0;j<=72;j++){const p=project(lat,j*5, -150,cx,cy,scale);if(j===0)g.moveTo(p.x,p.y);else g.lineTo(p.x,p.y);}g.stroke();}
- const zBy={10:115,30:0,50:-115},faces=[],temps=[];
+ g.strokeStyle='rgba(139,190,220,.30)';g.lineWidth=1.2;
+ for(const lat of [60,70,80]){g.beginPath();for(let j=0;j<=72;j++){const p=project(lat,j*5, 0,cx,cy,scale);if(j===0)g.moveTo(p.x,p.y);else g.lineTo(p.x,p.y);}g.stroke();}
+ const zBy={10:190,30:0,50:-190},faces=[],temps=[];
  for(const lev of levels){for(let p=0;p<points.length;p++){const t=value(lev,p,keys(lev)[0]);if(Number.isFinite(t))temps.push(t);}}
  if(!temps.length){g.fillStyle='#e6f4ff';g.font='22px Arial';g.fillText('Čekám na tři hladiny NOAA GFS…',40,55);return;}
  const min=Math.min(...temps),max=Math.max(...temps);
@@ -31,7 +31,7 @@ function draw(){
   faces.push({pts,fill:palette(t),depth:pts.reduce((x,p)=>x+p.depth,0)/4,lev});
  }}
  faces.sort((a,b)=>a.depth-b.depth);
- for(const f of faces){g.beginPath();f.pts.forEach((p,i)=>i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y));g.closePath();g.fillStyle=f.fill;g.globalAlpha=.66;g.fill();g.globalAlpha=1;g.strokeStyle='rgba(220,245,255,.23)';g.lineWidth=1;g.stroke();}
+ for(const f of faces){g.beginPath();f.pts.forEach((p,i)=>i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y));g.closePath();g.fillStyle=f.fill;g.globalAlpha=.78;g.fill();g.globalAlpha=1;g.strokeStyle='rgba(220,245,255,.42)';g.lineWidth=1;g.stroke();}
  // vertical columns joining identical grid points across all pressure levels
  for(let p=0;p<points.length;p++){const pts=levels.map(l=>project(points[p].lat,points[p].lon,zBy[l],cx,cy,scale));g.beginPath();pts.forEach((q,i)=>i?g.lineTo(q.x,q.y):g.moveTo(q.x,q.y));g.strokeStyle='rgba(245,250,255,.55)';g.lineWidth=1.2;g.stroke();}
  // wind vectors and node dots, upper layers drawn last
@@ -41,7 +41,7 @@ function draw(){
   if(Number.isFinite(sp)&&Number.isFinite(dr)){const a=(dr+180)*Math.PI/180,L=8+Math.min(15,sp*.08),ex=q.x+Math.sin(a)*L,ey=q.y-Math.cos(a)*L;g.beginPath();g.moveTo(q.x,q.y);g.lineTo(ex,ey);g.strokeStyle='#ffffff';g.lineWidth=1.7;g.stroke();}
  }
  g.fillStyle='#eaf6ff';g.font='bold 22px Arial';g.fillText('3D POLÁRNÍ STRATOSFÉRA · NOAA GFS',28,36);
- g.font='bold 16px Arial';g.fillStyle='#63c9ff';g.fillText('10 hPa',cx+260,cy-150);g.fillStyle='#ffd166';g.fillText('30 hPa',cx+260,cy+2);g.fillStyle='#c6a0ff';g.fillText('50 hPa',cx+260,cy+145);
+ g.font='bold 18px Arial';g.fillStyle='#63c9ff';g.fillText('10 hPa',cx+270,cy-145);g.fillStyle='#ffd166';g.fillText('30 hPa',cx+270,cy+5);g.fillStyle='#c6a0ff';g.fillText('50 hPa',cx+270,cy+155);
  g.font='13px Arial';g.fillStyle='#d4e8f6';g.fillText('Barevná plocha = interpolovaná teplota · bílé body a šipky = vzorky a směr větru',28,h-42);
  g.fillText('Teplotní rozsah vzorků: '+min.toFixed(1)+' až '+max.toFixed(1)+' °C · '+(times[idx]||'').replace('T',' ')+' UTC',28,h-20);
  for(const lev of levels){const vals=points.map((_,p)=>value(lev,p,keys(lev)[0])).filter(Number.isFinite),el=$('p3d'+lev);if(el)el.textContent=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1)+' °C':'—';}
