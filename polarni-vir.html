@@ -88,22 +88,47 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
 </div>
 <p class="muted">Ovládání: tažením prstu nebo myši otáčej modelem. Animace přehrává dostupné hodinové kroky GFS. Výška vrstev je schematicky oddělena pro čitelnost, není v měřítku geometrické výšky atmosféry.</p>
 </section>
-<section class="panel" id="real-polar-map"><h2>Interaktivní meteorologická mapa polární stratosféry</h2><p class="muted">Prostorová pole numerického modelu NOAA GFS přes Open-Meteo. Barevné body jsou modelové hodnoty ve vzorkovaných bodech severní polokoule.</p><div class="controls"><label><b>Tlaková hladina</b><select id="gfsLevel"><option value="10">10 hPa</option><option value="30">30 hPa</option><option value="50">50 hPa</option></select></label><label><b>Zobrazené pole</b><select id="gfsField"><option value="temperature">Teplota (°C)</option><option value="geopotential">Geopotenciální výška (m)</option><option value="wind">Rychlost větru (km/h)</option></select></label><label><b>Čas UTC</b><select id="gfsTime"><option value="0">Načítání…</option></select></label></div><div class="controls" style="margin:10px 0;align-items:center"><button id="gfsAnimPlay" type="button">▶ Přehrát předpověď</button><button id="gfsAnimStop" type="button">Ⅱ Pozastavit</button><label>Rychlost animace<select id="gfsAnimSpeed"><option value="1400">Pomalá</option><option value="800" selected>Normální</option><option value="400">Rychlá</option></select></label><span class="muted" id="gfsAnimState">Připraveno k animaci modelových polí</span></div><canvas id="gfsGridMap" width="1100" height="820" style="display:block;width:100%;height:auto;border:1px solid #315674;border-radius:16px;background:#f4f8fc"></canvas>
-<img id="gfsArchiveFallback" src="./data/noaa-gfs/gfs_t10_nh_f00.png" alt="Archivovaná meteorologická mapa NOAA GFS 10 hPa – severní polokoule" style="display:block;width:100%;height:auto;max-height:760px;object-fit:contain;border:1px solid #315674;border-radius:16px;background:#f4f8fc;margin-top:10px">
-<div id="gfsFallbackNote" class="muted">Záložní mapa NOAA GFS se načítá z místního archivu observatoře.</div>
-<section class="panel" id="satelliteImagery">
-<h2>Meteorologické snímky ze satelitů · záložní pozorování</h2>
-<p class="muted">Skutečné snímky z geostacionárních meteorologických družic EUMETSAT. Na rozdíl od map NOAA GFS jde o satelitní obraz oblačnosti a atmosféry, nikoli o modelovou předpověď polární stratosféry. Vyberte oblast a spektrální kanál.</p>
-<div class="controls" style="align-items:end">
- <label><b>Oblast</b><select id="satArea"><option value="global">Globální pohled</option><option value="europe" selected>Evropa</option><option value="atlantic_ocean">Atlantik</option><option value="mediterranean">Středomoří</option><option value="africa">Afrika</option></select></label>
- <label><b>Spektrum</b><select id="satType"><option value="infrared" selected>Infračervené (IR)</option><option value="visible">Viditelné (VIS)</option></select></label>
- <button id="satRefresh" type="button">↻ Obnovit snímek</button>
+<section class="panel" id="real-polar-map">
+<h2>Polární atmosféra X-5 · satelitní snímky a stratosférický model</h2>
+<p class="muted">Nový společný pozorovací panel. Nejprve skutečný meteorologický satelitní snímek, pod ním samostatně numerická diagnostika polární stratosféry. Satelitní obraz zachycuje oblačnost a teplotní strukturu oblačných vrcholů; model GFS popisuje stav ve výšce na tlakových hladinách 10, 30 a 50 hPa. Nejde o totožný typ dat.</p>
+<div class="satellite-card" style="padding:14px;border:1px solid #cbd9e5;border-radius:16px;background:#f5f9fd">
+ <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between">
+  <div><h3 style="margin:0 0 5px">Aktuální meteorologický satelitní snímek</h3><span class="muted">MET Norway / EUMETSAT · automatická obnova po 10 minutách</span></div>
+  <span class="unit">POZOROVÁNÍ · SATELIT</span>
+ </div>
+ <div class="controls" style="align-items:end;margin-top:12px">
+  <label><b>Oblast snímku</b><select id="satArea"><option value="global">Globální pohled</option><option value="europe" selected>Evropa</option><option value="atlantic_ocean">Atlantik</option><option value="mediterranean">Středomoří</option><option value="africa">Afrika</option></select></label>
+  <label><b>Spektrální kanál</b><select id="satType"><option value="infrared" selected>Infračervený (IR)</option><option value="visible">Viditelný (VIS)</option></select></label>
+  <button id="satRefresh" type="button">↻ Obnovit snímek</button>
+ </div>
+ <a id="satImageLink" href="https://api.met.no/weatherapi/geosatellite/1.4/?area=europe&amp;type=infrared" target="_blank" rel="noopener"><img id="satImage" src="https://api.met.no/weatherapi/geosatellite/1.4/?area=europe&amp;type=infrared" alt="Infračervený meteorologický satelitní snímek Evropy" loading="eager" referrerpolicy="no-referrer" style="display:block;width:100%;height:auto;min-height:220px;max-height:620px;object-fit:contain;background:#eaf2f8;border:1px solid #d4e0eb;border-radius:14px;margin-top:12px"></a>
+ <div class="status" id="satStatus" role="status" aria-live="polite">Načítám poslední dostupný satelitní snímek…</div>
+ <p class="muted">IR kanál lze používat ve dne i v noci. VIS kanál vyžaduje denní světlo. Satelitní snímek je pozorování oblačnosti, nikoli přímé měření teploty ve stratosféře; pokrytí vysokých polárních šířek závisí na zvolené oblasti a zdroji.</p>
 </div>
-<a id="satImageLink" href="https://api.met.no/weatherapi/geosatellite/1.4/?area=europe&amp;type=infrared" target="_blank" rel="noopener"><img id="satImage" src="https://api.met.no/weatherapi/geosatellite/1.4/?area=europe&amp;type=infrared" alt="Aktuální infračervený meteorologický satelitní snímek Evropy" loading="lazy" referrerpolicy="no-referrer" style="display:block;width:100%;height:auto;min-height:220px;object-fit:contain;background:#eaf2f8;border:1px solid #d4e0eb;border-radius:14px;margin-top:12px"></a>
-<div class="status" id="satStatus" role="status" aria-live="polite">Načítám poslední dostupný satelitní snímek…</div>
-<p class="muted">Zdroj obrazových dat: MET Norway / EUMETSAT · snímky jsou poskytovány jako volně dostupná data CC BY 4.0. Dostupnost a interval aktualizace závisí na oblasti a kanálu. Viditelný kanál je využitelný za denního světla; IR funguje i v noci. Tento zdroj neposkytuje vodní páru (WV) v tomto obrazovém rozhraní.</p>
+<div style="margin-top:22px">
+ <h3>Numerický model polární stratosféry · NOAA GFS přes Open-Meteo</h3>
+ <p class="muted">Barevná plocha je interpolace mezi vzorkovanými body modelu severní polokoule. Bílé šipky znázorňují směr proudění. Modelová pole nejsou satelitní měření.</p>
+ <div class="controls">
+  <label><b>Tlaková hladina</b><select id="gfsLevel"><option value="10">10 hPa</option><option value="30">30 hPa</option><option value="50">50 hPa</option></select></label>
+  <label><b>Zobrazené pole</b><select id="gfsField"><option value="temperature">Teplota (°C)</option><option value="geopotential">Geopotenciální výška (m)</option><option value="wind">Rychlost větru (km/h)</option></select></label>
+  <label><b>Čas UTC</b><select id="gfsTime"><option value="0">Načítání…</option></select></label>
+ </div>
+ <div class="controls" style="margin:10px 0;align-items:center">
+  <button id="gfsAnimPlay" type="button">▶ Přehrát předpověď</button><button id="gfsAnimStop" type="button">Ⅱ Pozastavit</button>
+  <label>Rychlost animace<select id="gfsAnimSpeed"><option value="1400">Pomalá</option><option value="800" selected>Normální</option><option value="400">Rychlá</option></select></label>
+  <span class="muted" id="gfsAnimState">Připraveno k animaci modelových polí</span>
+ </div>
+ <canvas id="gfsGridMap" width="1100" height="820" style="display:block;width:100%;height:auto;border:1px solid #315674;border-radius:16px;background:#f4f8fc"></canvas>
+ <div class="status" id="gfsMapStatus">Načítám modelová pole…</div>
+ <div class="grid">
+  <div><div class="unit">Rozsah teploty</div><div class="metric" id="gfsTempRange">—</div></div>
+  <div><div class="unit">Rozsah geopotenciálu</div><div class="metric" id="gfsZRange">—</div></div>
+  <div><div class="unit">Rozsah větru</div><div class="metric" id="gfsWindRange">—</div></div>
+  <div><div class="unit">Platné body</div><div class="metric" id="gfsPointCount">—</div></div>
+ </div>
+ <p class="muted">Zdroj: <a href="https://open-meteo.com/en/docs/gfs-api" target="_blank" rel="noopener">Open-Meteo GFS API</a>. Časové kroky jsou uvedeny v UTC. Vzorkování a interpolace slouží k vizualizaci, nejde o plné nativní rozlišení modelu.</p>
+</div>
 </section>
-<div class="status" id="gfsMapStatus">Načítám modelová pole…</div><div class="grid"><div><div class="unit">Rozsah teploty</div><div class="metric" id="gfsTempRange">—</div></div><div><div class="unit">Rozsah geopotenciálu</div><div class="metric" id="gfsZRange">—</div></div><div><div class="unit">Rozsah větru</div><div class="metric" id="gfsWindRange">—</div></div><div><div class="unit">Platné body</div><div class="metric" id="gfsPointCount">—</div></div></div><p class="muted">Bílé šipky ukazují směr proudění. Prostorové vzorkování není plné nativní rozlišení GFS. Zdroj: <a href="https://open-meteo.com/en/docs/gfs-api" target="_blank" rel="noopener">Open-Meteo GFS API</a>. Jde o modelová data, nikoli přímá měření.</p></section>
 
 <section class="panel"><h2>Archiv měření a časové řady</h2>
 <p class="muted">Automaticky stahovaný denní archiv ERA5 od roku 1959. Jde o reanalýzu založenou na pozorováních a modelu, nikoli o přímé měření jedním přístrojem. Aktualizace archivu probíhá denně; datum posledního záznamu se zobrazuje samostatně.</p>
@@ -119,18 +144,7 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
 <div class="status" id="archiveStatus">Připojuji archiv…</div>
 <p class="muted">Zdroj: <a href="https://www.polarvortex.earth/data" target="_blank" rel="noopener">polarvortex.earth – datové soubory ERA5</a>. Metodika a definice U60: <a href="https://www.polarvortex.earth/methods" target="_blank" rel="noopener">metodika</a>. Data se uchovávají v repozitáři X-5 ve verzích Git, aby bylo možné dohledat denní změny.</p>
 </section>
-<section class="panel" id="noaa-gfs">
-<h2>Nezávislá analýza NOAA GFS · severní polokoule</h2>
-<p class="muted">Automaticky archivované analýzy NCEP/GFS (f00, cyklus 00 UTC) pro tři stratosférické tlakové hladiny. Obrázky se denně ukládají do repozitáře X-5; metadata uvádějí čas stažení a kontrolní součty. Jde o analýzu numerického modelu, nikoli o přímé měření ani o ERA5 reanalýzu.</p>
-<div class="status" id="noaaArchiveStatus">Načítám metadata archivu NOAA GFS…</div>
-<div class="grid">
-<div><h3>10 hPa · střední stratosféra</h3><a href="./data/noaa-gfs/gfs_t10_nh_f00.png" target="_blank" rel="noopener"><img src="./data/noaa-gfs/gfs_t10_nh_f00.png" alt="NOAA GFS analýza teploty 10 hPa severní polokoule" loading="lazy" style="width:100%;height:auto;border-radius:10px;background:#ffffff"></a></div>
-<div><h3>30 hPa · střední stratosféra</h3><a href="./data/noaa-gfs/gfs_t30_nh_f00.png" target="_blank" rel="noopener"><img src="./data/noaa-gfs/gfs_t30_nh_f00.png" alt="NOAA GFS analýza teploty 30 hPa severní polokoule" loading="lazy" style="width:100%;height:auto;border-radius:10px;background:#ffffff"></a></div>
-<div><h3>50 hPa · dolní stratosféra</h3><a href="./data/noaa-gfs/gfs_t50_nh_f00.png" target="_blank" rel="noopener"><img src="./data/noaa-gfs/gfs_t50_nh_f00.png" alt="NOAA GFS analýza teploty 50 hPa severní polokoule" loading="lazy" style="width:100%;height:auto;border-radius:10px;background:#ffffff"></a></div>
-</div>
-<div class="status" style="margin-top:12px"><b>Jak vrstvu číst:</b> Porovnejte polohu a rozsah studeného jádra mezi 10, 30 a 50 hPa. Samotná teplotní mapa nepotvrzuje náhlé stratosférické oteplení (SSW); k tomu je nutné ověřit zejména zonální vítr na 60° N a jeho obrat, dále vývoj v čase.</div>
-<p class="muted">Zdroj: <a href="https://cpc.ncep.noaa.gov/products/stratosphere/strat_a_f/" target="_blank" rel="noopener">NOAA CPC – NCEP/GFS stratosférické analýzy a předpovědi</a>. NOAA uvádí hladiny 70, 50, 30, 20, 10, 5, 2 a 1 hPa a předpovědní mapy v intervalech 24 hodin. Prognostické mapy mohou mít rozdílnou dostupnost a platnost; proto zde nejsou vydávány za aktuální, pokud datum jejich běhu není ověřeno.</p>
-</section>
+
 
 <section class="panel"><h2>Diagnostické hladiny</h2><table><thead><tr><th>Hladina</th><th>Co budeme měřit</th><th>Význam</th></tr></thead><tbody>
 <tr><td>10 hPa</td><td>U60, teplota polární oblasti, geopotenciál, PV</td><td>Hlavní indikátor síly a obratu víru</td></tr>
@@ -507,136 +521,8 @@ function refreshX5Infographic(){
 setInterval(refreshX5Infographic,30*60*1000);
 
 </script>
-<script>
-/* X-5: aktivní barevný renderer polární mapy NOAA GFS.
-   Původní renderer zůstal omylem v neaktivním text/plain bloku. */
-(function(){
- const $=id=>document.getElementById(id);
- const cv=$('gfsGridMap'); if(!cv)return;
- const ctx=cv.getContext('2d');
- const latitudes=[60,66,72,78,84,88],longitudes=Array.from({length:16},(_,i)=>i*22.5);
- const sites=[];for(const lat of latitudes)for(const lon of longitudes)sites.push({latitude:lat,longitude:lon});
- sites.push({latitude:90,longitude:0});
- const cx=cv.width/2,cy=cv.height/2+8,R=350;
- let payload=[],times=[],loadedLevel='',busy=false,timer=null;
- const project=(lat,lon)=>{const r=(90-lat)/30*R,a=(lon-90)*Math.PI/180;return{x:cx+r*Math.cos(a),y:cy+r*Math.sin(a)};};
- const keyFor=(field,level)=>field==='temperature'?'temperature_'+level+'hPa':field==='geopotential'?'geopotential_height_'+level+'hPa':'wind_speed_'+level+'hPa';
- function color(t){
-  const stops=[[0,[28,65,190]],[.22,[20,160,220]],[.45,[35,185,125]],[.66,[230,220,45]],[.83,[245,130,30]],[1,[190,35,45]]];
-  t=Math.max(0,Math.min(1,t));for(let i=1;i<stops.length;i++){if(t<=stops[i][0]){const a=stops[i-1],b=stops[i],q=(t-a[0])/(b[0]-a[0]);return a[1].map((v,j)=>Math.round(v+(b[1][j]-v)*q));}}return stops[stops.length-1][1];
- }
- function base(){
-  ctx.clearRect(0,0,cv.width,cv.height);ctx.fillStyle='#f4f8fc';ctx.fillRect(0,0,cv.width,cv.height);
-  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fillStyle='#dceef5';ctx.fill();
- }
- function draw(){
-  base();
-  if(!payload.length){ctx.fillStyle='#526b7d';ctx.font='18px Arial';ctx.fillText('Načítám barevná pole NOAA GFS…',28,34);return;}
-  const field=$('gfsField').value,level=$('gfsLevel').value,idx=Number($('gfsTime').value)||0,k=keyFor(field,level);
-  const points=payload.map(x=>({p:project(x.latitude,x.longitude),v:x.hourly?.[k]?.[idx],wind:x.hourly?.['wind_speed_'+level+'hPa']?.[idx],dir:x.hourly?.['wind_direction_'+level+'hPa']?.[idx]})).filter(x=>Number.isFinite(x.v));
-  if(points.length<12){$('gfsMapStatus').textContent='Pro zvolenou hladinu a čas je dostupných příliš málo platných bodů ('+points.length+').';return;}
-  const vals=points.map(x=>x.v),lo=Math.min(...vals),hi=Math.max(...vals),span=hi-lo||1;
-  // Jemná interpolace hodnot mezi skutečnými vzorkovacími body; žádná chybějící hodnota se nenahrazuje nulou.
-  const n=300,rad=R/cv.width*n,im=ctx.createImageData(n,n),data=im.data;
-  const sx=n/cv.width,sy=n/cv.height,pc= cx*sx,py=cy*sy,pr=R*sx;
-  const pp=points.map(x=>({x:x.p.x*sx,y:x.p.y*sy,v:x.v}));
-  for(let y=0;y<n;y++)for(let x=0;x<n;x++){
-   const dx=x-pc,dy=y-py;if(dx*dx+dy*dy>pr*pr)continue;
-   let sum=0,weight=0,exact=null;
-   for(const q of pp){const ax=x-q.x,ay=y-q.y,d2=ax*ax+ay*ay;if(d2<1){exact=q.v;break;}const w=1/(d2*d2);sum+=q.v*w;weight+=w;}
-   const v=exact===null?sum/weight:exact,t=(v-lo)/span,col=color(t),j=(y*n+x)*4;
-   data[j]=col[0];data[j+1]=col[1];data[j+2]=col[2];data[j+3]=238;
-  }
-  const off=document.createElement('canvas');off.width=n;off.height=n;off.getContext('2d').putImageData(im,0,0);
-  ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.clip();ctx.drawImage(off,cx-R,cy-R,R*2,R*2);ctx.restore();
-  // Zeměpisná síť a severní pól.
-  for(const lat of [60,65,70,75,80,85]){const r=(90-lat)/30*R;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle='rgba(30,66,91,.38)';ctx.lineWidth=1.4;ctx.stroke();}
-  for(let lon=0;lon<360;lon+=30){const p=project(60,lon);ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(p.x,p.y);ctx.strokeStyle='rgba(30,66,91,.32)';ctx.lineWidth=1.2;ctx.stroke();}
-  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.strokeStyle='#315d78';ctx.lineWidth=2;ctx.stroke();
-  // Směrové šipky větru a body skutečného vzorkování.
-  points.forEach(q=>{ctx.beginPath();ctx.arc(q.p.x,q.p.y,3.3,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();if(Number.isFinite(q.dir)&&Number.isFinite(q.wind)){const a=(q.dir+180)*Math.PI/180,L=Math.min(22,7+q.wind*.12),ex=q.p.x+Math.sin(a)*L,ey=q.p.y-Math.cos(a)*L;ctx.strokeStyle='rgba(255,255,255,.95)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(q.p.x,q.p.y);ctx.lineTo(ex,ey);ctx.stroke();}});
-  ctx.fillStyle='#102e45';ctx.font='bold 16px Arial';ctx.textAlign='center';ctx.fillText('SEVERNÍ PÓL',cx,cy+6);ctx.textAlign='left';
-  const unit=field==='temperature'?'°C':field==='geopotential'?'m':'km/h';
-  ctx.fillStyle='#102e45';ctx.font='bold 17px Arial';ctx.fillText((field==='temperature'?'TEPLOTA':field==='geopotential'?'GEOPOTENCIÁLNÍ VÝŠKA':'RYCHLOST VĚTRU')+' · '+level+' hPa',28,34);
-  ctx.font='14px Arial';ctx.fillText('Rozsah vzorků: '+lo.toFixed(1)+' až '+hi.toFixed(1)+' '+unit,28,cv.height-18);
-  $('gfsTempRange').textContent=rangeFor('temperature_'+level+'hPa','°C');
-  $('gfsZRange').textContent=rangeFor('geopotential_height_'+level+'hPa','m');
-  $('gfsWindRange').textContent=rangeFor('wind_speed_'+level+'hPa','km/h');
-  $('gfsPointCount').textContent=points.length+' / '+sites.length;
-  const time=times[idx]||'čas neuveden';
-  $('gfsMapStatus').innerHTML='<b class="good">Barevná meteorologická mapa načtena.</b> NOAA GFS · '+level+' hPa · '+time+' UTC · '+points.length+'/'+sites.length+' platných bodů. Barvy mezi vzorky jsou prostorově interpolované.';
- }
- function rangeFor(k,u){const a=payload.flatMap(x=>x.hourly?.[k]||[]).filter(Number.isFinite);return a.length?Math.min(...a).toFixed(1)+' – '+Math.max(...a).toFixed(1)+' '+u:'—';}
- async function load(force){
-  if(busy)return;const level=$('gfsLevel').value;
-  if(!force&&payload.length&&loadedLevel===level){draw();return;}
-  busy=true;$('gfsMapStatus').textContent='Načítám NOAA GFS · '+level+' hPa · data rozdělena do menších požadavků…';
-  const vars=['temperature_'+level+'hPa','geopotential_height_'+level+'hPa','wind_speed_'+level+'hPa','wind_direction_'+level+'hPa'].join(',');
-  // Open-Meteo omezuje souběžné požadavky; malé dávky a sekvenční načítání
-  // zabraňují přetížení API na mobilních připojeních.
-  const batches=[];
-  for(let i=0;i<sites.length;i+=8)batches.push(sites.slice(i,i+8));
-  try{
-   const received=[];
-   for(let bi=0;bi<batches.length;bi++){
-    const batch=batches[bi];
-    const lat=batch.map(p=>p.latitude).join(','),lon=batch.map(p=>p.longitude).join(',');
-    const url='https://api.open-meteo.com/v1/gfs?latitude='+encodeURIComponent(lat)+'&longitude='+encodeURIComponent(lon)+'&hourly='+encodeURIComponent(vars)+'&forecast_days=2&timezone=GMT';
-    let arr=null,lastError=null;
-    for(let attempt=0;attempt<3;attempt++){
-     const controller=new AbortController();
-     const timeout=setTimeout(()=>controller.abort(),15000);
-     try{
-      const res=await fetch(url,{cache:'no-store',signal:controller.signal});
-      if(!res.ok){let detail='';try{const body=await res.json();detail=body.reason||body.error||JSON.stringify(body);}catch(_){detail='';}throw Error('HTTP '+res.status+(detail?': '+detail:''));}
-      const raw=await res.json();arr=Array.isArray(raw)?raw:[raw];break;
-     }catch(err){
-      lastError=err?.name==='AbortError'?Error('časový limit 15 s – požadavek Open-Meteo neodpověděl'):err;
-      if(attempt<2)await new Promise(resolve=>setTimeout(resolve,900*(attempt+1)));
-     }finally{clearTimeout(timeout);}
-    }
-    if(!arr)throw Error('Dávka '+(bi+1)+'/'+batches.length+': '+String(lastError?.message||lastError||'síťová chyba'));
-    if(arr.length!==batch.length)throw Error('Dávka '+(bi+1)+': očekáváno '+batch.length+' lokalit, přijato '+arr.length+'.');
-    if(arr.some(x=>!x||!x.hourly||!Array.isArray(x.hourly.time)))throw Error('Dávka '+(bi+1)+': odpověď neobsahuje hodinová tlaková data.');
-    received.push(...arr);
-    $('gfsMapStatus').textContent='Načítám NOAA GFS · dávka '+(bi+1)+'/'+batches.length+' · '+received.length+'/'+sites.length+' lokalit…';
-   }
-   payload=received;loadedLevel=level;times=payload[0].hourly.time||[];
-   const sel=$('gfsTime'),old=sel.value;sel.innerHTML='';
-   times.forEach((t,i)=>{const o=document.createElement('option');o.value=String(i);o.textContent=t.replace('T',' ')+' UTC';sel.appendChild(o);});
-   sel.value=old!==''&&Number(old)<times.length?old:'0';
-   draw();
-  }catch(e){
-   payload=[];base();ctx.fillStyle='#8b2d2d';ctx.font='17px Arial';ctx.fillText('Data GFS se nepodařilo načíst.',28,40);
-   $('gfsMapStatus').innerHTML='<b class="warn">Načtení NOAA GFS selhalo:</b> '+String(e.message||e)+'. Počet dávek: '+batches.length+'. Záložní archivovaná mapa níže zůstává samostatně dostupná.';
-  }finally{busy=false;}
- }
- $('gfsLevel').addEventListener('change',()=>load(true));
- $('gfsField').addEventListener('change',draw);
- $('gfsTime').addEventListener('change',draw);
- $('gfsAnimPlay').addEventListener('click',()=>{if(timer)clearInterval(timer);timer=setInterval(()=>{if(!times.length)return;const s=$('gfsTime');s.value=String((Number(s.value)+1)%times.length);draw();},Number($('gfsAnimSpeed').value)||800);$('gfsAnimState').textContent='Přehrávání předpovědi';});
- $('gfsAnimStop').addEventListener('click',()=>{if(timer)clearInterval(timer);timer=null;$('gfsAnimState').textContent='Animace pozastavena';});
- $('gfsAnimSpeed').addEventListener('change',()=>{if(timer){clearInterval(timer);timer=setInterval(()=>{const s=$('gfsTime');s.value=String((Number(s.value)+1)%times.length);draw();},Number($('gfsAnimSpeed').value)||800);}});
- window.refreshPolarGfsMap=()=>load(true);
- base();ctx.fillStyle='#526b7d';ctx.font='18px Arial';ctx.fillText('Načítám barevná pole NOAA GFS…',28,34);
- load(true);
-})();
-</script>
-<script>
-(function(){
- const img=document.getElementById('gfsArchiveFallback'),note=document.getElementById('gfsFallbackNote'),level=document.getElementById('gfsLevel');
- if(!img||!note)return;
- function selectArchive(){
-  const l=level?level.value:'10';img.src='./data/noaa-gfs/gfs_t'+l+'_nh_f00.png';
-  img.alt='Archivovaná meteorologická mapa NOAA GFS '+l+' hPa – severní polokoule';
-  note.textContent='Záložní skutečná mapa NOAA GFS · '+l+' hPa · analýza f00. Numerický model, nikoli přímé měření.';
- }
- img.onload=function(){note.textContent='Archivovaná mapa NOAA GFS načtena. Zobrazená hladina odpovídá volbě výše.';};
- img.onerror=function(){note.textContent='Archivovaná mapa pro tuto hladinu zatím není v úložišti. Zkontroluj běh archivu NOAA GFS.';};
- if(level)level.addEventListener('change',selectArchive);
- selectArchive();
-})();
-</script>
+
+
 
 <script>
 (function(){
@@ -801,7 +687,7 @@ setInterval(refreshX5Infographic,30*60*1000);
  function shiftDate(d,n){const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);}
  load();setInterval(load,30*60*1000);
 })();
-</script><script src="./polarni-vir-animace.js?v=1"></script><script src="./gfs-polarni-animace.js?v=6"></script><script src="./gfs-polarni-3d.js?v=22" onerror="document.getElementById(\'p3dStatus\').textContent=\'CHYBA: 3D skript se nenačetl. Zkontrolujte cestu k souboru.\'"></script><script>
+</script><script src="./polarni-vir-animace.js?v=1"></script><script src="./gfs-polarni-animace.js?v=7"></script><script src="./gfs-polarni-3d.js?v=22" onerror="document.getElementById(\'p3dStatus\').textContent=\'CHYBA: 3D skript se nenačetl. Zkontrolujte cestu k souboru.\'"></script><script>
 (function(){
  const sources=[
   {id:'Era5',url:'./data/archive-meta.json',label:'ERA5',date:m=>m.files?.['u60_daily.csv']?.last_date,detail:m=>'Záznam do '+(m.files?.['u60_daily.csv']?.last_date||'—')+' · '+(m.files?.['u60_daily.csv']?.rows||'—')+' řádků'},
