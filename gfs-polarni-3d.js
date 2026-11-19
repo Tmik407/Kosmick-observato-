@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const $=id=>document.getElementById(id),levels=[10,30,50],lats=[60,68,76,84,88],lons=Array.from({length:8},(_,i)=>i*45);
+const $=id=>document.getElementById(id),levels=[10,30,50],lats=[60,68,76,84,88],lons=[-180,-135,-90,-45,0,45,90,135];
 const points=[];for(const lat of lats)for(const lon of lons)points.push({lat,lon});
 const keys=l=>['temperature_'+l+'hPa','geopotential_height_'+l+'hPa','wind_speed_'+l+'hPa','wind_direction_'+l+'hPa'];
 let data={},times=[],idx=0,yaw=-.35,pitch=.22,timer=null,busy=false,drag=null;
