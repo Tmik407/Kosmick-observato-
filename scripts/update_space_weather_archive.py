@@ -64,7 +64,17 @@ def main():
  cutoff=now-timedelta(days=90)
  kept=[r for r in bytime.values() if stamp(r["t"]) and stamp(r["t"])>=cutoff]
  kept.sort(key=lambda r:r["t"])
- payload={"source":SOURCES,"updated_utc":now.isoformat().replace("+00:00","Z"),"sampling_interval_minutes":5,
+ def source_meta(items, threshold_minutes):
+  latest=max((x["dt"] for x in items),default=None)
+  age=(now-latest).total_seconds() if latest else None
+  return {"last_measurement_utc":latest.isoformat().replace("+00:00","Z") if latest else None,
+          "fetched_utc":now.isoformat().replace("+00:00","Z"),
+          "age_seconds_at_fetch":round(age,1) if age is not None else None,
+          "freshness_limit_minutes":threshold_minutes,
+          "status":"fresh" if age is not None and age<=threshold_minutes*60 else "stale_or_missing"}
+ source_status={"wind":source_meta(wind,10),"mag":source_meta(mag,10),"kp":source_meta(kp,240)}
+ payload={"source":SOURCES,"updated_utc":now.isoformat().replace("+00:00","Z"),
+ "fetched_utc":now.isoformat().replace("+00:00","Z"),"source_status":source_status,"sampling_interval_minutes":5,
  "retention_days":90,"timestamp_basis":"NOAA measurement timestamps in UTC; anchored to actual wind timestamps",
  "derived_fields":["pdyn_npa","ey_mv_m"],"quality":{"invalid_sentinels_rejected":sorted(INVALID),
  "magnetic_pair_tolerance_seconds":90,"kp_pair_tolerance_seconds":5400,"interpolation":False},
