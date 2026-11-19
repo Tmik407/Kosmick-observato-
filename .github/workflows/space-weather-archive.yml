@@ -21,9 +21,24 @@ jobs:
       - uses: actions/checkout@v4
       - name: Aktualizovat archiv NOAA
         run: python scripts/update_space_weather_archive.py
-      - name: Uložit archiv
+      - name: Uložit archiv bezpečně proti souběžným změnám
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cp space-weather-history.json /tmp/space-weather-history.json
+          git restore -- space-weather-history.json
+          git pull --rebase origin main
+          cp /tmp/space-weather-history.json space-weather-history.json
           git add space-weather-history.json
-          git diff --cached --quiet || (git commit -m "Aktualizace archivu kosmického počasí" && git push)
+          if git diff --cached --quiet; then
+            echo "Archiv beze změny"
+          else
+            git commit -m "Aktualizace archivu kosmického počasí"
+            for attempt in 1 2 3; do
+              if git push origin HEAD:main; then exit 0; fi
+              echo "Push kolidoval, synchronizuji znovu (pokus $attempt)"
+              git pull --rebase origin main
+            done
+            echo "Nepodařilo se bezpečně uložit archiv po třech pokusech."
+            exit 1
+          fi
