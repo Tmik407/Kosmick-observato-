@@ -159,7 +159,7 @@ def main():
   "source_status":source_status
  }
  status_tmp=STATUS.with_suffix(".json.tmp")
- status_tmp.write_text(json.dumps(status_payload,ensure_ascii=False,separators=(",",":"))+"\\n",encoding="utf-8")
+ status_tmp.write_text(json.dumps(status_payload,ensure_ascii=False,separators=(",",":"))+"\n",encoding="utf-8")
  status_tmp.replace(STATUS)
  print("NOAA fetch status:",json.dumps({k:{"ok":v["ok"],"error":v["error"]} for k,v in fetch_state.items()}))
  print(f"NOAA records wind={len(wind)}, mag={len(mag)}, Kp={len(kp)}; archive={len(kept)}")
