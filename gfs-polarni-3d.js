@@ -2,7 +2,7 @@
 const $=id=>document.getElementById(id),levels=[10,30,50],lats=[60,68,76,84,88],lons=[-157.5,-112.5,-67.5,-22.5,22.5,67.5,112.5,157.5];
 const points=[];for(const lat of lats)for(const lon of lons)points.push({lat,lon});
 const keys=l=>['temperature_'+l+'hPa','geopotential_height_'+l+'hPa','wind_speed_'+l+'hPa','wind_direction_'+l+'hPa'];
-let data={},times=[],idx=0,yaw=-.35,pitch=.22,timer=null,busy=false,drag=null,shapeCache={},windCache={},windInterpCache=new Map(),loadError='';
+let data={},times=[],idx=0,yaw=-.35,pitch=.22,timer=null,busy=false,drag=null,shapeCache={},windCache={},windInterpCache=new Map(),loadError='',drawFrame=0;
 const status=t=>{if($('p3dStatus'))$('p3dStatus').textContent=t;};
 const project=(lat,lon,z,cx,cy,scale)=>{
  const r=(90-lat)/30*scale,a=(lon+yaw*180/Math.PI-90)*Math.PI/180;
@@ -126,8 +126,9 @@ function drawHistoryCharts(){
   g.fillStyle='#c5d7e6';g.fillText(times[0].slice(5,13).replace('T',' ')+' UTC',L,h-9);g.fillText(times[times.length-1].slice(5,13).replace('T',' ')+' UTC',w-145,h-9);
  }
 }
+function invalidateDataCaches(){shapeCache={};windCache={};windInterpCache.clear();}
+function requestDraw(){if(drawFrame)return;drawFrame=requestAnimationFrame(()=>{drawFrame=0;draw();});}
 function draw(){
- shapeCache={};windCache={};windInterpCache.clear();
  const c=$('p3dCanvas');if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height,cx=w*.5,cy=h*.51,scale=155;
  g.clearRect(0,0,w,h);const bg=g.createLinearGradient(0,0,w,h);bg.addColorStop(0,'#061526');bg.addColorStop(1,'#123653');g.fillStyle=bg;g.fillRect(0,0,w,h);
  // polar reference grid
@@ -222,7 +223,7 @@ function draw(){
 const CACHE_KEY='x5-gfs-polar-v16-cache';
 const NOAA_BACKUP_URL='./data/polar-vortex/latest.json';
 function applyRows(rows,base,stale=false){
- data={};levels.forEach(lev=>data[lev]={lev,rows,times:base});
+ invalidateDataCaches();data={};levels.forEach(lev=>data[lev]={lev,rows,times:base});
  times=base;idx=Math.min(idx,Math.max(0,times.length-1));
  const sel=$('p3dTime');if(sel){sel.innerHTML='';times.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t.replace('T',' ')+' UTC';sel.appendChild(o);});sel.value=idx;}
  status((stale?'Použita místní kopie posledních úspěšných dat · ':'Načteny všechny tři hladiny · ')+points.length+' vzorkovacích bodů na hladinu · '+times.length+' časových kroků. '+times[0]+' až '+times[times.length-1]+' UTC.'+(stale?' Data mohou být starší.':''));
@@ -279,10 +280,10 @@ async function load(){
 }
 
 function stop(){if(timer)clearInterval(timer);timer=null;}
-function play(){if(!times.length)return;stop();timer=setInterval(()=>{idx=(idx+1)%times.length;$('p3dTime').value=idx;draw();},Number($('p3dSpeed')?.value||800));}
+function play(){if(!times.length)return;stop();timer=setInterval(()=>{idx=(idx+1)%times.length;$('p3dTime').value=idx;invalidateDataCaches();requestDraw();},Number($('p3dSpeed')?.value||800));}
 $('p3dLoad')?.addEventListener('click',load);$('p3dPlay')?.addEventListener('click',play);$('p3dPause')?.addEventListener('click',stop);
-$('p3dTime')?.addEventListener('change',e=>{idx=Number(e.target.value)||0;draw();});
+$('p3dTime')?.addEventListener('change',e=>{idx=Number(e.target.value)||0;invalidateDataCaches();requestDraw();});
 $('p3dSpeed')?.addEventListener('change',()=>{if(timer)play();});
-const canvas=$('p3dCanvas');if(canvas){canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);});canvas.addEventListener('pointermove',e=>{if(!drag)return;yaw+=(e.clientX-drag.x)*.008;pitch=Math.max(-.65,Math.min(.65,pitch+(e.clientY-drag.y)*.006));drag={x:e.clientX,y:e.clientY};draw();});canvas.addEventListener('pointerup',()=>drag=null);canvas.addEventListener('pointercancel',()=>drag=null);}
+const canvas=$('p3dCanvas');if(canvas){canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);});canvas.addEventListener('pointermove',e=>{if(!drag)return;yaw+=(e.clientX-drag.x)*.008;pitch=Math.max(-.65,Math.min(.65,pitch+(e.clientY-drag.y)*.006));drag={x:e.clientX,y:e.clientY};requestDraw();});canvas.addEventListener('pointerup',()=>drag=null);canvas.addEventListener('pointercancel',()=>drag=null);}
 draw();load();
 })();
