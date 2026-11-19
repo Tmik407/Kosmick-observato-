@@ -1,5 +1,5 @@
 {
-  "retrieved_utc": "2026-11-19T16:52:55.635502+00:00",
+  "retrieved_utc": "2026-11-19T17:15:41.665910+00:00",
   "source": "NASA GSFC Annual Meteorological Statistics, redistributed as open JSON by Observatoire des phénomènes naturels",
   "upstream": "https://acd-ext.gsfc.nasa.gov/Data_services/met/ann_data.html",
   "mirror": "https://observatory.lelama.digital/en/open-data",
@@ -9,29 +9,29 @@
     "u60_10hpa_60n": {
       "source_code": "nasa.u60n.10.daily",
       "unit": "m/s",
-      "rows": 17475,
+      "rows": 17476,
       "first_date": "1979-01-01",
-      "last_date": "2026-11-16",
-      "source_json_sha256": "06a260b7e6d695e2e391a86595f6edb51a71b48b25ebca4e0d2602daecf43ba5",
-      "csv_bytes": 365093
+      "last_date": "2026-11-17",
+      "source_json_sha256": "3fde20ebc1eac258809997a10343d1c5e0da0816e7460d00b60d9bb7bd9abe08",
+      "csv_bytes": 365113
     },
     "tcap_10hpa_60_90n": {
       "source_code": "nasa.t6090n.10.daily",
       "unit": "K",
-      "rows": 17475,
+      "rows": 17476,
       "first_date": "1979-01-01",
-      "last_date": "2026-11-16",
-      "source_json_sha256": "e181835cfcf3bb7ed18bb6878058119a32fbca83b30701a5124ef463a95fec22",
-      "csv_bytes": 382425
+      "last_date": "2026-11-17",
+      "source_json_sha256": "d6c31ce5d5590991a1620acbf94eb84a0ddb01cd2e2a8475c0db7b3521769fb0",
+      "csv_bytes": 382447
     },
     "wave_heat_flux_100hpa_45_75n": {
       "source_code": "nasa.vt4575n.100.daily",
       "unit": "K m/s",
-      "rows": 17475,
+      "rows": 17476,
       "first_date": "1979-01-01",
-      "last_date": "2026-11-16",
-      "source_json_sha256": "5ec2fb979431882e4044a2773f3155e170c7acfc9810e60e7be4c864fdf930d4",
-      "csv_bytes": 353899
+      "last_date": "2026-11-17",
+      "source_json_sha256": "726262925f2fc5b2859ca3919dda1b551cd20055de20b8d54440da8fba32e695",
+      "csv_bytes": 353919
     },
     "u60_10hpa_60n_ozonewatch": {
       "source": "https://ozonewatch.gsfc.nasa.gov/meteorology/figures/merra2/wind/u60n_10_2026_merra2.txt",
