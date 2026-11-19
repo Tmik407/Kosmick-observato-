@@ -767,7 +767,8 @@ function updateSourceHealth(results){
   let sample=null,rows=[];
   if(result&&result.status==="fulfilled"){
    rows=rowsOf(result.value);
-   sample=newest(rows,spec.fields);
+   const activeOnly=spec.key==="Wind"||spec.key==="Mag";
+   sample=newest(rows,spec.fields,activeOnly);
    if(sample&&Number.isFinite(Date.parse(timeOf(sample)))){
     saved.lastGoodFetch=now;
     saved.lastGoodSample=Date.parse(timeOf(sample));
@@ -794,7 +795,7 @@ function updateSourceHealth(results){
   }
   const stamp=Date.parse(timeOf(sample)),age=(now-stamp)/60000;
   const ageText=age<0?"čas v budoucnosti o "+Math.abs(age).toFixed(1)+" min":age.toFixed(1)+" min";
-  const validRows=rows.filter(r=>timeOf(r)&&Number.isFinite(Date.parse(timeOf(r)))&&spec.fields.some(k=>valid(r&&r[k]))).length;
+  const validRows=rows.filter(r=>(!activeOnly||r.active===true)&&timeOf(r)&&Number.isFinite(Date.parse(timeOf(r)))&&spec.fields.some(k=>valid(r&&r[k]))).length;
   meta.textContent="Poslední úspěšné načtení: "+utc(saved.lastGoodFetch)+" · nejnovější platný vzorek: "+utc(stamp)+" · stáří vzorku "+ageText+" · platné řádky "+validRows+"/"+rows.length;
   if(age < -5){
    state.textContent="ČASOVÁ ANOMÁLIE";state.className="metric bad";issues.push(spec.name+": čas vzorku je v budoucnosti");
