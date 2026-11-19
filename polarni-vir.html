@@ -111,7 +111,7 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
 <p class="muted">Pro společné porovnání tří tlakových hladin lze načíst denní datový výstup NASA GSFC. Výstup obsahuje zonální vítr U na 60° N a teplotu polární čepičky 60–90° N. Importovaný soubor se zpracuje přímo v tomto prohlížeči; nikam se neodesílá.</p>
 <div class="status"><b>Jak získat data:</b> Otevři <a href="https://acd-ext.gsfc.nasa.gov/cgi-bin/datareq.pl" target="_blank" rel="noopener">NASA GSFC – přímý formulář pro stažení dat</a> a v části Data Request vyber období, proměnné „Temperature between 60° and 90°“ a „Zonal Wind at 60°“, Northern Hemisphere a hladiny 10, 30 a 50 hPa. Stáhni textový výstup (ASCII/fixed-width) a nahraj jej níže. NASA uvádí MERRA‑2 pro historická data a GEOS‑5 FP pro near-real-time doplnění; datum a zdroj importu proto vždy ověř podle metadat NASA.</div>
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:14px 0">
-<label class="muted">Import dat NASA (TXT / DAT / CSV)<input id="nasaFile" type="file" accept=".txt,.dat,.csv,.asc,text/plain,text/csv" style="display:block;width:100%;margin-top:8px;color:var(--text)"></label>
+<label class="muted">Import dat NASA (TXT / DAT / CSV)<input id="nasaFile" type="file" accept=".txt,.dat,.asc,text/plain" style="display:block;width:100%;margin-top:8px;color:var(--text)"></label>
 <div class="status" id="nasaImportStatus">Zatím nebyl načten žádný soubor NASA. Stávající ERA5 archiv zůstává beze změny.</div>
 </div>
 <div class="status" id="verticalAnalysis" style="margin:14px 0"><b>Automatické vyhodnocení vertikálního vývoje</b><br>Po importu budou pro každou hladinu vypočteny změny za 7 a 30 dní, trend větru a teploty a případné datum obratu větru. Zatím nejsou k dispozici importované řady.</div>
@@ -489,7 +489,7 @@ setInterval(refreshX5Infographic,30*60*1000);
   ctx.fillStyle='#fff';ctx.font='16px Arial';ctx.fillText((field.value==='temperature'?'TEPLOTA':field.value==='wind'?'RYCHLOST VĚTRU':'GEOPOTENCIÁLNÍ VÝŠKA')+' · '+lo.toFixed(1)+' až '+hi.toFixed(1)+(field.value==='temperature'?' °C':field.value==='wind'?' km/h':' m'),28,H-25);
  }
  async function load(){
-  base();ctx.fillStyle='#dce9f4';ctx.font='18px Arial';ctx.fillText('Načítám meteorologická data…',28,75);status.textContent='Spojuji se s modelem NOAA GFS přes Open-Meteo…';
+  base();ctx.fillStyle='#20364a';ctx.font='18px Arial';ctx.fillText('Načítám meteorologická data…',28,75);status.textContent='Spojuji se s modelem NOAA GFS přes Open-Meteo…';
   const pts=[];for(const lat of [60,66,72,78,84,90])for(let j=0;j<12;j++)pts.push({lat,lon:j*30});
   const vars=['temperature_'+level.value+'hPa','geopotential_height_'+level.value+'hPa','wind_speed_'+level.value+'hPa','wind_direction_'+level.value+'hPa'].join(',');
   const url='https://api.open-meteo.com/v1/gfs?latitude='+pts.map(p=>p.lat).join(',')+'&longitude='+pts.map(p=>p.lon).join(',')+'&hourly='+vars+'&forecast_days=2&timezone=GMT';
@@ -503,7 +503,7 @@ setInterval(refreshX5Infographic,30*60*1000);
   }catch(err){status.innerHTML='<b class="warn">Živá data API nejsou dostupná:</b> '+String(err.message||err)+'. Níže je archivovaná mapa NOAA GFS.';draw();}
  }
  level.addEventListener('change',load);field.addEventListener('change',draw);time.addEventListener('change',draw);
- base();ctx.fillStyle='#dce9f4';ctx.font='18px Arial';ctx.fillText('Polární síť připravena – načítám aktuální model…',28,75);load();
+ base();ctx.fillStyle='#20364a';ctx.font='18px Arial';ctx.fillText('Polární síť připravena – načítám aktuální model…',28,75);load();
 })();
 </script>
 <script>
@@ -579,9 +579,9 @@ setInterval(refreshX5Infographic,30*60*1000);
  const xval=v=>p.l+(v-min)/(max-min)*(w-p.l-p.r);
  for(let i=0;i<=4;i++){const v=min+(max-min)*i/4,x=xval(v);g.strokeStyle='#e0e8ef';g.beginPath();g.moveTo(x,p.t);g.lineTo(x,h-p.b);g.stroke();g.fillStyle='#63778a';g.font='12px Arial';g.textAlign='center';g.fillText(v.toFixed(1),x,h-18);}
  g.textAlign='left';
- if(key==='u'&&min<0&&max>0){const x=xval(0);g.strokeStyle='#52677a';g.setLineDash([6,5]);g.beginPath();g.moveTo(x,p.t);g.lineTo(x,h-p.b);g.stroke();g.setLineDash([]);g.fillStyle='#fff';g.font='12px Arial';g.fillText('0',x+4,p.t+12);}
+ if(key==='u'&&min<0&&max>0){const x=xval(0);g.strokeStyle='#52677a';g.setLineDash([6,5]);g.beginPath();g.moveTo(x,p.t);g.lineTo(x,h-p.b);g.stroke();g.setLineDash([]);g.fillStyle='#20364a';g.font='12px Arial';g.fillText('0',x+4,p.t+12);}
  const pts=vals.sort((a,b)=>a.l-b.l).map(z=>({x:xval(z.v),y:ys[z.l],...z}));
- if(pts.length>1){g.strokeStyle='#d7eaff';g.lineWidth=2.5;g.beginPath();pts.forEach((p,i)=>i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y));g.stroke();}
+ if(pts.length>1){g.strokeStyle='#52677a';g.lineWidth=2.5;g.beginPath();pts.forEach((p,i)=>i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y));g.stroke();}
  pts.forEach(z=>{g.fillStyle=cols[z.l];g.beginPath();g.arc(z.x,z.y,8,0,Math.PI*2);g.fill();g.strokeStyle='#52677a';g.lineWidth=2;g.stroke();g.fillStyle=cols[z.l];g.font='bold 15px Arial';g.fillText(z.v.toFixed(2)+' '+unit,Math.min(w-p.r+5,z.x+14),z.y-10);});
  g.fillStyle='#63778a';g.font='12px Arial';g.fillText('Datum: '+(vals[0].x.date||'—')+' · analýza forecast_hour = 0',p.l,h-2);
 }
