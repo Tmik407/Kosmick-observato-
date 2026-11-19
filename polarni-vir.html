@@ -49,6 +49,17 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
  <div class="muted" id="healthCheckedAt">—</div>
  <button type="button" id="healthRefresh">↻ Zkontrolovat znovu</button>
 </section>
+<section class="panel" id="publicServicePanel">
+ <h2>Veřejný stav služby X-5</h2>
+ <p class="muted">Tento panel se načítá samostatně v prohlížeči každého návštěvníka. Kontroluje veřejně publikovaný archiv 3D NOAA GFS a archiv map. Čas publikace není totéž co čas platnosti modelové analýzy; případná místní kopie v prohlížeči může být starší.</p>
+ <div class="grid">
+  <div><div class="unit">3D polární archiv · 10 / 30 / 50 hPa</div><div class="metric" id="publicGfsState">Kontroluji…</div><div class="muted" id="publicGfsDetail">Ověřuji dostupnost a úplnost datových polí.</div></div>
+  <div><div class="unit">Archiv map NOAA GFS</div><div class="metric" id="publicMapsState">Kontroluji…</div><div class="muted" id="publicMapsDetail">Ověřuji veřejná metadata map.</div></div>
+  <div><div class="unit">Čas poslední kontroly</div><div class="metric" id="publicCheckedAt">—</div><div class="muted">Místní čas tohoto prohlížeče</div></div>
+ </div>
+ <div class="status" id="publicServiceSummary" role="status" aria-live="polite">Probíhá kontrola veřejných datových archivů…</div>
+ <button type="button" id="publicServiceRefresh">↻ Obnovit kontrolu</button>
+</section>
 <section class="panel" id="polarForecastAnimation"><h2>Animovaná předpověď polárního víru · X-5</h2><p class="muted">Časová animace společných dat NASA Ozone Watch / MERRA-2 a GEOS FP pro 10, 30 a 50 hPa. Analýzy a předpovědní kroky jsou rozlišeny; teplota je převedena z K na °C. Schéma znázorňuje pouze vývoj diagnostických hodnot, nikoli vypočtené prostorové pole víru.</p><canvas id="pvAnimCanvas" width="1200" height="600" style="display:block;width:100%;height:auto;background:#f7fbff;border:1px solid #d4e0eb;border-radius:14px"></canvas><div class="controls" style="margin-top:12px;align-items:center"><button id="pvAnimPlay" type="button">▶ Přehrát</button><button id="pvAnimReset" type="button">↺ Začátek</button><label>Časová osa <input id="pvAnimSlider" type="range" min="0" max="0" value="0" step="1"></label><div><b id="pvAnimDate">Načítám…</b><div class="muted" id="pvAnimStep">—</div></div></div><div class="status" id="pvAnimStatus">Načítám data pro animaci…</div><p class="muted" id="pvAnimForecastInfo">Ověřuji dostupnost předpovědních kroků…</p><p class="muted">Zdroj: <a href="https://ozonewatch.gsfc.nasa.gov/meteorology/wind_2026_MERRA2_NH.html" target="_blank" rel="noopener">NASA Ozone Watch</a>. Jde o analýzu a modelovou předpověď atmosféry, nikoli o přímé satelitní měření. Záporný U60 na jedné hladině sám o sobě nepotvrzuje významné SSW.</p></section>
 <section class="panel"><h2>Aktuální diagnostické hodnoty</h2><div class="grid">
 <div><div class="unit">Zonální vítr · 10 hPa / 60° N</div><div class="metric" id="wind">—</div><div class="muted">Hodnota bude načtena z datového archivu</div></div>
@@ -678,4 +689,41 @@ setInterval(refreshX5Infographic,30*60*1000);
  const b=document.getElementById('healthRefresh');if(b)b.addEventListener('click',run);
  run();setInterval(run,30*60*1000);
 })();
-</script><script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}</script></body></html>
+<script>
+(function(){
+ const $=id=>document.getElementById(id);
+ const fmt=t=>{const d=new Date(t);return Number.isFinite(d.getTime())?d.toISOString().replace('T',' ').replace(/:\\d{2}\\.\\d{3}Z$/,' UTC'):'čas neuveden';};
+ const ageHours=t=>(Date.now()-Date.parse(t))/3600000;
+ function show(id,state,detail){const a=$(id+'State'),b=$(id+'Detail');if(a)a.textContent=state;if(b)b.textContent=detail;}
+ async function json(url){const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);return r.json();}
+ async function run(){
+  const summary=$('publicServiceSummary');if(summary)summary.textContent='Kontroluji veřejný archiv 3D dat a map NOAA GFS…';
+  const results=await Promise.allSettled([
+   json('./data/polar-vortex/latest.json?check='+Date.now()),
+   json('./data/noaa-gfs/meta.json?check='+Date.now())
+  ]);
+  let good=0,warnings=[];
+  if(results[0].status==='fulfilled'){
+   const m=results[0].value,rows=Array.isArray(m.rows)?m.rows:[],times=Array.isArray(m.times)?m.times:[],levels=[10,30,50];
+   const required=levels.flatMap(l=>['temperature_'+l+'hPa','geopotential_height_'+l+'hPa','wind_speed_'+l+'hPa','wind_direction_'+l+'hPa']);
+   const validRows=rows.filter(row=>required.every(k=>Array.isArray(row.hourly?.[k])&&row.hourly[k].length===times.length&&row.hourly[k].some(Number.isFinite))).length;
+   const complete=rows.length===40&&times.length>0&&validRows===40&&m.source&&m.generated_utc&&m.cycle_utc;
+   const age=ageHours(m.generated_utc),fresh=Number.isFinite(age)&&age>=-1&&age<=12;
+   show('publicGfs',complete?(fresh?'Dostupný':'Starší archiv'):'Neúplný archiv',
+    'Publikováno '+fmt(m.generated_utc)+' · cyklus '+fmt(m.cycle_utc)+' · '+rows.length+'/40 bodů · '+times.length+' časových kroků · hladiny 10/30/50 hPa.');
+   if(complete&&fresh)good++;else warnings.push('3D archiv je '+(complete?'starší než 12 hodin':'neúplný nebo má chybnou strukturu')+'.');
+  }else{show('publicGfs','Nedostupný',String(results[0].reason?.message||results[0].reason));warnings.push('3D archiv se nepodařilo načíst.');}
+  if(results[1].status==='fulfilled'){
+   const m=results[1].value,age=ageHours(m.retrieved_utc),files=m.files||{},hasMaps=[10,30,50].every(l=>files[String(l)]?.file);
+   const fresh=Number.isFinite(age)&&age>=-1&&age<=36;
+   show('publicMaps',hasMaps?(fresh?'Dostupný':'Starší archiv'):'Neúplná metadata',
+    'Metadata '+fmt(m.retrieved_utc)+' · '+(m.levels_hpa||[]).join(' / ')+' hPa · '+(hasMaps?'mapové soubory uvedeny':'chybí některá hladina')+'.');
+   if(hasMaps&&fresh)good++;else warnings.push('Archiv map je starší než 36 hodin nebo nemá všechny tři hladiny.');
+  }else{show('publicMaps','Nedostupný',String(results[1].reason?.message||results[1].reason));warnings.push('Metadata map se nepodařilo načíst.');}
+  if($('publicCheckedAt'))$('publicCheckedAt').textContent=new Date().toLocaleTimeString('cs-CZ');
+  if(summary)summary.innerHTML=good===2?'<b class="good">Veřejné archivy jsou dostupné a v nastavených časových mezích.</b> Jde o kontrolu dostupnosti a struktury, nikoli o nezávislé ověření meteorologické správnosti.':'<b class="warn">Upozornění:</b> '+warnings.join(' ')+' Poslední dostupná místní kopie se může v prohlížeči zobrazovat dál.';
+ }
+ const b=$('publicServiceRefresh');if(b)b.addEventListener('click',run);
+ run();setInterval(run,15*60*1000);
+})();
+</script></script><script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}</script></body></html>
