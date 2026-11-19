@@ -71,6 +71,10 @@ jobs:
           grep -q 'Kosmická observatoř X-5' /tmp/x5-index.html
           grep -q 'ch1411ImpactPanel' /tmp/x5-index.html
           grep -q 'historyQualityPanel' /tmp/x5-index.html
+          grep -q 'sourceFreshnessPanel' /tmp/x5-index.html
+          grep -q 'Poslední pokus o načtení' /tmp/x5-index.html
+          grep -q 'Skutečné stáří' /tmp/x5-index.html
+          grep -q 'request_status' /tmp/x5-index.html
           grep -q 'loadHistoryQuality' /tmp/x5-index.html
           grep -q 'manifest.webmanifest' /tmp/x5-index.html
           grep -q 'serviceWorker.register' /tmp/x5-index.html
