@@ -36,6 +36,18 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
 <body><main>
 <header><div class="tag">OBSERVATOŘ X-5</div><div class="tag">SEVERNÍ POLOKOULE</div><h1>🌀 Model polárního víru</h1><div class="sub">Stratosférická diagnostika · měření, reanalýza a předpověď odděleně</div></header>
 <div class="status" id="dataStatus"><b>Stav dat:</b> Načítám poslední dostupná denní data ERA5…</div>
+<section class="panel" id="dataHealthPanel">
+ <h2>Kontrolní panel kvality a aktuálnosti dat</h2>
+ <p class="muted">Automatická kontrola metadat tří hlavních zdrojů polární diagnostiky. Kontrola ověřuje dostupnost souborů, čas aktualizace a poslední datum záznamu; sama o sobě nepotvrzuje správnost fyzikálního obsahu ani běh GitHub Actions.</p>
+ <div class="grid" id="dataHealthGrid">
+  <div><div class="unit">ERA5 · reanalýza</div><div class="metric" id="healthEra5">Kontroluji…</div><div class="muted" id="healthEra5Detail">—</div></div>
+  <div><div class="unit">NASA Ozone Watch / GSFC</div><div class="metric" id="healthNasa">Kontroluji…</div><div class="muted" id="healthNasaDetail">—</div></div>
+  <div><div class="unit">NOAA GFS · modelová analýza</div><div class="metric" id="healthNoaa">Kontroluji…</div><div class="muted" id="healthNoaaDetail">—</div></div>
+ </div>
+ <div class="status" id="healthSummary">Probíhá kontrola metadat…</div>
+ <div class="muted" id="healthCheckedAt">—</div>
+ <button type="button" id="healthRefresh">↻ Zkontrolovat znovu</button>
+</section>
 <section class="panel" id="polarForecastAnimation"><h2>Animovaná předpověď polárního víru · X-5</h2><p class="muted">Časová animace společných dat NASA Ozone Watch / MERRA-2 a GEOS FP pro 10, 30 a 50 hPa. Analýzy a předpovědní kroky jsou rozlišeny; teplota je převedena z K na °C. Schéma znázorňuje pouze vývoj diagnostických hodnot, nikoli vypočtené prostorové pole víru.</p><canvas id="pvAnimCanvas" width="1200" height="600" style="display:block;width:100%;height:auto;background:#f7fbff;border:1px solid #d4e0eb;border-radius:14px"></canvas><div class="controls" style="margin-top:12px;align-items:center"><button id="pvAnimPlay" type="button">▶ Přehrát</button><button id="pvAnimReset" type="button">↺ Začátek</button><label>Časová osa <input id="pvAnimSlider" type="range" min="0" max="0" value="0" step="1"></label><div><b id="pvAnimDate">Načítám…</b><div class="muted" id="pvAnimStep">—</div></div></div><div class="status" id="pvAnimStatus">Načítám data pro animaci…</div><p class="muted" id="pvAnimForecastInfo">Ověřuji dostupnost předpovědních kroků…</p><p class="muted">Zdroj: <a href="https://ozonewatch.gsfc.nasa.gov/meteorology/wind_2026_MERRA2_NH.html" target="_blank" rel="noopener">NASA Ozone Watch</a>. Jde o analýzu a modelovou předpověď atmosféry, nikoli o přímé satelitní měření. Záporný U60 na jedné hladině sám o sobě nepotvrzuje významné SSW.</p></section>
 <section class="panel"><h2>Aktuální diagnostické hodnoty</h2><div class="grid">
 <div><div class="unit">Zonální vítr · 10 hPa / 60° N</div><div class="metric" id="wind">—</div><div class="muted">Hodnota bude načtena z datového archivu</div></div>
@@ -613,4 +625,35 @@ setInterval(refreshX5Infographic,30*60*1000);
  function shiftDate(d,n){const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);}
  load();setInterval(load,30*60*1000);
 })();
-</script><script src="./polarni-vir-animace.js?v=1"></script><script src="./gfs-polarni-animace.js?v=4"></script></body></html>
+</script><script src="./polarni-vir-animace.js?v=1"></script><script src="./gfs-polarni-animace.js?v=4"></script><script>
+(function(){
+ const sources=[
+  {id:'Era5',url:'./data/archive-meta.json',label:'ERA5',date:m=>m.files?.['u60_daily.csv']?.last_date,detail:m=>'Záznam do '+(m.files?.['u60_daily.csv']?.last_date||'—')+' · '+(m.files?.['u60_daily.csv']?.rows||'—')+' řádků'},
+  {id:'Nasa',url:'./data/nasa-gsfc/meta.json',label:'NASA GSFC',date:m=>m.series?.u60_10hpa_60n?.last_date||m.series?.u60_10hpa_60n_ozonewatch?.last_date,detail:m=>'Aktualizováno '+(m.retrieved_utc||'—')+' · veřejné zrcadlo NASA GSFC'},
+  {id:'Noaa',url:'./data/noaa-gfs/meta.json',label:'NOAA GFS',date:m=>m.retrieved_utc?.slice(0,10),detail:m=>'Analýza '+(m.retrieved_utc||'—')+' · hladiny '+(m.levels_hpa||[]).join(', ')+' hPa'}
+ ];
+ function ageHours(iso){const t=Date.parse(iso||'');return Number.isFinite(t)?(Date.now()-t)/3600000:null;}
+ function setState(id,state,detail){const e=document.getElementById('health'+id),d=document.getElementById('health'+id+'Detail');if(e)e.textContent=state;if(d)d.textContent=detail;}
+ async function checkOne(src){
+  try{
+   const r=await fetch(src.url+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);
+   const m=await r.json(),retrieved=m.retrieved_utc||null,age=ageHours(retrieved),last=src.date(m);
+   let state='Dostupná',suffix='';
+   if(age===null){state='Bez času aktualizace';suffix='Nelze určit stáří metadat.';}
+   else if(age>72){state='Zastaralá';suffix='Metadata jsou starší než 72 hodin.';}
+   else if(age>36){state='Starší';suffix='Od aktualizace uplynulo více než 36 hodin.';}
+   else suffix='Metadata jsou aktuální podle času stažení.';
+   setState(src.id,state,src.detail(m)+(last?' · poslední datum '+last:'')+' · '+suffix);
+   return {ok:true,state,age,label:src.label};
+  }catch(e){setState(src.id,'Nedostupná','Metadata nelze načíst: '+String(e.message||e));return {ok:false,state:'Nedostupná',label:src.label};}
+ }
+ async function run(){
+  const summary=document.getElementById('healthSummary');if(summary)summary.textContent='Kontroluji archivy ERA5, NASA a NOAA…';
+  const results=await Promise.all(sources.map(checkOne)),ok=results.filter(x=>x.ok).length,stale=results.filter(x=>x.ok&&x.age!==null&&x.age>36).length;
+  if(summary)summary.innerHTML=ok===3&&stale===0?'<b class="good">Všechny tři metadatové soubory jsou dostupné a aktuální.</b>': '<b class="warn">Dostupné: '+ok+'/3 zdrojů. Zastaralé nebo nedostupné zdroje: '+(3-ok+stale)+'.</b> Podrobnosti jsou u jednotlivých zdrojů.';
+  const checked=document.getElementById('healthCheckedAt');if(checked)checked.textContent='Kontrola provedena: '+new Date().toLocaleString('cs-CZ')+' · Prahy stáří: 36 h (upozornění), 72 h (zastaralé).';
+ }
+ const b=document.getElementById('healthRefresh');if(b)b.addEventListener('click',run);
+ run();setInterval(run,30*60*1000);
+})();
+</script></body></html>
