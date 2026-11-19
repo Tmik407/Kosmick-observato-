@@ -16,6 +16,7 @@ import PyIRTAM
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "irtam-density.json"
+STATUS = ROOT / "irtam-status.json"
 STEP_DEG = 10
 ALT_KM = 300.0
 
@@ -54,9 +55,30 @@ def main():
     # vary from roughly 36 to 60 hours even when a fresh build succeeded.
     target_dt = now - timedelta(hours=48)
     minute = (target_dt.minute // 15) * 15
-    target = target_dt.replace(minute=minute, second=0, microsecond=0, tzinfo=None)
-    target_day = target.date()
-    f107, f107_day = get_f107(target_day)
+    requested_target = target_dt.replace(minute=minute, second=0, microsecond=0, tzinfo=None)
+    # GAMBIT coefficients may be published late. Try the requested epoch and
+    # up to three earlier daily epochs; always label the actual model epoch.
+    result = None
+    fallback_errors = []
+    for fallback_days in range(4):
+        target = requested_target - timedelta(days=fallback_days)
+        target_day = target.date()
+        try:
+            f107, f107_day = get_f107(target_day)
+            model_ut = np.array([target.hour + target.minute / 60.0])
+            result = PyIRTAM.run_PyIRTAM(
+                target.year, target.month, target.day, model_ut,
+                alon, alat, altitudes, f107, download=True,
+            )
+            break
+        except Exception as exc:
+            fallback_errors.append({
+                "target_utc": target.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "error": str(exc)[:500],
+            })
+            print(f"IRTAM epoch {target.isoformat()} unavailable: {exc}", file=sys.stderr)
+    if result is None:
+        raise RuntimeError("No usable GAMBIT coefficient epoch in 4-day window: " + json.dumps(fallback_errors))
 
     lats = np.arange(-85, 86, STEP_DEG, dtype=float)
     lons = np.arange(-180, 180, STEP_DEG, dtype=float)
@@ -66,11 +88,6 @@ def main():
     altitudes = np.array([100., 150., 200., 250., 300., 350., 400., 500., 600.])
     aUT = np.array([12.0])
 
-    result = PyIRTAM.run_PyIRTAM(
-        target.year, target.month, target.day, aUT,
-        alon, alat, altitudes, f107,
-        download=True,
-    )
     edp = np.asarray(result[-1], dtype=float)
     if edp.ndim != 3 or edp.shape[0] < 1 or edp.shape[1] != len(altitudes):
         raise RuntimeError(f"Nečekaný rozměr IRTAM EDP: {edp.shape}")
@@ -122,12 +139,26 @@ def main():
         "profile_description": "Globální prostorové statistiky elektronové hustoty pro každou výšku; nejde o lokální vertikální sondáž.",
         "f107_sfu": f107,
         "f107_date": f107_day,
+        "requested_target_utc": requested_target.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "coefficient_fallback_days": (requested_target.date() - target.date()).days,
+        "coefficient_fallback_errors": fallback_errors,
         "grid_step_deg": STEP_DEG,
         "units": "10^6 electrons cm^-3",
         "valid_points": len(points),
         "points": points,
     }
     OUT.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    STATUS.write_text(json.dumps({
+        "source": "PyIRTAM / GIRO GAMBIT",
+        "status": "success" if not fallback_errors else "success_with_older_epoch",
+        "requested_target_utc": payload["requested_target_utc"],
+        "actual_model_target_utc": payload["target_utc"],
+        "generated_utc": payload["generated_utc"],
+        "data_age_hours": payload["delay_hours"],
+        "coefficient_fallback_days": payload["coefficient_fallback_days"],
+        "fallback_errors": fallback_errors,
+        "note": "Older epochs are explicitly identified; no interpolation or relabeling."
+    }, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
     print(f"IRTAM: {len(points)} points at {ALT_KM} km, target {payload['target_utc']}")
 
 
@@ -135,5 +166,13 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as exc:
+        STATUS.write_text(json.dumps({
+            "source": "PyIRTAM / GIRO GAMBIT",
+            "status": "failed",
+            "checked_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "error": str(exc)[:1500],
+            "previous_output_preserved": OUT.exists(),
+            "note": "Existing irtam-density.json is preserved; failed run did not replace model data."
+        }, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
         print(f"IRTAM build failed: {exc}", file=sys.stderr)
         raise
