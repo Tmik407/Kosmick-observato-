@@ -223,11 +223,14 @@ function readCache(){
  return null;
 }
 async function load(){
- if(busy)return;busy=true;stop();status('Stahuji společná hodinová pole GFS pro tři hladiny…');
+ if(busy)return;busy=true;stop();
+ const cachedAtStart=readCache();
+ if(cachedAtStart){applyRows(cachedAtStart.rows,cachedAtStart.times,true);status('Zobrazuji uloženou kopii dat; ověřuji dostupnost nových dat GFS…');}
+ else{status('Stahuji společná hodinová pole GFS pro tři hladiny…');}
  try{
-  // Jeden požadavek obsahuje všech 12 proměnných pro všechny hladiny.
-  // Dvě souřadnicové dávky tak nahradí šest samostatných požadavků.
-  const batchSize=20,allKeys=levels.flatMap(lev=>keys(lev));
+  // Všech 40 souřadnic a 12 proměnných posíláme v jediném požadavku.
+  // Open-Meteo podporuje vícelokační odpověď; tím se minimalizuje spotřeba kvóty.
+  const batchSize=points.length,allKeys=levels.flatMap(lev=>keys(lev));
   const batches=[];for(let i=0;i<points.length;i+=batchSize)batches.push(points.slice(i,i+batchSize));
   const parts=await Promise.all(batches.map(async batch=>{
    const lat=batch.map(p=>p.lat).join(','),lon=batch.map(p=>p.lon).join(',');
