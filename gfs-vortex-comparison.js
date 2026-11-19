@@ -103,7 +103,8 @@ function update(index){
  if(body)body.innerHTML=centers.map(c=>c?'<tr><td><b>'+c.level+' hPa</b></td><td>'+fmt(c.lat,2)+'° N</td><td>'+fmt(c.lon,2)+'° E</td><td>'+fmt(c.displacement,0)+' km</td><td>'+fmt(c.minHeight,0)+' m²/s²</td><td>'+fmt(c.asymmetry,0)+' m²/s²</td></tr>':'<tr><td colspan="6">Data nejsou dostupná</td></tr>').join('');
  const methods=$('vortexGeoMethod');if(methods)methods.textContent=centers.map(c=>c?c.level+' hPa: '+c.method:'').filter(Boolean).join(' · ');
  const stamp=$('vortexGeoTime');if(stamp)stamp.textContent=dateFmt(data.times[index])+' · běh '+dateFmt(data.cycle_utc);
- updateTemperatureComparison(index);\n drawPolar(index,centers);drawDisplacement();
+ updateTemperatureComparison(index);
+  drawPolar(index,centers);drawDisplacement();
 }
 async function load(){
  const status=$('vortexGeoStatus');if(status)status.textContent='Načítám geopotenciální pole NOAA GFS…';const compareStatus=$('vortexCompareStatus');if(compareStatus)compareStatus.textContent='Načítám číselná data NOAA GFS…';
