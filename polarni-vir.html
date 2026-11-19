@@ -488,11 +488,100 @@ loadNasaCombinedProfile();
 function refreshX5Infographic(){
  const stamp=new Date().toLocaleString('cs-CZ',{timeZone:'UTC',dateStyle:'short',timeStyle:'medium'})+' UTC';
  const el=$('dataStatus');if(el)el.innerHTML='<b>Automatická kontrola:</b> '+stamp+'. Data se obnovují podle dostupnosti nových běhů zdrojů.';
- gfsPayload=null;loadGfsGrid(true);
+ if(window.refreshPolarGfsMap)window.refreshPolarGfsMap();
  loadArchive();loadNoaaArchive();loadNasaMirror();loadNasaVerticalWind();loadNasaVerticalTemp();loadNasaCombinedProfile();
 }
 setInterval(refreshX5Infographic,30*60*1000);
 
+</script>
+<script>
+/* X-5: aktivní barevný renderer polární mapy NOAA GFS.
+   Původní renderer zůstal omylem v neaktivním text/plain bloku. */
+(function(){
+ const $=id=>document.getElementById(id);
+ const cv=$('gfsGridMap'); if(!cv)return;
+ const ctx=cv.getContext('2d');
+ const latitudes=[60,66,72,78,84,88],longitudes=Array.from({length:16},(_,i)=>i*22.5);
+ const sites=[];for(const lat of latitudes)for(const lon of longitudes)sites.push({latitude:lat,longitude:lon});
+ sites.push({latitude:90,longitude:0});
+ const cx=cv.width/2,cy=cv.height/2+8,R=350;
+ let payload=[],times=[],loadedLevel='',busy=false,timer=null;
+ const project=(lat,lon)=>{const r=(90-lat)/30*R,a=(lon-90)*Math.PI/180;return{x:cx+r*Math.cos(a),y:cy+r*Math.sin(a)};};
+ const keyFor=(field,level)=>field==='temperature'?'temperature_'+level+'hPa':field==='geopotential'?'geopotential_height_'+level+'hPa':'wind_speed_'+level+'hPa';
+ function color(t){
+  const stops=[[0,[28,65,190]],[.22,[20,160,220]],[.45,[35,185,125]],[.66,[230,220,45]],[.83,[245,130,30]],[1,[190,35,45]]];
+  t=Math.max(0,Math.min(1,t));for(let i=1;i<stops.length;i++){if(t<=stops[i][0]){const a=stops[i-1],b=stops[i],q=(t-a[0])/(b[0]-a[0]);return a[1].map((v,j)=>Math.round(v+(b[1][j]-v)*q));}}return stops[stops.length-1][1];
+ }
+ function base(){
+  ctx.clearRect(0,0,cv.width,cv.height);ctx.fillStyle='#f4f8fc';ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fillStyle='#dceef5';ctx.fill();
+ }
+ function draw(){
+  base();
+  if(!payload.length){ctx.fillStyle='#526b7d';ctx.font='18px Arial';ctx.fillText('Čekám na meteorologická data NOAA GFS…',28,34);return;}
+  const field=$('gfsField').value,level=$('gfsLevel').value,idx=Number($('gfsTime').value)||0,k=keyFor(field,level);
+  const points=payload.map(x=>({p:project(x.latitude,x.longitude),v:x.hourly?.[k]?.[idx],wind:x.hourly?.['wind_speed_'+level+'hPa']?.[idx],dir:x.hourly?.['wind_direction_'+level+'hPa']?.[idx]})).filter(x=>Number.isFinite(x.v));
+  if(points.length<12){$('gfsMapStatus').textContent='Pro zvolenou hladinu a čas je dostupných příliš málo platných bodů ('+points.length+').';return;}
+  const vals=points.map(x=>x.v),lo=Math.min(...vals),hi=Math.max(...vals),span=hi-lo||1;
+  // Jemná interpolace hodnot mezi skutečnými vzorkovacími body; žádná chybějící hodnota se nenahrazuje nulou.
+  const n=300,rad=R/cv.width*n,im=ctx.createImageData(n,n),data=im.data;
+  const sx=n/cv.width,sy=n/cv.height,pc= cx*sx,py=cy*sy,pr=R*sx;
+  const pp=points.map(x=>({x:x.p.x*sx,y:x.p.y*sy,v:x.v}));
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+   const dx=x-pc,dy=y-py;if(dx*dx+dy*dy>pr*pr)continue;
+   let sum=0,weight=0,exact=null;
+   for(const q of pp){const ax=x-q.x,ay=y-q.y,d2=ax*ax+ay*ay;if(d2<1){exact=q.v;break;}const w=1/(d2*d2);sum+=q.v*w;weight+=w;}
+   const v=exact===null?sum/weight:exact,t=(v-lo)/span,col=color(t),j=(y*n+x)*4;
+   data[j]=col[0];data[j+1]=col[1];data[j+2]=col[2];data[j+3]=238;
+  }
+  const off=document.createElement('canvas');off.width=n;off.height=n;off.getContext('2d').putImageData(im,0,0);
+  ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.clip();ctx.drawImage(off,cx-R,cy-R,R*2,R*2);ctx.restore();
+  // Zeměpisná síť a severní pól.
+  for(const lat of [60,65,70,75,80,85]){const r=(90-lat)/30*R;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle='rgba(30,66,91,.38)';ctx.lineWidth=1.4;ctx.stroke();}
+  for(let lon=0;lon<360;lon+=30){const p=project(60,lon);ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(p.x,p.y);ctx.strokeStyle='rgba(30,66,91,.32)';ctx.lineWidth=1.2;ctx.stroke();}
+  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.strokeStyle='#315d78';ctx.lineWidth=2;ctx.stroke();
+  // Směrové šipky větru a body skutečného vzorkování.
+  points.forEach(q=>{ctx.beginPath();ctx.arc(q.p.x,q.p.y,3.3,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();if(Number.isFinite(q.dir)&&Number.isFinite(q.wind)){const a=(q.dir+180)*Math.PI/180,L=Math.min(22,7+q.wind*.12),ex=q.p.x+Math.sin(a)*L,ey=q.p.y-Math.cos(a)*L;ctx.strokeStyle='rgba(255,255,255,.95)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(q.p.x,q.p.y);ctx.lineTo(ex,ey);ctx.stroke();}});
+  ctx.fillStyle='#102e45';ctx.font='bold 16px Arial';ctx.textAlign='center';ctx.fillText('SEVERNÍ PÓL',cx,cy+6);ctx.textAlign='left';
+  const unit=field==='temperature'?'°C':field==='geopotential'?'m':'km/h';
+  ctx.fillStyle='#102e45';ctx.font='bold 17px Arial';ctx.fillText((field==='temperature'?'TEPLOTA':field==='geopotential'?'GEOPOTENCIÁLNÍ VÝŠKA':'RYCHLOST VĚTRU')+' · '+level+' hPa',28,34);
+  ctx.font='14px Arial';ctx.fillText('Rozsah vzorků: '+lo.toFixed(1)+' až '+hi.toFixed(1)+' '+unit,28,cv.height-18);
+  $('gfsTempRange').textContent=rangeFor('temperature_'+level+'hPa','°C');
+  $('gfsZRange').textContent=rangeFor('geopotential_height_'+level+'hPa','m');
+  $('gfsWindRange').textContent=rangeFor('wind_speed_'+level+'hPa','km/h');
+  $('gfsPointCount').textContent=points.length+' / '+sites.length;
+  const time=times[idx]||'čas neuveden';
+  $('gfsMapStatus').innerHTML='<b class="good">Barevná meteorologická mapa načtena.</b> NOAA GFS · '+level+' hPa · '+time+' UTC · '+points.length+'/'+sites.length+' platných bodů. Barvy mezi vzorky jsou prostorově interpolované.';
+ }
+ function rangeFor(k,u){const a=payload.flatMap(x=>x.hourly?.[k]||[]).filter(Number.isFinite);return a.length?Math.min(...a).toFixed(1)+' – '+Math.max(...a).toFixed(1)+' '+u:'—';}
+ async function load(force){
+  if(busy)return;const level=$('gfsLevel').value;
+  if(!force&&payload.length&&loadedLevel===level){draw();return;}
+  busy=true;$('gfsMapStatus').textContent='Načítám NOAA GFS · '+level+' hPa · 97 vzorkovacích bodů…';
+  const lat=sites.map(p=>p.latitude).join(','),lon=sites.map(p=>p.longitude).join(',');
+  const vars=['temperature_'+level+'hPa','geopotential_height_'+level+'hPa','wind_speed_'+level+'hPa','wind_direction_'+level+'hPa'].join(',');
+  const url='https://api.open-meteo.com/v1/gfs?latitude='+lat+'&longitude='+lon+'&hourly='+vars+'&forecast_days=2&timezone=GMT';
+  try{
+   const res=await fetch(url,{cache:'no-store'});if(!res.ok)throw Error('Open-Meteo HTTP '+res.status);
+   const raw=await res.json(),arr=Array.isArray(raw)?raw:[raw];if(!arr.length||!arr[0].hourly)throw Error('Odpověď neobsahuje tlaková pole GFS.');
+   payload=arr;loadedLevel=level;times=arr[0].hourly.time||[];
+   const sel=$('gfsTime'),old=sel.value;sel.innerHTML='';
+   times.forEach((t,i)=>{const o=document.createElement('option');o.value=String(i);o.textContent=t.replace('T',' ')+' UTC';sel.appendChild(o);});
+   sel.value=old!==''&&Number(old)<times.length?old:'0';
+   draw();
+  }catch(e){payload=[];base();ctx.fillStyle='#8b2d2d';ctx.font='17px Arial';ctx.fillText('Data GFS se nepodařilo načíst.',28,40);$('gfsMapStatus').innerHTML='<b class="warn">Načtení NOAA GFS selhalo:</b> '+String(e.message||e)+'. Záložní archivovaná mapa níže zůstává samostatně dostupná.';}
+  finally{busy=false;}
+ }
+ $('gfsLevel').addEventListener('change',()=>load(true));
+ $('gfsField').addEventListener('change',draw);
+ $('gfsTime').addEventListener('change',draw);
+ $('gfsAnimPlay').addEventListener('click',()=>{if(timer)clearInterval(timer);timer=setInterval(()=>{if(!times.length)return;const s=$('gfsTime');s.value=String((Number(s.value)+1)%times.length);draw();},Number($('gfsAnimSpeed').value)||800);$('gfsAnimState').textContent='Přehrávání předpovědi';});
+ $('gfsAnimStop').addEventListener('click',()=>{if(timer)clearInterval(timer);timer=null;$('gfsAnimState').textContent='Animace pozastavena';});
+ $('gfsAnimSpeed').addEventListener('change',()=>{if(timer){clearInterval(timer);timer=setInterval(()=>{const s=$('gfsTime');s.value=String((Number(s.value)+1)%times.length);draw();},Number($('gfsAnimSpeed').value)||800);}});
+ window.refreshPolarGfsMap=()=>load(true);
+ base();ctx.fillStyle='#526b7d';ctx.font='18px Arial';ctx.fillText('Načítám barevná pole NOAA GFS…',28,34);
+ load(true);
+})();
 </script>
 <script>
 (function(){
