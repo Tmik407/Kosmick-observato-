@@ -2179,7 +2179,7 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
    const [cr,ar,wr]=await Promise.all([
     fetch("./coronal-hole-history.json?ts="+Date.now(),{cache:"no-store"}),
     fetch("./aurora-history.json?ts="+Date.now(),{cache:"no-store"}),
-    fetch("./space-weather-history.json?ts="+Date.now(),{cache:"no-store"})
+    fetch("./space-weather-status.json?ts="+Date.now(),{cache:"no-store"})
    ]);
    if(!cr.ok)throw Error("Archiv SUVI HTTP "+cr.status);
    if(!ar.ok)throw Error("Archiv OVATION HTTP "+ar.status);
