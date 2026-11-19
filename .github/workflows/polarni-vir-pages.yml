@@ -14,8 +14,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: polar-vortex-data
-  cancel-in-progress: true
+  group: repository-main-writes
+  cancel-in-progress: false
 
 jobs:
   update-archive:
