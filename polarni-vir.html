@@ -106,27 +106,21 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
  <p class="muted">IR kanál lze používat ve dne i v noci. VIS kanál vyžaduje denní světlo. Satelitní snímek je pozorování oblačnosti, nikoli přímé měření teploty ve stratosféře; pokrytí vysokých polárních šířek závisí na zvolené oblasti a zdroji.</p>
 </div>
 <div style="margin-top:22px">
- <h3>Numerický model polární stratosféry · archiv NOAA GFS</h3>
- <p class="muted">Barevná plocha je interpolace mezi vzorkovanými body modelu severní polokoule. Bílé šipky znázorňují směr proudění. Modelová pole nejsou satelitní měření.</p>
+ <h3>Polární stratosféra · skutečné mapy NOAA GFS</h3>
+ <p class="muted">Originální obrazové mapy NOAA CPC pro severní polokouli. Vyberte tlakovou hladinu 10, 30 nebo 50 hPa. Jde o numerický model GFS, nikoli o satelitní měření.</p>
  <div class="controls">
   <label><b>Tlaková hladina</b><select id="gfsLevel"><option value="10">10 hPa</option><option value="30">30 hPa</option><option value="50">50 hPa</option></select></label>
-  <label><b>Zobrazené pole</b><select id="gfsField"><option value="temperature">Teplota (°C)</option><option value="geopotential">Geopotenciální výška (m)</option><option value="wind">Rychlost větru (km/h)</option></select></label>
-  <label><b>Čas UTC</b><select id="gfsTime"><option value="0">Načítání…</option></select></label>
+  <button id="gfsMapRefresh" type="button">↻ Obnovit mapu NOAA</button>
  </div>
- <div class="controls" style="margin:10px 0;align-items:center">
-  <button id="gfsAnimPlay" type="button">▶ Přehrát předpověď</button><button id="gfsAnimStop" type="button">Ⅱ Pozastavit</button>
-  <label>Rychlost animace<select id="gfsAnimSpeed"><option value="1400">Pomalá</option><option value="800" selected>Normální</option><option value="400">Rychlá</option></select></label>
-  <span class="muted" id="gfsAnimState">Připraveno k animaci modelových polí</span>
- </div>
- <canvas id="gfsGridMap" width="1100" height="820" style="display:block;width:100%;height:auto;border:1px solid #315674;border-radius:16px;background:#f4f8fc"></canvas>
- <div class="status" id="gfsMapStatus">Načítám modelová pole…</div>
+ <img id="gfsArchiveImage" src="/Kosmick-observato-/data/noaa-gfs/gfs_t10_nh_f00.png" alt="Originální mapa NOAA GFS pro severní polokouli, tlaková hladina 10 hPa" loading="eager" style="display:block;width:100%;height:auto;min-height:220px;object-fit:contain;background:#f4f8fc;border:1px solid #315674;border-radius:16px;margin-top:12px">
+ <div class="status" id="gfsMapStatus" role="status" aria-live="polite">Načítám archivované mapy NOAA GFS…</div>
  <div class="grid">
-  <div><div class="unit">Rozsah teploty</div><div class="metric" id="gfsTempRange">—</div></div>
-  <div><div class="unit">Rozsah geopotenciálu</div><div class="metric" id="gfsZRange">—</div></div>
-  <div><div class="unit">Rozsah větru</div><div class="metric" id="gfsWindRange">—</div></div>
-  <div><div class="unit">Platné body</div><div class="metric" id="gfsPointCount">—</div></div>
+  <div><div class="unit">Zdroj</div><div class="metric" style="font-size:16px">NOAA / NCEP CPC</div></div>
+  <div><div class="unit">Rozlišení modelu</div><div class="metric" style="font-size:16px">GFS 0,25°</div></div>
+  <div><div class="unit">Předpovědní krok</div><div class="metric" style="font-size:16px">F00 · analýza</div></div>
+  <div><div class="unit">Čas aktualizace</div><div class="metric" id="gfsArchiveTime" style="font-size:16px">—</div></div>
  </div>
- <p class="muted">Zdroj: archiv NOAA GFS 0,25° zpracovaný z dat NOAA NOMADS. Časové kroky jsou uvedeny v UTC. Vzorkování a interpolace slouží k vizualizaci, nejde o plné nativní rozlišení modelu.</p>
+ <p class="muted">Mapy jsou archivovány přímo v projektu X-5. Jde o modelovou analýzu NOAA GFS, nikoli o reanalýzu ERA5 ani přímé měření. Pokud NOAA nevydá nový běh, zůstává zobrazena poslední úspěšně archivovaná mapa.</p>
 </div>
 </section>
 
@@ -687,7 +681,7 @@ setInterval(refreshX5Infographic,30*60*1000);
  function shiftDate(d,n){const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);}
  load();setInterval(load,30*60*1000);
 })();
-</script><script src="./polarni-vir-animace.js?v=1"></script><script src="/Kosmick-observato-/gfs-polarni-animace.js?v=10"></script><script src="./gfs-polarni-3d.js?v=22" onerror="document.getElementById(\'p3dStatus\').textContent=\'CHYBA: 3D skript se nenačetl. Zkontrolujte cestu k souboru.\'"></script><script>
+</script><script src="./polarni-vir-animace.js?v=1"></script><script src="/Kosmick-observato-/gfs-polarni-animace.js?v=11"></script><script src="./gfs-polarni-3d.js?v=22" onerror="document.getElementById(\'p3dStatus\').textContent=\'CHYBA: 3D skript se nenačetl. Zkontrolujte cestu k souboru.\'"></script><script>
 (function(){
  const sources=[
   {id:'Era5',url:'./data/archive-meta.json',label:'ERA5',date:m=>m.files?.['u60_daily.csv']?.last_date,detail:m=>'Záznam do '+(m.files?.['u60_daily.csv']?.last_date||'—')+' · '+(m.files?.['u60_daily.csv']?.rows||'—')+' řádků'},
