@@ -139,7 +139,7 @@ def main():
  source_status={"wind":source_meta("wind",wind,10),"mag":source_meta("mag",mag,10),"kp":source_meta("kp",kp,240)}
  payload={"source":SOURCES,"updated_utc":now.isoformat().replace("+00:00","Z"),
  "fetched_utc":now.isoformat().replace("+00:00","Z"),"source_status":source_status,"sampling_interval_minutes":5,
- "retention_days":90,"timestamp_basis":"NOAA measurement timestamps in UTC; anchored to actual wind timestamps",
+ "retention_days":90,"sampling_interval_minutes":1,"workflow_schedule_interval_minutes":5,"timestamp_basis":"NOAA measurement timestamps in UTC; source feed is 1-minute cadence; workflow attempts every 5 minutes",
  "derived_fields":["pdyn_npa","ey_mv_m"],"quality":{"invalid_sentinels_rejected":sorted(INVALID),
  "magnetic_pair_tolerance_seconds":90,"kp_pair_tolerance_seconds":5400,"interpolation":False},
  "note":"Dst není zahrnuto: zatím není připojen a ověřen samostatný zdroj Dst.",
