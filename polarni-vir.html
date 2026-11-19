@@ -562,11 +562,10 @@ setInterval(refreshX5Infographic,30*60*1000);
    if(wlast){$('nasaMirrorHeat').textContent=num(wlast.value).toFixed(2);$('nasaMirrorHeatDate').textContent=wlast.date+' · NASA GSFC';}
    if($('nasaMirrorStatus'))$('nasaMirrorStatus').innerHTML='<b class="good">NASA GSFC archiv načten.</b> U60, teplota a vlnový tepelný tok · '+mu.length.toLocaleString('cs-CZ')+' / '+mt.length.toLocaleString('cs-CZ')+' / '+mw.length.toLocaleString('cs-CZ')+' denních záznamů.';
    if($('nasaMirrorInterpretation'))$('nasaMirrorInterpretation').textContent='Časové řady NASA GSFC jsou zrcadlené numerické série. Teplota je převedena z K na °C; nejde o přímé satelitní měření.';
-   const latest=series[0].u[series[0].u.length-1],lt=series[0].t[series[0].t.length-1];
-   if(latest){$('nasaMirrorWind').textContent=num(latest.u60_ms).toFixed(2)+' m/s';$('nasaMirrorWindDate').textContent=latest.date+' · analýza';}
-   if(lt){$('nasaMirrorTemp').textContent=(num(lt.temp_k)-273.15).toFixed(2)+' °C';$('nasaMirrorTempDate').textContent=lt.date+' · analýza';}
-   const rows=series.flatMap(q=>q.u.map(x=>({d:x.date,v:num(x.u60_ms),l:q.l}))).sort((a,b)=>a.d.localeCompare(b.d)).filter(x=>x.l===10);
-   chart('nasaMirrorWindChart',rows.slice(-180),'NASA Ozone Watch · U60 10 hPa','m/s');
+   const latestMirror=mu[mu.length-1];
+   if(latestMirror){$('nasaMirrorWind').textContent=num(latestMirror.value).toFixed(2)+' m/s';$('nasaMirrorWindDate').textContent=latestMirror.date+' · NASA GSFC veřejná kopie';}
+   const latestTemp=mt[mt.length-1];
+   if(latestTemp){$('nasaMirrorTemp').textContent=(num(latestTemp.value)-273.15).toFixed(2)+' °C';$('nasaMirrorTempDate').textContent=latestTemp.date+' · NASA GSFC veřejná kopie';}
    function vertical(id,key,unit,convert){
  const c=$(id);if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height,p={l:105,r:90,t:48,b:48};
  g.clearRect(0,0,w,h);g.fillStyle='#ffffff';g.fillRect(0,0,w,h);
@@ -612,12 +611,46 @@ setInterval(refreshX5Infographic,30*60*1000);
   g.textAlign='center';g.fillStyle='#63778a';g.font='12px Arial';[0,7,14,21,29].forEach(i=>g.fillText(days[i].slice(5),x(i),h-20));
   g.textAlign='left';let lx=p.l;[10,30,50].forEach(l=>{g.fillStyle=cols[l];g.fillRect(lx,34,12,12);g.fillStyle='#20364a';g.fillText(l+' hPa',lx+17,45);lx+=115;});
  }
- function emptyImportCanvas(id,title){
-  const c=$(id);if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height;g.clearRect(0,0,w,h);g.fillStyle='#ffffff';g.fillRect(0,0,w,h);g.strokeStyle='#d8e2eb';g.lineWidth=2;g.strokeRect(20,20,w-40,h-40);g.fillStyle='#20364a';g.font='bold 18px Arial';g.fillText(title,42,68);g.fillStyle='#5b6d7e';g.font='16px Arial';g.fillText('Tento panel čeká na ruční import dat NASA.',42,112);g.fillText('Automatické archivy jsou vykresleny v samostatných grafech výše.',42,145);
+ function parseNasaFixedWidth(raw){
+  const lines=raw.replace(/^\uFEFF/,'').split(/\r?\n/);
+  const chunks=line=>{const out=[];for(let i=0;i<line.length;i+=10)out.push(line.slice(i,i+10).trim());return out;};
+  const header=lines.slice(0,4).map(chunks),columns=[],max=Math.max(0,...header.map(x=>x.length));
+  for(let i=1;i<max;i++){
+   const variable=(header[0][i]||'').replace(/\s+/g,' ').trim(),region=(header[1][i]||'').replace(/\s+/g,' ').trim(),level=(header[2][i]||'').replace(/\s+/g,' ').trim(),unit=(header[3][i]||'').replace(/\s+/g,' ').trim();
+   const lev=+(level.match(/(10|30|50)\s*hPa/i)||[])[1];if(!lev)continue;
+   const wind=/^U$/i.test(variable)&&/60\s*N/i.test(region),temp=/^T$/i.test(variable)&&/60\s*[-–]\s*90\s*N/i.test(region);
+   if(wind||temp)columns.push({index:i-1,level:lev,type:wind?'wind':'temp',unit});
+  }
+  const rows=[];for(const line of lines.slice(5)){const m=line.match(/^\s*(\d{4}-\d{2}-\d{2})/);if(!m)continue;const rest=line.slice(m.index+m[0].length),values=[];for(let i=0;i<rest.length;i+=10){const v=rest.slice(i,i+10).trim();values.push(v===''?null:Number(v));}const row={date:m[1],wind:{},temp:{}};for(const c of columns){const v=values[c.index];if(Number.isFinite(v))row[c.type][c.level]=v;}rows.push(row);}
+  return {columns,rows};
  }
- emptyImportCanvas('nasaWindChart','Importovaná časová řada · U60 na 60° N');
- emptyImportCanvas('nasaTempChart','Importovaná časová řada · teplota 60–90° N');
- if($('nasaLatest'))$('nasaLatest').textContent='Čeká na ruční import souboru NASA GSFC. Automatické archivní grafy jsou zobrazeny v samostatném panelu NASA GSFC výše.';
+ function drawImportedSeries(id,rows,type,title,unit){
+  const c=$(id);if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height,p=55,colors={10:'#087fa5',30:'#a85b12',50:'#6941a5'};
+  g.clearRect(0,0,w,h);g.fillStyle='#fff';g.fillRect(0,0,w,h);
+  const shown=rows.slice(-365),values=shown.flatMap(r=>[10,30,50].map(l=>r[type][l]).filter(Number.isFinite));
+  if(!values.length){g.fillStyle='#5b6d7e';g.font='16px Arial';g.fillText('V importovaném souboru nebyla nalezena odpovídající řada.',p,42);return;}
+  let min=Math.min(...values),max=Math.max(...values);if(min===max){min-=1;max+=1;}const y=v=>h-p-(v-min)/(max-min)*(h-2*p);
+  for(let i=0;i<5;i++){const v=max-i*(max-min)/4,yy=y(v);g.strokeStyle='#d8e2eb';g.beginPath();g.moveTo(p,yy);g.lineTo(w-p,yy);g.stroke();g.fillStyle='#63778a';g.font='13px Arial';g.fillText(v.toFixed(1),5,yy+4);}
+  for(const lev of [10,30,50]){let begun=false;g.beginPath();shown.forEach((r,i)=>{const v=r[type][lev];if(!Number.isFinite(v)){begun=false;return;}const x=p+i*(w-2*p)/Math.max(1,shown.length-1);if(!begun){g.moveTo(x,y(v));begun=true;}else g.lineTo(x,y(v));});g.strokeStyle=colors[lev];g.lineWidth=2.8;g.stroke();}
+  g.fillStyle='#20364a';g.font='bold 15px Arial';g.fillText(title+' ('+unit+')',p,23);
+  [10,30,50].forEach((lev,i)=>{const x=p+i*155;g.fillStyle=colors[lev];g.fillRect(x,34,18,4);g.fillStyle='#20364a';g.font='13px Arial';g.fillText(lev+' hPa',x+25,41);});
+  g.fillStyle='#63778a';g.font='13px Arial';g.fillText(shown[0]?.date||'',p,h-14);g.fillText(shown[shown.length-1]?.date||'',w-p-90,h-14);
+ }
+ function analyzeImported(rows){
+  const last=rows[rows.length-1],fmt=v=>Number.isFinite(v)?v.toFixed(2).replace('.',','):'—';
+  const items=[10,30,50].map(lev=>{const old7=rows.find(r=>r.date===shiftDate(last.date,-7)),old30=rows.find(r=>r.date===shiftDate(last.date,-30)),w=last.wind[lev],t=last.temp[lev];return {lev,w,t,dw7:Number.isFinite(w)&&Number.isFinite(old7?.wind[lev])?w-old7.wind[lev]:null,dt7:Number.isFinite(t)&&Number.isFinite(old7?.temp[lev])?t-old7.temp[lev]:null,dw30:Number.isFinite(w)&&Number.isFinite(old30?.wind[lev])?w-old30.wind[lev]:null,dt30:Number.isFinite(t)&&Number.isFinite(old30?.temp[lev])?t-old30.temp[lev]:null};});
+  const body=items.map(x=>'<tr><td>'+x.lev+' hPa</td><td>'+fmt(x.w)+' m/s</td><td>'+fmt(x.dw7)+'</td><td>'+fmt(x.dw30)+'</td><td>'+fmt(Number.isFinite(x.t)?x.t-273.15:null)+' °C</td><td>'+fmt(Number.isFinite(x.dt7)?x.dt7:null)+' K</td><td>'+fmt(Number.isFinite(x.dt30)?x.dt30:null)+' K</td></tr>').join('');
+  $('verticalAnalysis').innerHTML='<b>Poslední datum importu: '+last.date+'</b><div style="overflow-x:auto"><table><thead><tr><th>Hladina</th><th>U60</th><th>ΔU 7 dní</th><th>ΔU 30 dní</th><th>T (°C)</th><th>ΔT 7 dní</th><th>ΔT 30 dní</th></tr></thead><tbody>'+body+'</tbody></table></div><p class="muted">Importovaný NASA soubor; změny jsou vypočteny pouze pro přesné datum −7/−30 dní. Teploty jsou zobrazeny ve °C, změny v K.</p>';
+ }
+ const fileInput=$('nasaFile');if(fileInput)fileInput.addEventListener('change',async ev=>{
+  const file=ev.target.files&&ev.target.files[0];if(!file)return;const status=$('nasaImportStatus');status.textContent='Načítám '+file.name+'…';
+  try{const parsed=parseNasaFixedWidth(await file.text());if(!parsed.rows.length)throw Error('Soubor neobsahuje denní řádky YYYY-MM-DD.');if(!parsed.columns.length)throw Error('Nebyly nalezeny sloupce U 60° N nebo T 60–90° N pro 10/30/50 hPa. Tento import očekává NASA ASCII/fixed-width export, nikoli obecné CSV.');
+   const rows=parsed.rows.sort((a,b)=>a.date.localeCompare(b.date));drawImportedSeries('nasaWindChart',rows,'wind','Zonální vítr U60','m/s');drawImportedSeries('nasaTempChart',rows.map(r=>({...r,temp:Object.fromEntries(Object.entries(r.temp).map(([k,v])=>[k,Number.isFinite(v)?v-273.15:v]))})),'temp','Teplota polární čepičky','°C');analyzeImported(rows);
+   const last=rows[rows.length-1],found=[...new Set(parsed.columns.map(c=>c.level))].sort((a,b)=>a-b).join(', ');
+   $('nasaLatest').innerHTML='<b>Poslední datum: '+last.date+'</b><br>Importováno '+rows.length.toLocaleString('cs-CZ')+' denních záznamů · hladiny '+found+' hPa. Teplotní graf je v °C.';
+   status.innerHTML='<b class="good">Import úspěšný.</b> '+file.name+' · '+rows.length.toLocaleString('cs-CZ')+' dní. Soubor zůstal pouze v tomto prohlížeči.';
+  }catch(err){status.innerHTML='<b class="warn">Import se nepodařil.</b> '+String(err.message||err);}
+ });
  function shiftDate(d,n){const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);}
  load();setInterval(load,30*60*1000);
 })();
