@@ -61,6 +61,12 @@ def main():
     if target_dt.hour < 12:
         requested_day -= timedelta(days=1)
     requested_target = datetime.combine(requested_day, datetime.min.time()).replace(hour=12)
+    lats = np.arange(-85, 86, STEP_DEG, dtype=float)
+    lons = np.arange(-180, 180, STEP_DEG, dtype=float)
+    lon_grid, lat_grid = np.meshgrid(lons, lats)
+    alon = lon_grid.ravel()
+    alat = lat_grid.ravel()
+    altitudes = np.array([100., 150., 200., 250., 300., 350., 400., 500., 600.])
     # GAMBIT coefficients may be published late. Try this epoch and up to
     # three earlier daily epochs; always label the actual model epoch.
     result = None
@@ -84,14 +90,6 @@ def main():
             print(f"IRTAM epoch {target.isoformat()} unavailable: {exc}", file=sys.stderr)
     if result is None:
         raise RuntimeError("No usable GAMBIT coefficient epoch in 4-day window: " + json.dumps(fallback_errors))
-
-    lats = np.arange(-85, 86, STEP_DEG, dtype=float)
-    lons = np.arange(-180, 180, STEP_DEG, dtype=float)
-    lon_grid, lat_grid = np.meshgrid(lons, lats)
-    alon = lon_grid.ravel()
-    alat = lat_grid.ravel()
-    altitudes = np.array([100., 150., 200., 250., 300., 350., 400., 500., 600.])
-    aUT = np.array([12.0])
 
     edp = np.asarray(result[-1], dtype=float)
     if edp.ndim != 3 or edp.shape[0] < 1 or edp.shape[1] != len(altitudes):
@@ -163,7 +161,7 @@ def main():
         "coefficient_fallback_days": payload["coefficient_fallback_days"],
         "fallback_errors": fallback_errors,
         "note": "Older epochs are explicitly identified; no interpolation or relabeling."
-    }, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+    }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"IRTAM: {len(points)} points at {ALT_KM} km, target {payload['target_utc']}")
 
 
