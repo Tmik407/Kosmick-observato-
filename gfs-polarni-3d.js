@@ -2,7 +2,7 @@
 const $=id=>document.getElementById(id),levels=[10,30,50],lats=[60,68,76,84,88],lons=[-157.5,-112.5,-67.5,-22.5,22.5,67.5,112.5,157.5];
 const points=[];for(const lat of lats)for(const lon of lons)points.push({lat,lon});
 const keys=l=>['temperature_'+l+'hPa','geopotential_height_'+l+'hPa','wind_speed_'+l+'hPa','wind_direction_'+l+'hPa'];
-let data={},times=[],idx=0,yaw=-.35,pitch=.22,timer=null,busy=false,drag=null;
+let data={},times=[],idx=0,yaw=-.35,pitch=.22,timer=null,busy=false,drag=null,shapeCache={},windCache={};
 const status=t=>{if($('p3dStatus'))$('p3dStatus').textContent=t;};
 const project=(lat,lon,z,cx,cy,scale)=>{
  const r=(90-lat)/30*scale,a=(lon+yaw*180/Math.PI-90)*Math.PI/180;
@@ -27,8 +27,9 @@ function levelWind(level){
  return {u:mean(u),v:mean(v),height:mean(z),heights:z};
 }
 function shapeAt(lat,lon,level){
+ const cacheKey=level+':'+lat.toFixed(3)+':'+lon.toFixed(3);if(shapeCache[cacheKey])return shapeCache[cacheKey];
  const p=points.reduce((best,q,i)=>Math.abs(q.lat-lat)+Math.abs((((q.lon-lon)+540)%360)-180)<best.d?{i,d:Math.abs(q.lat-lat)+Math.abs((((q.lon-lon)+540)%360)-180)}:best,{i:0,d:Infinity}).i;
- const wind=levelWind(level),sp=value(level,p,keys(level)[2]),dr=value(level,p,keys(level)[3]),gh=value(level,p,keys(level)[1]);
+ const wind=windCache[level]||(windCache[level]=levelWind(level)),sp=value(level,p,keys(level)[2]),dr=value(level,p,keys(level)[3]),gh=value(level,p,keys(level)[1]);
  const heights=wind.heights,meanH=wind.height;
  const heightAnomaly=Number.isFinite(gh)&&Number.isFinite(meanH)?Math.max(-1,Math.min(1,(gh-meanH)/Math.max(1500,...heights.map(x=>Math.abs(x-meanH))))):0;
  const localSpeed=Number.isFinite(sp)?Math.min(1,sp/70):0;
@@ -36,7 +37,7 @@ function shapeAt(lat,lon,level){
  const flowShape=localSpeed*Math.cos(2*(lon*Math.PI/180-direction));
  const ellipse=Math.max(.84,Math.min(1.16,1+flowShape*.075+heightAnomaly*.055));
  const spiral=Number.isFinite(wind.u)?Math.max(-18,Math.min(18,wind.u*.22)):0;
- return {ellipse,spiral};
+ return shapeCache[cacheKey]={ellipse,spiral};
 }
 function shapedProject(lat,lon,level,cx,cy,scale){
  const sh=shapeAt(lat,lon,level),a=lon+sh.spiral;
@@ -45,6 +46,7 @@ function shapedProject(lat,lon,level,cx,cy,scale){
  return {...p,x:cx+dx*sh.ellipse,y:cy+dy*sh.ellipse};
 }
 function draw(){
+ shapeCache={};windCache={};
  const c=$('p3dCanvas');if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height,cx=w*.5,cy=h*.51,scale=155;
  g.clearRect(0,0,w,h);const bg=g.createLinearGradient(0,0,w,h);bg.addColorStop(0,'#061526');bg.addColorStop(1,'#123653');g.fillStyle=bg;g.fillRect(0,0,w,h);
  // polar reference grid
