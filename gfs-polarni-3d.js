@@ -210,33 +210,45 @@ function draw(){
  for(const lev of levels){const vals=points.map((_,p)=>value(lev,p,keys(lev)[0])).filter(Number.isFinite),el=$('p3d'+lev);if(el)el.textContent=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1)+' °C':'—';}
  drawHistoryCharts();
 }
-async function load(){
- if(busy)return;busy=true;stop();status('Stahuji hodinová pole GFS pro hladiny 10, 30 a 50 hPa…');
- try{
-  // Open-Meteo obsluhuje více souřadnic, ale velké dávky mohou být odmítnuty.
-  // Menší dávky zkracují URL a umožňují přesně určit problematickou odpověď.
-  const batchSize=20;
-  const results=await Promise.all(levels.map(async lev=>{
-   const batches=[];
-   for(let i=0;i<points.length;i+=batchSize)batches.push(points.slice(i,i+batchSize));
-   const parts=await Promise.all(batches.map(async batch=>{
-    const lat=batch.map(p=>p.lat).join(','),lon=batch.map(p=>p.lon).join(',');
-    const url='https://api.open-meteo.com/v1/gfs?latitude='+encodeURIComponent(lat)+'&longitude='+encodeURIComponent(lon)+'&hourly='+encodeURIComponent(keys(lev).join(','))+'&forecast_days=2&timezone=GMT';
-    const r=await fetch(url,{cache:'default'});
-    if(!r.ok){const body=await r.text();let detail=body.slice(0,400);try{const e=JSON.parse(body);detail=e.reason||e.message||JSON.stringify(e);}catch(_){}throw Error('GFS '+lev+' hPa HTTP '+r.status+(detail?' · '+detail:''));}
-    const raw=await r.json(),rows=Array.isArray(raw)?raw:[raw];
-    if(rows.length!==batch.length||!rows[0]?.hourly?.time)throw Error('Neúplná dávka GFS '+lev+' hPa ('+rows.length+'/'+batch.length+' bodů).');
-    return rows;
-   }));
-   const rows=parts.flat();return {lev,rows,times:rows[0]?.hourly?.time||[]};
-  }));
-  const base=results[0].times;if(results.some(x=>x.times.length!==base.length||x.times.some((t,i)=>t!==base[i])))throw Error('Časové osy hladin se neshodují; společná animace není bezpečná.');
-  data={};results.forEach(x=>data[x.lev]=x);times=base;idx=0;
-  const sel=$('p3dTime');sel.innerHTML='';times.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t.replace('T',' ')+' UTC';sel.appendChild(o);});
-  status('Načteny všechny tři hladiny · '+points.length+' vzorkovacích bodů na hladinu · '+times.length+' hodinových kroků. '+times[0]+' až '+times[times.length-1]+' UTC.');draw();
- }catch(e){data={};status('3D data nejsou kompletní: '+String(e.message||e)+'. Zobrazení zůstává bez doplněných hodnot.');draw();}
- finally{busy=false;}
+const CACHE_KEY='x5-gfs-polar-v15-cache';
+function applyRows(rows,base,stale=false){
+ data={};levels.forEach(lev=>data[lev]={lev,rows,times:base});
+ times=base;idx=Math.min(idx,Math.max(0,times.length-1));
+ const sel=$('p3dTime');if(sel){sel.innerHTML='';times.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t.replace('T',' ')+' UTC';sel.appendChild(o);});sel.value=idx;}
+ status((stale?'Použita místní kopie posledních úspěšných dat · ':'Načteny všechny tři hladiny · ')+points.length+' vzorkovacích bodů na hladinu · '+times.length+' hodinových kroků. '+times[0]+' až '+times[times.length-1]+' UTC.'+(stale?' Data mohou být starší.':''));
+ draw();
 }
+function readCache(){
+ try{const c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');if(c&&Array.isArray(c.rows)&&Array.isArray(c.times)&&c.rows.length===points.length&&c.times.length)return c;}catch(_){}
+ return null;
+}
+async function load(){
+ if(busy)return;busy=true;stop();status('Stahuji společná hodinová pole GFS pro tři hladiny…');
+ try{
+  // Jeden požadavek obsahuje všech 12 proměnných pro všechny hladiny.
+  // Dvě souřadnicové dávky tak nahradí šest samostatných požadavků.
+  const batchSize=20,allKeys=levels.flatMap(lev=>keys(lev));
+  const batches=[];for(let i=0;i<points.length;i+=batchSize)batches.push(points.slice(i,i+batchSize));
+  const parts=await Promise.all(batches.map(async batch=>{
+   const lat=batch.map(p=>p.lat).join(','),lon=batch.map(p=>p.lon).join(',');
+   const url='https://api.open-meteo.com/v1/gfs?latitude='+encodeURIComponent(lat)+'&longitude='+encodeURIComponent(lon)+'&hourly='+encodeURIComponent(allKeys.join(','))+'&forecast_days=2&timezone=GMT';
+   const r=await fetch(url,{cache:'default'});
+   if(!r.ok){const body=await r.text();let detail=body.slice(0,400);try{const e=JSON.parse(body);detail=e.reason||e.message||JSON.stringify(e);}catch(_){}throw Error('GFS HTTP '+r.status+(detail?' · '+detail:''));}
+   const raw=await r.json(),rows=Array.isArray(raw)?raw:[raw];
+   if(rows.length!==batch.length||!rows[0]?.hourly?.time)throw Error('Neúplná dávka GFS ('+rows.length+'/'+batch.length+' bodů).');
+   return rows;
+  }));
+  const rows=parts.flat(),base=rows[0]?.hourly?.time||[];
+  if(rows.length!==points.length||!base.length||rows.some(r=>!r.hourly?.time||r.hourly.time.length!==base.length||r.hourly.time.some((t,i)=>t!==base[i])))throw Error('Neúplná nebo nesouhlasná časová osa GFS.');
+  applyRows(rows,base,false);
+  try{localStorage.setItem(CACHE_KEY,JSON.stringify({rows,times:base,savedAt:Date.now()}));}catch(_){status('Data načtena; místní mezipaměť se nepodařilo uložit.');}
+ }catch(e){
+  const cached=readCache();
+  if(cached){applyRows(cached.rows,cached.times,true);const age=Math.max(0,Math.round((Date.now()-(cached.savedAt||0))/3600000));status('Aktuální API nedostupné: '+String(e.message||e)+'. Zobrazuji poslední uložená data (přibližné stáří '+age+' h).');}
+  else{data={};times=[];status('3D data nejsou dostupná: '+String(e.message||e)+'. Počkejte na obnovení limitu API nebo zkuste později.');draw();}
+ }finally{busy=false;}
+}
+
 function stop(){if(timer)clearInterval(timer);timer=null;}
 function play(){if(!times.length)return;stop();timer=setInterval(()=>{idx=(idx+1)%times.length;$('p3dTime').value=idx;draw();},Number($('p3dSpeed')?.value||800));}
 $('p3dLoad')?.addEventListener('click',load);$('p3dPlay')?.addEventListener('click',play);$('p3dPause')?.addEventListener('click',stop);
