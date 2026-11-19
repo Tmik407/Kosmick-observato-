@@ -169,8 +169,8 @@ function draw(){
  g.font='bold 18px Arial';g.fillStyle='#63c9ff';g.fillText('10 hPa',cx+270,cy-145);g.fillStyle='#ffd166';g.fillText('30 hPa',cx+270,cy+5);g.fillStyle='#c6a0ff';g.fillText('50 hPa',cx+270,cy+155);
  g.font='13px Arial';g.fillStyle='#d4e8f6';g.fillText('Dynamická spirála a eliptická deformace · barva = teplota · šipky = vítr',28,h-42);
  const d10=levelDiagnostics(10),d30=levelDiagnostics(30),d50=levelDiagnostics(50);
- g.fillText('U zonální (m/s): 10 hPa '+(zonal[10]?.toFixed(1)??'—')+' · 30 hPa '+(zonal[30]?.toFixed(1)??'—')+' · 50 hPa '+(zonal[50]?.toFixed(1)??'—')+' · '+(times[idx]||'').replace('T',' ')+' UTC',28,h-20);
- g.fillText('Rozptyl geopotenciální výšky (m): 10 hPa '+(d10.heightSpread?.toFixed(0)??'—')+' · 30 hPa '+(d30.heightSpread?.toFixed(0)??'—')+' · 50 hPa '+(d50.heightSpread?.toFixed(0)??'—'),28,h-4);
+ g.font='11px Arial';
+ g.fillText('U zonální (m/s): 10 '+(zonal[10]?.toFixed(1)??'—')+' · 30 '+(zonal[30]?.toFixed(1)??'—')+' · 50 '+(zonal[50]?.toFixed(1)??'—')+' | Rozptyl geopotenciálu (m): 10 '+(d10.heightSpread?.toFixed(0)??'—')+' · 30 '+(d30.heightSpread?.toFixed(0)??'—')+' · 50 '+(d50.heightSpread?.toFixed(0)??'—')+' | '+(times[idx]||'').replace('T',' ')+' UTC',28,h-20);
  for(const lev of levels){const vals=points.map((_,p)=>value(lev,p,keys(lev)[0])).filter(Number.isFinite),el=$('p3d'+lev);if(el)el.textContent=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1)+' °C':'—';}
 }
 async function load(){
