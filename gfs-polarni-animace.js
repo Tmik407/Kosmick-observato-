@@ -39,7 +39,7 @@ async function load(){
  try{
   // Veřejný archiv vytváří vlastní workflow z NOAA NOMADS GFS GRIB2.
   // Použití lokálního JSON odstraní závislost mapy na limitu Open-Meteo (HTTP 429).
-  const response=await fetch('./data/polar-vortex/latest.json',{cache:'no-store'});
+  const response=await fetch('/Kosmick-observato-/data/polar-vortex/latest.json',{cache:'no-store'});
   if(!response.ok)throw Error('Archiv NOAA HTTP '+response.status);
   const data=await response.json();
   if(!Array.isArray(data.points)||!Array.isArray(data.rows)||!Array.isArray(data.times)||!data.points.length||data.points.length!==data.rows.length)throw Error('Archiv NOAA má neúplnou strukturu bodů, řádků nebo časů.');
