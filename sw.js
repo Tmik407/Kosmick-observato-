@@ -1,6 +1,6 @@
 /* Kosmická observatoř X-5 – PWA service worker */
 const CACHE_NAME="x5-pwa-shell-v7";
-const SHELL=["./","./index.html","./polarni-vir.html","./offline.html","./manifest.webmanifest","./polarni-vir.webmanifest","./icon.svg"];
+const SHELL=["./","./index.html","./polarni-vir.html","./offline.html","./manifest.webmanifest","./polarni-vir.webmanifest","./icon.svg","./polarni-vir-animace.js","./gfs-polarni-animace.js","./gfs-vortex-comparison.js","./gfs-polarni-3d.js","./data/polar-vortex/latest.json","./data/noaa-gfs/meta.json"];
 self.addEventListener("install",event=>{
  event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));
 });
