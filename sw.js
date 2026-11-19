@@ -1,6 +1,6 @@
 /* Kosmická observatoř X-5 – PWA service worker */
-const CACHE_NAME="x5-pwa-shell-v6";
-const SHELL=["./","./index.html","./offline.html","./manifest.webmanifest","./icon.svg"];
+const CACHE_NAME="x5-pwa-shell-v7";
+const SHELL=["./","./index.html","./polarni-vir.html","./offline.html","./manifest.webmanifest","./polarni-vir.webmanifest","./icon.svg"];
 self.addEventListener("install",event=>{
  event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));
 });
@@ -14,11 +14,13 @@ self.addEventListener("fetch",event=>{
  if(url.origin!==self.location.origin)return; // živá NOAA/ACE/GIRO data vždy jdou přímo do sítě
  if(request.mode==="navigate"){
   event.respondWith(fetch(request).then(response=>{
-   if(response&&response.ok){const copy=response.clone();caches.open(CACHE_NAME).then(cache=>cache.put("./index.html",copy));}
+   if(response&&response.ok){const copy=response.clone();caches.open(CACHE_NAME).then(cache=>cache.put(request,copy));}
    return response;
   }).catch(async()=>{
-   const cached=await caches.match("./index.html")||await caches.match("./");
-   return cached||await caches.match("./offline.html");
+   const cached=await caches.match(request);
+   if(cached)return cached;
+   if(url.pathname.endsWith("/polarni-vir.html"))return await caches.match("./polarni-vir.html")||await caches.match("./offline.html");
+   return await caches.match("./index.html")||await caches.match("./")||await caches.match("./offline.html");
   }));
   return;
  }
