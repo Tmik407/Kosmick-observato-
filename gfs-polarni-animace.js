@@ -40,16 +40,33 @@ function draw(){
 async function load(){
  if(loading)return;loading=true;const level=$('gfsLevel').value,status=$('gfsMapStatus');status.textContent='Načítám hodinová pole GFS · hladina '+level+' hPa…';
  try{
-  const batches=[];for(let i=0;i<points.length;i+=12)batches.push(points.slice(i,i+12));
-  const results=await Promise.all(batches.map(async batch=>{
-   const lat=batch.map(p=>p.lat).join(','),lon=batch.map(p=>p.lon).join(',');
-   const vars=['temperature_'+level+'hPa','geopotential_height_'+level+'hPa','wind_speed_'+level+'hPa','wind_direction_'+level+'hPa'].join(',');
-   const url='https://api.open-meteo.com/v1/gfs?latitude='+lat+'&longitude='+lon+'&hourly='+vars+'&forecast_days=2&timezone=GMT';
-   const res=await fetch(url,{cache:'no-store'});if(!res.ok)throw Error('GFS API HTTP '+res.status);
-   const data=await res.json();return Array.isArray(data)?data:[data];
-  }));
-  payload=results.flat();if(!payload.length||!payload[0].hourly)throw Error('Odpověď GFS neobsahuje hodinová data.');
-  times=payload[0].hourly.time||[];if(!times.length)throw Error('GFS nevrátil časové kroky.');
+  const batches=[];for(let i=0;i<points.length;i+=8)batches.push(points.slice(i,i+8));
+  const vars=['temperature_'+level+'hPa','geopotential_height_'+level+'hPa','wind_speed_'+level+'hPa','wind_direction_'+level+'hPa'].join(',');
+  // Požadavky posíláme postupně, aby se při mobilním připojení nebo omezení API
+  // nezrušila celá mapa kvůli jedinému neúspěšnému souběžnému požadavku.
+  const results=[];
+  for(const batch of batches){
+   const params=new URLSearchParams({
+    latitude:batch.map(p=>p.lat).join(','),
+    longitude:batch.map(p=>p.lon).join(','),
+    hourly:vars,forecast_days:'2',timezone:'UTC'
+   });
+   const url='https://api.open-meteo.com/v1/gfs?'+params.toString();
+   let response,lastError;
+   for(let attempt=0;attempt<2;attempt++){
+    try{
+     response=await fetch(url,{cache:'no-store'});
+     if(!response.ok)throw Error('HTTP '+response.status);
+     const data=await response.json();
+     const list=Array.isArray(data)?data:[data];
+     if(!list.length||!list.some(x=>x.hourly?.time?.length))throw Error('API vrátilo prázdná hodinová data');
+     results.push(...list);lastError=null;break;
+    }catch(err){lastError=err;if(attempt===0)await new Promise(resolve=>setTimeout(resolve,900));}
+   }
+   if(lastError)throw Error('Dávka '+(results.length+1)+' vzorků: '+String(lastError.message||lastError));
+  }
+  payload=results;if(!payload.length||!payload.some(x=>x.hourly?.time?.length))throw Error('Odpověď GFS neobsahuje hodinová data.');
+  times=payload.find(x=>x.hourly?.time?.length)?.hourly.time||[];if(!times.length)throw Error('GFS nevrátil časové kroky.');
   const sel=$('gfsTime'),old=sel.value;sel.innerHTML='';times.forEach((t,i)=>{const o=document.createElement('option');o.value=String(i);o.textContent=t.replace('T',' ')+' UTC';sel.appendChild(o);});sel.value=String(Math.min(Number(old)||0,times.length-1));
   loadedLevel=level;
   const range=(key,unit)=>{const a=payload.flatMap(x=>x.hourly?.[key]||[]).filter(Number.isFinite);return a.length?Math.min(...a).toFixed(1)+' – '+Math.max(...a).toFixed(1)+' '+unit:'—';};
