@@ -4,6 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#f3f7fb">
 <title>Polární vír X-5 | Kosmická observatoř</title>
+<link rel="prefetch" href="./data/polar-vortex/latest.json" as="fetch" crossorigin="anonymous">
 <style>
 :root{color-scheme:light;--bg:#f3f7fb;--panel:#ffffff;--line:#d7e1eb;--text:#172b3f;--muted:#5b6d7e;--cyan:#087fa5;--orange:#a85b12;--red:#b42318;--violet:#6941a5}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse at 50% -12%,#214b70 0,#0a1b2d 38%,#050d18 78%);color:var(--text);font:15px/1.55 Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;padding:clamp(10px,2vw,24px)}
@@ -646,7 +647,7 @@ setInterval(refreshX5Infographic,30*60*1000);
  function shiftDate(d,n){const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);}
  load();setInterval(load,30*60*1000);
 })();
-</script><script src="./polarni-vir-animace.js?v=1"></script><script src="./gfs-polarni-animace.js?v=4"></script><script src="./gfs-polarni-3d.js?v=20" onerror="document.getElementById(\'p3dStatus\').textContent=\'CHYBA: 3D skript se nenačetl. Zkontrolujte cestu k souboru.\'"></script><script>
+</script><script src="./polarni-vir-animace.js?v=1"></script><script src="./gfs-polarni-animace.js?v=4"></script><script src="./gfs-polarni-3d.js?v=21" onerror="document.getElementById(\'p3dStatus\').textContent=\'CHYBA: 3D skript se nenačetl. Zkontrolujte cestu k souboru.\'"></script><script>
 (function(){
  const sources=[
   {id:'Era5',url:'./data/archive-meta.json',label:'ERA5',date:m=>m.files?.['u60_daily.csv']?.last_date,detail:m=>'Záznam do '+(m.files?.['u60_daily.csv']?.last_date||'—')+' · '+(m.files?.['u60_daily.csv']?.rows||'—')+' řádků'},
@@ -677,4 +678,4 @@ setInterval(refreshX5Infographic,30*60*1000);
  const b=document.getElementById('healthRefresh');if(b)b.addEventListener('click',run);
  run();setInterval(run,30*60*1000);
 })();
-</script></body></html>
+</script><script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}</script></body></html>
