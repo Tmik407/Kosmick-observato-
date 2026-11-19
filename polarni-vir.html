@@ -696,32 +696,47 @@ setInterval(refreshX5Infographic,30*60*1000);
  const ageHours=t=>(Date.now()-Date.parse(t))/3600000;
  function show(id,state,detail){const a=$(id+'State'),b=$(id+'Detail');if(a)a.textContent=state;if(b)b.textContent=detail;}
  async function json(url){const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);return r.json();}
+ let running=false;
  async function run(){
-  const summary=$('publicServiceSummary');if(summary)summary.textContent='Kontroluji veřejný archiv 3D dat a map NOAA GFS…';
-  const results=await Promise.allSettled([
-   json('./data/polar-vortex/latest.json?check='+Date.now()),
-   json('./data/noaa-gfs/meta.json?check='+Date.now())
-  ]);
-  let good=0,warnings=[];
-  if(results[0].status==='fulfilled'){
-   const m=results[0].value,rows=Array.isArray(m.rows)?m.rows:[],times=Array.isArray(m.times)?m.times:[],levels=[10,30,50];
-   const required=levels.flatMap(l=>['temperature_'+l+'hPa','geopotential_height_'+l+'hPa','wind_speed_'+l+'hPa','wind_direction_'+l+'hPa']);
-   const validRows=rows.filter(row=>required.every(k=>Array.isArray(row.hourly?.[k])&&row.hourly[k].length===times.length&&row.hourly[k].some(Number.isFinite))).length;
-   const complete=rows.length===40&&times.length>0&&validRows===40&&m.source&&m.generated_utc&&m.cycle_utc;
-   const age=ageHours(m.generated_utc),fresh=Number.isFinite(age)&&age>=-1&&age<=12;
-   show('publicGfs',complete?(fresh?'Dostupný':'Starší archiv'):'Neúplný archiv',
-    'Publikováno '+fmt(m.generated_utc)+' · cyklus '+fmt(m.cycle_utc)+' · '+rows.length+'/40 bodů · '+times.length+' časových kroků · hladiny 10/30/50 hPa.');
-   if(complete&&fresh)good++;else warnings.push('3D archiv je '+(complete?'starší než 12 hodin':'neúplný nebo má chybnou strukturu')+'.');
-  }else{show('publicGfs','Nedostupný',String(results[0].reason?.message||results[0].reason));warnings.push('3D archiv se nepodařilo načíst.');}
-  if(results[1].status==='fulfilled'){
-   const m=results[1].value,age=ageHours(m.retrieved_utc),files=m.files||{},hasMaps=[10,30,50].every(l=>files[String(l)]?.file);
-   const fresh=Number.isFinite(age)&&age>=-1&&age<=36;
-   show('publicMaps',hasMaps?(fresh?'Dostupný':'Starší archiv'):'Neúplná metadata',
-    'Metadata '+fmt(m.retrieved_utc)+' · '+(m.levels_hpa||[]).join(' / ')+' hPa · '+(hasMaps?'mapové soubory uvedeny':'chybí některá hladina')+'.');
-   if(hasMaps&&fresh)good++;else warnings.push('Archiv map je starší než 36 hodin nebo nemá všechny tři hladiny.');
-  }else{show('publicMaps','Nedostupný',String(results[1].reason?.message||results[1].reason));warnings.push('Metadata map se nepodařilo načíst.');}
-  if($('publicCheckedAt'))$('publicCheckedAt').textContent=new Date().toLocaleTimeString('cs-CZ');
-  if(summary)summary.innerHTML=good===2?'<b class="good">Veřejné archivy jsou dostupné a v nastavených časových mezích.</b> Jde o kontrolu dostupnosti a struktury, nikoli o nezávislé ověření meteorologické správnosti.':'<b class="warn">Upozornění:</b> '+warnings.join(' ')+' Poslední dostupná místní kopie se může v prohlížeči zobrazovat dál.';
+  if(running)return;
+  running=true;
+  const button=$('publicServiceRefresh'),summary=$('publicServiceSummary');
+  if(button)button.disabled=true;
+  if(summary)summary.textContent='Kontroluji veřejný archiv 3D dat a skutečnou dostupnost map NOAA GFS…';
+  try{
+   const results=await Promise.allSettled([
+    json('./data/polar-vortex/latest.json?check='+Date.now()),
+    json('./data/noaa-gfs/meta.json?check='+Date.now())
+   ]);
+   let good=0,warnings=[];
+   if(results[0].status==='fulfilled'){
+    const m=results[0].value,rows=Array.isArray(m.rows)?m.rows:[],times=Array.isArray(m.times)?m.times:[],levels=[10,30,50];
+    const required=levels.flatMap(l=>['temperature_'+l+'hPa','geopotential_height_'+l+'hPa','wind_speed_'+l+'hPa','wind_direction_'+l+'hPa']);
+    const validRows=rows.filter(row=>required.every(k=>Array.isArray(row.hourly?.[k])&&row.hourly[k].length===times.length&&row.hourly[k].some(v=>Number.isFinite(v)))).length;
+    const complete=rows.length===40&&times.length>0&&validRows===40&&!!m.source&&!!m.generated_utc&&!!m.cycle_utc;
+    const age=ageHours(m.generated_utc),fresh=Number.isFinite(age)&&age>=-1&&age<=12;
+    show('publicGfs',complete?(fresh?'Dostupný':'Starší archiv'):'Neúplný archiv',
+     'Publikováno '+fmt(m.generated_utc)+' · cyklus '+fmt(m.cycle_utc)+' · '+rows.length+'/40 bodů · '+times.length+' kroků · 10/30/50 hPa.');
+    if(complete&&fresh)good++;else warnings.push('3D archiv je '+(complete?'starší než 12 hodin':'neúplný nebo má chybnou strukturu')+'.');
+   }else{show('publicGfs','Nedostupný',String(results[0].reason?.message||results[0].reason));warnings.push('3D archiv se nepodařilo načíst.');}
+   if(results[1].status==='fulfilled'){
+    const m=results[1].value,age=ageHours(m.retrieved_utc),files=m.files||{},levels=[10,30,50];
+    const listed=levels.every(l=>typeof files[String(l)]?.file==='string'&&/^[a-zA-Z0-9._-]+$/.test(files[String(l)].file));
+    const probes=listed?await Promise.allSettled(levels.map(l=>fetch('./data/noaa-gfs/'+encodeURIComponent(files[String(l)].file)+'?check='+Date.now(),{method:'HEAD',cache:'no-store'}))):[];
+    const available=probes.filter(p=>p.status==='fulfilled'&&p.value.ok).length;
+    const fresh=Number.isFinite(age)&&age>=-1&&age<=36,mapsOk=listed&&available===3;
+    show('publicMaps',mapsOk?(fresh?'Dostupný':'Starší archiv'):'Neúplný archiv',
+     'Metadata '+fmt(m.retrieved_utc)+' · skutečně dostupné mapy '+available+'/3 · hladiny 10/30/50 hPa.');
+    if(mapsOk&&fresh)good++;else warnings.push('Archiv map je '+(!mapsOk?'neúplný nebo některý obrazový soubor není veřejně dostupný':'starší než 36 hodin')+'.');
+   }else{show('publicMaps','Nedostupný',String(results[1].reason?.message||results[1].reason));warnings.push('Metadata map se nepodařilo načíst.');}
+   if($('publicCheckedAt'))$('publicCheckedAt').textContent=new Date().toLocaleString('cs-CZ');
+   if(summary)summary.innerHTML=good===2?'<b class="good">Veřejný 3D archiv i všechny tři obrazové mapy jsou dostupné a v nastavených časových mezích.</b> Kontrola ověřuje dostupnost a strukturu, nikoli nezávisle meteorologickou správnost.':'<b class="warn">Upozornění:</b> '+warnings.join(' ')+' Poslední dostupná místní kopie se může v prohlížeči zobrazovat dál.';
+  }catch(e){
+   if(summary)summary.innerHTML='<b class="warn">Diagnostická kontrola se nedokončila:</b> '+String(e.message||e);
+  }finally{
+   running=false;
+   if(button)button.disabled=false;
+  }
  }
  const b=$('publicServiceRefresh');if(b)b.addEventListener('click',run);
  run();setInterval(run,15*60*1000);
