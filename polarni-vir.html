@@ -2,7 +2,11 @@
 <html lang="cs">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#f3f7fb">
+<meta name="theme-color" content="#081426">
+<meta name="application-name" content="Polární vír X-5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="./polarni-vir.webmanifest">
 <title>Polární vír X-5 | Kosmická observatoř</title>
 <link rel="prefetch" href="./data/polar-vortex/latest.json" as="fetch" crossorigin="anonymous">
 <style>
@@ -36,6 +40,10 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
 </head>
 <body><main>
 <header><div class="tag">OBSERVATOŘ X-5</div><div class="tag">SEVERNÍ POLOKOULE</div><h1>🌀 Model polárního víru</h1><div class="sub">Stratosférická diagnostika · měření, reanalýza a předpověď odděleně</div></header>
+<section class="panel" id="polarAppInstallPanel" style="display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+ <div><b>📲 Samostatná aplikace Polární vír X-5</b><div class="muted" id="polarInstallStatus">Přidejte si model na plochu Androidu. Po instalaci se otevře přímo tato stránka.</div></div>
+ <button type="button" id="polarInstallButton" hidden>＋ Nainstalovat aplikaci</button>
+</section>
 <div class="status" id="dataStatus"><b>Stav dat:</b> Načítám poslední dostupná denní data ERA5…</div>
 <section class="panel" id="dataHealthPanel">
  <h2>Kontrolní panel kvality a aktuálnosti dat</h2>
@@ -806,5 +814,25 @@ setInterval(refreshX5Infographic,30*60*1000);
  }
  const b=$('publicServiceRefresh');if(b)b.addEventListener('click',run);
  run();setInterval(run,15*60*1000);
+})();
+</script><script>
+(function(){
+ let promptEvent=null;
+ const button=document.getElementById("polarInstallButton");
+ const status=document.getElementById("polarInstallStatus");
+ if(!button||!status)return;
+ const standalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
+ if(standalone){status.textContent="Aplikace Polární vír X-5 je otevřena v samostatném režimu.";return;}
+ window.addEventListener("beforeinstallprompt",event=>{
+  event.preventDefault();promptEvent=event;button.hidden=false;
+  status.textContent="Aplikace je připravena k instalaci do zařízení.";
+ });
+ button.addEventListener("click",async()=>{
+  if(!promptEvent){status.textContent="V nabídce prohlížeče zvolte „Instalovat aplikaci“ nebo „Přidat na plochu“.";return;}
+  promptEvent.prompt();await promptEvent.userChoice;promptEvent=null;button.hidden=true;
+ });
+ window.addEventListener("appinstalled",()=>{
+  button.hidden=true;status.textContent="Aplikace Polární vír X-5 byla nainstalována.";
+ });
 })();
 </script><script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}</script></body></html>
