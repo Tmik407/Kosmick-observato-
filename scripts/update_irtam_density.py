@@ -55,9 +55,14 @@ def main():
     # vary from roughly 36 to 60 hours even when a fresh build succeeded.
     target_dt = now - timedelta(hours=48)
     minute = (target_dt.minute // 15) * 15
-    requested_target = target_dt.replace(minute=minute, second=0, microsecond=0, tzinfo=None)
-    # GAMBIT coefficients may be published late. Try the requested epoch and
-    # up to three earlier daily epochs; always label the actual model epoch.
+    # PyIRTAM/GAMBIT coefficient products are requested at 12:00 UTC.
+    # Select the latest 12:00 epoch that is at least 48 h behind now.
+    requested_day = target_dt.date()
+    if target_dt.hour < 12:
+        requested_day -= timedelta(days=1)
+    requested_target = datetime.combine(requested_day, datetime.min.time()).replace(hour=12)
+    # GAMBIT coefficients may be published late. Try this epoch and up to
+    # three earlier daily epochs; always label the actual model epoch.
     result = None
     fallback_errors = []
     for fallback_days in range(4):
@@ -65,7 +70,7 @@ def main():
         target_day = target.date()
         try:
             f107, f107_day = get_f107(target_day)
-            model_ut = np.array([target.hour + target.minute / 60.0])
+            model_ut = np.array([12.0])
             result = PyIRTAM.run_PyIRTAM(
                 target.year, target.month, target.day, model_ut,
                 alon, alat, altitudes, f107, download=True,
