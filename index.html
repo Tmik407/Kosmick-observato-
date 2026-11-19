@@ -2541,15 +2541,17 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
  if(!root)return;
  const fmt=v=>{const n=Date.parse(v||"");return Number.isFinite(n)?new Date(n).toISOString().replace("T"," ").slice(0,19)+" UTC":"čas neuveden"};
  const ageText=ms=>!Number.isFinite(ms)?"neznámé":ms<0?"čas v budoucnosti":ms<3600000?Math.round(ms/60000)+" min":ms<86400000?(ms/3600000).toFixed(1)+" h":(ms/86400000).toFixed(1)+" dne";
- function card(name,measurement,retrieved,limitMinutes,extra){
-  const now=Date.now(),t=Date.parse(measurement||""),f=Date.parse(retrieved||""),age=Number.isFinite(t)?now-t:NaN;
+ function card(name,measurement,retrieved,attempted,limitMinutes,extra,requestStatus){
+  const now=Date.now(),t=Date.parse(measurement||""),age=Number.isFinite(t)?now-t:NaN;
   const stale=!Number.isFinite(age)||age>limitMinutes*60000;
-  const state=stale?"ZPOŽDĚNÁ / NEZNÁMÁ DATA":"V LIMITU";
-  const color=stale?"#ffb35c":"#74dfad";
+  const failed=requestStatus==="failed";
+  const state=failed?"CHYBA NAČÍTÁNÍ":stale?"ZPOŽDĚNÁ / NEZNÁMÁ DATA":"V LIMITU";
+  const color=(failed||stale)?"#ffb35c":"#74dfad";
   return '<div style="padding:11px;border:1px solid #315674;border-radius:9px;background:#081a2c;min-width:0">'+
    '<strong>'+name+'</strong><div style="font-weight:700;color:'+color+';margin-top:5px">'+state+'</div>'+
    '<div class="small" style="margin-top:6px">Poslední měření: '+fmt(measurement)+'</div>'+
-   '<div class="small">Načteno: '+fmt(retrieved)+'</div>'+
+   '<div class="small">Úspěšně načteno: '+fmt(retrieved)+'</div>'+
+   '<div class="small">Poslední pokus o načtení: '+fmt(attempted)+'</div>'+
    '<div class="small">Skutečné stáří: '+ageText(age)+' · limit '+limitMinutes+' min</div>'+
    (extra?'<div class="small">'+extra+'</div>':'')+'</div>';
  }
@@ -2563,16 +2565,18 @@ startWhenNear("aceComparePanel",refreshAceComparison,10*60*1000);
    const d=tasks[0].value,ss=d.source_status||{};
    for(const [key,label,limit] of [["wind","NOAA · sluneční vítr",10],["mag","NOAA · IMF",10],["kp","NOAA · Kp",240]]){
     const x=ss[key]||{};
-    cards.push(card(label,x.last_measurement_utc,x.fetched_utc||d.fetched_utc||d.updated_utc,x.freshness_limit_minutes||limit,
-      x.status==="stale_or_missing"?"Zdroj byl při stažení již opožděný.":""));
+    const note=x.request_status==="failed"?"Poslední požadavek na NOAA selhal; zobrazená hodnota pochází z archivu. "+(x.error||""):
+      x.status==="stale_or_missing"?"Zdroj byl při posledním úspěšném stažení již opožděný.":"";
+    cards.push(card(label,x.last_measurement_utc,x.fetched_utc||d.fetched_utc||d.updated_utc,x.last_attempt_utc,
+      x.freshness_limit_minutes||limit,note,x.request_status||"success"));
    }
   }else cards.push('<div class="status bad">Archiv NOAA nedostupný: '+tasks[0].reason.message+'</div>');
   if(tasks[1].status==="fulfilled"){
    const d=tasks[1].value,ageLimit=72*60;
-   cards.push(card("IRTAM · GAMBIT",d.actual_model_target_utc||d.requested_target_utc,d.generated_utc||d.checked_utc,ageLimit,
+   cards.push(card("IRTAM · GAMBIT",d.actual_model_target_utc||d.requested_target_utc,d.generated_utc,d.checked_utc||d.generated_utc,ageLimit,
      d.status==="failed"?"Poslední výpočet selhal; předchozí modelový soubor zůstal zachován. "+(d.error||""):
      d.status==="success_with_older_epoch"?"Použit starší dostupný modelový epoch. Počet dnů zpět: "+d.coefficient_fallback_days:
-     "Stav výpočtu: "+(d.status||"neuveden")));
+     "Stav výpočtu: "+(d.status||"neuveden"),d.status==="failed"?"failed":"success"));
   }else cards.push('<div class="status">IRTAM status zatím není k dispozici. Po prvním běhu se zobrazí podrobnosti.</div>');
   root.innerHTML=cards.join("");
   checked.textContent="Poslední kontrola: "+new Date().toISOString().replace("T"," ").slice(0,19)+" UTC. Stáří se počítá z času měření/modelové epochy, nikoli z času načtení stránky.";
