@@ -27,5 +27,15 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cp ch1411-impact.json /tmp/ch1411-impact.json
+          git restore -- ch1411-impact.json
+          git pull --rebase origin main
+          cp /tmp/ch1411-impact.json ch1411-impact.json
           git add ch1411-impact.json
-          git diff --cached --quiet || (git commit -m "Update CH1411 impact analysis" && git push)
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Update CH1411 impact analysis"
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then exit 0; fi
+            git pull --rebase origin main
+          done
+          exit 1
