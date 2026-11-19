@@ -1,0 +1,8 @@
+{
+  "source": "PyIRTAM / GIRO GAMBIT",
+  "status": "failed",
+  "checked_utc": "2026-11-19T08:37:12Z",
+  "error": "No usable GAMBIT coefficient epoch in 4-day window: [{\"target_utc\": \"2026-11-17T08:30:00Z\", \"error\": \"cannot access local variable 'alon' where it is not associated with a value\"}, {\"target_utc\": \"2026-11-16T08:30:00Z\", \"error\": \"cannot access local variable 'alon' where it is not associated with a value\"}, {\"target_utc\": \"2026-11-15T08:30:00Z\", \"error\": \"cannot access local variable 'alon' where it is not associated with a value\"}, {\"target_utc\": \"2026-11-14T08:30:00Z\", \"error\": \"cannot access local variable 'alon' where it is not associated with a value\"}]",
+  "previous_output_preserved": true,
+  "note": "Existing irtam-density.json is preserved; failed run did not replace model data."
+}\n
