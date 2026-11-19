@@ -45,11 +45,13 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           cp space-weather-history.json /tmp/space-weather-history.json
           cp space-weather-status.json /tmp/space-weather-status.json
-          git restore -- space-weather-history.json
-          rm -f space-weather-status.json
+          # Keep generated outputs outside the worktree while rebasing; stash any other
+          # generated/untracked files so git pull --rebase always starts clean.
+          git stash push --include-untracked -m "x5-noaa-generated-output"
           git pull --rebase origin main
           cp /tmp/space-weather-history.json space-weather-history.json
           cp /tmp/space-weather-status.json space-weather-status.json
+          git stash drop 2>/dev/null || true
           git add space-weather-history.json space-weather-status.json
           if git diff --cached --quiet; then
             echo "Archiv beze změny"
