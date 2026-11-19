@@ -557,20 +557,30 @@ setInterval(refreshX5Infographic,30*60*1000);
  async function load(force){
   if(busy)return;const level=$('gfsLevel').value;
   if(!force&&payload.length&&loadedLevel===level){draw();return;}
-  busy=true;$('gfsMapStatus').textContent='Načítám NOAA GFS · '+level+' hPa · 97 vzorkovacích bodů…';
-  const lat=sites.map(p=>p.latitude).join(','),lon=sites.map(p=>p.longitude).join(',');
+  busy=true;$('gfsMapStatus').textContent='Načítám NOAA GFS · '+level+' hPa · data rozdělena do menších požadavků…';
   const vars=['temperature_'+level+'hPa','geopotential_height_'+level+'hPa','wind_speed_'+level+'hPa','wind_direction_'+level+'hPa'].join(',');
-  const url='https://api.open-meteo.com/v1/gfs?latitude='+lat+'&longitude='+lon+'&hourly='+vars+'&forecast_days=2&timezone=GMT';
+  const batches=[];
+  for(let i=0;i<sites.length;i+=16)batches.push(sites.slice(i,i+16));
   try{
-   const res=await fetch(url,{cache:'no-store'});if(!res.ok)throw Error('Open-Meteo HTTP '+res.status);
-   const raw=await res.json(),arr=Array.isArray(raw)?raw:[raw];if(!arr.length||!arr[0].hourly)throw Error('Odpověď neobsahuje tlaková pole GFS.');
-   payload=arr;loadedLevel=level;times=arr[0].hourly.time||[];
+   const received=await Promise.all(batches.map(async(batch)=>{
+    const lat=batch.map(p=>p.latitude).join(','),lon=batch.map(p=>p.longitude).join(',');
+    const url='https://api.open-meteo.com/v1/gfs?latitude='+encodeURIComponent(lat)+'&longitude='+encodeURIComponent(lon)+'&hourly='+encodeURIComponent(vars)+'&forecast_days=2&timezone=GMT';
+    const res=await fetch(url,{cache:'no-store'});
+    if(!res.ok){let detail='';try{const body=await res.json();detail=body.reason||body.error||JSON.stringify(body);}catch(_){detail=await res.text().catch(()=> '');}throw Error('Open-Meteo HTTP '+res.status+(detail?': '+detail:''));}
+    const raw=await res.json(),arr=Array.isArray(raw)?raw:[raw];
+    if(arr.length!==batch.length)throw Error('Nesouhlasí počet vrácených lokalit: očekáváno '+batch.length+', přijato '+arr.length+'.');
+    if(arr.some(x=>!x||!x.hourly||!Array.isArray(x.hourly.time)))throw Error('Odpověď některé lokality neobsahuje hodinová tlaková data.');
+    return arr;
+   }));
+   payload=received.flat();loadedLevel=level;times=payload[0].hourly.time||[];
    const sel=$('gfsTime'),old=sel.value;sel.innerHTML='';
    times.forEach((t,i)=>{const o=document.createElement('option');o.value=String(i);o.textContent=t.replace('T',' ')+' UTC';sel.appendChild(o);});
    sel.value=old!==''&&Number(old)<times.length?old:'0';
    draw();
-  }catch(e){payload=[];base();ctx.fillStyle='#8b2d2d';ctx.font='17px Arial';ctx.fillText('Data GFS se nepodařilo načíst.',28,40);$('gfsMapStatus').innerHTML='<b class="warn">Načtení NOAA GFS selhalo:</b> '+String(e.message||e)+'. Záložní archivovaná mapa níže zůstává samostatně dostupná.';}
-  finally{busy=false;}
+  }catch(e){
+   payload=[];base();ctx.fillStyle='#8b2d2d';ctx.font='17px Arial';ctx.fillText('Data GFS se nepodařilo načíst.',28,40);
+   $('gfsMapStatus').innerHTML='<b class="warn">Načtení NOAA GFS selhalo:</b> '+String(e.message||e)+'. Počet dávek: '+batches.length+'. Záložní archivovaná mapa níže zůstává samostatně dostupná.';
+  }finally{busy=false;}
  }
  $('gfsLevel').addEventListener('change',()=>load(true));
  $('gfsField').addEventListener('change',draw);
