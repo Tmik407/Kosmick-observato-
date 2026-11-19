@@ -122,6 +122,23 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
  </div>
  <p class="muted">Mapy jsou archivovány přímo v projektu X-5. Jde o modelovou analýzu NOAA GFS, nikoli o reanalýzu ERA5 ani přímé měření. Pokud NOAA nevydá nový běh, zůstává zobrazena poslední úspěšně archivovaná mapa.</p>
 </div>
+<div style="margin-top:22px" id="vortexLevelComparison">
+ <h3>Automatické porovnání polárního víru · 10 / 30 / 50 hPa</h3>
+ <p class="muted">Číselná analýza vychází z archivovaných bodových dat NOAA GFS pro severní polokouli. Průměrná teplota je vážena kosinem zeměpisné šířky. Nejchladnější bod je nejchladnější vzorkovaný bod v síti, nikoli přesně určený střed víru.</p>
+ <div class="controls" style="align-items:end">
+  <label><b>Čas analýzy / předpovědi (UTC)</b><select id="vortexCompareTimeSelect"><option value="0">Načítám…</option></select></label>
+  <button type="button" id="vortexCompareRefresh">↻ Obnovit porovnání</button>
+ </div>
+ <div class="status" id="vortexCompareStatus" role="status" aria-live="polite">Načítám číselná data NOAA GFS…</div>
+ <div class="status" id="vortexCompareTime">—</div>
+ <div style="overflow-x:auto">
+  <table><thead><tr><th>Hladina</th><th>Průměrná teplota</th><th>Nejnižší vzorek</th><th>Poloha nejnižšího vzorku</th><th>Průměrná rychlost větru</th></tr></thead>
+  <tbody id="vortexCompareBody"><tr><td colspan="5">Čekám na data…</td></tr></tbody></table>
+ </div>
+ <h3>Teplotní vývoj tří hladin</h3>
+ <canvas id="vortexTrendCanvas" width="1100" height="330" style="display:block;width:100%;height:auto;background:#fff;border:1px solid #d4e0eb;border-radius:12px"></canvas>
+ <p class="muted">Graf zobrazuje průměrnou teplotu dostupných vzorkovacích bodů v jednotlivých předpovědních časech. Jde o modelové hodnoty, nikoli o přímé měření. Pro přesnou polohu centra víru je nutné pracovat s plným prostorovým polem geopotenciálu nebo potenciální vorticity.</p>
+</div>
 </section>
 
 <section class="panel"><h2>Archiv měření a časové řady</h2>
@@ -683,7 +700,7 @@ setInterval(refreshX5Infographic,30*60*1000);
  function shiftDate(d,n){const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);}
  load();setInterval(load,30*60*1000);
 })();
-</script><script src="./polarni-vir-animace.js?v=1"></script><script src="/Kosmick-observato-/gfs-polarni-animace.js?v=11"></script><script src="./gfs-polarni-3d.js?v=22" onerror="document.getElementById(\'p3dStatus\').textContent=\'CHYBA: 3D skript se nenačetl. Zkontrolujte cestu k souboru.\'"></script><script>
+</script><script src="./polarni-vir-animace.js?v=1"></script><script src="/Kosmick-observato-/gfs-polarni-animace.js?v=11"></script><script src="/Kosmick-observato-/gfs-vortex-comparison.js?v=1"></script><script src="./gfs-polarni-3d.js?v=22" onerror="document.getElementById(\'p3dStatus\').textContent=\'CHYBA: 3D skript se nenačetl. Zkontrolujte cestu k souboru.\'"></script><script>
 (function(){
  const sources=[
   {id:'Era5',url:'./data/archive-meta.json',label:'ERA5',date:m=>m.files?.['u60_daily.csv']?.last_date,detail:m=>'Záznam do '+(m.files?.['u60_daily.csv']?.last_date||'—')+' · '+(m.files?.['u60_daily.csv']?.rows||'—')+' řádků'},
