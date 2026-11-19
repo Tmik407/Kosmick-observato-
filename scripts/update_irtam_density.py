@@ -50,11 +50,8 @@ def get_f107(day):
 
 def main():
     now = datetime.now(timezone.utc)
-    # Use the newest 15-minute model epoch that is at least 48 hours delayed.
-    # This avoids the old fixed 12:00 UTC target, which made the displayed age
-    # vary from roughly 36 to 60 hours even when a fresh build succeeded.
+    # Use the newest available 12:00 UTC epoch that is at least 48 hours delayed.
     target_dt = now - timedelta(hours=48)
-    minute = (target_dt.minute // 15) * 15
     # PyIRTAM/GAMBIT coefficient products are requested at 12:00 UTC.
     # Select the latest 12:00 epoch that is at least 48 h behind now.
     requested_day = target_dt.date()
@@ -176,6 +173,6 @@ if __name__ == "__main__":
             "error": str(exc)[:1500],
             "previous_output_preserved": OUT.exists(),
             "note": "Existing irtam-density.json is preserved; failed run did not replace model data."
-        }, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+        }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         print(f"IRTAM build failed: {exc}", file=sys.stderr)
         raise
