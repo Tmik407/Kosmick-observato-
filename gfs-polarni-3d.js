@@ -2,7 +2,7 @@
 const $=id=>document.getElementById(id),levels=[10,30,50],lats=[60,68,76,84,88],lons=[-157.5,-112.5,-67.5,-22.5,22.5,67.5,112.5,157.5];
 const points=[];for(const lat of lats)for(const lon of lons)points.push({lat,lon});
 const keys=l=>['temperature_'+l+'hPa','geopotential_height_'+l+'hPa','wind_speed_'+l+'hPa','wind_direction_'+l+'hPa'];
-let data={},times=[],idx=0,yaw=-.35,pitch=.22,timer=null,busy=false,drag=null,shapeCache={},windCache={};
+let data={},times=[],idx=0,yaw=-.35,pitch=.22,timer=null,busy=false,drag=null,shapeCache={},windCache={},loadError='';
 const status=t=>{if($('p3dStatus'))$('p3dStatus').textContent=t;};
 const project=(lat,lon,z,cx,cy,scale)=>{
  const r=(90-lat)/30*scale,a=(lon+yaw*180/Math.PI-90)*Math.PI/180;
@@ -106,8 +106,8 @@ function drawHistoryCharts(){
   ['p3dShearChart','Vertikální střih větru (m/s)',[
    ['10–30 hPa','#43c6a5',i=>historyShear(10,30,i)],['30–50 hPa','#ff9b70',i=>historyShear(30,50,i)]]]
  ];
- for(const [id,title,series] of configs){const c=$(id);if(!c||!times.length)continue;const g=c.getContext('2d'),w=c.width,h=c.height,L=48,R=16,T=30,B=32;
-  g.clearRect(0,0,w,h);g.fillStyle='#0b2033';g.fillRect(0,0,w,h);g.font='14px Arial';g.fillStyle='#e4f1fa';g.fillText(title,L,19);
+ for(const [id,title,series] of configs){const c=$(id);if(!c)continue;const g=c.getContext('2d'),w=c.width,h=c.height,L=48,R=16,T=30,B=32;g.clearRect(0,0,w,h);g.fillStyle='#0b2033';g.fillRect(0,0,w,h);g.font='bold 14px Arial';g.fillStyle='#e4f1fa';g.fillText(title,L,19);if(!times.length){g.font='15px Arial';g.fillStyle='#a9c7dc';g.fillText(loadError?'Graf čeká na obnovení dat NOAA GFS.':'Graf se zobrazí po načtení časové řady.',L,75);continue;}
+  
   const vals=series.flatMap(a=>times.map((_,i)=>a[2](i))).filter(Number.isFinite);if(!vals.length)continue;
   const lo=Math.min(0,...vals),hi=Math.max(1,...vals),x=i=>L+i/Math.max(1,times.length-1)*(w-L-R),y=v=>h-B-(v-lo)/(hi-lo)*(h-T-B);
   g.strokeStyle='rgba(220,240,255,.18)';g.fillStyle='#c5d7e6';g.font='11px Arial';
@@ -128,7 +128,7 @@ function draw(){
  const winds={10:levelWind(10),30:levelWind(30),50:levelWind(50)},zonal={10:winds[10].u,30:winds[30].u,50:winds[50].u},twist={};
  for(const lev of levels)twist[lev]=Number.isFinite(zonal[lev])?Math.max(-28,Math.min(28,zonal[lev]*.55)):0;
  for(const lev of levels){for(let p=0;p<points.length;p++){const t=value(lev,p,keys(lev)[0]);if(Number.isFinite(t))temps.push(t);}}
- if(!temps.length){g.fillStyle='#e6f4ff';g.font='22px Arial';g.fillText('Čekám na tři hladiny NOAA GFS…',40,55);return;}
+ if(!temps.length){g.fillStyle='#e6f4ff';g.font='bold 22px Arial';g.fillText(loadError?'DATA NOAA GFS NYNÍ NEJSOU DOSTUPNÁ':'Čekám na tři hladiny NOAA GFS…',40,55);g.font='16px Arial';g.fillStyle='#a9c7dc';const msg=loadError?loadError.slice(0,105):'Model se zobrazí po načtení všech tří tlakových hladin.';g.fillText(msg,40,88);g.font='14px Arial';g.fillText('Žádné náhradní ani odhadované hodnoty nejsou vykresleny.',40,116);return;}
  const min=Math.min(...temps),max=Math.max(...temps);
  // Jemnější síť vzniká interpolací mezi sousedními GFS vzorky.
  // Nejde o nové modelové hodnoty; každý dílek je pouze vizualizace interpolace.
@@ -243,10 +243,10 @@ async function load(){
   }));
   const rows=parts.flat(),base=rows[0]?.hourly?.time||[];
   if(rows.length!==points.length||!base.length||rows.some(r=>!r.hourly?.time||r.hourly.time.length!==base.length||r.hourly.time.some((t,i)=>t!==base[i])))throw Error('Neúplná nebo nesouhlasná časová osa GFS.');
-  applyRows(rows,base,false);
+  loadError='';applyRows(rows,base,false);
   try{localStorage.setItem(CACHE_KEY,JSON.stringify({rows,times:base,savedAt:Date.now()}));}catch(_){status('Data načtena; místní mezipaměť se nepodařilo uložit.');}
  }catch(e){
-  const cached=readCache();
+  loadError=String(e.message||e);const cached=readCache();
   if(cached){applyRows(cached.rows,cached.times,true);const age=Math.max(0,Math.round((Date.now()-(cached.savedAt||0))/3600000));status('Aktuální API nedostupné: '+String(e.message||e)+'. Zobrazuji poslední uložená data (přibližné stáří '+age+' h).');}
   else{data={};times=[];status('3D data nejsou dostupná: '+String(e.message||e)+'. Počkejte na obnovení limitu API nebo zkuste později.');draw();}
  }finally{busy=false;}
