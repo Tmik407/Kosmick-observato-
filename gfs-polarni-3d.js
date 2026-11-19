@@ -2,7 +2,7 @@
 const $=id=>document.getElementById(id),levels=[10,30,50],lats=[60,68,76,84,88],lons=[-157.5,-112.5,-67.5,-22.5,22.5,67.5,112.5,157.5];
 const points=[];for(const lat of lats)for(const lon of lons)points.push({lat,lon});
 const keys=l=>['temperature_'+l+'hPa','geopotential_height_'+l+'hPa','wind_speed_'+l+'hPa','wind_direction_'+l+'hPa'];
-let data={},times=[],idx=0,yaw=-.35,pitch=.22,timer=null,busy=false,drag=null,shapeCache={},windCache={},loadError='';
+let data={},times=[],idx=0,yaw=-.35,pitch=.22,timer=null,busy=false,drag=null,shapeCache={},windCache={},windInterpCache=new Map(),loadError='';
 const status=t=>{if($('p3dStatus'))$('p3dStatus').textContent=t;};
 const project=(lat,lon,z,cx,cy,scale)=>{
  const r=(90-lat)/30*scale,a=(lon+yaw*180/Math.PI-90)*Math.PI/180;
@@ -27,18 +27,27 @@ function levelWind(level){
  return {u:mean(u),v:mean(v),height:mean(z),heights:z};
 }
 function interpolatedWind(level,lat,lon){
- const candidates=points.map((p,i)=>{
-  const dlat=p.lat-lat,dlon=((((p.lon-lon)+540)%360)-180)*Math.max(.2,Math.cos(lat*Math.PI/180));
-  return {i,d:dlat*dlat+dlon*dlon};
- }).sort((a,b)=>a.d-b.d).slice(0,4);
+ const cacheKey=level+':'+lat.toFixed(2)+':'+lon.toFixed(2);
+ if(windInterpCache.has(cacheKey))return windInterpCache.get(cacheKey);
+ // Keep only the four nearest GFS samples without sorting all 40 points.
+ const nearest=[];
+ for(let i=0;i<points.length;i++){
+  const p=points[i],dlat=p.lat-lat,dlon=((((p.lon-lon)+540)%360)-180)*Math.max(.2,Math.cos(lat*Math.PI/180));
+  const d=dlat*dlat+dlon*dlon;
+  let at=nearest.length;
+  while(at>0&&nearest[at-1].d>d)at--;
+  if(at<4){nearest.splice(at,0,{i,d});if(nearest.length>4)nearest.pop();}
+ }
  let u=0,v=0,total=0,speed=0;
- for(const c of candidates){
+ for(const c of nearest){
   const sp=value(level,c.i,keys(level)[2]),dr=value(level,c.i,keys(level)[3]);
   if(!Number.isFinite(sp)||!Number.isFinite(dr))continue;
   const w=1/Math.max(.0001,c.d),a=dr*Math.PI/180;
   u+=(-sp*Math.sin(a))*w;v+=(-sp*Math.cos(a))*w;speed+=sp*w;total+=w;
  }
- return total?{u:u/total,v:v/total,speed:speed/total}:null;
+ const result=total?{u:u/total,v:v/total,speed:speed/total}:null;
+ windInterpCache.set(cacheKey,result);
+ return result;
 }
 function shapeAt(lat,lon,level){
  const cacheKey=level+':'+lat.toFixed(3)+':'+lon.toFixed(3);if(shapeCache[cacheKey])return shapeCache[cacheKey];
@@ -118,7 +127,7 @@ function drawHistoryCharts(){
  }
 }
 function draw(){
- shapeCache={};windCache={};
+ shapeCache={};windCache={};windInterpCache.clear();
  const c=$('p3dCanvas');if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height,cx=w*.5,cy=h*.51,scale=155;
  g.clearRect(0,0,w,h);const bg=g.createLinearGradient(0,0,w,h);bg.addColorStop(0,'#061526');bg.addColorStop(1,'#123653');g.fillStyle=bg;g.fillRect(0,0,w,h);
  // polar reference grid
@@ -210,7 +219,7 @@ function draw(){
  for(const lev of levels){const vals=points.map((_,p)=>value(lev,p,keys(lev)[0])).filter(Number.isFinite),el=$('p3d'+lev);if(el)el.textContent=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1)+' °C':'—';}
  drawHistoryCharts();
 }
-const CACHE_KEY='x5-gfs-polar-v15-cache';
+const CACHE_KEY='x5-gfs-polar-v16-cache';
 const NOAA_BACKUP_URL='./data/polar-vortex/latest.json';
 function applyRows(rows,base,stale=false){
  data={};levels.forEach(lev=>data[lev]={lev,rows,times:base});
