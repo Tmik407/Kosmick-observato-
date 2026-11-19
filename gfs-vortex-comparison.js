@@ -4,7 +4,7 @@ const url='./data/polar-vortex/latest.json';
 const levels=[10,30,50];
 let dataset=null;
 const fmt=(v,d=1)=>Number.isFinite(v)?v.toFixed(d).replace('.',','):'—';
-const dateFmt=s=>{const d=new Date(s);return Number.isFinite(d.getTime())?d.toLocaleString('cs-CZ',{timeZone:'UTC',dateStyle:'short',timeStyle:'short'})+' UTC':'—';};
+const dateFmt=s=>{const d=new Date(/[Zz]$|[+-]\\d{2}:?\\d{2}$/.test(s)?s:s+'Z');return Number.isFinite(d.getTime())?d.toLocaleString('cs-CZ',{timeZone:'UTC',dateStyle:'short',timeStyle:'short'})+' UTC':'—';};
 function weightedMean(values,points){
  let sum=0,weight=0;
  values.forEach((v,i)=>{if(!Number.isFinite(v))return;const w=Math.cos(points[i].lat*Math.PI/180);sum+=v*w;weight+=w;});
