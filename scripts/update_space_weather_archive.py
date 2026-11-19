@@ -17,7 +17,10 @@ SOURCES={
 INVALID={-999.9,-999.0,-9999.0,9999.0}
 
 def fetch(url):
- req=urllib.request.Request(url,headers={"User-Agent":"Kosmicka-Observator-X5/1.1"})
+ # Unique query parameter prevents stale intermediary/CDN responses on every scheduled run.
+ separator="&" if "?" in url else "?"
+ url=f"{url}{separator}_x5={int(datetime.now(timezone.utc).timestamp()*1000)}"
+ req=urllib.request.Request(url,headers={"User-Agent":"Kosmicka-Observator-X5/1.2","Cache-Control":"no-cache","Pragma":"no-cache"})
  with urllib.request.urlopen(req,timeout=25) as r:
   return json.loads(r.read().decode("utf-8"))
 
