@@ -62,7 +62,7 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
 </section>
 <section class="panel" id="polarForecastAnimation"><h2>Animovaná předpověď polárního víru · X-5</h2><p class="muted">Časová animace společných dat NASA Ozone Watch / MERRA-2 a GEOS FP pro 10, 30 a 50 hPa. Analýzy a předpovědní kroky jsou rozlišeny; teplota je převedena z K na °C. Schéma znázorňuje pouze vývoj diagnostických hodnot, nikoli vypočtené prostorové pole víru.</p><canvas id="pvAnimCanvas" width="1200" height="600" style="display:block;width:100%;height:auto;background:#f7fbff;border:1px solid #d4e0eb;border-radius:14px"></canvas><div class="controls" style="margin-top:12px;align-items:center"><button id="pvAnimPlay" type="button">▶ Přehrát</button><button id="pvAnimReset" type="button">↺ Začátek</button><label>Časová osa <input id="pvAnimSlider" type="range" min="0" max="0" value="0" step="1"></label><div><b id="pvAnimDate">Načítám…</b><div class="muted" id="pvAnimStep">—</div></div></div><div class="status" id="pvAnimStatus">Načítám data pro animaci…</div><p class="muted" id="pvAnimForecastInfo">Ověřuji dostupnost předpovědních kroků…</p><p class="muted">Zdroj: <a href="https://ozonewatch.gsfc.nasa.gov/meteorology/wind_2026_MERRA2_NH.html" target="_blank" rel="noopener">NASA Ozone Watch</a>. Jde o analýzu a modelovou předpověď atmosféry, nikoli o přímé satelitní měření. Záporný U60 na jedné hladině sám o sobě nepotvrzuje významné SSW.</p></section>
 <section class="panel"><h2>Aktuální diagnostické hodnoty</h2><div class="grid">
-<div><div class="unit">Zonální vítr · 10 hPa / 60° N</div><div class="metric" id="wind">—</div><div class="muted">Hodnota bude načtena z datového archivu</div></div>
+<div><div class="unit">Zonální vítr · 10 hPa / 60° N</div><div class="metric" id="wind">Načítám…</div><div class="muted" id="windDate">Datum záznamu se načte z ERA5</div></div>
 <div><div class="unit">Teplota polární oblasti · 10 hPa (°C)</div><div class="metric" id="temp">—</div><div class="muted">Denní průměr polární oblasti</div></div>
 <div><div class="unit">Nejnižší teplota · 50 hPa</div><div class="metric" id="tmin">—</div><div class="muted">Minimální teplota bude doplněna, pokud ji zdroj poskytne</div></div>
 <div><div class="unit">Diagnostický stav</div><div class="metric" id="state">Čeká na data</div><div class="muted">Vyhodnocení podle posledního dostupného U60</div></div>
@@ -269,10 +269,10 @@ async function loadArchive(){
  const seriesH=wv.rows.map(r=>({d:r[wDate>=0?wDate:0],v:parseFloat(r[hIdx])})).filter(x=>x.d&&Number.isFinite(x.v));
  const last=a=>a.length?a[a.length-1]:null,lu=last(seriesU),lt=last(seriesT),lh=last(seriesH);
  if(!lu)throw Error('Soubor U60 byl načten, ale nepodařilo se rozpoznat sloupec zonálního větru. Hlavička: '+u.headers.join(', '));
- $('wind').textContent=fmt(lu.v)+' m/s';$('u60latest').textContent=fmt(lu.v)+' m/s';$('u60date').textContent=lu.d+' · ERA5';
+ $('wind').textContent=fmt(lu.v)+' m/s';if($('windDate'))$('windDate').textContent=lu.d+' · ERA5 · denní průměr';$('u60latest').textContent=fmt(lu.v)+' m/s';$('u60date').textContent=lu.d+' · ERA5';
  if(lt){$('temp').textContent=fmt(lt.v-273.15)+' °C';$('capLatest').textContent=fmt(lt.v-273.15)+' °C';$('capDate').textContent=lt.d+' · ERA5';}
  if(lh){$('heatLatest').textContent=fmt(lh.v)+' K·m/s';$('heatDate').textContent=lh.d+' · ERA5';}
- $('state').textContent=lu.v<0?'Východní vítr':'Západní vítr';
+ $('state').textContent=lu.v<0?'Záporný U60 · východní vítr':'Kladný U60 · západní vítr';
  $('recordCount').textContent=u.rows.length.toLocaleString('cs-CZ');$('archiveRange').textContent=(dates.find(Boolean)||'')+' až '+(lu.d||'');
  $('metricSource').textContent='ERA5 · denní průměry. Poslední dostupný záznam: '+lu.d+'. Nejde o okamžité měření ani předpověď.';
  drawLine('u60Chart',seriesU.slice(-365),'U60','m/s',true);drawLine('tempChart',seriesT.slice(-365).map(x=>({...x,v:x.v-273.15})),'Teplota polární čepičky','°C');drawLine('heatChart',seriesH.slice(-365),'Vlnový tepelný tok','K·m/s',true);
