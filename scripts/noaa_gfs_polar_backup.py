@@ -10,7 +10,7 @@ import time
 import tempfile
 import requests
 import numpy as np
-from eccodes import codes_grib_new_from_file, codes_get, codes_grib_get_data, codes_release
+from eccodes import codes_grib_new_from_file, codes_get, codes_get_array, codes_release
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "polar-vortex" / "latest.json"
@@ -74,7 +74,12 @@ def decode_grib(body):
                        "u": "u", "v": "v"}.get(short)
                 if not key:
                     continue
-                glat, glon, values = codes_grib_get_data(gid)
+                # Stable array access across ecCodes Python binding versions.
+                glat = codes_get_array(gid, "latitudes")
+                glon = codes_get_array(gid, "longitudes")
+                values = codes_get_array(gid, "values")
+                if not (len(glat) == len(glon) == len(values)):
+                    raise RuntimeError(f"GRIB pole array lengths differ: lat={len(glat)} lon={len(glon)} values={len(values)}")
                 indices = nearest_indices(glat, glon)
                 vals = np.asarray(values, dtype=float)
                 picked = [float(vals[i]) if np.isfinite(vals[i]) else None for i in indices]
