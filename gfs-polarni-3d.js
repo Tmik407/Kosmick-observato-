@@ -47,6 +47,38 @@ function draw(){
    faces.push({pts,fill:palette(t),depth:pts.reduce((x,p)=>x+p.depth,0)/4,lev});
   }
  }}
+ // Svislé plochy propojují 10, 30 a 50 hPa do jednoho souvislého
+ // prostorového tělesa. Jde o interpolaci mezi hladinami, ne o další GFS vzorky.
+ const bridgeFaces=[];
+ for(let seg=0;seg<2;seg++){
+  const upper=levels[seg],lower=levels[seg+1];
+  for(let ri=0;ri<lats.length-1;ri++)for(let li=0;li<lons.length;li++){
+   const lj=(li+1)%lons.length,ids=[ri*8+li,ri*8+lj,(ri+1)*8+lj,(ri+1)*8+li];
+   const vals=ids.flatMap(p=>[value(upper,p,keys(upper)[0]),value(lower,p,keys(lower)[0])]);
+   if(!vals.every(Number.isFinite))continue;
+   const lonA=lons[li],lonB=li===lons.length-1?lons[0]+360:lons[lj];
+   const coords=[
+    [lats[ri],lonA,upper],[lats[ri],lonB,upper],
+    [lats[ri+1],lonB,upper],[lats[ri+1],lonA,upper],
+    [lats[ri],lonA,lower],[lats[ri],lonB,lower],
+    [lats[ri+1],lonB,lower],[lats[ri+1],lonA,lower]
+   ];
+   const temp=vals.reduce((a,b)=>a+b,0)/vals.length;
+   const t=max===min?.5:(temp-min)/(max-min);
+   const make=(a,b)=>project(a[0],((a[1]+twist[a[2]]+180)%360+360)%360-180,zBy[a[2]],cx,cy,scale);
+   // Čtyři stěny každé interpolované buňky vytvářejí souvislou boční strukturu.
+   for(const faceIds of [[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]]){
+    const pts=faceIds.map(i=>make(coords[i]));
+    bridgeFaces.push({pts,fill:palette(t),depth:pts.reduce((v,p)=>v+p.depth,0)/4});
+   }
+  }
+ }
+ bridgeFaces.sort((a,b)=>a.depth-b.depth);
+ for(const f of bridgeFaces){
+  g.beginPath();f.pts.forEach((p,i)=>i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y));g.closePath();
+  g.fillStyle=f.fill;g.globalAlpha=.30;g.fill();g.globalAlpha=1;
+  g.strokeStyle='rgba(230,246,255,.16)';g.lineWidth=.55;g.stroke();
+ }
  faces.sort((a,b)=>a.depth-b.depth);
  for(const f of faces){g.beginPath();f.pts.forEach((p,i)=>i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y));g.closePath();g.fillStyle=f.fill;g.globalAlpha=.84;g.fill();g.globalAlpha=1;}
  // Zakřivené spojnice: jejich natočení vychází z průměrné zonální složky
@@ -68,7 +100,7 @@ function draw(){
  }
  g.fillStyle='#eaf6ff';g.font='bold 22px Arial';g.fillText('3D POLÁRNÍ STRATOSFÉRA · NOAA GFS',28,36);
  g.font='bold 18px Arial';g.fillStyle='#63c9ff';g.fillText('10 hPa',cx+270,cy-145);g.fillStyle='#ffd166';g.fillText('30 hPa',cx+270,cy+5);g.fillStyle='#c6a0ff';g.fillText('50 hPa',cx+270,cy+155);
- g.font='13px Arial';g.fillStyle='#d4e8f6';g.fillText('Interpolovaná teplota · bílé body/šipky = vzorky/vítr · zakřivení = zonální vítr',28,h-42);
+ g.font='13px Arial';g.fillStyle='#d4e8f6';g.fillText('Souvislá interpolovaná struktura · barva = teplota · bílé šipky = vítr',28,h-42);
  g.fillText('U zonální (m/s): 10 hPa '+(zonal[10]?.toFixed(1)??'—')+' · 30 hPa '+(zonal[30]?.toFixed(1)??'—')+' · 50 hPa '+(zonal[50]?.toFixed(1)??'—')+' · '+(times[idx]||'').replace('T',' ')+' UTC',28,h-20);
  for(const lev of levels){const vals=points.map((_,p)=>value(lev,p,keys(lev)[0])).filter(Number.isFinite),el=$('p3d'+lev);if(el)el.textContent=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1)+' °C':'—';}
 }
