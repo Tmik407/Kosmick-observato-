@@ -26,17 +26,31 @@ function levelWind(level){
  const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
  return {u:mean(u),v:mean(v),height:mean(z),heights:z};
 }
+function interpolatedWind(level,lat,lon){
+ const candidates=points.map((p,i)=>{
+  const dlat=p.lat-lat,dlon=((((p.lon-lon)+540)%360)-180)*Math.max(.2,Math.cos(lat*Math.PI/180));
+  return {i,d:dlat*dlat+dlon*dlon};
+ }).sort((a,b)=>a.d-b.d).slice(0,4);
+ let u=0,v=0,total=0,speed=0;
+ for(const c of candidates){
+  const sp=value(level,c.i,keys(level)[2]),dr=value(level,c.i,keys(level)[3]);
+  if(!Number.isFinite(sp)||!Number.isFinite(dr))continue;
+  const w=1/Math.max(.0001,c.d),a=dr*Math.PI/180;
+  u+=(-sp*Math.sin(a))*w;v+=(-sp*Math.cos(a))*w;speed+=sp*w;total+=w;
+ }
+ return total?{u:u/total,v:v/total,speed:speed/total}:null;
+}
 function shapeAt(lat,lon,level){
  const cacheKey=level+':'+lat.toFixed(3)+':'+lon.toFixed(3);if(shapeCache[cacheKey])return shapeCache[cacheKey];
  const p=points.reduce((best,q,i)=>Math.abs(q.lat-lat)+Math.abs((((q.lon-lon)+540)%360)-180)<best.d?{i,d:Math.abs(q.lat-lat)+Math.abs((((q.lon-lon)+540)%360)-180)}:best,{i:0,d:Infinity}).i;
- const wind=windCache[level]||(windCache[level]=levelWind(level)),sp=value(level,p,keys(level)[2]),dr=value(level,p,keys(level)[3]),gh=value(level,p,keys(level)[1]);
- const heights=wind.heights,meanH=wind.height;
+ const wind=windCache[level]||(windCache[level]=levelWind(level)),local=interpolatedWind(level,lat,lon);
+ const gh=value(level,p,keys(level)[1]),heights=wind.heights,meanH=wind.height;
  const heightAnomaly=Number.isFinite(gh)&&Number.isFinite(meanH)?Math.max(-1,Math.min(1,(gh-meanH)/Math.max(1500,...heights.map(x=>Math.abs(x-meanH))))):0;
- const localSpeed=Number.isFinite(sp)?Math.min(1,sp/70):0;
- const direction=Number.isFinite(dr)?dr*Math.PI/180:0;
+ const localSpeed=local?Math.min(1,local.speed/70):0;
+ const direction=local?Math.atan2(-local.u,-local.v):0;
  const flowShape=localSpeed*Math.cos(2*(lon*Math.PI/180-direction));
- const ellipse=Math.max(.84,Math.min(1.16,1+flowShape*.075+heightAnomaly*.055));
- const localTurn=Number.isFinite(sp)&&Number.isFinite(dr)?Math.max(-12,Math.min(12,(sp/70)*Math.sin((dr-lon)*Math.PI/180)*9)):0;
+ const ellipse=Math.max(.82,Math.min(1.18,1+flowShape*.09+heightAnomaly*.065));
+ const localTurn=local?Math.max(-14,Math.min(14,(local.speed/70)*Math.sin(direction-lon*Math.PI/180)*11)):0;
  const spiral=(Number.isFinite(wind.u)?Math.max(-18,Math.min(18,wind.u*.22)):0)+localTurn;
  return shapeCache[cacheKey]={ellipse,spiral};
 }
@@ -48,31 +62,25 @@ function levelDiagnostics(level){
  const min=gh.length?Math.min(...gh):null,max=gh.length?Math.max(...gh):null;
  return {heightMean:avg,heightSpread:spread,heightRange:min!==null?max-min:null,windMean:mean(sp)};
 }
-function nearestWind(level,lat,lon){
- let best=0,dist=Infinity;
- points.forEach((p,i)=>{const d=(p.lat-lat)**2+((((p.lon-lon)+540)%360)-180)**2*Math.max(.15,Math.cos(lat*Math.PI/180))**2;if(d<dist){dist=d;best=i;}});
- const sp=value(level,best,keys(level)[2]),dr=value(level,best,keys(level)[3]);
- if(!Number.isFinite(sp)||!Number.isFinite(dr))return null;
- const a=dr*Math.PI/180;
- return {u:-sp*Math.sin(a),v:-sp*Math.cos(a)};
-}
 function drawStreamlines(g,level,cx,cy,scale,twist){
- // Diagnostické proudnice: numerická integrace interpolovaného větru
- // z nejbližšího dostupného GFS vzorku; nejde o trajektorie částic.
- const seeds=[[-150,66],[-105,72],[-60,78],[-15,84],[30,66],[75,72],[120,78],[165,84]];
- g.save();g.strokeStyle='rgba(255,255,255,.34)';g.lineWidth=1.15;
+ // Proudnice integrují prostorově interpolované GFS větry metodou RK2.
+ // Jde o diagnostickou vizualizaci proudění, nikoli o sledování částic.
+ const seeds=[[-157,64],[-135,75],[-105,83],[-67,70],[-30,80],[8,66],[42,76],[78,85],[112,68],[148,79]];
+ const color=speed=>speed<15?'#8bd7ff':speed<30?'#4ee0c0':speed<45?'#ffd166':'#ff916e';
+ g.save();g.lineWidth=2.0;g.lineCap='round';
  for(const seed of seeds){
-  let lon=seed[0],lat=seed[1];g.beginPath();let started=false;
-  for(let step=0;step<15;step++){
+  let lon=seed[0],lat=seed[1],prev=null;
+  for(let step=0;step<24;step++){
    if(lat<60||lat>89)break;
+   const w1=interpolatedWind(level,lat,lon);if(!w1)break;
+   const dt=1100,cos=Math.max(.2,Math.cos(lat*Math.PI/180));
+   const midLat=lat+w1.v*dt/(2*111000),midLon=lon+w1.u*dt/(2*111000*cos);
+   const w2=interpolatedWind(level,midLat,midLon)||w1;
+   const nextLat=lat+w2.v*dt/111000,nextLon=lon+w2.u*dt/(111000*Math.max(.2,Math.cos(midLat*Math.PI/180)));
    const p=shapedProject(lat,lon+twist,level,cx,cy,scale);
-   if(!started){g.moveTo(p.x,p.y);started=true;}else g.lineTo(p.x,p.y);
-   const w=nearestWind(level,lat,lon);if(!w)break;
-   const dt=1500,cos=Math.max(.2,Math.cos(lat*Math.PI/180));
-   lat+=w.v*dt/111000;
-   lon+=w.u*dt/(111000*cos);
+   if(prev){g.strokeStyle=color(w1.speed);g.beginPath();g.moveTo(prev.x,prev.y);g.lineTo(p.x,p.y);g.stroke();}
+   prev=p;lat=nextLat;lon=nextLon;
   }
-  if(started)g.stroke();
  }
  g.restore();
 }
@@ -169,8 +177,9 @@ function draw(){
  g.font='bold 18px Arial';g.fillStyle='#63c9ff';g.fillText('10 hPa',cx+270,cy-145);g.fillStyle='#ffd166';g.fillText('30 hPa',cx+270,cy+5);g.fillStyle='#c6a0ff';g.fillText('50 hPa',cx+270,cy+155);
  g.font='13px Arial';g.fillStyle='#d4e8f6';g.fillText('Dynamická spirála a eliptická deformace · barva = teplota · šipky = vítr',28,h-42);
  const d10=levelDiagnostics(10),d30=levelDiagnostics(30),d50=levelDiagnostics(50);
+ const shear10_30=Math.hypot(winds[10].u-winds[30].u,winds[10].v-winds[30].v),shear30_50=Math.hypot(winds[30].u-winds[50].u,winds[30].v-winds[50].v);
  g.font='11px Arial';
- g.fillText('U zonální (m/s): 10 '+(zonal[10]?.toFixed(1)??'—')+' · 30 '+(zonal[30]?.toFixed(1)??'—')+' · 50 '+(zonal[50]?.toFixed(1)??'—')+' | Rozptyl geopotenciálu (m): 10 '+(d10.heightSpread?.toFixed(0)??'—')+' · 30 '+(d30.heightSpread?.toFixed(0)??'—')+' · 50 '+(d50.heightSpread?.toFixed(0)??'—')+' | '+(times[idx]||'').replace('T',' ')+' UTC',28,h-20);
+ g.fillText('Geopotenciální asymetrie σ (m): 10 '+(d10.heightSpread?.toFixed(0)??'—')+' · 30 '+(d30.heightSpread?.toFixed(0)??'—')+' · 50 '+(d50.heightSpread?.toFixed(0)??'—')+' | Vertikální střih (m/s): 10–30 '+(Number.isFinite(shear10_30)?shear10_30.toFixed(1):'—')+' · 30–50 '+(Number.isFinite(shear30_50)?shear30_50.toFixed(1):'—')+' | '+(times[idx]||'').replace('T',' ')+' UTC',28,h-20);
  for(const lev of levels){const vals=points.map((_,p)=>value(lev,p,keys(lev)[0])).filter(Number.isFinite),el=$('p3d'+lev);if(el)el.textContent=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1)+' °C':'—';}
 }
 async function load(){
