@@ -34,17 +34,22 @@ jobs:
           assert isinstance(rows,list) and len(rows)>=9000, f"Archive unexpectedly short: {len(rows) if isinstance(rows,list) else 'invalid'}"
           assert d.get("source_status") and all(k in d["source_status"] for k in ("wind","mag","kp"))
           assert all(isinstance(r,dict) and r.get("t") for r in rows)
-          print(f"NOAA archive integrity OK: {len(rows)} records; {p.stat().st_size} bytes")
+          status=json.loads(Path("space-weather-status.json").read_text(encoding="utf-8"))
+          assert status.get("source_status") and all(k in status["source_status"] for k in ("wind","mag","kp"))
+          assert status.get("archive_records")==len(rows)
+          print(f"NOAA archive integrity OK: {len(rows)} records; {p.stat().st_size} bytes; status sidecar valid")
           PY
       - name: Uložit archiv bezpečně proti souběžným změnám
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           cp space-weather-history.json /tmp/space-weather-history.json
-          git restore -- space-weather-history.json
+          cp space-weather-status.json /tmp/space-weather-status.json
+          git restore -- space-weather-history.json space-weather-status.json
           git pull --rebase origin main
           cp /tmp/space-weather-history.json space-weather-history.json
-          git add space-weather-history.json
+          cp /tmp/space-weather-status.json space-weather-status.json
+          git add space-weather-history.json space-weather-status.json
           if git diff --cached --quiet; then
             echo "Archiv beze změny"
           else
