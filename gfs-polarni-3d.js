@@ -138,7 +138,19 @@ function draw(){
  const winds={10:levelWind(10),30:levelWind(30),50:levelWind(50)},zonal={10:winds[10].u,30:winds[30].u,50:winds[50].u},twist={};
  for(const lev of levels)twist[lev]=Number.isFinite(zonal[lev])?Math.max(-28,Math.min(28,zonal[lev]*.55)):0;
  for(const lev of levels){for(let p=0;p<points.length;p++){const t=value(lev,p,keys(lev)[0]);if(Number.isFinite(t))temps.push(t);}}
- if(!temps.length){g.fillStyle='#e6f4ff';g.font='bold 22px Arial';g.fillText(loadError?'DATA NOAA GFS NYNÍ NEJSOU DOSTUPNÁ':'Čekám na tři hladiny NOAA GFS…',40,55);g.font='16px Arial';g.fillStyle='#a9c7dc';const msg=loadError?loadError.slice(0,105):'Model se zobrazí po načtení všech tří tlakových hladin.';g.fillText(msg,40,88);g.font='14px Arial';g.fillText('Žádné náhradní ani odhadované hodnoty nejsou vykresleny.',40,116);return;}
+ if(!temps.length){
+  // Nouzový orientační tvar: pouze geometrie vrstev, nikdy ne meteorologická data.
+  const rx=Math.min(105,w*.19),ry=Math.max(13,rx*.25),top=cy-112,bottom=cy+112;
+  g.save();g.strokeStyle='rgba(130,190,220,.68)';g.lineWidth=1.5;g.setLineDash([5,5]);
+  for(let k=0;k<9;k++){const x=cx-rx+k*(2*rx/8);g.beginPath();g.moveTo(x,top);g.lineTo(x,bottom);g.stroke();}
+  g.setLineDash([]);
+  for(const y of [top,cy,bottom]){g.beginPath();g.ellipse(cx,y,rx,ry,0,0,Math.PI*2);g.stroke();}
+  g.fillStyle='#9fc9e4';g.font='bold 12px Arial';g.fillText('10 hPa',cx+rx+18,top+4);g.fillText('30 hPa',cx+rx+18,cy+4);g.fillText('50 hPa',cx+rx+18,bottom+4);
+  g.fillStyle='#fff';g.font='bold 19px Arial';g.textAlign='center';g.fillText(loadError?'ČEKÁNÍ NA OBNOVENÍ DAT':'NAČÍTÁNÍ MODELU',cx,Math.max(30,top-30));
+  g.font='13px Arial';g.fillStyle='#c0d6e7';g.fillText(loadError?'NOAA GFS a živý zdroj jsou dočasně nedostupné':'Čekám na úplná data všech tří tlakových hladin',cx,bottom+42);
+  g.fillText('Pouze orientační geometrie vrstev – bez meteorologických či odhadovaných hodnot.',cx,bottom+64);
+  g.restore();return;
+ }
  const min=Math.min(...temps),max=Math.max(...temps);
  // Jemnější síť vzniká interpolací mezi sousedními GFS vzorky.
  // Nejde o nové modelové hodnoty; každý dílek je pouze vizualizace interpolace.
@@ -272,7 +284,7 @@ async function load(){
    if(cached){applyRows(cached.rows,cached.times,true);const age=Math.max(0,Math.round((Date.now()-(cached.savedAt||0))/3600000));status('Společný archiv NOAA i živý zdroj jsou nedostupné. Zobrazuji místní kopii (přibližné stáří '+age+' h).');}
    else{data={};times=[];status('Společný archiv NOAA i živý zdroj Open-Meteo jsou nedostupné: '+String(liveError.message||liveError)+'.');draw();}
   }
- }finally{busy=false;}
+ }finally{busy=false;if(loadError){setTimeout(()=>{if(!busy&&loadError)load();},5*60*1000);}}
 }
 function stop(){if(timer)clearInterval(timer);timer=null;}
 function play(){if(!times.length)return;stop();timer=setInterval(()=>{idx=(idx+1)%times.length;$('p3dTime').value=idx;invalidateDataCaches();requestDraw();},Number($('p3dSpeed')?.value||800));}
