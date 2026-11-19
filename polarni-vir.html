@@ -518,7 +518,7 @@ setInterval(refreshX5Infographic,30*60*1000);
  }
  function draw(){
   base();
-  if(!payload.length){ctx.fillStyle='#526b7d';ctx.font='18px Arial';ctx.fillText('Čekám na meteorologická data NOAA GFS…',28,34);return;}
+  if(!payload.length){ctx.fillStyle='#526b7d';ctx.font='18px Arial';ctx.fillText('Načítám barevná pole NOAA GFS…',28,34);return;}
   const field=$('gfsField').value,level=$('gfsLevel').value,idx=Number($('gfsTime').value)||0,k=keyFor(field,level);
   const points=payload.map(x=>({p:project(x.latitude,x.longitude),v:x.hourly?.[k]?.[idx],wind:x.hourly?.['wind_speed_'+level+'hPa']?.[idx],dir:x.hourly?.['wind_direction_'+level+'hPa']?.[idx]})).filter(x=>Number.isFinite(x.v));
   if(points.length<12){$('gfsMapStatus').textContent='Pro zvolenou hladinu a čas je dostupných příliš málo platných bodů ('+points.length+').';return;}
@@ -571,11 +571,16 @@ setInterval(refreshX5Infographic,30*60*1000);
     const url='https://api.open-meteo.com/v1/gfs?latitude='+encodeURIComponent(lat)+'&longitude='+encodeURIComponent(lon)+'&hourly='+encodeURIComponent(vars)+'&forecast_days=2&timezone=GMT';
     let arr=null,lastError=null;
     for(let attempt=0;attempt<3;attempt++){
+     const controller=new AbortController();
+     const timeout=setTimeout(()=>controller.abort(),15000);
      try{
-      const res=await fetch(url,{cache:'no-store'});
+      const res=await fetch(url,{cache:'no-store',signal:controller.signal});
       if(!res.ok){let detail='';try{const body=await res.json();detail=body.reason||body.error||JSON.stringify(body);}catch(_){detail='';}throw Error('HTTP '+res.status+(detail?': '+detail:''));}
       const raw=await res.json();arr=Array.isArray(raw)?raw:[raw];break;
-     }catch(err){lastError=err;if(attempt<2)await new Promise(resolve=>setTimeout(resolve,900*(attempt+1)));}
+     }catch(err){
+      lastError=err?.name==='AbortError'?Error('časový limit 15 s – požadavek Open-Meteo neodpověděl'):err;
+      if(attempt<2)await new Promise(resolve=>setTimeout(resolve,900*(attempt+1)));
+     }finally{clearTimeout(timeout);}
     }
     if(!arr)throw Error('Dávka '+(bi+1)+'/'+batches.length+': '+String(lastError?.message||lastError||'síťová chyba'));
     if(arr.length!==batch.length)throw Error('Dávka '+(bi+1)+': očekáváno '+batch.length+' lokalit, přijato '+arr.length+'.');
