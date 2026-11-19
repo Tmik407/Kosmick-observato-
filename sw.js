@@ -1,5 +1,5 @@
 /* Kosmická observatoř X-5 – PWA service worker */
-const CACHE_NAME="x5-pwa-shell-v5";
+const CACHE_NAME="x5-pwa-shell-v6";
 const SHELL=["./","./index.html","./offline.html","./manifest.webmanifest","./icon.svg"];
 self.addEventListener("install",event=>{
  event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));
@@ -19,6 +19,18 @@ self.addEventListener("fetch",event=>{
   }).catch(async()=>{
    const cached=await caches.match("./index.html")||await caches.match("./");
    return cached||await caches.match("./offline.html");
+  }));
+  return;
+ }
+ if(url.pathname.endsWith("/data/polar-vortex/latest.json")){
+  event.respondWith(caches.open(CACHE_NAME).then(async cache=>{
+   const cached=await cache.match(request);
+   const refresh=fetch(request).then(response=>{
+    if(response&&response.ok)cache.put(request,response.clone());
+    return response;
+   });
+   if(cached){event.waitUntil(refresh.catch(()=>{}));return cached;}
+   return refresh;
   }));
   return;
  }
