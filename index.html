@@ -412,7 +412,7 @@ function archiveRowsForDisplay(payload){
   const t=r.t;
   if(valid(r.speed_kms)||valid(r.density_cm3))wind.push({time_tag:t,active:true,proton_speed:r.speed_kms,proton_density:r.density_cm3,_archive:true});
   if([r.bx_gsm_nt,r.by_gsm_nt,r.bz_gsm_nt,r.bt_nt].some(valid))mag.push({time_tag:t,active:true,bx_gsm:r.bx_gsm_nt,by_gsm:r.by_gsm_nt,bz_gsm:r.bz_gsm_nt,bt:r.bt_nt,_archive:true});
-  if(valid(r.kp))kp.push({time_tag:r.kp_time||t,kp:r.kp,_archive:true});
+  if(valid(r.kp))kp.push({time_tag:r.kp_time||t,kp:r.kp,active:true,_archive:true});
  }
  return {wind,mag,kp,updated:payload?.updated_utc||payload?.updated||null};
 }
