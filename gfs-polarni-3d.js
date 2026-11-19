@@ -65,12 +65,12 @@ function levelDiagnostics(level){
 function drawStreamlines(g,level,cx,cy,scale,twist){
  // Proudnice integrují prostorově interpolované GFS větry metodou RK2.
  // Jde o diagnostickou vizualizaci proudění, nikoli o sledování částic.
- const seeds=[[-157,64],[-135,75],[-105,83],[-67,70],[-30,80],[8,66],[42,76],[78,85],[112,68],[148,79]];
+ const seeds=[[-165,63],[-145,72],[-125,82],[-95,67],[-75,78],[-45,85],[-15,65],[15,75],[45,84],[75,66],[105,77],[135,85],[165,70]];
  const color=speed=>speed<15?'#8bd7ff':speed<30?'#4ee0c0':speed<45?'#ffd166':'#ff916e';
- g.save();g.lineWidth=2.0;g.lineCap='round';
+ g.save();g.lineWidth=2.8;g.lineCap='round';g.shadowBlur=5;g.shadowColor='rgba(110,220,255,.45)';
  for(const seed of seeds){
   let lon=seed[0],lat=seed[1],prev=null;
-  for(let step=0;step<24;step++){
+  for(let step=0;step<30;step++){
    if(lat<60||lat>89)break;
    const w1=interpolatedWind(level,lat,lon);if(!w1)break;
    const dt=1100,cos=Math.max(.2,Math.cos(lat*Math.PI/180));
@@ -89,6 +89,33 @@ function shapedProject(lat,lon,level,cx,cy,scale){
  const p=project(lat, a, level===10?190:level===30?0:-190,cx,cy,scale);
  const dx=p.x-cx,dy=p.y-cy;
  return {...p,x:cx+dx*sh.ellipse,y:cy+dy*sh.ellipse};
+}
+function historyValue(level,key,i){
+ const a=points.map((_,p)=>data[level]?.rows?.[p]?.hourly?.[key]?.[i]).filter(Number.isFinite);
+ if(!a.length)return null;const m=a.reduce((x,y)=>x+y,0)/a.length;
+ return Math.sqrt(a.reduce((x,y)=>x+(y-m)**2,0)/a.length);
+}
+function historyShear(a,b,i){
+ const mean=level=>{const u=[],v=[];points.forEach((_,p)=>{const row=data[level]?.rows?.[p]?.hourly,sp=row?.[keys(level)[2]]?.[i],dr=row?.[keys(level)[3]]?.[i];if(Number.isFinite(sp)&&Number.isFinite(dr)){const r=dr*Math.PI/180;u.push(-sp*Math.sin(r));v.push(-sp*Math.cos(r));}});return u.length?[u.reduce((x,y)=>x+y,0)/u.length,v.reduce((x,y)=>x+y,0)/v.length]:null;};
+ const x=mean(a),y=mean(b);return x&&y?Math.hypot(x[0]-y[0],x[1]-y[1]):null;
+}
+function drawHistoryCharts(){
+ const configs=[
+  ['p3dGeoChart','Geopotenciální asymetrie σ (m)',[
+   ['10 hPa','#39b8f0',i=>historyValue(10,keys(10)[1],i)],['30 hPa','#f4c45e',i=>historyValue(30,keys(30)[1],i)],['50 hPa','#b99aff',i=>historyValue(50,keys(50)[1],i)]]],
+  ['p3dShearChart','Vertikální střih větru (m/s)',[
+   ['10–30 hPa','#43c6a5',i=>historyShear(10,30,i)],['30–50 hPa','#ff9b70',i=>historyShear(30,50,i)]]]
+ ];
+ for(const [id,title,series] of configs){const c=$(id);if(!c||!times.length)continue;const g=c.getContext('2d'),w=c.width,h=c.height,L=48,R=16,T=30,B=32;
+  g.clearRect(0,0,w,h);g.fillStyle='#0b2033';g.fillRect(0,0,w,h);g.font='14px Arial';g.fillStyle='#e4f1fa';g.fillText(title,L,19);
+  const vals=series.flatMap(a=>times.map((_,i)=>a[2](i))).filter(Number.isFinite);if(!vals.length)continue;
+  const lo=Math.min(0,...vals),hi=Math.max(1,...vals),x=i=>L+i/Math.max(1,times.length-1)*(w-L-R),y=v=>h-B-(v-lo)/(hi-lo)*(h-T-B);
+  g.strokeStyle='rgba(220,240,255,.18)';g.fillStyle='#c5d7e6';g.font='11px Arial';
+  for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4,yy=y(v);g.beginPath();g.moveTo(L,yy);g.lineTo(w-R,yy);g.stroke();g.fillText(v.toFixed(0),6,yy+4);}
+  series.forEach(([label,color,fn],j)=>{g.strokeStyle=color;g.lineWidth=2.5;g.beginPath();let started=false;times.forEach((_,i)=>{const v=fn(i);if(!Number.isFinite(v)){started=false;return;}if(!started){g.moveTo(x(i),y(v));started=true;}else g.lineTo(x(i),y(v));});g.stroke();g.fillStyle=color;g.fillText(label,L+8+j*135,T-8);});
+  g.strokeStyle='#fff';g.setLineDash([4,4]);g.beginPath();g.moveTo(x(idx),T);g.lineTo(x(idx),h-B);g.stroke();g.setLineDash([]);
+  g.fillStyle='#c5d7e6';g.fillText(times[0].slice(5,13).replace('T',' ')+' UTC',L,h-9);g.fillText(times[times.length-1].slice(5,13).replace('T',' ')+' UTC',w-145,h-9);
+ }
 }
 function draw(){
  shapeCache={};windCache={};
@@ -149,11 +176,11 @@ function draw(){
  bridgeFaces.sort((a,b)=>a.depth-b.depth);
  for(const f of bridgeFaces){
   g.beginPath();f.pts.forEach((p,i)=>i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y));g.closePath();
-  g.fillStyle=f.fill;g.globalAlpha=.30;g.fill();g.globalAlpha=1;
+  g.fillStyle=f.fill;g.globalAlpha=.20;g.fill();g.globalAlpha=1;
   g.strokeStyle='rgba(230,246,255,.16)';g.lineWidth=.55;g.stroke();
  }
  faces.sort((a,b)=>a.depth-b.depth);
- for(const f of faces){g.beginPath();f.pts.forEach((p,i)=>i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y));g.closePath();g.fillStyle=f.fill;g.globalAlpha=.84;g.fill();g.globalAlpha=1;}
+ for(const f of faces){g.beginPath();f.pts.forEach((p,i)=>i?g.lineTo(p.x,p.y):g.moveTo(p.x,p.y));g.closePath();g.fillStyle=f.fill;g.globalAlpha=.68;g.fill();g.globalAlpha=1;}
  // Zakřivené spojnice: jejich natočení vychází z průměrné zonální složky
  // větru v každé hladině. Jde o diagnostickou vizualizaci, nikoli simulaci trajektorie.
  for(let p=0;p<points.length;p++){
@@ -181,20 +208,21 @@ function draw(){
  g.font='11px Arial';
  g.fillText('Geopotenciální asymetrie σ (m): 10 '+(d10.heightSpread?.toFixed(0)??'—')+' · 30 '+(d30.heightSpread?.toFixed(0)??'—')+' · 50 '+(d50.heightSpread?.toFixed(0)??'—')+' | Vertikální střih (m/s): 10–30 '+(Number.isFinite(shear10_30)?shear10_30.toFixed(1):'—')+' · 30–50 '+(Number.isFinite(shear30_50)?shear30_50.toFixed(1):'—')+' | '+(times[idx]||'').replace('T',' ')+' UTC',28,h-20);
  for(const lev of levels){const vals=points.map((_,p)=>value(lev,p,keys(lev)[0])).filter(Number.isFinite),el=$('p3d'+lev);if(el)el.textContent=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1)+' °C':'—';}
+ drawHistoryCharts();
 }
 async function load(){
  if(busy)return;busy=true;stop();status('Stahuji hodinová pole GFS pro hladiny 10, 30 a 50 hPa…');
  try{
   // Open-Meteo obsluhuje více souřadnic, ale velké dávky mohou být odmítnuty.
   // Menší dávky zkracují URL a umožňují přesně určit problematickou odpověď.
-  const batchSize=8;
+  const batchSize=20;
   const results=await Promise.all(levels.map(async lev=>{
    const batches=[];
    for(let i=0;i<points.length;i+=batchSize)batches.push(points.slice(i,i+batchSize));
    const parts=await Promise.all(batches.map(async batch=>{
     const lat=batch.map(p=>p.lat).join(','),lon=batch.map(p=>p.lon).join(',');
     const url='https://api.open-meteo.com/v1/gfs?latitude='+encodeURIComponent(lat)+'&longitude='+encodeURIComponent(lon)+'&hourly='+encodeURIComponent(keys(lev).join(','))+'&forecast_days=2&timezone=GMT';
-    const r=await fetch(url,{cache:'no-store'});
+    const r=await fetch(url,{cache:'default'});
     if(!r.ok){const body=await r.text();let detail=body.slice(0,400);try{const e=JSON.parse(body);detail=e.reason||e.message||JSON.stringify(e);}catch(_){}throw Error('GFS '+lev+' hPa HTTP '+r.status+(detail?' · '+detail:''));}
     const raw=await r.json(),rows=Array.isArray(raw)?raw:[raw];
     if(rows.length!==batch.length||!rows[0]?.hourly?.time)throw Error('Neúplná dávka GFS '+lev+' hPa ('+rows.length+'/'+batch.length+' bodů).');
