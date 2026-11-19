@@ -65,9 +65,9 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
 <p class="muted">Automaticky archivované analýzy NCEP/GFS (f00, cyklus 00 UTC) pro tři stratosférické tlakové hladiny. Obrázky se denně ukládají do repozitáře X-5; metadata uvádějí čas stažení a kontrolní součty. Jde o analýzu numerického modelu, nikoli o přímé měření ani o ERA5 reanalýzu.</p>
 <div class="status" id="noaaArchiveStatus">Načítám metadata archivu NOAA GFS…</div>
 <div class="grid">
-<div><h3>10 hPa · střední stratosféra</h3><a href="./data/noaa-gfs/gfs_t10_nh_f00.png" target="_blank" rel="noopener"><img src="./data/noaa-gfs/gfs_t10_nh_f00.png" alt="NOAA GFS analýza teploty 10 hPa severní polokoule" loading="lazy" style="width:100%;height:auto;border-radius:10px;background:#07182a"></a></div>
-<div><h3>30 hPa · střední stratosféra</h3><a href="./data/noaa-gfs/gfs_t30_nh_f00.png" target="_blank" rel="noopener"><img src="./data/noaa-gfs/gfs_t30_nh_f00.png" alt="NOAA GFS analýza teploty 30 hPa severní polokoule" loading="lazy" style="width:100%;height:auto;border-radius:10px;background:#07182a"></a></div>
-<div><h3>50 hPa · dolní stratosféra</h3><a href="./data/noaa-gfs/gfs_t50_nh_f00.png" target="_blank" rel="noopener"><img src="./data/noaa-gfs/gfs_t50_nh_f00.png" alt="NOAA GFS analýza teploty 50 hPa severní polokoule" loading="lazy" style="width:100%;height:auto;border-radius:10px;background:#07182a"></a></div>
+<div><h3>10 hPa · střední stratosféra</h3><a href="./data/noaa-gfs/gfs_t10_nh_f00.png" target="_blank" rel="noopener"><img src="./data/noaa-gfs/gfs_t10_nh_f00.png" alt="NOAA GFS analýza teploty 10 hPa severní polokoule" loading="lazy" style="width:100%;height:auto;border-radius:10px;background:#ffffff"></a></div>
+<div><h3>30 hPa · střední stratosféra</h3><a href="./data/noaa-gfs/gfs_t30_nh_f00.png" target="_blank" rel="noopener"><img src="./data/noaa-gfs/gfs_t30_nh_f00.png" alt="NOAA GFS analýza teploty 30 hPa severní polokoule" loading="lazy" style="width:100%;height:auto;border-radius:10px;background:#ffffff"></a></div>
+<div><h3>50 hPa · dolní stratosféra</h3><a href="./data/noaa-gfs/gfs_t50_nh_f00.png" target="_blank" rel="noopener"><img src="./data/noaa-gfs/gfs_t50_nh_f00.png" alt="NOAA GFS analýza teploty 50 hPa severní polokoule" loading="lazy" style="width:100%;height:auto;border-radius:10px;background:#ffffff"></a></div>
 </div>
 <div class="status" style="margin-top:12px"><b>Jak vrstvu číst:</b> Porovnejte polohu a rozsah studeného jádra mezi 10, 30 a 50 hPa. Samotná teplotní mapa nepotvrzuje náhlé stratosférické oteplení (SSW); k tomu je nutné ověřit zejména zonální vítr na 60° N a jeho obrat, dále vývoj v čase.</div>
 <p class="muted">Zdroj: <a href="https://cpc.ncep.noaa.gov/products/stratosphere/strat_a_f/" target="_blank" rel="noopener">NOAA CPC – NCEP/GFS stratosférické analýzy a předpovědi</a>. NOAA uvádí hladiny 70, 50, 30, 20, 10, 5, 2 a 1 hPa a předpovědní mapy v intervalech 24 hodin. Prognostické mapy mohou mít rozdílnou dostupnost a platnost; proto zde nejsou vydávány za aktuální, pokud datum jejich běhu není ověřeno.</p>
@@ -204,7 +204,7 @@ async function loadArchive(){
  const fmt=v=>Number.isFinite(v)?v.toFixed(1).replace('.',','):'—';
  const parseCSV=t=>{const lines=t.trim().split(/\r?\n/);const headers=lines.shift().split(',').map(x=>x.trim().replace(/^"|"$/g,''));return {headers,rows:lines.map(l=>l.split(',').map(x=>x.trim().replace(/^"|"$/g,'')))}};
  const pick=(headers,tests)=>headers.findIndex(h=>tests.some(re=>re.test(h.toLowerCase().replace(/[^a-z0-9]/g,''))));
- const drawLine=(id,series,label,unit,zero=false)=>{const cv=$(id),cx=cv.getContext('2d'),w=cv.width,h=cv.height,p=48;cx.clearRect(0,0,w,h);cx.fillStyle='#07182a';cx.fillRect(0,0,w,h);const vals=series.map(x=>x.v).filter(Number.isFinite);if(!vals.length){cx.fillStyle='#63778a';cx.fillText('Data pro tento graf nebyla nalezena',p,40);return}let min=Math.min(...vals),max=Math.max(...vals);if(zero){min=Math.min(0,min);max=Math.max(0,max)}if(max===min){max+=1;min-=1}const y=v=>h-p-(v-min)/(max-min)*(h-2*p);for(let i=0;i<5;i++){const yy=p+i*(h-2*p)/4;cx.strokeStyle='#d8e2eb';cx.beginPath();cx.moveTo(p,yy);cx.lineTo(w-p,yy);cx.stroke();cx.fillStyle='#63778a';cx.font='13px Arial';cx.fillText((max-i*(max-min)/4).toFixed(1),5,yy+4)}if(zero&&min<0&&max>0){cx.strokeStyle='#a85b12';cx.setLineDash([5,5]);cx.beginPath();cx.moveTo(p,y(0));cx.lineTo(w-p,y(0));cx.stroke();cx.setLineDash([])}cx.strokeStyle='#63dfff';cx.lineWidth=2.5;cx.beginPath();series.forEach((d,i)=>{const x=p+i*(w-2*p)/Math.max(1,series.length-1);if(i===0)cx.moveTo(x,y(d.v));else cx.lineTo(x,y(d.v))});cx.stroke();cx.fillStyle='#edf6ff';cx.font='bold 14px Arial';cx.fillText(label+' ('+unit+')',p,22);cx.fillStyle='#63778a';cx.fillText(series[0].d,p,h-12);cx.fillText(series[series.length-1].d,w-p-90,h-12)};
+ const drawLine=(id,series,label,unit,zero=false)=>{const cv=$(id),cx=cv.getContext('2d'),w=cv.width,h=cv.height,p=48;cx.clearRect(0,0,w,h);cx.fillStyle='#ffffff';cx.fillRect(0,0,w,h);const vals=series.map(x=>x.v).filter(Number.isFinite);if(!vals.length){cx.fillStyle='#63778a';cx.fillText('Data pro tento graf nebyla nalezena',p,40);return}let min=Math.min(...vals),max=Math.max(...vals);if(zero){min=Math.min(0,min);max=Math.max(0,max)}if(max===min){max+=1;min-=1}const y=v=>h-p-(v-min)/(max-min)*(h-2*p);for(let i=0;i<5;i++){const yy=p+i*(h-2*p)/4;cx.strokeStyle='#d8e2eb';cx.beginPath();cx.moveTo(p,yy);cx.lineTo(w-p,yy);cx.stroke();cx.fillStyle='#63778a';cx.font='13px Arial';cx.fillText((max-i*(max-min)/4).toFixed(1),5,yy+4)}if(zero&&min<0&&max>0){cx.strokeStyle='#a85b12';cx.setLineDash([5,5]);cx.beginPath();cx.moveTo(p,y(0));cx.lineTo(w-p,y(0));cx.stroke();cx.setLineDash([])}cx.strokeStyle='#087fa5';cx.lineWidth=2.5;cx.beginPath();series.forEach((d,i)=>{const x=p+i*(w-2*p)/Math.max(1,series.length-1);if(i===0)cx.moveTo(x,y(d.v));else cx.lineTo(x,y(d.v))});cx.stroke();cx.fillStyle='#20364a';cx.font='bold 14px Arial';cx.fillText(label+' ('+unit+')',p,22);cx.fillStyle='#63778a';cx.fillText(series[0].d,p,h-12);cx.fillText(series[series.length-1].d,w-p-90,h-12)};
  try{
  const [uText,wText,metaText]=await Promise.all([
  fetch('./data/u60_daily.csv?x='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('u60_daily.csv HTTP '+r.status);return r.text()}),
@@ -280,8 +280,8 @@ function analyzeVertical(rows){
 }
 function drawNasaSeries(canvasId,rows,type,title,unit){
  const cv=$(canvasId),g=cv.getContext('2d'),w=cv.width,h=cv.height,p=55;
- g.clearRect(0,0,w,h);g.fillStyle='#07182a';g.fillRect(0,0,w,h);
- const colors={10:'#63dfff',30:'#a85b12',50:'#b69cff'};
+ g.clearRect(0,0,w,h);g.fillStyle='#ffffff';g.fillRect(0,0,w,h);
+ const colors={10:'#087fa5',30:'#a85b12',50:'#6941a5'};
  const levels=[10,30,50],all=[];
  for(const lev of levels)for(const r of rows)if(Number.isFinite(r[type][lev]))all.push(r[type][lev]);
  if(!all.length){g.fillStyle='#63778a';g.font='16px Arial';g.fillText('V importovaném souboru nebyla nalezena odpovídající řada.',p,42);return;}
@@ -293,8 +293,8 @@ function drawNasaSeries(canvasId,rows,type,title,unit){
   shown.forEach((r,i)=>{const v=r[type][lev];if(!Number.isFinite(v)){begun=false;return;}const x=p+i*(w-2*p)/Math.max(1,shown.length-1);if(!begun){g.moveTo(x,y(v));begun=true;}else g.lineTo(x,y(v));});
   g.strokeStyle=colors[lev];g.lineWidth=2.8;g.stroke();
  }
- g.fillStyle='#edf6ff';g.font='bold 15px Arial';g.fillText(title+' ('+unit+')',p,23);
- levels.forEach((lev,i)=>{const x=p+i*155;g.fillStyle=colors[lev];g.fillRect(x,34,18,4);g.fillStyle='#edf6ff';g.font='13px Arial';g.fillText(lev+' hPa',x+25,41);});
+ g.fillStyle='#20364a';g.font='bold 15px Arial';g.fillText(title+' ('+unit+')',p,23);
+ levels.forEach((lev,i)=>{const x=p+i*155;g.fillStyle=colors[lev];g.fillRect(x,34,18,4);g.fillStyle='#20364a';g.font='13px Arial';g.fillText(lev+' hPa',x+25,41);});
  g.fillStyle='#63778a';g.font='13px Arial';g.fillText(shown[0]?.date||'',p,h-14);g.fillText(shown[shown.length-1]?.date||'',w-p-90,h-14);
 }
 $('nasaFile').addEventListener('change',async ev=>{
@@ -322,14 +322,14 @@ async function loadNasaVerticalWind(){
  const status=$("nasaVerticalWindStatus"),cv=$("nasaVerticalWindChart"),g=cv.getContext("2d"),w=cv.width,h=cv.height,p=55;
  try{
   const levels=[10,30,50],series=await Promise.all(levels.map(async lev=>{const r=await fetch("./data/nasa-gsfc/u60_"+lev+"hpa_60n_ozonewatch.csv?v="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("U60 "+lev+" hPa HTTP "+r.status);const lines=(await r.text()).trim().split(/\r?\n/);return {lev,rows:lines.slice(1).map(line=>{const a=line.split(",");return {date:a[0],v:Number(a[1]),fc:Number(a[2])}}).filter(x=>x.date&&Number.isFinite(x.v)&&x.v>-9000&&x.fc>=0)};}));
-  g.clearRect(0,0,w,h);g.fillStyle="#07182a";g.fillRect(0,0,w,h);
-  const colors={10:"#63dfff",30:"#a85b12",50:"#b69cff"},all=series.flatMap(q=>q.rows.map(x=>x.v-273.15));let min=Math.min(0,...all),max=Math.max(0,...all);if(min===max){min-=1;max+=1;}
+  g.clearRect(0,0,w,h);g.fillStyle="#ffffff";g.fillRect(0,0,w,h);
+  const colors={10:"#087fa5",30:"#a85b12",50:"#6941a5"},all=series.flatMap(q=>q.rows.map(x=>x.v-273.15));let min=Math.min(0,...all),max=Math.max(0,...all);if(min===max){min-=1;max+=1;}
   const y=v=>h-p-(v-min)/(max-min)*(h-2*p);
   for(let i=0;i<5;i++){const v=max-i*(max-min)/4,yy=y(v);g.strokeStyle="#d8e2eb";g.beginPath();g.moveTo(p,yy);g.lineTo(w-p,yy);g.stroke();g.fillStyle="#63778a";g.font="13px Arial";g.fillText(v.toFixed(1),5,yy+4);}
   g.strokeStyle="#a85b12";g.setLineDash([5,5]);g.beginPath();g.moveTo(p,y(0));g.lineTo(w-p,y(0));g.stroke();g.setLineDash([]);
   for(const q of series){const a=q.rows.slice(-120);g.beginPath();a.forEach((x,i)=>{const xx=p+i*(w-2*p)/Math.max(1,a.length-1);if(i===0)g.moveTo(xx,y(x.v-273.15));else g.lineTo(xx,y(x.v-273.15));});g.strokeStyle=colors[q.lev];g.lineWidth=3;g.stroke();}
   let legend="";for(const q of series){const last=q.rows[q.rows.length-1],hist=q.rows.filter(x=>x.fc===0),analysis=hist[hist.length-1],forecast=q.rows.filter(x=>x.fc>0);legend+=q.lev+" hPa: poslední "+last.date+" = "+last.v.toFixed(2)+" m/s"+(last.fc>0?" (předpověď +"+last.fc+" h)":" (analýza)")+"; ";}
-  g.fillStyle="#edf6ff";g.font="bold 14px Arial";g.fillText("U60 na 60° N · m/s · posledních až 120 dní",p,22);
+  g.fillStyle="#20364a";g.font="bold 14px Arial";g.fillText("U60 na 60° N · m/s · posledních až 120 dní",p,22);
   status.innerHTML="<b class=\\"good\\">Vertikální řady NASA Ozone Watch načteny.</b><br>"+legend+"<br>Data s forecast_hour = 0 jsou analýza; kladné forecast_hour označuje předpověď. "+series.map(q=>q.lev+" hPa: "+q.rows.length+" řádků").join(" · ");
  }catch(e){status.innerHTML="<b class=\\"warn\\">Vertikální řady zatím nejsou dostupné.</b> "+String(e.message||e)+". Zkontroluj běh NASA archivační úlohy.";}
 }
@@ -342,8 +342,8 @@ async function loadNasaVerticalTemp(){
    const lines=(await r.text()).trim().split(/\r?\n/);
    return {lev,rows:lines.slice(1).map(line=>{const a=line.split(",");return {date:a[0],v:Number(a[1]),fc:Number(a[2])};}).filter(x=>x.date&&Number.isFinite(x.v)&&x.v>-9000&&x.fc>=0)};
   }));
-  g.clearRect(0,0,w,h);g.fillStyle="#07182a";g.fillRect(0,0,w,h);
-  const colors={10:"#63dfff",30:"#a85b12",50:"#b69cff"},all=series.flatMap(q=>q.rows.map(x=>x.v-273.15));
+  g.clearRect(0,0,w,h);g.fillStyle="#ffffff";g.fillRect(0,0,w,h);
+  const colors={10:"#087fa5",30:"#a85b12",50:"#6941a5"},all=series.flatMap(q=>q.rows.map(x=>x.v-273.15));
   if(!all.length)throw Error("V souborech nejsou platné hodnoty analýzy ani předpovědi.");
   let min=Math.min(...all),max=Math.max(...all);if(min===max){min-=1;max+=1;}
   const y=v=>h-p-(v-min)/(max-min)*(h-2*p);
@@ -351,7 +351,7 @@ async function loadNasaVerticalTemp(){
   for(const q of series){const a=q.rows.slice(-120);g.beginPath();a.forEach((x,i)=>{const xx=p+i*(w-2*p)/Math.max(1,a.length-1);if(i===0)g.moveTo(xx,y(x.v-273.15));else g.lineTo(xx,y(x.v-273.15));});g.strokeStyle=colors[q.lev];g.lineWidth=3;g.stroke();}
   let legend="";
   for(const q of series){const hist=q.rows.filter(x=>x.fc===0),a=hist[hist.length-1],last=q.rows[q.rows.length-1];legend+=q.lev+" hPa: poslední analýza "+(a?a.date+" = "+(a.v-273.15).toFixed(2)+" °C":"není")+(last&&last.fc>0?"; předpověď "+last.date+" = "+(last.v-273.15).toFixed(2)+" °C (+"+last.fc+" h)":"")+"; ";}
-  g.fillStyle="#edf6ff";g.font="bold 14px Arial";g.fillText("Teplota polární čepičky 60–90° N · °C · posledních až 120 dní",p,22);
+  g.fillStyle="#20364a";g.font="bold 14px Arial";g.fillText("Teplota polární čepičky 60–90° N · °C · posledních až 120 dní",p,22);
   status.innerHTML='<b class="good">NASA Ozone Watch · teplotní řady načteny.</b><br>'+legend+series.map(q=>q.lev+" hPa: "+q.rows.length+" řádků").join(" · ")+'<br>Kladný forecast_hour označuje předpověď, nikoli pozorovanou analýzu.';
  }catch(e){status.innerHTML='<b class="warn">Teplotní řady zatím nejsou dostupné.</b> '+String(e.message||e)+'. Zkontroluj běh NASA archivační úlohy.';}
 }
@@ -395,14 +395,14 @@ async function loadNasaMirror(){
  ];
  const parse=t=>{const lines=t.trim().split(/\r?\n/);return lines.slice(1).map(l=>{const a=l.split(',');return {d:a[0],v:Number(a[1]),flags:a[3]||''}}).filter(x=>x.d&&Number.isFinite(x.v));};
  const plot=(id,series,label,unit,zero=false)=>{
-  const cv=$(id),g=cv.getContext('2d'),w=cv.width,h=cv.height,p=48;g.clearRect(0,0,w,h);g.fillStyle='#07182a';g.fillRect(0,0,w,h);
+  const cv=$(id),g=cv.getContext('2d'),w=cv.width,h=cv.height,p=48;g.clearRect(0,0,w,h);g.fillStyle='#ffffff';g.fillRect(0,0,w,h);
   const a=series.slice(-365),vals=a.map(x=>x.v);if(!vals.length){g.fillStyle='#63778a';g.fillText('Bez dat',p,40);return;}
   let min=Math.min(...vals),max=Math.max(...vals);if(zero){min=Math.min(0,min);max=Math.max(0,max)}if(min===max){min-=1;max+=1}
   const y=v=>h-p-(v-min)/(max-min)*(h-2*p);
   for(let i=0;i<5;i++){const v=max-i*(max-min)/4,yy=y(v);g.strokeStyle='#d8e2eb';g.beginPath();g.moveTo(p,yy);g.lineTo(w-p,yy);g.stroke();g.fillStyle='#63778a';g.font='13px Arial';g.fillText(v.toFixed(1),4,yy+4)}
   if(zero&&min<0&&max>0){g.strokeStyle='#a85b12';g.setLineDash([5,5]);g.beginPath();g.moveTo(p,y(0));g.lineTo(w-p,y(0));g.stroke();g.setLineDash([])}
-  g.strokeStyle='#63dfff';g.lineWidth=2.5;g.beginPath();a.forEach((x,i)=>{const xx=p+i*(w-2*p)/Math.max(1,a.length-1);if(i===0)g.moveTo(xx,y(x.v));else g.lineTo(xx,y(x.v))});g.stroke();
-  g.fillStyle='#edf6ff';g.font='bold 14px Arial';g.fillText(label+' ('+unit+')',p,22);g.fillStyle='#63778a';g.font='12px Arial';g.fillText(a[0]?.d||'',p,h-12);g.fillText(a[a.length-1]?.d||'',w-p-90,h-12);
+  g.strokeStyle='#087fa5';g.lineWidth=2.5;g.beginPath();a.forEach((x,i)=>{const xx=p+i*(w-2*p)/Math.max(1,a.length-1);if(i===0)g.moveTo(xx,y(x.v));else g.lineTo(xx,y(x.v))});g.stroke();
+  g.fillStyle='#20364a';g.font='bold 14px Arial';g.fillText(label+' ('+unit+')',p,22);g.fillStyle='#63778a';g.font='12px Arial';g.fillText(a[0]?.d||'',p,h-12);g.fillText(a[a.length-1]?.d||'',w-p-90,h-12);
  };
  try{
   const results=await Promise.all(specs.map(async q=>{const r=await fetch('./data/nasa-gsfc/'+q.file+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error(q.file+' HTTP '+r.status);return {...q,series:parse(await r.text())}}));
@@ -607,13 +607,13 @@ setInterval(refreshX5Infographic,30*60*1000);
   if(!vals.length)return;let lo=Math.min(...vals),hi=Math.max(...vals);if(key==='u'){const m=Math.max(Math.abs(lo),Math.abs(hi),5);lo=-m;hi=m;}else{const pad=Math.max(1,(hi-lo)*.15);lo-=pad;hi+=pad;}if(lo===hi){lo-=1;hi+=1;}
   const x=i=>p.l+i*(w-p.l-p.r)/29,y=v=>h-p.b-(v-lo)/(hi-lo)*(h-p.t-p.b);
   for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,yy=y(v);g.strokeStyle='#d8e2eb';g.beginPath();g.moveTo(p.l,yy);g.lineTo(w-p.r,yy);g.stroke();g.fillStyle='#63778a';g.font='12px Arial';g.textAlign='right';g.fillText(v.toFixed(1)+' '+unit,p.l-8,yy+4);}
-  if(key==='u'&&lo<0&&hi>0){g.strokeStyle='#fff';g.setLineDash([5,5]);g.beginPath();g.moveTo(p.l,y(0));g.lineTo(w-p.r,y(0));g.stroke();g.setLineDash([]);}
+  if(key==='u'&&lo<0&&hi>0){g.strokeStyle='#52677a';g.setLineDash([5,5]);g.beginPath();g.moveTo(p.l,y(0));g.lineTo(w-p.r,y(0));g.stroke();g.setLineDash([]);}
   series.forEach(q=>{const map=new Map(q[key].filter(z=>z.date>=start&&z.date<=end).map(z=>[z.date,convert(num(key==='u'?z.u60_ms:z.temp_k))]));g.strokeStyle=cols[q.l];g.lineWidth=2.5;g.beginPath();let begun=false;days.forEach((d,i)=>{const v=map.get(d);if(!Number.isFinite(v)){begun=false;return;}if(!begun){g.moveTo(x(i),y(v));begun=true;}else g.lineTo(x(i),y(v));});g.stroke();});
   g.textAlign='center';g.fillStyle='#63778a';g.font='12px Arial';[0,7,14,21,29].forEach(i=>g.fillText(days[i].slice(5),x(i),h-20));
   g.textAlign='left';let lx=p.l;[10,30,50].forEach(l=>{g.fillStyle=cols[l];g.fillRect(lx,34,12,12);g.fillStyle='#20364a';g.fillText(l+' hPa',lx+17,45);lx+=115;});
  }
  function emptyImportCanvas(id,title){
-  const c=$(id);if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height;g.clearRect(0,0,w,h);g.fillStyle='#ffffff';g.fillRect(0,0,w,h);g.strokeStyle='#d8e2eb';g.strokeRect(20,20,w-40,h-40);g.fillStyle='#20364a';g.font='bold 18px Arial';g.fillText(title,42,68);g.fillStyle='#63778a';g.font='16px Arial';g.fillText('Zatím nebyl nahrán vlastní datový soubor NASA.',42,108);g.fillText('Nahraj ASCII / CSV export v importním panelu výše.',42,140);
+  const c=$(id);if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height;g.clearRect(0,0,w,h);g.fillStyle='#ffffff';g.fillRect(0,0,w,h);g.strokeStyle='#d8e2eb';g.lineWidth=2;g.strokeRect(20,20,w-40,h-40);g.fillStyle='#20364a';g.font='bold 18px Arial';g.fillText(title,42,68);g.fillStyle='#5b6d7e';g.font='16px Arial';g.fillText('Tento panel čeká na ruční import dat NASA.',42,112);g.fillText('Automatické archivy jsou vykresleny v samostatných grafech výše.',42,145);
  }
  emptyImportCanvas('nasaWindChart','Importovaná časová řada · U60 na 60° N');
  emptyImportCanvas('nasaTempChart','Importovaná časová řada · teplota 60–90° N');
