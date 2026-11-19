@@ -66,6 +66,8 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
  <label>Rychlost <select id="p3dSpeed"><option value="1400">Pomalá</option><option value="800" selected>Normální</option><option value="400">Rychlá</option></select></label>
 </div>
 <canvas id="p3dCanvas" width="1100" height="720" style="display:block;width:100%;height:auto;border:1px solid #315674;border-radius:16px;background:#071a2d;touch-action:pan-y"></canvas>
+<h3>Časový vývoj geopotenciální asymetrie</h3><canvas id="p3dGeoChart" width="1100" height="260" style="display:block;width:100%;height:auto;border:1px solid #315674;border-radius:12px;background:#0b2033;margin-top:10px"></canvas>
+<h3>Časový vývoj vertikálního střihu větru</h3><canvas id="p3dShearChart" width="1100" height="260" style="display:block;width:100%;height:auto;border:1px solid #315674;border-radius:12px;background:#0b2033;margin-top:10px"></canvas>
 <div class="status" id="p3dStatus">Připraveno k načtení tří tlakových hladin.</div>
 <div class="grid">
  <div><div class="unit">10 hPa · horní hladina</div><div class="metric" id="p3d10">—</div><div class="muted">Průměrná teplota vzorků</div></div>
@@ -644,7 +646,7 @@ setInterval(refreshX5Infographic,30*60*1000);
  function shiftDate(d,n){const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);}
  load();setInterval(load,30*60*1000);
 })();
-</script><script src="./polarni-vir-animace.js?v=1"></script><script src="./gfs-polarni-animace.js?v=4"></script><script src="./gfs-polarni-3d.js?v=13" onerror="document.getElementById(\'p3dStatus\').textContent=\'CHYBA: 3D skript se nenačetl. Zkontrolujte cestu k souboru.\'"></script><script>
+</script><script src="./polarni-vir-animace.js?v=1"></script><script src="./gfs-polarni-animace.js?v=4"></script><script src="./gfs-polarni-3d.js?v=14" onerror="document.getElementById(\'p3dStatus\').textContent=\'CHYBA: 3D skript se nenačetl. Zkontrolujte cestu k souboru.\'"></script><script>
 (function(){
  const sources=[
   {id:'Era5',url:'./data/archive-meta.json',label:'ERA5',date:m=>m.files?.['u60_daily.csv']?.last_date,detail:m=>'Záznam do '+(m.files?.['u60_daily.csv']?.last_date||'—')+' · '+(m.files?.['u60_daily.csv']?.rows||'—')+' řádků'},
