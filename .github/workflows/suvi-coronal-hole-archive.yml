@@ -30,6 +30,20 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cp coronal-hole-history.json /tmp/coronal-hole-history.json
+          git restore -- coronal-hole-history.json
+          git pull --rebase origin main
+          cp /tmp/coronal-hole-history.json coronal-hole-history.json
           git add -f coronal-hole-history.json
+          if git diff --cached --quiet; then
+            echo "NOAA archive unchanged after synchronization."
+            exit 0
+          fi
           git commit -m "Update NOAA SUVI coronal-hole archive"
-          git push
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then exit 0; fi
+            echo "Push collision; rebasing and retrying ($attempt)"
+            git pull --rebase origin main
+          done
+          echo "Could not safely publish SUVI archive after three attempts."
+          exit 1
