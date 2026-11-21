@@ -3,8 +3,8 @@
   "status": "success",
   "requested_target_utc": "2026-11-18T12:00:00Z",
   "actual_model_target_utc": "2026-11-18T12:00:00Z",
-  "generated_utc": "2026-11-20T20:16:31Z",
-  "data_age_hours": 56.28,
+  "generated_utc": "2026-11-21T07:05:05Z",
+  "data_age_hours": 67.08,
   "coefficient_fallback_days": 0,
   "fallback_errors": [],
   "note": "Older epochs are explicitly identified; no interpolation or relabeling."
