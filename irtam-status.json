@@ -1,11 +1,16 @@
 {
   "source": "PyIRTAM / GIRO GAMBIT",
-  "status": "success",
-  "requested_target_utc": "2026-11-18T12:00:00Z",
+  "status": "success_with_older_epoch",
+  "requested_target_utc": "2026-11-19T12:00:00Z",
   "actual_model_target_utc": "2026-11-18T12:00:00Z",
-  "generated_utc": "2026-11-21T07:05:05Z",
-  "data_age_hours": 67.08,
-  "coefficient_fallback_days": 0,
-  "fallback_errors": [],
+  "generated_utc": "2026-11-21T19:14:31Z",
+  "data_age_hours": 79.24,
+  "coefficient_fallback_days": 1,
+  "fallback_errors": [
+    {
+      "target_utc": "2026-11-19T12:00:00Z",
+      "error": "unknown IRTAM coefficient file: /opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/PyIRTAM/irtam_coeffs/2026/1119/IRTAM_foF2_COEFFS_20261119_120000.ASC"
+    }
+  ],
   "note": "Older epochs are explicitly identified; no interpolation or relabeling."
 }
