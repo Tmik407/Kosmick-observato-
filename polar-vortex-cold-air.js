@@ -48,15 +48,14 @@ function drawTrack(idx){
  g.fillStyle='#263b4f';g.fillText('Zeměpisná šířka těžiště studené oblasti (< −10 °C)',p.l,15);g.fillText('Čas →',w-75,h-12);
 }
 async function load(){
- const status=$('pvx5ColdStatus');if(status)status.textContent='Načítám teplotu a vítr 850 hPa pro 135 bodů…';
+ const status=$('pvx5ColdStatus');if(status)status.textContent='Načítám společná data GFS pro detekci studeného vzduchu…';
  try{
-  const coords=LAT.flatMap(lat=>LON.map(lon=>({lat,lon}))),res=[];
-  for(let i=0;i<coords.length;i+=45){const q=new URLSearchParams({latitude:coords.slice(i,i+45).map(p=>p.lat).join(','),longitude:coords.slice(i,i+45).map(p=>p.lon).join(','),hourly:fields.join(','),forecast_days:'3',timezone:'GMT',wind_speed_unit:'kmh'});const r=await fetch(API+'?'+q,{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const a=await r.json();res.push(...(Array.isArray(a)?a:[a]));}
-  times=res[0]?.hourly?.time;if(!Array.isArray(times)||!times.length||res.length!==coords.length)throw Error('Neúplná odpověď GFS.');
-  for(const r of res)for(const f of fields)if(!Array.isArray(r.hourly?.[f])||r.hourly[f].length!==times.length)throw Error('Chybí pole '+f);
-  cells=coords.map((p,i)=>({lat:p.lat,lon:p.lon,temp:res[i].hourly.temperature_850hPa,speed:res[i].hourly.wind_speed_850hPa,direction:res[i].hourly.wind_direction_850hPa}));
+  const data=await window.X5GFS.get();times=data.times;
+  const index=new Map(data.points.map((p,i)=>[p.lat+','+p.lon,i]));
+  const coords=LAT.flatMap(lat=>LON.map(lon=>({lat,lon})));
+  cells=coords.map(p=>{const i=index.get(p.lat+','+p.lon),h=data.arr[i].hourly;return {lat:p.lat,lon:p.lon,temp:h.temperature_850hPa,speed:h.wind_speed_850hPa,direction:h.wind_direction_850hPa};});
   track=times.map((_,k)=>analyse(k));
-  if(status)status.innerHTML='<b class="good">Diagnostika studeného vzduchu načtena.</b> 135 bodů · '+times.length+' hodinových kroků · GFS 850 hPa.';
+  if(status)status.innerHTML='<b class="good">Diagnostika studeného vzduchu načtena.</b> '+cells.length+' bodů · '+times.length+' hodinových kroků · '+(data.stale?'uložená data ('+data.cacheAgeHours+' h)':'společná data GFS');
   render();
  }catch(e){if(status)status.innerHTML='<b class="warn">Diagnostiku se nepodařilo načíst:</b> '+String(e.message||e);}
 }
