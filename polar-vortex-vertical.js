@@ -10,7 +10,14 @@ async function run(){
   const data=await window.X5GFS.get();
   if(!Array.isArray(strat.rows)||!Array.isArray(strat.points)||!Array.isArray(strat.times))throw Error('Stratosférický archiv má neplatnou strukturu.');
   const index=new Map(data.points.map((p,i)=>[p.lat+','+p.lon,i]));
-  const ti=0,si=strat.times.length-1,tbody=$('pvx5VerticalBody');
+  const select=$('pv500Time');
+  const requestedIndex=Math.max(0,Math.min(data.times.length-1,Number(select?.value||0)));
+  const targetTime=data.times[requestedIndex];
+  const targetMs=Date.parse(targetTime+'Z');
+  const si=strat.times.reduce((best,t,i)=>Math.abs(Date.parse(t+'Z')-targetMs)<Math.abs(Date.parse(strat.times[best]+'Z')-targetMs)?i:best,0);
+  const ti=requestedIndex,tbody=$('pvx5VerticalBody');
+  const stratTime=strat.times[si];
+  const exactMatch=stratTime===targetTime;
   const means=levels.map(level=>{
    const k='temperature_'+level+'hPa',w='wind_speed_'+level+'hPa',z='geopotential_height_'+level+'hPa';
    const valid=strat.rows.map(r=>({temp:r.hourly?.[k]?.[si],wind:r.hourly?.[w]?.[si],z:r.hourly?.[z]?.[si]})).filter(x=>Number.isFinite(x.temp)&&Number.isFinite(x.wind)&&Number.isFinite(x.z));
@@ -23,9 +30,10 @@ async function run(){
   if(tbody)tbody.innerHTML=rows.join('');
   const sig=$('pvx5OutbreakSignal');
   if(sig){const trough=delta<=-60,colder=tempDelta<=-2;let level='Bez výrazného lokálního signálu v tomto bodovém srovnání.';if(trough&&colder)level='Zesílený screeningový signál: střední Evropa má nižší geopotenciál i chladnější teplotu než průměr západního a východního bodu.';else if(trough||colder)level='Částečný screeningový signál: splněna je pouze jedna ze dvou podmínek (geopotenciál / teplota).';sig.innerHTML='<b>'+level+'</b><br>Odchylka geopotenciálu střední Evropy od průměru západu a východu: '+FMT(delta,0)+' m. Teplotní rozdíl: '+FMT(tempDelta,1)+' °C. Platnost 500 hPa: '+data.times[ti]+' UTC. <br><b>Výsledek není pravděpodobnost vpádu.</b>';}
-  const stamp=$('pvx5VerticalStamp');if(stamp)stamp.textContent='Stratosféra: '+strat.times[si]+' UTC · cyklus '+(strat.cycle_utc||'neuveden')+' | Troposféra: '+data.times[ti]+' UTC';
-  if(status)status.innerHTML='<b class="good">Vertikální přehled sestaven.</b> Tři stratosférické hladiny a jedna troposférická hladina; '+(data.stale?'troposférická data jsou z uložené kopie.':'troposférická data sdílí evropské GFS pole.');
+  const stamp=$('pvx5VerticalStamp');if(stamp)stamp.textContent='Stratosféra: '+stratTime+' UTC · cyklus '+(strat.cycle_utc||'neuveden')+' | Troposféra: '+data.times[ti]+' UTC'+(exactMatch?' · shodná platnost':' · nejbližší dostupný stratosférický krok; čas se liší');
+  if(status)status.innerHTML='<b class="good">Vertikální přehled sestaven.</b> Tři stratosférické hladiny a jedna troposférická hladina; '+(exactMatch?'časová platnost je sjednocena.':'nejbližší dostupné časy jsou výslovně rozlišeny.')+(data.stale?' Troposférická data jsou z uložené kopie.':' Troposférická data pocházejí ze společného evropského archivu NOAA GFS.');
  }catch(err){if(status)status.innerHTML='<b class="warn">Vertikální diagnostiku nelze dokončit:</b> '+String(err.message||err);}
 }
+const timeSelect=$('pv500Time');if(timeSelect)timeSelect.addEventListener('change',run);
 run();
 })();
