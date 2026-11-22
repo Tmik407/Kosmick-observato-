@@ -169,6 +169,87 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
  <p class="muted">Metodické omezení: aktuální archiv obsahuje 40 bodů v pěti zeměpisných šířkách a osmi délkách. Z toho lze vytvořit pouze hrubý odhad asymetrie a centra geopotenciální anomálie. Přesné určení centra, rozdělení víru a diagnostika náhlého stratosférického oteplení vyžadují hustší prostorové pole, ideálně geopotenciál nebo potenciální vorticitu na pravidelné mřížce.</p>
 </section>
 
+<section class="panel" id="polarVortexAdvanced">
+<h2>Pokročilá diagnostika tvaru a šíření anomálií · X-5</h2>
+<p class="muted">Automatický výpočet z archivovaných polí geopotenciální výšky NOAA GFS na 10 / 30 / 50 hPa. Poměr os vychází z prostorového rozložení záporných odchylek vůči průměru stejné zeměpisné šířky. Vzhledem k síti 40 bodů jde o orientační geometrický indikátor, nikoli o přesnou detekci okraje víru či rozdělení.</p>
+<div class="status" id="pvx5AdvancedStatus">Čekám na načtení dat…</div>
+<div class="status" id="pvx5AdvancedTime">—</div>
+<div class="controls"><button type="button" id="pvx5AdvancedRefresh">↻ Přepočítat diagnostiku</button></div>
+<h3>Geometrie polárního víru</h3>
+<div style="overflow-x:auto"><table><thead><tr><th>Hladina</th><th>Poměr hlavní / vedlejší osy</th><th>Odhad středu anomálie</th><th>Orientace hlavní osy</th><th>Vzorky</th></tr></thead><tbody id="pvx5AdvancedBody"><tr><td colspan="5">Čekám na data…</td></tr></tbody></table></div>
+<div class="status" id="pvx5Signal">Geometrický indikátor čeká na data.</div>
+<h3>Časový vývoj deformace</h3>
+<div style="overflow-x:auto"><table><thead><tr><th>Hladina</th><th>Začátek</th><th>Střed období</th><th>Poslední krok</th><th>Interpretace změny</th></tr></thead><tbody id="pvx5TrendBody"><tr><td colspan="5">Čekám na data…</td></tr></tbody></table></div>
+<div class="status" id="pvx5Downward">Vyhodnocení vertikálního souběhu čeká na data.</div>
+<p class="muted">Omezení: 17 kroků v krátkém běhu GFS neprokazuje sestupnou propagaci stratosférického signálu. Rozdělení víru vyžaduje hustší pole geopotenciálu nebo potenciální vorticity a ověření dvou samostatných center. Pravděpodobnost arktického vpádu do Evropy nelze odvodit pouze ze stratosféry; vyžaduje návazná troposférická pole a ansámblovou předpověď.</p>
+</section>
+
+
+<section class="panel" id="pvx5Map500">
+<h2>Synoptická mapa Evropy · 500 hPa</h2>
+<p class="muted">Pole geopotenciální výšky 500 hPa z NCEP GFS přes Open-Meteo. Mapa skládá síť 9 × 15 bodů nad Evropou a vykresluje barevné pole i orientační izohypsy. Síť je záměrně označena jako hrubší interpolované zobrazení, nikoli jako plnohodnotný GRIB synoptický rozbor.</p>
+<div class="controls" style="align-items:end"><label><b>Čas předpovědi (UTC)</b><select id="pvmapTime"><option value="0">Načítám…</option></select></label><button type="button" id="pvmapPlay">▶ Přehrát vývoj</button><button type="button" id="pvmapRefresh">↻ Obnovit mapu</button></div><div class="controls"><label style="width:100%"><b>Časová osa</b><input id="pvmapRange" type="range" min="0" max="0" value="0" step="1" style="width:100%"></label></div>
+<div class="status" id="pvmapStatus">Načítám evropské pole GFS…</div>
+<div class="status" id="pvmapStamp">—</div>
+<canvas id="pvmapCanvas" width="1050" height="650" style="display:block;width:100%;height:auto;background:#f4f8fc;border:1px solid #d4e0eb;border-radius:12px"></canvas>
+<div class="muted">Legenda: barvy = geopotenciální výška (m); čáry a popisky = izohypsy (m). Mapa pokrývá přibližně 40–80° s. š. a 30° z. d. až 40° v. d. Vykreslení mezi body je interpolované. Nezobrazuje tlak u země ani ansámblovou nejistotu.</div>
+</section>
+
+<section class="panel" id="pvx5Map850">
+<h2>Teplotní mapa Evropy · 850 hPa</h2>
+<p class="muted">Teplota vzduchu na hladině 850 hPa z modelu NCEP GFS přes Open-Meteo. Síť 9 × 15 bodů (5°); barvy ukazují teplotu a čáry orientační izotermy. Interpolace zjemňuje zobrazení, ale nezvyšuje skutečné prostorové rozlišení dat.</p>
+<div class="controls" style="align-items:end"><label><b>Čas předpovědi (UTC)</b><select id="pv850mapTime"><option value="0">Načítám…</option></select></label><button type="button" id="pv850mapPlay">▶ Přehrát vývoj</button><button type="button" id="pv850mapRefresh">↻ Obnovit mapu</button></div>
+<div class="controls"><label style="width:100%"><b>Časová osa</b><input id="pv850mapRange" type="range" min="0" max="0" value="0" step="1" style="width:100%"></label></div>
+<div class="status" id="pv850mapStatus">Načítám teplotní pole GFS…</div><div class="status" id="pv850mapStamp">—</div>
+<canvas id="pv850mapCanvas" width="1050" height="650" style="display:block;width:100%;height:auto;background:#f4f8fc;border:1px solid #d4e0eb;border-radius:12px"></canvas>
+<div class="muted">Legenda: barvy a izotermy = teplota v °C. Rozsah mapy 40–80° s. š. a 30° z. d. až 40° v. d. Data jsou hodinovou modelovou předpovědí, nikoli měřením. Nejde o mapu teploty u zemského povrchu.</div>
+</section>
+
+<section class="panel" id="pvx5ArcticAir">
+<h2>Detekce studeného vzduchu · 850 hPa</h2>
+<p class="muted">Automatická diagnostika teplotních oblastí pod −5, −10 a −15 °C v evropské síti 5°. Sleduje jejich rozsah, polohu teplotního těžiště a změnu polohy v čase. Směr a rychlost větru se zobrazují jako doplňkový kontext; posun těžiště není fyzikální trajektorie vzduchové hmoty ani předpověď počasí u země.</p>
+<div class="status" id="pvx5ColdStatus">Načítám teplotu a vítr 850 hPa…</div>
+<div class="status" id="pvx5ColdStamp">—</div>
+<div class="grid">
+ <div><div class="unit">Minimum teploty 850 hPa</div><div class="metric" id="pvx5ColdMin">—</div></div>
+ <div><div class="unit">Maximum teploty 850 hPa</div><div class="metric" id="pvx5ColdMax">—</div></div>
+ <div><div class="unit">Pod −5 °C</div><div class="metric" id="pvx5ColdArea5">—</div></div>
+ <div><div class="unit">Pod −10 °C</div><div class="metric" id="pvx5ColdArea10">—</div></div>
+ <div><div class="unit">Pod −15 °C</div><div class="metric" id="pvx5ColdArea15">—</div></div>
+</div>
+<h3>Mapa studených bodů a směru proudění · 850 hPa</h3><canvas id="pvx5ColdMap" width="1000" height="560" style="display:block;width:100%;height:auto;background:#f4f8fc;border:1px solid #d4e0eb;border-radius:12px"></canvas><div class="muted">Modrá barva: teplotní body pod −5, −10 a −15 °C (tmavší = chladnější). Šipky ukazují směr, kam vítr proudí; v datech GFS je směr větru udáván jako směr, odkud přichází. Červený kruh označuje teplotní těžiště oblasti pod −10 °C.</div><h3>Poloha teplotního těžiště studené oblasti (pod −10 °C)</h3>
+<div class="status" id="pvx5ColdCenter">—</div>
+<canvas id="pvx5ColdTrack" width="1000" height="300" style="display:block;width:100%;height:auto;background:#f4f8fc;border:1px solid #d4e0eb;border-radius:12px"></canvas>
+<div class="muted">Rozsah je podíl platných uzlových bodů s teplotou pod prahem, nikoli přesná plocha v km². Těžiště je teplotně vážený průměr souřadnic. Posun těžiště mezi kroky je diagnostická změna rozložení, nikoli sledování konkrétní vzduchové částice. Nízká teplota sama neurčuje arktický původ vzduchu; k jeho určení je nutná trajektorie a analýza vzduchové hmoty. Síť 5° je příliš hrubá pro lokální předpověď.</div>
+</section>
+<section class="panel" id="polarTroposphere500">
+<h2>Troposférická návaznost · geopotenciál 500 hPa</h2>
+<p class="muted">Doplňkový výhled pro propojení stratosférické diagnostiky s počasím v Evropě. Pět pevných srovnávacích bodů sleduje geopotenciál, teplotu a vítr na hladinách 500 a 850 hPa. Časový horizont 72 hodin je sjednocen s mapou. Zdroj: NCEP GFS prostřednictvím Open-Meteo GFS API; hodinová modelová předpověď, nikoli měření.</p>
+<div class="status" id="pv500Status">Čekám na načtení dat…</div>
+<div class="controls" style="align-items:end">
+<label><b>Čas předpovědi (UTC)</b><select id="pv500Time"><option value="0">Načítám…</option></select></label>
+<button type="button" id="pv500Refresh">↻ Obnovit data 500 hPa</button>
+</div>
+<div class="status" id="pv500Stamp">—</div>
+<div style="overflow-x:auto"><table><thead><tr><th>Srovnávací oblast</th><th>Geopotenciál 500 hPa</th><th>Teplota 500 hPa</th><th>Rychlost větru</th><th>Směr větru</th><th>Geopotenciál 850 hPa</th><th>Teplota 850 hPa</th><th>Vítr 850 hPa</th></tr></thead><tbody id="pv500Body"><tr><td colspan="8">Čekám na data…</td></tr></tbody></table></div>
+<h3>Vývoj geopotenciální výšky 500 hPa</h3>
+<canvas id="pv500Chart" width="1100" height="360" style="display:block;width:100%;height:auto;background:#fff;border:1px solid #d4e0eb;border-radius:12px"></canvas>
+<div class="status" id="pv500Interpretation">Interpretace čeká na data.</div>
+<p class="muted">Orientační indikátor porovnává střední Evropu se západní a východní Evropou. Nízký geopotenciál může souviset s brázdou nízkého tlaku, ale samotný bodový rozdíl nepotvrzuje arktický vpád, sněžení ani mráz. Pro spolehlivou zimní prognózu jsou nutné mapy celé oblasti, tlak u země, teplota v nižších hladinách a ansámblová nejistota. Tento panel proto nevypočítává falešnou procentuální pravděpodobnost.</p>
+</section>
+
+
+<section class="panel" id="pvx5Vertical">
+<h2>Vertikální propojení 10–500 hPa · diagnostika X-5</h2>
+<p class="muted">Společný přehled stratosféry a troposféry. Hladiny 10/30/50 hPa vycházejí z archivovaného běhu NOAA GFS (40 bodů); 500 hPa z hodinové předpovědi NCEP GFS pro pět evropských srovnávacích lokalit. Nejde o homogenní hustou mapu ani o přímé měření.</p>
+<div class="status" id="pvx5VerticalStatus">Načítám vertikální profil…</div>
+<div class="status" id="pvx5VerticalStamp">—</div>
+<div style="overflow-x:auto"><table><thead><tr><th>Hladina</th><th>Teplota / geopotenciál</th><th>Vítr</th><th>Zdroj a interpretace</th></tr></thead><tbody id="pvx5VerticalBody"><tr><td colspan="4">Čekám na data…</td></tr></tbody></table></div>
+<h3>Orientační signál arktického vpádu do střední Evropy</h3>
+<div class="status" id="pvx5OutbreakSignal">Vyhodnocení čeká na data.</div>
+<p class="muted">Signál je pouze screeningový: porovnává geopotenciál a teplotu na 500 hPa ve střední Evropě vůči západu a východu. Bez hustého pole, teploty v nižších hladinách, tlaku u země a ansámblu nelze potvrdit vpád studeného vzduchu ani vypočítat jeho pravděpodobnost. Stratosférický stav sám o sobě není předpovědí počasí.</p>
+</section>
+
 <section class="panel"><h2>Archiv měření a časové řady</h2>
 <p class="muted">Automaticky stahovaný denní archiv ERA5 od roku 1959. Jde o reanalýzu založenou na pozorováních a modelu, nikoli o přímé měření jedním přístrojem. Aktualizace archivu probíhá denně; datum posledního záznamu se zobrazuje samostatně.</p>
 <div class="grid">
@@ -728,7 +809,11 @@ setInterval(refreshX5Infographic,30*60*1000);
  function shiftDate(d,n){const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);}
  load();setInterval(load,30*60*1000);
 })();
-</script><script src="./polarni-vir-animace.js?v=1"></script><script src="/Kosmick-observato-/gfs-polarni-animace.js?v=11"></script><script src="/Kosmick-observato-/gfs-vortex-comparison.js?v=4"></script><script src="./gfs-polarni-3d.js?v=22" onerror="document.getElementById(\'p3dStatus\').textContent=\'CHYBA: 3D skript se nenačetl. Zkontrolujte cestu k souboru.\'"></script><script>
+</script><script src="./polar-vortex-advanced.js?v=1"></script><script src="./polar-vortex-troposphere.js?v=3"></script>
+<script src="./polar-vortex-map500.js?v=3"></script>
+<script src="./polar-vortex-map850.js?v=4"></script>
+<script src="./polar-vortex-cold-air.js?v=1"></script>
+<script src="./polar-vortex-vertical.js?v=1"></script><script src="./polarni-vir-animace.js?v=1"></script><script src="/Kosmick-observato-/gfs-polarni-animace.js?v=11"></script><script src="/Kosmick-observato-/gfs-vortex-comparison.js?v=4"></script><script src="./gfs-polarni-3d.js?v=22" onerror="document.getElementById(\'p3dStatus\').textContent=\'CHYBA: 3D skript se nenačetl. Zkontrolujte cestu k souboru.\'"></script><script>
 (function(){
  const sources=[
   {id:'Era5',url:'./data/archive-meta.json',label:'ERA5',date:m=>m.files?.['u60_daily.csv']?.last_date,detail:m=>'Záznam do '+(m.files?.['u60_daily.csv']?.last_date||'—')+' · '+(m.files?.['u60_daily.csv']?.rows||'—')+' řádků'},
