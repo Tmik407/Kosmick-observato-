@@ -13,8 +13,8 @@ function analyse(k){
  const u=mean(windPts.map(p=>-p.w*Math.sin(p.dir*Math.PI/180))),v=mean(windPts.map(p=>-p.w*Math.cos(p.dir*Math.PI/180)));
  return {min:min.t,max:Math.max(...valid.map(p=>p.t)),coldest:min,n:valid.length,a5:100*valid.filter(p=>p.t< -5).length/valid.length,a10:100*cold.length/valid.length,a15:100*valid.filter(p=>p.t< -15).length/valid.length,center,wind:mean(windPts.map(p=>p.w)),windDir:(Math.atan2(-u,-v)*180/Math.PI+360)%360,valid};
 }
-function render(){
- if(!times.length)return;const idx=Math.max(0,Math.min(times.length-1,Number($('pv850mapTime')?.value||$('pv500Time')?.value||0))),d=analyse(idx);
+function render(forcedIndex){
+ if(!times.length)return;const selected=forcedIndex===undefined?Number($('pv850mapTime')?.value||$('pv500Time')?.value||0):Number(forcedIndex);const idx=Math.max(0,Math.min(times.length-1,selected)),d=analyse(idx);
  $('pvx5ColdMin').textContent=fmt(d.min)+' °C';$('pvx5ColdMax').textContent=fmt(d.max)+' °C';
  $('pvx5ColdArea5').textContent=fmt(d.a5,0)+' %';$('pvx5ColdArea10').textContent=fmt(d.a10,0)+' %';$('pvx5ColdArea15').textContent=fmt(d.a15,0)+' %';
  $('pvx5ColdStamp').textContent='Platnost '+times[idx]+' UTC · '+d.n+' platných bodů z '+LAT.length*LON.length;
@@ -60,5 +60,7 @@ async function load(){
  }catch(e){if(status)status.innerHTML='<b class="warn">Diagnostiku se nepodařilo načíst:</b> '+String(e.message||e);}
 }
 const sel=$('pv850mapTime'),tab=$('pv500Time'),refresh=$('pv850mapRefresh');
-if(sel)sel.addEventListener('change',render);if(tab)tab.addEventListener('change',render);if(refresh)refresh.addEventListener('click',load);load();
+if(sel)sel.addEventListener('change',()=>render());if(tab)tab.addEventListener('change',()=>render());
+window.addEventListener('x5-map-time',e=>render(e.detail?.index));
+if(refresh)refresh.addEventListener('click',load);load();
 })();
