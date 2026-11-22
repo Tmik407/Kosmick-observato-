@@ -207,7 +207,7 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
 
 <section class="panel" id="pvx5ArcticAir">
 <h2>Detekce studeného vzduchu · 850 hPa</h2>
-<p class="muted">Automatická diagnostika teplotních oblastí pod −5, −10 a −15 °C v evropské síti 5°. Sleduje jejich rozsah, polohu teplotního těžiště a změnu polohy v čase. Směr a rychlost větru se zobrazují jako doplňkový kontext; posun těžiště není fyzikální trajektorie vzduchové hmoty ani předpověď počasí u země.</p>
+<p class="muted">Automatická diagnostika teplotních oblastí pod −5, −10 a −15 °C v rozšířené síti 5° (30–90° s. š., 60° z. d. až 60° v. d.). Procentní rozsah je plošně vážen kosinem zeměpisné šířky. Sleduje také okrajové body, polohu těžiště a změnu polohy v čase. Posun těžiště není fyzikální trajektorie vzduchové hmoty ani předpověď počasí u země.</p>
 <div class="status" id="pvx5ColdStatus">Načítám teplotu a vítr 850 hPa…</div>
 <div class="status" id="pvx5ColdStamp">—</div>
 <div class="grid">
@@ -217,10 +217,10 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
  <div><div class="unit">Pod −10 °C</div><div class="metric" id="pvx5ColdArea10">—</div></div>
  <div><div class="unit">Pod −15 °C</div><div class="metric" id="pvx5ColdArea15">—</div></div>
 </div>
-<h3>Mapa studených bodů a směru proudění · 850 hPa</h3><canvas id="pvx5ColdMap" width="1000" height="560" style="display:block;width:100%;height:auto;background:#f4f8fc;border:1px solid #d4e0eb;border-radius:12px"></canvas><div class="muted">Modrá barva: teplotní body pod −5, −10 a −15 °C (tmavší = chladnější). Šipky ukazují směr, kam vítr proudí; v datech GFS je směr větru udáván jako směr, odkud přichází. Červený kruh označuje teplotní těžiště oblasti pod −10 °C.</div><h3>Poloha teplotního těžiště studené oblasti (pod −10 °C)</h3>
-<div class="status" id="pvx5ColdCenter">—</div>
+<h3>Mapa studených bodů a směru proudění · 850 hPa</h3><canvas id="pvx5ColdMap" width="1000" height="560" style="display:block;width:100%;height:auto;background:#f4f8fc;border:1px solid #d4e0eb;border-radius:12px"></canvas><div class="muted">Mapa pokrývá 30–90° s. š. a 60° z. d. až 60° v. d. Modrá barva: teplotní body pod −5, −10 a −15 °C (tmavší = chladnější). Šipky ukazují směr, kam vítr proudí. Červený kruh označuje plošně vážené teplotní těžiště; červený rám označuje výskyt studených bodů na okraji sítě.</div><h3>Poloha teplotního těžiště studené oblasti (pod −10 °C)</h3>
+<div class="status" id="pvx5ColdCenter">—</div><div class="status" id="pvx5ColdEdge">Kontrola okrajů sítě…</div>
 <canvas id="pvx5ColdTrack" width="1000" height="300" style="display:block;width:100%;height:auto;background:#f4f8fc;border:1px solid #d4e0eb;border-radius:12px"></canvas>
-<div class="muted">Rozsah je podíl platných uzlových bodů s teplotou pod prahem, nikoli přesná plocha v km². Těžiště je teplotně vážený průměr souřadnic. Posun těžiště mezi kroky je diagnostická změna rozložení, nikoli sledování konkrétní vzduchové částice. Nízká teplota sama neurčuje arktický původ vzduchu; k jeho určení je nutná trajektorie a analýza vzduchové hmoty. Síť 5° je příliš hrubá pro lokální předpověď.</div>
+<div class="muted">Rozsah je plošně vážený podíl uzlových bodů (váha cos zeměpisné šířky), nikoli přesná plocha v km². Těžiště je plošně i teplotně vážený průměr souřadnic. Posun těžiště mezi kroky je diagnostická změna rozložení, nikoli sledování konkrétní vzduchové částice. Nízká teplota sama neurčuje arktický původ vzduchu; k jeho určení je nutná trajektorie a analýza vzduchové hmoty. Síť 5° je příliš hrubá pro lokální předpověď.</div>
 </section>
 <section class="panel" id="polarTroposphere500">
 <h2>Troposférická návaznost · geopotenciál 500 hPa</h2>
