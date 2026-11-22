@@ -19,15 +19,11 @@ async function getJSON(url){
  if(!r.ok)throw Error('HTTP '+r.status);return r.json();
  }
 async function run(){
- const status=$('pvx5VerticalStatus');if(status)status.textContent='Načítám společný stratosférický archiv a evropské pole 500 hPa…';
+ const status=$('pvx5VerticalStatus');if(status)status.textContent='Načítám stratosférický archiv a společná GFS data…';
  try{
-  const [strat,raw]=await Promise.all([
-   getJSON('./data/polar-vortex/latest.json?vertical='+Date.now()),
-   getJSON(API+'?'+new URLSearchParams({latitude:sites.map(x=>x.lat).join(','),longitude:sites.map(x=>x.lon).join(','),hourly:'geopotential_height_500hPa,temperature_500hPa,wind_speed_500hPa',forecast_days:'7',timezone:'GMT',wind_speed_unit:'kmh'}))
-  ]);
+  const [strat,data]=await Promise.all([getJSON('./data/polar-vortex/latest.json?vertical='+Date.now()),window.X5GFS.get()]);
   if(!Array.isArray(strat.rows)||!Array.isArray(strat.points)||!Array.isArray(strat.times))throw Error('Stratosférický archiv má neplatnou strukturu.');
-  const arr=Array.isArray(raw)?raw:[raw];if(arr.length!==sites.length)throw Error('API nevrátilo všech pět evropských bodů.');
-  const t=arr[0]?.hourly?.time;if(!Array.isArray(t)||!t.length)throw Error('Chybí časová řada 500 hPa.');
+  const offset=data.gridRows*data.gridCols,arr=sites.map((_,i)=>data.arr[offset+i]),t=data.times;
   const ti=0,si=strat.times.length-1,tbody=$('pvx5VerticalBody');
   const means=levels.map(level=>{
    const k='temperature_'+level+'hPa',w='wind_speed_'+level+'hPa',z='geopotential_height_'+level+'hPa';
@@ -41,14 +37,13 @@ async function run(){
   if(tbody)tbody.innerHTML=rows.join('');
   const sig=$('pvx5OutbreakSignal');
   if(sig){
-   const trough=delta<=-60, colder=tempDelta<=-2;
-   let level='Bez výrazného lokálního signálu v tomto bodovém srovnání.';
+   const trough=delta<=-60,colder=tempDelta<=-2;let level='Bez výrazného lokálního signálu v tomto bodovém srovnání.';
    if(trough&&colder)level='Zesílený screeningový signál: střední Evropa má nižší geopotenciál i chladnější teplotu než průměr západního a východního bodu.';
    else if(trough||colder)level='Částečný screeningový signál: splněna je pouze jedna ze dvou podmínek (geopotenciál / teplota).';
    sig.innerHTML='<b>'+level+'</b><br>Odchylka geopotenciálu střední Evropy od průměru západu a východu: '+FMT(delta,0)+' m. Teplotní rozdíl: '+FMT(tempDelta,1)+' °C. Platnost 500 hPa: '+t[ti]+' UTC. <br><b>Výsledek není pravděpodobnost vpádu.</b>';
   }
   const stamp=$('pvx5VerticalStamp');if(stamp)stamp.textContent='Stratosféra: '+strat.times[si]+' UTC · cyklus '+(strat.cycle_utc||'neuveden')+' | Troposféra: '+t[ti]+' UTC';
-  if(status)status.innerHTML='<b class="good">Vertikální přehled sestaven.</b> Tři stratosférické hladiny a jedna troposférická hladina; zdroje a časové platnosti jsou uvedeny odděleně.';
+  if(status)status.innerHTML='<b class="good">Vertikální přehled sestaven.</b> Tři stratosférické hladiny a jedna troposférická hladina; GFS sdíleno jedním požadavkem.'+(data.stale?' Použita uložená data.':'');
  }catch(err){if(status)status.innerHTML='<b class="warn">Vertikální diagnostiku nelze dokončit:</b> '+String(err.message||err);}
 }
 run();
