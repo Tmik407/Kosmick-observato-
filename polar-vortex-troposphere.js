@@ -64,17 +64,15 @@ async function x5QueuedFetch(url,init={}){
  return task;
 }
 async function load(){
- const status=$('pv500Status');if(status)status.textContent='Načítám geopotenciál, teplotu a vítr na 500 hPa z modelu GFS…';
+ const status=$('pv500Status');if(status)status.textContent='Načítám společná GFS data 500/850 hPa…';
  try{
-  const q=new URLSearchParams({latitude:points.map(p=>p.lat).join(','),longitude:points.map(p=>p.lon).join(','),hourly:fields.join(','),forecast_days:'3',timezone:'GMT',wind_speed_unit:'kmh'});
-  const r=await x5QueuedFetch('https://api.open-meteo.com/v1/gfs',{method:'POST',body:q,cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);
-  const raw=await r.json(),arr=Array.isArray(raw)?raw:[raw];if(arr.length!==points.length)throw Error('Počet vrácených lokalit neodpovídá požadavku.');
-  const times=arr[0]?.hourly?.time;if(!Array.isArray(times)||!times.length)throw Error('V odpovědi chybí hodinová časová řada.');
-  arr.forEach((x,i)=>{for(const f of fields)if(!Array.isArray(x.hourly?.[f])||x.hourly[f].length!==times.length)throw Error('Chybí proměnná '+f+' pro '+points[i].name);});
+  const data=await window.X5GFS.get(),offset=data.gridRows*data.gridCols;
+  const arr=points.map((p,i)=>data.arr[offset+i]);
+  const times=data.times;
   dataset={times,locations:arr.map((x,i)=>({...points[i],hourly:x.hourly}))};
   const select=$('pv500Time');if(select){select.innerHTML='';times.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t.replace('T',' ')+' UTC';select.appendChild(o);});select.value='0';}
-  render();if(status)status.innerHTML='<b class="good">Data GFS na 500 hPa načtena.</b> '+points.length+' lokalit · '+times.length+' hodinových kroků. Časová osa sjednocena s mapou 500 hPa. Jednotky: m, °C, km/h.';
- }catch(e){if(status)status.innerHTML='<b class="warn">Data 500 hPa se nepodařilo načíst:</b> '+String(e.message||e)+'. Zkontrolujte připojení a dostupnost veřejného API.';}
+  render();if(status)status.innerHTML='<b class="good">Společná data GFS načtena.</b> 5 srovnávacích lokalit · '+times.length+' hodinových kroků · '+(data.stale?'uložená data':'aktuální GFS');
+ }catch(e){if(status)status.innerHTML='<b class="warn">Data 500 hPa se nepodařilo načíst:</b> '+String(e.message||e);}
 }
 const s=$('pv500Time');if(s)s.addEventListener('change',render);const b=$('pv500Refresh');if(b)b.addEventListener('click',load);load();
 })();
