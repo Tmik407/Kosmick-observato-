@@ -5,7 +5,7 @@ const sites=[{name:'Severní Atlantik',lat:60,lon:-20},{name:'Arktida / sever Sk
 const fields=['geopotential_height_500hPa','temperature_500hPa','wind_speed_500hPa','wind_direction_500hPa','geopotential_height_850hPa','temperature_850hPa','wind_speed_850hPa','wind_direction_850hPa'];
 const key='x5-gfs:shared-europe-135-v2',MAX_AGE=60*60*1000;
 let pending=null,memory=null;
-function cached(){try{return JSON.parse(localStorage.getItem(key)||'null');}catch(_){return null;}}
+function cached(){try{return JSON.parse(localStorage.getItem(key)||localStorage.getItem('x5-gfs:shared-europe-v1')||'null');}catch(_){return null;}}
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function fetchChunk(points,offset){
  const q=new URLSearchParams({latitude:points.map(p=>p.lat).join(','),longitude:points.map(p=>p.lon).join(','),hourly:fields.join(','),forecast_days:'3',timezone:'GMT',wind_speed_unit:'kmh'});
@@ -38,14 +38,20 @@ async function request(){
  return data;
 }
 function get(options={}){
- if(memory&&!options.refresh&&Date.now()-Date.parse(memory.updatedAt)<MAX_AGE)return Promise.resolve(memory);
+ if(memory&&!options.refresh)return Promise.resolve(memory);
  if(pending)return pending;
  const old=cached();
- if(old?.data&&!options.refresh&&Date.now()-old.at<MAX_AGE){memory=old.data;return Promise.resolve(memory);}
- pending=request().catch(err=>{
-  if(old?.data){const d={...old.data,stale:true,cacheAgeHours:Math.round((Date.now()-old.at)/3600000*10)/10,warning:String(err.message||err)};memory=d;return d;}
+ if(old?.data&&!options.refresh){
+  // Show the last successful forecast immediately; refresh it in the background.
+  const d={...old.data,stale:true,cacheAgeHours:Math.round((Date.now()-(old.at||0))/3600000*10)/10};
+  memory=d;
+  pending=request().then(fresh=>{memory=fresh;return fresh;}).catch(()=>d).finally(()=>{pending=null;});
+  return Promise.resolve(d);
+ }
+ pending=request().then(d=>{memory=d;return d;}).catch(err=>{
+  if(old?.data){const d={...old.data,stale:true,cacheAgeHours:Math.round((Date.now()-(old.at||0))/3600000*10)/10,warning:String(err.message||err)};memory=d;return d;}
   throw err;
- }).then(d=>{memory=d;return d;}).finally(()=>{pending=null;});
+ }).finally(()=>{pending=null;});
  return pending;
 }
 function clear(){try{localStorage.removeItem(key);}catch(_){}pending=null;memory=null;}
