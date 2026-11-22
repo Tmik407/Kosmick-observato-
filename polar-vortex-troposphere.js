@@ -40,7 +40,7 @@ async function x5QueuedFetch(url,init){
  const run=async()=>{let last;for(let attempt=0;attempt<4;attempt++){try{const response=await fetch(url,init);if(response.status===429){last=new Error('HTTP 429 – veřejné API omezuje četnost požadavků');if(attempt<3){await new Promise(r=>setTimeout(r,[3000,7000,15000][attempt]));continue;}}return response;}catch(e){last=e;if(attempt<3)await new Promise(r=>setTimeout(r,[1500,4000,9000][attempt]));}}throw last||new Error('Požadavek se nezdařil.');};
  const previous=window.__x5OpenMeteoQueue||Promise.resolve();
  const task=previous.then(run,run);
- window.__x5OpenMeteoQueue=task.then(()=>new Promise(r=>setTimeout(r,8000)),()=>new Promise(r=>setTimeout(r,8000)));
+ window.__x5OpenMeteoQueue=task.then(()=>new Promise(r=>setTimeout(r,2200)),()=>new Promise(r=>setTimeout(r,2200)));
  return task;
 }
 async function load(){
