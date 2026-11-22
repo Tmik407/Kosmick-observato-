@@ -2,7 +2,13 @@
 const $=id=>document.getElementById(id),FMT=(v,d=1)=>Number.isFinite(v)?v.toFixed(d).replace('.',','):'—';
 const levels=[10,30,50],API='https://api.open-meteo.com/v1/gfs';
 const sites=[{name:'Severní Atlantik',lat:60,lon:-20},{name:'Severní Skandinávie',lat:70,lon:20},{name:'Západní Evropa',lat:50,lon:-10},{name:'Střední Evropa',lat:50,lon:15},{name:'Východní Evropa',lat:50,lon:35}];
-async function getJSON(url){const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);return r.json();}
+async function x5VerticalFetch(url,init){
+ const run=async()=>{let last;for(let n=0;n<5;n++){try{const r=await fetch(url,init);if(r.status===429){last=new Error('HTTP 429 – GFS omezuje požadavky');const retry=Number(r.headers.get('Retry-After'));const wait=Number.isFinite(retry)&&retry>0?retry*1000:[10000,20000,40000,60000][n]||60000;if(n<4){await new Promise(resolve=>setTimeout(resolve,wait));continue;}}return r;}catch(e){last=e;if(n<4)await new Promise(resolve=>setTimeout(resolve,[3000,8000,15000,30000][n]));}}throw last||new Error('Požadavek GFS selhal.');};
+ const prev=window.__x5OpenMeteoQueue||Promise.resolve();const task=prev.then(run,run);
+ window.__x5OpenMeteoQueue=task.then(()=>new Promise(resolve=>setTimeout(resolve,5000)),()=>new Promise(resolve=>setTimeout(resolve,5000)));
+ return task;
+}
+async function getJSON(url){const r=url.startsWith(API)?await x5VerticalFetch(url,{cache:'no-store'}):await fetch(url,{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);return r.json();}
 async function run(){
  const status=$('pvx5VerticalStatus');if(status)status.textContent='Načítám společný stratosférický archiv a evropské pole 500 hPa…';
  try{
