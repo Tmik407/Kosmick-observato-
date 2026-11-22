@@ -5,7 +5,7 @@ const sites=[{name:'Severní Atlantik',lat:60,lon:-20},{name:'Severní Skandiná
 async function x5VerticalFetch(url,init){
  const run=async()=>{let last;for(let n=0;n<5;n++){try{const r=await fetch(url,init);if(r.status===429){last=new Error('HTTP 429 – GFS omezuje požadavky');const retry=Number(r.headers.get('Retry-After'));const wait=Number.isFinite(retry)&&retry>0?retry*1000:[10000,20000,40000,60000][n]||60000;if(n<4){await new Promise(resolve=>setTimeout(resolve,wait));continue;}}return r;}catch(e){last=e;if(n<4)await new Promise(resolve=>setTimeout(resolve,[3000,8000,15000,30000][n]));}}throw last||new Error('Požadavek GFS selhal.');};
  const prev=window.__x5OpenMeteoQueue||Promise.resolve();const task=prev.then(run,run);
- window.__x5OpenMeteoQueue=task.then(()=>new Promise(resolve=>setTimeout(resolve,2200)),()=>new Promise(resolve=>setTimeout(resolve,2200)));
+ window.__x5OpenMeteoQueue=task.then(()=>new Promise(resolve=>setTimeout(resolve,10000)),()=>new Promise(resolve=>setTimeout(resolve,10000)));
  return task;
 }
 async function getJSON(url){
