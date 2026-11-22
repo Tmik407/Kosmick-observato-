@@ -8,7 +8,7 @@ async function x5VerticalFetch(url,init={}){
  const save=async response=>{try{if(response.ok)localStorage.setItem(key,JSON.stringify({at:Date.now(),data:await response.clone().text()}));}catch(_){}};
  const run=async()=>{let last;for(let n=0;n<2;n++){try{const r=await fetch(url,init);if(r.status===429&&n===0){last=new Error('HTTP 429 – GFS dočasně omezuje požadavky');await new Promise(resolve=>setTimeout(resolve,12000));continue;}if(r.ok)await save(r);return r;}catch(e){last=e;if(n===0)await new Promise(resolve=>setTimeout(resolve,2500));}}throw last||new Error('Požadavek GFS selhal.');};
  const prev=window.__x5OpenMeteoQueue||Promise.resolve(),task=prev.then(run,run);
- window.__x5OpenMeteoQueue=task.then(()=>new Promise(resolve=>setTimeout(resolve,3000)),()=>new Promise(resolve=>setTimeout(resolve,3000)));
+ window.__x5OpenMeteoQueue=task.then(()=>new Promise(resolve=>setTimeout(resolve,10000)),()=>new Promise(resolve=>setTimeout(resolve,10000)));
  if(cached?.data){task.catch(()=>{});return new Response(cached.data,{status:200,headers:{'Content-Type':'application/json','X-X5-Cache':'stale-ok'}});}
  return task;
 }
