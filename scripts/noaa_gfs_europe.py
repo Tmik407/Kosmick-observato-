@@ -9,17 +9,17 @@ LAT=[40+i*5 for i in range(9)]; LON=[-30+i*5 for i in range(15)]
 SITES=[{"name":"Severní Atlantik","lat":60,"lon":-20},{"name":"Arktida / sever Skandinávie","lat":70,"lon":20},{"name":"Západní Evropa","lat":50,"lon":-10},{"name":"Střední Evropa","lat":50,"lon":15},{"name":"Východní Evropa","lat":50,"lon":35}]
 POINTS=[{"lat":a,"lon":b} for a in LAT for b in LON]+SITES
 LEVELS=(500,850); HOURS=tuple(range(0,73,3)); S=requests.Session(); S.headers["User-Agent"]="KosmickaObservator-X5/1.0"
-def url(day,cycle,h):
+def url(day,cycle,h,west):
  name=f"gfs.t{cycle:02d}z.pgrb2.0p25.f{h:03d}"
  p=[("file",name)]+[(f"lev_{z}_mb","on") for z in LEVELS]+[(f"var_{v}","on") for v in ("TMP","HGT","UGRD","VGRD")]
- p += [("subregion",""),("leftlon","330"),("rightlon","40"),("toplat","80"),("bottomlat","40"),("dir",f"/gfs.{day:%Y%m%d}/{cycle:02d}/atmos")]
+ p += [("subregion",""),("leftlon","330" if west else "0"),("rightlon","359.75" if west else "40"),("toplat","80"),("bottomlat","40"),("dir",f"/gfs.{day:%Y%m%d}/{cycle:02d}/atmos")]
  return "https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25.pl?"+urlencode(p)
 def get(u):
  r=S.get(u,timeout=(25,180))
  if r.status_code!=200: raise RuntimeError(f"NOMADS HTTP {r.status_code}: {r.text[:120]}")
  if not r.content.startswith(b"GRIB"): raise RuntimeError("NOMADS nevrátil GRIB2")
  return r.content
-def decode(body):
+def decode(body,indices):
  out={}
  with tempfile.TemporaryFile(mode="w+b") as f:
   f.write(body);f.seek(0)
@@ -42,7 +42,7 @@ def main():
   for cyc in (18,12,6,0):
    base=dt.datetime.combine(day,dt.time(cyc),tzinfo=dt.timezone.utc)
    if base>now+dt.timedelta(hours=1):continue
-   try:chosen=(day,cyc,get(url(day,cyc,0)));break
+   try:\n    first=(get(url(day,cyc,0,False)),get(url(day,cyc,0,True)));chosen=(day,cyc,first);break
    except Exception as e:print(f"Cyklus {day} {cyc:02d}Z: {e}",flush=True)
   if chosen:break
  if not chosen:raise RuntimeError("Není dostupný cyklus GFS.")
@@ -50,7 +50,7 @@ def main():
  names=("geopotential_height","temperature","wind_speed","wind_direction")
  rows=[{"hourly":{f"{n}_{z}hPa":[] for z in LEVELS for n in names}} for _ in POINTS];times=[]
  for k,h in enumerate(HOURS):
-  d=decode(first if h==0 else get(url(day,cyc,h)));times.append((base+dt.timedelta(hours=h)).strftime("%Y-%m-%dT%H:%M"))
+  bodies=first if h==0 else (get(url(day,cyc,h,False)),get(url(day,cyc,h,True)))\n  east=[i for i,p in enumerate(POINTS) if p["lon"]>=0];west=[i for i,p in enumerate(POINTS) if p["lon"]<0]\n  de=decode(bodies[0],east);dw=decode(bodies[1],west);d={}\n  for lev in LEVELS:\n   for key in ("z","t","u","v"):\n    a=[None]*len(POINTS)\n    for inds,part in ((east,de),(west,dw)):\n     vals=part.get((lev,key),[])\n     if len(vals)!=len(inds):raise RuntimeError(f"Chybí evropská část GFS {key} {lev} hPa")\n     for ix,val in zip(inds,vals):a[ix]=val\n    d[(lev,key)]=a\n  times.append((base+dt.timedelta(hours=h)).strftime("%Y-%m-%dT%H:%M"))
   for z in LEVELS:
    for key in ("z","t","u","v"):
     if (z,key) not in d:raise RuntimeError(f"Chybí pole {key} na {z} hPa v kroku f{h:03d}")
