@@ -7,9 +7,10 @@ const points=[
 const fields=['geopotential_height_500hPa','temperature_500hPa','wind_speed_500hPa','wind_direction_500hPa','geopotential_height_850hPa','temperature_850hPa','wind_speed_850hPa','wind_direction_850hPa'];
 let dataset=null;
 const fmt=(v,d=1)=>Number.isFinite(v)?v.toFixed(d).replace('.',','):'—';
-function render(){
+function render(forcedIndex){
  const sel=$('pv500Time');if(!dataset)return;
- const i=Math.max(0,Math.min(dataset.times.length-1,Number(sel?.value||0))),rows=dataset.locations.map(p=>({p,z:p.hourly.geopotential_height_500hPa[i],t:p.hourly.temperature_500hPa[i],w:p.hourly.wind_speed_500hPa[i],d:p.hourly.wind_direction_500hPa[i],z850:p.hourly.geopotential_height_850hPa[i],t850:p.hourly.temperature_850hPa[i],w850:p.hourly.wind_speed_850hPa[i],d850:p.hourly.wind_direction_850hPa[i]}));
+ const selected=forcedIndex===undefined?Number(sel?.value||0):Number(forcedIndex);
+ const i=Math.max(0,Math.min(dataset.times.length-1,selected)),rows=dataset.locations.map(p=>({p,z:p.hourly.geopotential_height_500hPa[i],t:p.hourly.temperature_500hPa[i],w:p.hourly.wind_speed_500hPa[i],d:p.hourly.wind_direction_500hPa[i],z850:p.hourly.geopotential_height_850hPa[i],t850:p.hourly.temperature_850hPa[i],w850:p.hourly.wind_speed_850hPa[i],d850:p.hourly.wind_direction_850hPa[i]}));
  const body=$('pv500Body');if(body)body.innerHTML=rows.map(x=>'<tr><td>'+x.p.name+'</td><td>'+fmt(x.z,0)+' m</td><td>'+fmt(x.t,1)+' °C</td><td>'+fmt(x.w,1)+' km/h</td><td>'+fmt(x.d,0)+'°</td><td>'+fmt(x.z850,0)+' m</td><td>'+fmt(x.t850,1)+' °C</td><td>'+fmt(x.w850,1)+' km/h</td></tr>').join('');
  const central=rows.find(x=>x.p.name==='Střední Evropa'),north=rows.find(x=>x.p.name==='Arktida / sever Skandinávie'),west=rows.find(x=>x.p.name==='Západní Evropa'),east=rows.find(x=>x.p.name==='Východní Evropa'),atl=rows.find(x=>x.p.name==='Severní Atlantik');
  const delta=central&&west&&east?(central.z-(west.z+east.z)/2):null;
@@ -39,6 +40,7 @@ function draw(){
 async function load(){
  const status=$('pv500Status');if(status)status.textContent='Načítám společná data GFS pro evropské srovnávací body…';
  try{
+  if(!window.X5GFS||typeof window.X5GFS.get!=='function')throw Error('Společný datový modul X5GFS není načten. Obnovte stránku bez staré mezipaměti.');
   const data=await window.X5GFS.get();
   const index=new Map(data.points.map((p,i)=>[p.lat+','+p.lon,i]));
   const locations=points.map(p=>{const i=index.get(p.lat+','+p.lon);if(i===undefined)throw Error('Chybí bod '+p.name+' ve společném poli GFS');return {...p,hourly:data.arr[i].hourly};});
@@ -47,5 +49,5 @@ async function load(){
   render();if(status)status.innerHTML='<b class="good">Data GFS na 500 hPa načtena.</b> 5 lokalit · '+data.times.length+' hodinových kroků · '+(data.stale?'uložená data':'společná data GFS').'.';
  }catch(e){if(status)status.innerHTML='<b class="warn">Data 500 hPa se nepodařilo načíst:</b> '+String(e.message||e);}
 }
-const s=$('pv500Time');if(s)s.addEventListener('change',render);const b=$('pv500Refresh');if(b)b.addEventListener('click',load);load();
+const s=$('pv500Time');if(s)s.addEventListener('change',()=>render());window.addEventListener('x5-map-time',e=>render(e.detail?.index));const b=$('pv500Refresh');if(b)b.addEventListener('click',load);load();
 })();
