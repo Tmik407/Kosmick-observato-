@@ -7,7 +7,7 @@ async function run(){
  const status=$('pvx5VerticalStatus');if(status)status.textContent='Načítám společné GFS pole a stratosférický archiv…';
  try{
   const strat=await getJSON('./data/polar-vortex/latest.json?vertical='+Date.now());
-  const data=await window.X5GFS.get();
+  const data=await window.X5GFS.get({refresh:true});
   if(!Array.isArray(strat.rows)||!Array.isArray(strat.points)||!Array.isArray(strat.times))throw Error('Stratosférický archiv má neplatnou strukturu.');
   const index=new Map(data.points.map((p,i)=>[p.lat+','+p.lon,i]));
   const select=$('pv500Time');
@@ -31,7 +31,7 @@ async function run(){
   const sig=$('pvx5OutbreakSignal');
   if(sig){const trough=delta<=-60,colder=tempDelta<=-2;let level='Bez výrazného lokálního signálu v tomto bodovém srovnání.';if(trough&&colder)level='Zesílený screeningový signál: střední Evropa má nižší geopotenciál i chladnější teplotu než průměr západního a východního bodu.';else if(trough||colder)level='Částečný screeningový signál: splněna je pouze jedna ze dvou podmínek (geopotenciál / teplota).';sig.innerHTML='<b>'+level+'</b><br>Odchylka geopotenciálu střední Evropy od průměru západu a východu: '+FMT(delta,0)+' m. Teplotní rozdíl: '+FMT(tempDelta,1)+' °C. Platnost 500 hPa: '+data.times[ti]+' UTC. <br><b>Výsledek není pravděpodobnost vpádu.</b>';}
   const stamp=$('pvx5VerticalStamp');if(stamp)stamp.textContent='Stratosféra: '+stratTime+' UTC · cyklus '+(strat.cycle_utc||'neuveden')+' | Troposféra: '+data.times[ti]+' UTC'+(exactMatch?' · shodná platnost':' · nejbližší dostupný stratosférický krok; čas se liší');
-  if(status)status.innerHTML='<b class="good">Vertikální přehled sestaven.</b> Tři stratosférické hladiny a jedna troposférická hladina; '+(exactMatch?'časová platnost je sjednocena.':'nejbližší dostupné časy jsou výslovně rozlišeny.')+(data.stale?' Troposférická data jsou z uložené kopie.':' Troposférická data pocházejí ze společného evropského archivu NOAA GFS.');
+  if(status)status.innerHTML='<b class="good">Vertikální přehled sestaven.</b> Tři stratosférické hladiny a jedna troposférická hladina; '+(exactMatch?'časová platnost je sjednocena.':'nejbližší dostupné časy jsou výslovně rozlišeny.')+(data.stale?' Troposférická data jsou ze záložní kopie ('+(data.cacheAgeHours??'—')+' h).':' Troposférická data byla čerstvě načtena z archivu NOAA GFS.');
  }catch(err){if(status)status.innerHTML='<b class="warn">Vertikální diagnostiku nelze dokončit:</b> '+String(err.message||err);}
 }
 const timeSelect=$('pv500Time');if(timeSelect)timeSelect.addEventListener('change',run);
