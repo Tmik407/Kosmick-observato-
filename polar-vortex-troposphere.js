@@ -44,7 +44,7 @@ async function load(){
   const locations=points.map(p=>{const i=index.get(p.lat+','+p.lon);if(i===undefined)throw Error('Chybí bod '+p.name+' ve společném poli GFS');return {...p,hourly:data.arr[i].hourly};});
   dataset={times:data.times,locations};
   const select=$('pv500Time');if(select){select.innerHTML='';dataset.times.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t.replace('T',' ')+' UTC';select.appendChild(o);});select.value='0';}
-  render();if(status)status.innerHTML='<b class="good">Data GFS na 500 hPa načtena.</b> 5 lokalit · '+data.times.length+' hodinových kroků · '+(data.stale?'uložená data':'společná data GFS').'.';
+  render();if(status)status.innerHTML='<b class="good">Data GFS na 500 hPa načtena.</b> 5 lokalit · '+data.times.length+' hodinových kroků · '+(data.stale?'uložená data ('+(data.cacheAgeHours??'—')+' h)':'společná data GFS')+'.';
  }catch(e){if(status)status.innerHTML='<b class="warn">Data 500 hPa se nepodařilo načíst:</b> '+String(e.message||e);}
 }
 const s=$('pv500Time');if(s)s.addEventListener('change',render);const b=$('pv500Refresh');if(b)b.addEventListener('click',load);load();
