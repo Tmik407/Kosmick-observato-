@@ -4,7 +4,7 @@ const LAT=Array.from({length:7},(_,i)=>30+i*10),LON=Array.from({length:13},(_,i)
 const sites=[{name:'Severní Atlantik',lat:60,lon:-20},{name:'Arktida / sever Skandinávie',lat:70,lon:20},{name:'Západní Evropa',lat:50,lon:-10},{name:'Střední Evropa',lat:50,lon:15},{name:'Východní Evropa',lat:50,lon:35}];
 const fields=['geopotential_height_500hPa','temperature_500hPa','wind_speed_500hPa','wind_direction_500hPa','geopotential_height_850hPa','temperature_850hPa','wind_speed_850hPa','wind_direction_850hPa'];
 const key='x5-gfs:shared-europe-v1';
-let pending=null;
+let pending=null,memory=null;
 function cached(){try{return JSON.parse(localStorage.getItem(key)||'null');}catch(_){return null;}}
 function coords(){return LAT.flatMap(lat=>LON.map(lon=>({lat,lon}))).concat(sites);}
 async function request(){
@@ -21,14 +21,16 @@ async function request(){
  return data;
 }
 function get(options={}){
+ if(options.refresh){memory=null;try{localStorage.removeItem(key);}catch(_){}}
+ if(memory&&!options.refresh)return Promise.resolve(memory);
  if(pending)return pending;
  const old=cached();
  pending=request().catch(err=>{
   if(old?.data){const d=old.data;d.stale=true;d.cacheAgeHours=Math.round((Date.now()-old.at)/3600000*10)/10;d.warning=String(err.message||err);return d;}
   throw err;
- }).finally(()=>{pending=null;});
+ }).then(d=>{memory=d;return d;}).finally(()=>{pending=null;});
  return pending;
 }
-function clear(){try{localStorage.removeItem(key);}catch(_){}pending=null;}
+function clear(){try{localStorage.removeItem(key);}catch(_){}pending=null;memory=null;}
 window.X5GFS={get,clear,latitudes:LAT,longitudes:LON,sites,fields,api:API};
 })();
