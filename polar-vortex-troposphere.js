@@ -36,11 +36,31 @@ function draw(){
  g.textAlign='center';g.fillStyle='#52677a';g.font='11px Arial';[0,Math.floor((dataset.times.length-1)/2),dataset.times.length-1].forEach(i=>g.fillText(dataset.times[i].replace('T',' '),x(i),h-15));
  g.textAlign='left';let lx=p.l;series.forEach((s,j)=>{g.fillStyle=cols[j];g.fillRect(lx,8,12,4);g.fillStyle='#263b4f';g.fillText(s.name,lx+17,16);lx+=Math.min(205,Math.max(125,s.name.length*7));});
 }
-async function x5QueuedFetch(url,init){
- const run=async()=>{let last;for(let attempt=0;attempt<4;attempt++){try{const response=await fetch(url,init);if(response.status===429){last=new Error('HTTP 429 – veřejné API omezuje četnost požadavků');if(attempt<3){await new Promise(r=>setTimeout(r,[3000,7000,15000][attempt]));continue;}}return response;}catch(e){last=e;if(attempt<3)await new Promise(r=>setTimeout(r,[1500,4000,9000][attempt]));}}throw last||new Error('Požadavek se nezdařil.');};
+async function x5QueuedFetch(url,init={}){
+ const body=init.body?String(init.body):'',key='x5-gfs:'+url+':'+body;
+ const readCache=()=>{try{const x=localStorage.getItem(key);return x?JSON.parse(x):null;}catch(_){return null;}};
+ const saveCache=async response=>{try{if(response.ok){const data=await response.clone().text();localStorage.setItem(key,JSON.stringify({at:Date.now(),data}));}}catch(_){}};
+ const cached=readCache();
+ const run=async()=>{
+  let last;
+  for(let attempt=0;attempt<2;attempt++){
+   try{
+    const response=await fetch(url,init);
+    if(response.status===429&&attempt===0){last=new Error('HTTP 429 – GFS dočasně omezuje požadavky');await new Promise(r=>setTimeout(r,12000));continue;}
+    if(response.ok)await saveCache(response);
+    return response;
+   }catch(e){last=e;if(attempt===0)await new Promise(r=>setTimeout(r,2500));}
+  }
+  throw last||new Error('Požadavek GFS selhal.');
+ };
  const previous=window.__x5OpenMeteoQueue||Promise.resolve();
  const task=previous.then(run,run);
- window.__x5OpenMeteoQueue=task.then(()=>new Promise(r=>setTimeout(r,8000)),()=>new Promise(r=>setTimeout(r,8000)));
+ window.__x5OpenMeteoQueue=task.then(()=>new Promise(r=>setTimeout(r,3000)),()=>new Promise(r=>setTimeout(r,3000)));
+ if(cached&&cached.data){
+  // Zobraz poslední úspěšná data ihned; aktualizace proběhne na pozadí.
+  task.catch(()=>{});
+  return new Response(cached.data,{status:200,headers:{'Content-Type':'application/json','X-X5-Cache':'stale-ok'}});
+ }
  return task;
 }
 async function load(){
