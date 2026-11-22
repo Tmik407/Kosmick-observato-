@@ -53,7 +53,7 @@ async function load(){
   const data=await window.X5GFS.get();times=data.times;
   const index=new Map(data.points.map((p,i)=>[p.lat+','+p.lon,i]));
   const coords=LAT.flatMap(lat=>LON.map(lon=>({lat,lon})));
-  cells=coords.map(p=>{const i=index.get(p.lat+','+p.lon),h=data.arr[i].hourly;return {lat:p.lat,lon:p.lon,temp:h.temperature_850hPa,speed:h.wind_speed_850hPa,direction:h.wind_direction_850hPa};});
+  cells=coords.map(p=>{const i=index.get(p.lat+','+p.lon),h=i===undefined?null:data.arr[i].hourly;return h?{lat:p.lat,lon:p.lon,temp:h.temperature_850hPa,speed:h.wind_speed_850hPa,direction:h.wind_direction_850hPa}:null;}).filter(Boolean);
   track=times.map((_,k)=>analyse(k));
   if(status)status.innerHTML='<b class="good">Diagnostika studeného vzduchu načtena.</b> '+cells.length+' bodů · '+times.length+' hodinových kroků · '+(data.stale?'uložená data ('+data.cacheAgeHours+' h)':'společná data GFS');
   render();
