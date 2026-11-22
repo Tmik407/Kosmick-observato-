@@ -11,7 +11,7 @@ function analyse(k){
  const min=valid.reduce((a,p)=>p.t<a.t?p:a,valid[0]||{t:NaN});
  const windPts=cold.filter(p=>Number.isFinite(p.w)&&Number.isFinite(p.dir));
  const u=mean(windPts.map(p=>-p.w*Math.sin(p.dir*Math.PI/180))),v=mean(windPts.map(p=>-p.w*Math.cos(p.dir*Math.PI/180)));
- return {min:min.t,max:Math.max(...valid.map(p=>p.t)),coldest:min,n:valid.length,a5:100*valid.filter(p=>p.t< -5).length/valid.length,a10:100*cold.length/valid.length,a15:100*valid.filter(p=>p.t< -15).length/valid.length,center,wind:mean(windPts.map(p=>p.w)),windDir:(Math.atan2(-u,-v)*180/Math.PI+360)%360,valid};
+ return {min:min.t,max:Math.max(...valid.map(p=>p.t)),coldest:min,n:valid.length,a5:100*valid.filter(p=>p.t< -5).length/valid.length,a10:100*cold.length/valid.length,a15:100*valid.filter(p=>p.t< -15).length/valid.length,center,wind:mean(windPts.map(p=>p.w)),windDir:(Math.atan2(u,v)*180/Math.PI+360)%360,valid};
 }
 function render(){
  if(!times.length)return;const idx=Math.max(0,Math.min(times.length-1,Number($('pv850mapTime')?.value||$('pv500Time')?.value||0))),d=analyse(idx);
