@@ -95,19 +95,16 @@ async function fetchBatch(coords){
  const raw=await r.json(),arr=Array.isArray(raw)?raw:[raw];if(arr.length!==coords.length)throw Error('API vrátilo jiný počet bodů.');return arr;
 }
 async function load(){
- stop();const s=$('pv850mapStatus');if(s)s.textContent='Stahuji evropské pole GFS a připravuji podkladovou mapu…';
+ stop();const status=$('pv850mapStatus');if(status)status.textContent='Načítám společnou evropskou předpověď GFS…';
  try{
-  const coords=LAT.flatMap(lat=>LON.map(lon=>({lat,lon}))),results=[];
-  results.push(...await fetchBatch(coords));
-  const t=results[0]?.hourly?.time;if(!Array.isArray(t)||!t.length)throw Error('Chybí časová řada.');
-  if(results.some(r=>!Array.isArray(r.hourly?.[FIELD])||r.hourly[FIELD].length!==t.length))throw Error('V některých bodech chybí teplota.');
-  times=t;grid=LAT.map((_,i)=>LON.map((_,j)=>results[i*LON.length+j].hourly[FIELD]));
-  const sel=$('pv850mapTime'),range=$('pv850mapRange');if(sel){sel.innerHTML='';t.forEach((v,i)=>{const o=document.createElement('option');o.value=i;o.textContent=v.replace('T',' ')+' UTC';sel.appendChild(o);});sel.value='0';}
-  if(range){range.max=String(t.length-1);range.value='0';}
-  draw();if(s)s.innerHTML='<b class="good">Evropské pole načteno.</b> '+coords.length+' bodů · '+t.length+' hodinových kroků · síť 5°; barevné pole a izotermy jsou vyhlazeny interpolací.';
-  const stamp=$('pv850mapStamp');if(stamp)stamp.textContent='Model NCEP GFS přes Open-Meteo · '+t[0]+' UTC až '+t[t.length-1]+' UTC';
-  try{const cr=await fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson',{cache:'force-cache'});if(cr.ok){coast=await cr.json();draw();}}catch(_){coast=null;}
- }catch(e){if(s)s.innerHTML='<b class="warn">Mapu se nepodařilo načíst:</b> '+String(e.message||e)+'. Zkontrolujte připojení a dostupnost API.';}
+  const data=await window.X5GFS.get();times=data.times;
+  grid=LAT.map(lat=>LON.map(lon=>{const i=data.points.findIndex(p=>p.lat===lat&&p.lon===lon);return data.arr[i].hourly[FIELD];}));
+  const sel=$('pv850mapTime'),range=$('pv850mapRange');if(sel){sel.innerHTML='';times.forEach((v,i)=>{const o=document.createElement('option');o.value=i;o.textContent=v.replace('T',' ')+' UTC';sel.appendChild(o);});sel.value='0';}
+  if(range){range.max=String(times.length-1);range.value='0';}
+  draw();if(status)status.innerHTML='<b class="good">Teplotní pole načteno.</b> '+data.points.length+' bodů sdílených mezi moduly · '+times.length+' hodinových kroků · '+(data.stale?'uložená data':'aktuální GFS');
+  const stamp=$('pv850mapStamp');if(stamp)stamp.textContent='Model NCEP GFS · '+times[0]+' UTC až '+times[times.length-1]+' UTC'+(data.stale?' · uložená data':'');
+  try{if(!coast){const cr=await fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson',{cache:'force-cache'});if(cr.ok){coast=await cr.json();draw();}}}catch(_){}
+ }catch(e){if(status)status.innerHTML='<b class="warn">Mapu se nepodařilo načíst:</b> '+String(e.message||e);}
 }
 function setTime(v){const n=Math.max(0,Math.min(times.length-1,Number(v)||0));const sel=$('pv850mapTime'),range=$('pv850mapRange'),tab=$('pv500Time');if(sel)sel.value=String(n);if(range)range.value=String(n);if(tab&&tab.value!==String(n)){tab.value=String(n);tab.dispatchEvent(new Event('change'));}draw();const stamp=$('pv850mapStamp');if(stamp&&times[n])stamp.textContent='Model NCEP GFS · platnost '+times[n]+' UTC';}
 function stop(){playing=false;if(timer)clearInterval(timer);timer=null;const b=$('pv850mapPlay');if(b)b.textContent='▶ Přehrát vývoj';}
