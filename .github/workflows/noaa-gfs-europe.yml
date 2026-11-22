@@ -7,7 +7,7 @@ on:
       - 'scripts/noaa_gfs_europe.py'
   workflow_dispatch:
   schedule:
-    - cron: "15 2,8,14,20 * * *"
+    - cron: "20 2,8,14,20 * * *"
 permissions:
   contents: write
 concurrency:
