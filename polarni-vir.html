@@ -200,6 +200,18 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
 <p class="muted">Orientační indikátor porovnává střední Evropu se západní a východní Evropou. Nízký geopotenciál může souviset s brázdou nízkého tlaku, ale samotný bodový rozdíl nepotvrzuje arktický vpád, sněžení ani mráz. Pro spolehlivou zimní prognózu jsou nutné mapy celé oblasti, tlak u země, teplota v nižších hladinách a ansámblová nejistota. Tento panel proto nevypočítává falešnou procentuální pravděpodobnost.</p>
 </section>
 
+
+<section class="panel" id="pvx5Vertical">
+<h2>Vertikální propojení 10–500 hPa · diagnostika X-5</h2>
+<p class="muted">Společný přehled stratosféry a troposféry. Hladiny 10/30/50 hPa vycházejí z archivovaného běhu NOAA GFS (40 bodů); 500 hPa z hodinové předpovědi NCEP GFS pro pět evropských srovnávacích lokalit. Nejde o homogenní hustou mapu ani o přímé měření.</p>
+<div class="status" id="pvx5VerticalStatus">Načítám vertikální profil…</div>
+<div class="status" id="pvx5VerticalStamp">—</div>
+<div style="overflow-x:auto"><table><thead><tr><th>Hladina</th><th>Teplota / geopotenciál</th><th>Vítr</th><th>Zdroj a interpretace</th></tr></thead><tbody id="pvx5VerticalBody"><tr><td colspan="4">Čekám na data…</td></tr></tbody></table></div>
+<h3>Orientační signál arktického vpádu do střední Evropy</h3>
+<div class="status" id="pvx5OutbreakSignal">Vyhodnocení čeká na data.</div>
+<p class="muted">Signál je pouze screeningový: porovnává geopotenciál a teplotu na 500 hPa ve střední Evropě vůči západu a východu. Bez hustého pole, teploty v nižších hladinách, tlaku u země a ansámblu nelze potvrdit vpád studeného vzduchu ani vypočítat jeho pravděpodobnost. Stratosférický stav sám o sobě není předpovědí počasí.</p>
+</section>
+
 <section class="panel"><h2>Archiv měření a časové řady</h2>
 <p class="muted">Automaticky stahovaný denní archiv ERA5 od roku 1959. Jde o reanalýzu založenou na pozorováních a modelu, nikoli o přímé měření jedním přístrojem. Aktualizace archivu probíhá denně; datum posledního záznamu se zobrazuje samostatně.</p>
 <div class="grid">
@@ -759,7 +771,8 @@ setInterval(refreshX5Infographic,30*60*1000);
  function shiftDate(d,n){const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);}
  load();setInterval(load,30*60*1000);
 })();
-</script><script src="./polar-vortex-advanced.js?v=1"></script><script src="./polar-vortex-troposphere.js?v=1"></script><script src="./polarni-vir-animace.js?v=1"></script><script src="/Kosmick-observato-/gfs-polarni-animace.js?v=11"></script><script src="/Kosmick-observato-/gfs-vortex-comparison.js?v=4"></script><script src="./gfs-polarni-3d.js?v=22" onerror="document.getElementById(\'p3dStatus\').textContent=\'CHYBA: 3D skript se nenačetl. Zkontrolujte cestu k souboru.\'"></script><script>
+</script><script src="./polar-vortex-advanced.js?v=1"></script><script src="./polar-vortex-troposphere.js?v=1"></script>
+<script src="./polar-vortex-vertical.js?v=1"></script><script src="./polarni-vir-animace.js?v=1"></script><script src="/Kosmick-observato-/gfs-polarni-animace.js?v=11"></script><script src="/Kosmick-observato-/gfs-vortex-comparison.js?v=4"></script><script src="./gfs-polarni-3d.js?v=22" onerror="document.getElementById(\'p3dStatus\').textContent=\'CHYBA: 3D skript se nenačetl. Zkontrolujte cestu k souboru.\'"></script><script>
 (function(){
  const sources=[
   {id:'Era5',url:'./data/archive-meta.json',label:'ERA5',date:m=>m.files?.['u60_daily.csv']?.last_date,detail:m=>'Záznam do '+(m.files?.['u60_daily.csv']?.last_date||'—')+' · '+(m.files?.['u60_daily.csv']?.rows||'—')+' řádků'},
