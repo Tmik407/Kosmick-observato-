@@ -36,11 +36,18 @@ function draw(){
  g.textAlign='center';g.fillStyle='#52677a';g.font='11px Arial';[0,Math.floor((dataset.times.length-1)/2),dataset.times.length-1].forEach(i=>g.fillText(dataset.times[i].replace('T',' '),x(i),h-15));
  g.textAlign='left';let lx=p.l;series.forEach((s,j)=>{g.fillStyle=cols[j];g.fillRect(lx,8,12,4);g.fillStyle='#263b4f';g.fillText(s.name,lx+17,16);lx+=Math.min(205,Math.max(125,s.name.length*7));});
 }
+async function x5QueuedFetch(url,init){
+ const run=async()=>{let last;for(let attempt=0;attempt<4;attempt++){try{const response=await fetch(url,init);if(response.status===429){last=new Error('HTTP 429 – veřejné API omezuje četnost požadavků');if(attempt<3){await new Promise(r=>setTimeout(r,[3000,7000,15000][attempt]));continue;}}return response;}catch(e){last=e;if(attempt<3)await new Promise(r=>setTimeout(r,[1500,4000,9000][attempt]));}}throw last||new Error('Požadavek se nezdařil.');};
+ const previous=window.__x5OpenMeteoQueue||Promise.resolve();
+ const task=previous.then(run,run);
+ window.__x5OpenMeteoQueue=task.then(()=>new Promise(r=>setTimeout(r,1200)),()=>new Promise(r=>setTimeout(r,1200)));
+ return task;
+}
 async function load(){
  const status=$('pv500Status');if(status)status.textContent='Načítám geopotenciál, teplotu a vítr na 500 hPa z modelu GFS…';
  try{
   const q=new URLSearchParams({latitude:points.map(p=>p.lat).join(','),longitude:points.map(p=>p.lon).join(','),hourly:fields.join(','),forecast_days:'3',timezone:'GMT',wind_speed_unit:'kmh'});
-  const r=await fetch('https://api.open-meteo.com/v1/gfs?'+q.toString(),{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);
+  const r=await x5QueuedFetch('https://api.open-meteo.com/v1/gfs',{method:'POST',body:q,cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);
   const raw=await r.json(),arr=Array.isArray(raw)?raw:[raw];if(arr.length!==points.length)throw Error('Počet vrácených lokalit neodpovídá požadavku.');
   const times=arr[0]?.hourly?.time;if(!Array.isArray(times)||!times.length)throw Error('V odpovědi chybí hodinová časová řada.');
   arr.forEach((x,i)=>{for(const f of fields)if(!Array.isArray(x.hourly?.[f])||x.hourly[f].length!==times.length)throw Error('Chybí proměnná '+f+' pro '+points[i].name);});
