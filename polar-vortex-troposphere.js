@@ -4,13 +4,13 @@ const points=[
  {name:'Severní Atlantik',lat:60,lon:-20},{name:'Arktida / sever Skandinávie',lat:70,lon:20},
  {name:'Západní Evropa',lat:50,lon:-10},{name:'Střední Evropa',lat:50,lon:15},{name:'Východní Evropa',lat:50,lon:35}
 ];
-const fields=['geopotential_height_500hPa','temperature_500hPa','wind_speed_500hPa','wind_direction_500hPa'];
+const fields=['geopotential_height_500hPa','temperature_500hPa','wind_speed_500hPa','wind_direction_500hPa','geopotential_height_850hPa','temperature_850hPa','wind_speed_850hPa','wind_direction_850hPa'];
 let dataset=null;
 const fmt=(v,d=1)=>Number.isFinite(v)?v.toFixed(d).replace('.',','):'—';
 function render(){
  const sel=$('pv500Time');if(!dataset)return;
- const i=Math.max(0,Math.min(dataset.times.length-1,Number(sel?.value||0))),rows=dataset.locations.map(p=>({p,z:p.hourly.geopotential_height_500hPa[i],t:p.hourly.temperature_500hPa[i],w:p.hourly.wind_speed_500hPa[i],d:p.hourly.wind_direction_500hPa[i]}));
- const body=$('pv500Body');if(body)body.innerHTML=rows.map(x=>'<tr><td>'+x.p.name+'</td><td>'+fmt(x.z,0)+' m</td><td>'+fmt(x.t,1)+' °C</td><td>'+fmt(x.w,1)+' km/h</td><td>'+fmt(x.d,0)+'°</td></tr>').join('');
+ const i=Math.max(0,Math.min(dataset.times.length-1,Number(sel?.value||0))),rows=dataset.locations.map(p=>({p,z:p.hourly.geopotential_height_500hPa[i],t:p.hourly.temperature_500hPa[i],w:p.hourly.wind_speed_500hPa[i],d:p.hourly.wind_direction_500hPa[i],z850:p.hourly.geopotential_height_850hPa[i],t850:p.hourly.temperature_850hPa[i],w850:p.hourly.wind_speed_850hPa[i],d850:p.hourly.wind_direction_850hPa[i]}));
+ const body=$('pv500Body');if(body)body.innerHTML=rows.map(x=>'<tr><td>'+x.p.name+'</td><td>'+fmt(x.z,0)+' m</td><td>'+fmt(x.t,1)+' °C</td><td>'+fmt(x.w,1)+' km/h</td><td>'+fmt(x.d,0)+'°</td><td>'+fmt(x.z850,0)+' m</td><td>'+fmt(x.t850,1)+' °C</td><td>'+fmt(x.w850,1)+' km/h</td></tr>').join('');
  const central=rows.find(x=>x.p.name==='Střední Evropa'),north=rows.find(x=>x.p.name==='Arktida / sever Skandinávie'),west=rows.find(x=>x.p.name==='Západní Evropa'),east=rows.find(x=>x.p.name==='Východní Evropa'),atl=rows.find(x=>x.p.name==='Severní Atlantik');
  const delta=central&&west&&east?(central.z-(west.z+east.z)/2):null;
  const northDiff=central&&north?central.z-north.z:null;
@@ -39,14 +39,14 @@ function draw(){
 async function load(){
  const status=$('pv500Status');if(status)status.textContent='Načítám geopotenciál, teplotu a vítr na 500 hPa z modelu GFS…';
  try{
-  const q=new URLSearchParams({latitude:points.map(p=>p.lat).join(','),longitude:points.map(p=>p.lon).join(','),hourly:fields.join(','),forecast_days:'7',timezone:'GMT',wind_speed_unit:'kmh'});
+  const q=new URLSearchParams({latitude:points.map(p=>p.lat).join(','),longitude:points.map(p=>p.lon).join(','),hourly:fields.join(','),forecast_days:'3',timezone:'GMT',wind_speed_unit:'kmh'});
   const r=await fetch('https://api.open-meteo.com/v1/gfs?'+q.toString(),{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);
   const raw=await r.json(),arr=Array.isArray(raw)?raw:[raw];if(arr.length!==points.length)throw Error('Počet vrácených lokalit neodpovídá požadavku.');
   const times=arr[0]?.hourly?.time;if(!Array.isArray(times)||!times.length)throw Error('V odpovědi chybí hodinová časová řada.');
   arr.forEach((x,i)=>{for(const f of fields)if(!Array.isArray(x.hourly?.[f])||x.hourly[f].length!==times.length)throw Error('Chybí proměnná '+f+' pro '+points[i].name);});
   dataset={times,locations:arr.map((x,i)=>({...points[i],hourly:x.hourly}))};
   const select=$('pv500Time');if(select){select.innerHTML='';times.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t.replace('T',' ')+' UTC';select.appendChild(o);});select.value='0';}
-  render();if(status)status.innerHTML='<b class="good">Data GFS na 500 hPa načtena.</b> '+points.length+' lokalit · '+times.length+' hodinových kroků. Jednotky: m, °C, km/h.';
+  render();if(status)status.innerHTML='<b class="good">Data GFS na 500 hPa načtena.</b> '+points.length+' lokalit · '+times.length+' hodinových kroků. Časová osa sjednocena s mapou 500 hPa. Jednotky: m, °C, km/h.';
  }catch(e){if(status)status.innerHTML='<b class="warn">Data 500 hPa se nepodařilo načíst:</b> '+String(e.message||e)+'. Zkontrolujte připojení a dostupnost veřejného API.';}
 }
 const s=$('pv500Time');if(s)s.addEventListener('change',render);const b=$('pv500Refresh');if(b)b.addEventListener('click',load);load();
