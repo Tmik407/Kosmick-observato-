@@ -187,7 +187,7 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
 
 <section class="panel" id="pvx5Map500">
 <h2>Synoptická mapa Evropy · 500 hPa</h2>
-<p class="muted">Pole geopotenciální výšky 500 hPa z NCEP GFS přes Open-Meteo. Mapa skládá síť 9 × 15 bodů nad Evropou a vykresluje barevné pole i orientační izohypsy. Síť je záměrně označena jako hrubší interpolované zobrazení, nikoli jako plnohodnotný GRIB synoptický rozbor.</p>
+<p class="muted">Pole geopotenciální výšky 500 hPa z NCEP GFS přes Open-Meteo. Mapa skládá síť 5 × 8 bodů (10°) nad Evropou a vykresluje barevné pole i orientační izohypsy. Síť je záměrně označena jako hrubší interpolované zobrazení, nikoli jako plnohodnotný GRIB synoptický rozbor.</p>
 <div class="controls" style="align-items:end"><label><b>Čas předpovědi (UTC)</b><select id="pvmapTime"><option value="0">Načítám…</option></select></label><button type="button" id="pvmapPlay">▶ Přehrát vývoj</button><button type="button" id="pvmapRefresh">↻ Obnovit mapu</button></div><div class="controls"><label style="width:100%"><b>Časová osa</b><input id="pvmapRange" type="range" min="0" max="0" value="0" step="1" style="width:100%"></label></div>
 <div class="status" id="pvmapStatus">Načítám evropské pole GFS…</div>
 <div class="status" id="pvmapStamp">—</div>
@@ -224,7 +224,7 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
 </section>
 <section class="panel" id="polarTroposphere500">
 <h2>Troposférická návaznost · geopotenciál 500 hPa</h2>
-<p class="muted">Doplňkový výhled pro propojení stratosférické diagnostiky s počasím v Evropě. Pět pevných srovnávacích bodů sleduje geopotenciál, teplotu a vítr na hladinách 500 a 850 hPa. Časový horizont 72 hodin je sjednocen s mapou. Zdroj: NCEP GFS prostřednictvím Open-Meteo GFS API; hodinová modelová předpověď, nikoli měření.</p>
+<p class="muted">Doplňkový výhled pro propojení stratosférické diagnostiky s počasím v Evropě. Pět pevných srovnávacích bodů sleduje geopotenciál, teplotu a vítr na hladinách 500 a 850 hPa. Časový horizont 7 dní je sjednocen se sdíleným datovým balíčkem. Zdroj: NCEP GFS prostřednictvím Open-Meteo GFS API; hodinová modelová předpověď, nikoli měření.</p>
 <div class="status" id="pv500Status">Čekám na načtení dat…</div>
 <div class="controls" style="align-items:end">
 <label><b>Čas předpovědi (UTC)</b><select id="pv500Time"><option value="0">Načítám…</option></select></label>
@@ -809,7 +809,7 @@ setInterval(refreshX5Infographic,30*60*1000);
  function shiftDate(d,n){const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);}
  load();setInterval(load,30*60*1000);
 })();
-</script><script src="./polar-vortex-shared-data.js?v=1"></script><script src="./polar-vortex-advanced.js?v=1"></script><script src="./polar-vortex-troposphere.js?v=9"></script>
+</script><script src="./polar-vortex-shared-data.js?v=2"></script><script src="./polar-vortex-advanced.js?v=1"></script><script src="./polar-vortex-troposphere.js?v=9"></script>
 <script src="./polar-vortex-map500.js?v=9"></script>
 <script src="./polar-vortex-map850.js?v=10"></script>
 <script src="./polar-vortex-cold-air.js?v=7"></script>
