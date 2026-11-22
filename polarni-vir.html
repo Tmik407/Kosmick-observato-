@@ -169,6 +169,21 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
  <p class="muted">Metodické omezení: aktuální archiv obsahuje 40 bodů v pěti zeměpisných šířkách a osmi délkách. Z toho lze vytvořit pouze hrubý odhad asymetrie a centra geopotenciální anomálie. Přesné určení centra, rozdělení víru a diagnostika náhlého stratosférického oteplení vyžadují hustší prostorové pole, ideálně geopotenciál nebo potenciální vorticitu na pravidelné mřížce.</p>
 </section>
 
+<section class="panel" id="polarVortexAdvanced">
+<h2>Pokročilá diagnostika tvaru a šíření anomálií · X-5</h2>
+<p class="muted">Automatický výpočet z archivovaných polí geopotenciální výšky NOAA GFS na 10 / 30 / 50 hPa. Poměr os vychází z prostorového rozložení záporných odchylek vůči průměru stejné zeměpisné šířky. Vzhledem k síti 40 bodů jde o orientační geometrický indikátor, nikoli o přesnou detekci okraje víru či rozdělení.</p>
+<div class="status" id="pvx5AdvancedStatus">Čekám na načtení dat…</div>
+<div class="status" id="pvx5AdvancedTime">—</div>
+<div class="controls"><button type="button" id="pvx5AdvancedRefresh">↻ Přepočítat diagnostiku</button></div>
+<h3>Geometrie polárního víru</h3>
+<div style="overflow-x:auto"><table><thead><tr><th>Hladina</th><th>Poměr hlavní / vedlejší osy</th><th>Odhad středu anomálie</th><th>Orientace hlavní osy</th><th>Vzorky</th></tr></thead><tbody id="pvx5AdvancedBody"><tr><td colspan="5">Čekám na data…</td></tr></tbody></table></div>
+<div class="status" id="pvx5Signal">Geometrický indikátor čeká na data.</div>
+<h3>Časový vývoj deformace</h3>
+<div style="overflow-x:auto"><table><thead><tr><th>Hladina</th><th>Začátek</th><th>Střed období</th><th>Poslední krok</th><th>Interpretace změny</th></tr></thead><tbody id="pvx5TrendBody"><tr><td colspan="5">Čekám na data…</td></tr></tbody></table></div>
+<div class="status" id="pvx5Downward">Vyhodnocení vertikálního souběhu čeká na data.</div>
+<p class="muted">Omezení: 17 kroků v krátkém běhu GFS neprokazuje sestupnou propagaci stratosférického signálu. Rozdělení víru vyžaduje hustší pole geopotenciálu nebo potenciální vorticity a ověření dvou samostatných center. Pravděpodobnost arktického vpádu do Evropy nelze odvodit pouze ze stratosféry; vyžaduje návazná troposférická pole a ansámblovou předpověď.</p>
+</section>
+
 <section class="panel"><h2>Archiv měření a časové řady</h2>
 <p class="muted">Automaticky stahovaný denní archiv ERA5 od roku 1959. Jde o reanalýzu založenou na pozorováních a modelu, nikoli o přímé měření jedním přístrojem. Aktualizace archivu probíhá denně; datum posledního záznamu se zobrazuje samostatně.</p>
 <div class="grid">
@@ -728,7 +743,7 @@ setInterval(refreshX5Infographic,30*60*1000);
  function shiftDate(d,n){const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);}
  load();setInterval(load,30*60*1000);
 })();
-</script><script src="./polarni-vir-animace.js?v=1"></script><script src="/Kosmick-observato-/gfs-polarni-animace.js?v=11"></script><script src="/Kosmick-observato-/gfs-vortex-comparison.js?v=4"></script><script src="./gfs-polarni-3d.js?v=22" onerror="document.getElementById(\'p3dStatus\').textContent=\'CHYBA: 3D skript se nenačetl. Zkontrolujte cestu k souboru.\'"></script><script>
+</script><script src="./polar-vortex-advanced.js?v=1"></script><script src="./polarni-vir-animace.js?v=1"></script><script src="/Kosmick-observato-/gfs-polarni-animace.js?v=11"></script><script src="/Kosmick-observato-/gfs-vortex-comparison.js?v=4"></script><script src="./gfs-polarni-3d.js?v=22" onerror="document.getElementById(\'p3dStatus\').textContent=\'CHYBA: 3D skript se nenačetl. Zkontrolujte cestu k souboru.\'"></script><script>
 (function(){
  const sources=[
   {id:'Era5',url:'./data/archive-meta.json',label:'ERA5',date:m=>m.files?.['u60_daily.csv']?.last_date,detail:m=>'Záznam do '+(m.files?.['u60_daily.csv']?.last_date||'—')+' · '+(m.files?.['u60_daily.csv']?.rows||'—')+' řádků'},
