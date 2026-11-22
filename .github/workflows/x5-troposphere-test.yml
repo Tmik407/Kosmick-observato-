@@ -1,0 +1,83 @@
+name: Test troposférální návaznosti X-5
+
+on:
+  push:
+    branches: [x5-development]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Načíst pracovní kopii
+        uses: actions/checkout@v4
+      - name: Ověřit syntaxi JavaScriptu
+        run: |
+          node --check polar-vortex-shared-data.js
+          node --check polar-vortex-troposphere.js
+      - name: Ověřit archiv GFS
+        run: |
+          python - <<'PY'
+          import json
+          d=json.load(open('data/europe-gfs/latest.json', encoding='utf-8'))
+          assert len(d['times']) >= 2, 'Chybí časové kroky'
+          assert len(d['points']) == len(d['rows']) == 140, 'Neočekávaný počet bodů'
+          sites=[(60,-20),(70,20),(50,-10),(50,15),(50,35)]
+          fields=['geopotential_height_500hPa','temperature_500hPa','wind_speed_500hPa','wind_direction_500hPa','geopotential_height_850hPa','temperature_850hPa','wind_speed_850hPa','wind_direction_850hPa']
+          for lat,lon in sites:
+              i=next((i for i,p in enumerate(d['points']) if p['lat']==lat and p['lon']==lon),None)
+              assert i is not None, f'Chybí bod {lat},{lon}'
+              for f in fields:
+                  assert len(d['rows'][i]['hourly'].get(f,[])) == len(d['times']), f'Neúplné pole {f} v bodě {lat},{lon}'
+          print('Archiv GFS: 5/5 lokalit, 8/8 polí,',len(d['times']),'časových kroků.')
+          PY
+      - name: Připravit Chromium a test
+        run: |
+          npm init -y
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Spustit lokální web
+        run: |
+          python3 -m http.server 4173 >/tmp/x5-http.log 2>&1 &
+          echo $! >/tmp/x5-http.pid
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:4173/polarni-vir.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/x5-http.log
+          exit 1
+      - name: Otestovat panel v Chromium
+        run: |
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage();
+          page.on('pageerror',e=>console.error('PAGE ERROR:',e.message));
+          await page.goto('http://127.0.0.1:4173/polarni-vir.html',{waitUntil:'domcontentloaded'});
+          await page.waitForFunction(()=>{
+            const s=document.querySelector('#pv500Status')?.innerText||'';
+            return s.includes('Data GFS na 500 hPa načtena') || s.includes('nepodařilo načíst');
+          },null,{timeout:30000});
+          const status=await page.locator('#pv500Status').innerText();
+          if(!status.includes('Data GFS na 500 hPa načtena')) throw new Error('Panel nenačetl data: '+status);
+          await page.waitForFunction(()=>document.querySelectorAll('#pv500Body tr').length===5,{timeout:10000});
+          const stampBefore=await page.locator('#pv500Stamp').innerText();
+          const select=page.locator('#pv500Time');
+          const count=await select.locator('option').count();
+          if(count<2) throw new Error('Časová osa má méně než dva kroky');
+          await select.selectOption('1');
+          await page.waitForFunction(before=>document.querySelector('#pv500Stamp')?.innerText!==before,stampBefore,{timeout:5000});
+          const stampAfter=await page.locator('#pv500Stamp').innerText();
+          const canvas=await page.locator('#pv500Chart').evaluate(c=>{
+            const ctx=c.getContext('2d');
+            const data=ctx.getImageData(0,0,c.width,c.height).data;
+            for(let i=0;i<data.length;i+=4) if(data[i]!==255||data[i+1]!==255||data[i+2]!==255) return true;
+            return false;
+          });
+          if(!canvas) throw new Error('Graf zůstal prázdný');
+          console.log(JSON.stringify({status,tableRows:5,steps:count,stampBefore,stampAfter,chartDrawn:canvas}));
+          await browser.close();
+          JS
