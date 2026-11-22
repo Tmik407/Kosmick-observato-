@@ -42,8 +42,9 @@ async function load(){
  try{
   if(!window.X5GFS||typeof window.X5GFS.get!=='function')throw Error('Společný datový modul X5GFS není načten. Obnovte stránku bez staré mezipaměti.');
   const data=await window.X5GFS.get();
+  if(!data||!Array.isArray(data.times)||!Array.isArray(data.points)||!Array.isArray(data.arr))throw Error('Společný archiv GFS nemá očekávanou strukturu.');
   const index=new Map(data.points.map((p,i)=>[p.lat+','+p.lon,i]));
-  const locations=points.map(p=>{const i=index.get(p.lat+','+p.lon);if(i===undefined)throw Error('Chybí bod '+p.name+' ve společném poli GFS');return {...p,hourly:data.arr[i].hourly};});
+  const locations=points.map(p=>{const i=index.get(p.lat+','+p.lon),row=i===undefined?null:data.arr[i];if(!row||!row.hourly)throw Error('Chybí bod nebo hodinová data pro '+p.name+' ve společném archivu GFS.');for(const f of fields)if(!Array.isArray(row.hourly[f])||row.hourly[f].length!==data.times.length)throw Error('Neúplné pole '+f+' pro '+p.name+'.');return {...p,hourly:row.hourly};});
   dataset={times:data.times,locations};
   const select=$('pv500Time');if(select){select.innerHTML='';dataset.times.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t.replace('T',' ')+' UTC';select.appendChild(o);});select.value='0';}
   render();if(status)status.innerHTML='<b class="good">Data GFS na 500 hPa načtena.</b> 5 lokalit · '+data.times.length+' hodinových kroků · '+(data.stale?'uložená data':'společná data GFS').'.';
