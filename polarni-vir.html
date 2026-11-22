@@ -224,7 +224,7 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
 </section>
 <section class="panel" id="polarTroposphere500">
 <h2>Troposférická návaznost · geopotenciál 500 hPa</h2>
-<p class="muted">Doplňkový výhled pro propojení stratosférické diagnostiky s počasím v Evropě. Pět pevných srovnávacích bodů sleduje geopotenciál, teplotu a vítr na hladinách 500 a 850 hPa. Časový horizont 72 hodin je sjednocen s mapou. Zdroj: NCEP GFS prostřednictvím Open-Meteo GFS API; hodinová modelová předpověď, nikoli měření.</p>
+<p class="muted">Doplňkový výhled pro propojení stratosférické diagnostiky s počasím v Evropě. Pět pevných srovnávacích bodů sleduje geopotenciál, teplotu a vítr na hladinách 500 a 850 hPa. Časový horizont 72 hodin je sjednocen s mapou. Zdroj: archiv NOAA NOMADS GFS 0,25° GRIB2; evropská síť je zobrazena v rozlišení 5°; hodinová modelová předpověď, nikoli měření.</p>
 <div class="status" id="pv500Status">Čekám na načtení dat…</div>
 <div class="controls" style="align-items:end">
 <label><b>Čas předpovědi (UTC)</b><select id="pv500Time"><option value="0">Načítám…</option></select></label>
@@ -813,7 +813,7 @@ setInterval(refreshX5Infographic,30*60*1000);
 <script src="./polar-vortex-map500.js?v=6"></script>
 <script src="./polar-vortex-map850.js?v=7"></script>
 <script src="./polar-vortex-cold-air.js?v=4"></script>
-<script src="./polar-vortex-vertical.js?v=3"></script><script src="./polarni-vir-animace.js?v=1"></script><script src="/Kosmick-observato-/gfs-polarni-animace.js?v=11"></script><script src="/Kosmick-observato-/gfs-vortex-comparison.js?v=4"></script><script src="./gfs-polarni-3d.js?v=22" onerror="document.getElementById(\'p3dStatus\').textContent=\'CHYBA: 3D skript se nenačetl. Zkontrolujte cestu k souboru.\'"></script><script>
+<script src="./polar-vortex-vertical.js?v=4"></script><script src="./polarni-vir-animace.js?v=1"></script><script src="/Kosmick-observato-/gfs-polarni-animace.js?v=11"></script><script src="/Kosmick-observato-/gfs-vortex-comparison.js?v=4"></script><script src="./gfs-polarni-3d.js?v=22" onerror="document.getElementById(\'p3dStatus\').textContent=\'CHYBA: 3D skript se nenačetl. Zkontrolujte cestu k souboru.\'"></script><script>
 (function(){
  const sources=[
   {id:'Era5',url:'./data/archive-meta.json',label:'ERA5',date:m=>m.files?.['u60_daily.csv']?.last_date,detail:m=>'Záznam do '+(m.files?.['u60_daily.csv']?.last_date||'—')+' · '+(m.files?.['u60_daily.csv']?.rows||'—')+' řádků'},
