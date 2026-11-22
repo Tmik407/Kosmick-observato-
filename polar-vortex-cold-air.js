@@ -21,7 +21,7 @@ async function x5QueuedFetch(url,init={}){
  };
  const previous=window.__x5OpenMeteoQueue||Promise.resolve();
  const task=previous.then(run,run);
- window.__x5OpenMeteoQueue=task.then(()=>new Promise(r=>setTimeout(r,3000)),()=>new Promise(r=>setTimeout(r,3000)));
+ window.__x5OpenMeteoQueue=task.then(()=>new Promise(r=>setTimeout(r,10000)),()=>new Promise(r=>setTimeout(r,10000)));
  if(cached&&cached.data){
   // Zobraz poslední úspěšná data ihned; aktualizace proběhne na pozadí.
   task.catch(()=>{});
