@@ -188,7 +188,7 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
 <section class="panel" id="pvx5Map500">
 <h2>Synoptická mapa Evropy · 500 hPa</h2>
 <p class="muted">Pole geopotenciální výšky 500 hPa z NCEP GFS přes Open-Meteo. Mapa skládá síť 9 × 15 bodů nad Evropou a vykresluje barevné pole i orientační izohypsy. Síť je záměrně označena jako hrubší interpolované zobrazení, nikoli jako plnohodnotný GRIB synoptický rozbor.</p>
-<div class="controls" style="align-items:end"><label><b>Čas předpovědi (UTC)</b><select id="pvmapTime"><option value="0">Načítám…</option></select></label><button type="button" id="pvmapRefresh">↻ Obnovit mapu</button></div>
+<div class="controls" style="align-items:end"><label><b>Čas předpovědi (UTC)</b><select id="pvmapTime"><option value="0">Načítám…</option></select></label><button type="button" id="pvmapPlay">▶ Přehrát vývoj</button><button type="button" id="pvmapRefresh">↻ Obnovit mapu</button></div><div class="controls"><label style="width:100%"><b>Časová osa</b><input id="pvmapRange" type="range" min="0" max="0" value="0" step="1" style="width:100%"></label></div>
 <div class="status" id="pvmapStatus">Načítám evropské pole GFS…</div>
 <div class="status" id="pvmapStamp">—</div>
 <canvas id="pvmapCanvas" width="1050" height="650" style="display:block;width:100%;height:auto;background:#f4f8fc;border:1px solid #d4e0eb;border-radius:12px"></canvas>
