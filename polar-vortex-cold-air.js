@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const $=id=>document.getElementById(id),LAT=Array.from({length:13},(_,i)=>30+i*5),LON=Array.from({length:25},(_,i)=>-60+i*5),API='https://api.open-meteo.com/v1/gfs';
+const $=id=>document.getElementById(id),LAT=Array.from({length:7},(_,i)=>30+i*10),LON=Array.from({length:13},(_,i)=>-60+i*10),API='https://api.open-meteo.com/v1/gfs';
 const fields=['temperature_850hPa','wind_speed_850hPa','wind_direction_850hPa'];
 let times=[],cells=[],track=[];
 async function x5QueuedFetch(url,init={}){
@@ -30,7 +30,7 @@ async function x5QueuedFetch(url,init={}){
  return task;
 }
 async function load(){
- const status=$('pvx5ColdStatus');if(status)status.textContent='Čekám na volný přístup k GFS; načítám 325 bodů v jednom požadavku…';
+ const status=$('pvx5ColdStatus');if(status)status.textContent='Čekám na volný přístup k GFS; načítám 91 bodů v jednom požadavku…';
  try{
   const coords=LAT.flatMap(lat=>LON.map(lon=>({lat,lon}))),res=[];
   const q=new URLSearchParams({latitude:coords.map(p=>p.lat).join(','),longitude:coords.map(p=>p.lon).join(','),hourly:fields.join(','),forecast_days:'3',timezone:'GMT',wind_speed_unit:'kmh'});const r=await x5QueuedFetch(API,{method:'POST',body:q,cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const a=await r.json();res.push(...(Array.isArray(a)?a:[a]));
