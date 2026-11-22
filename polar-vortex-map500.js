@@ -18,7 +18,7 @@ function mapXY(lon,lat,w,h){const p={w:w-box.l-box.r,h:h-box.t-box.b};return [bo
 function drawCountries(g,w,h){
  if(!coast)return;
  g.save();g.beginPath();g.rect(box.l,box.t,w-box.l-box.r,h-box.t-box.b);g.clip();
- const drawRing=ring=>{for(let k=0;k<ring.length;k++){const [lon,lat]=ring[k];if(lon< -30||lon>40||lat<40||lat>80)continue;const p=mapXY(lon,lat,w,h);if(k===0)g.moveTo(...p);else g.lineTo(...p);}};
+ const drawRing=ring=>{for(let k=0;k<ring.length;k++){const [lon,lat]=ring[k];const p=mapXY(lon,lat,w,h);if(k===0)g.moveTo(...p);else g.lineTo(...p);}g.closePath();};
  g.strokeStyle='rgba(20,45,66,.72)';g.lineWidth=1.5;
  for(const f of coast.features||[]){const geo=f.geometry;if(!geo)continue;g.beginPath();if(geo.type==='Polygon')geo.coordinates.forEach(drawRing);else if(geo.type==='MultiPolygon')geo.coordinates.forEach(poly=>poly.forEach(drawRing));g.stroke();}
  g.restore();
