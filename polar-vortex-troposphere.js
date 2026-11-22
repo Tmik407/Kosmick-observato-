@@ -36,43 +36,18 @@ function draw(){
  g.textAlign='center';g.fillStyle='#52677a';g.font='11px Arial';[0,Math.floor((dataset.times.length-1)/2),dataset.times.length-1].forEach(i=>g.fillText(dataset.times[i].replace('T',' '),x(i),h-15));
  g.textAlign='left';let lx=p.l;series.forEach((s,j)=>{g.fillStyle=cols[j];g.fillRect(lx,8,12,4);g.fillStyle='#263b4f';g.fillText(s.name,lx+17,16);lx+=Math.min(205,Math.max(125,s.name.length*7));});
 }
-async function x5QueuedFetch(url,init={}){
- const body=init.body?String(init.body):'',key='x5-gfs:'+url+':'+body;
- const readCache=()=>{try{const x=localStorage.getItem(key);return x?JSON.parse(x):null;}catch(_){return null;}};
- const saveCache=async response=>{try{if(response.ok){const data=await response.clone().text();localStorage.setItem(key,JSON.stringify({at:Date.now(),data}));}}catch(_){}};
- const cached=readCache();
- const run=async()=>{
-  let last;
-  for(let attempt=0;attempt<2;attempt++){
-   try{
-    const response=await fetch(url,init);
-    if(response.status===429&&attempt===0){last=new Error('HTTP 429 – GFS dočasně omezuje požadavky');await new Promise(r=>setTimeout(r,12000));continue;}
-    if(response.ok)await saveCache(response);
-    return response;
-   }catch(e){last=e;if(attempt===0)await new Promise(r=>setTimeout(r,2500));}
-  }
-  throw last||new Error('Požadavek GFS selhal.');
- };
- const previous=window.__x5OpenMeteoQueue||Promise.resolve();
- const task=previous.then(run,run);
- window.__x5OpenMeteoQueue=task.then(()=>new Promise(r=>setTimeout(r,10000)),()=>new Promise(r=>setTimeout(r,10000)));
- if(cached&&cached.data){
-  // Zobraz poslední úspěšná data ihned; aktualizace proběhne na pozadí.
-  task.catch(()=>{});
-  return new Response(cached.data,{status:200,headers:{'Content-Type':'application/json','X-X5-Cache':'stale-ok'}});
- }
- return task;
-}
 async function load(){
- const status=$('pv500Status');if(status)status.textContent='Načítám společná GFS data 500/850 hPa…';
+ const status=$('pv500Status');if(status)status.textContent='Načítám geopotenciál, teplotu a vítr na 500 hPa z modelu GFS…';
  try{
-  const data=await window.X5GFS.get(),offset=data.gridRows*data.gridCols;
-  const arr=points.map((p,i)=>data.arr[offset+i]);
-  const times=data.times;
+  const q=new URLSearchParams({latitude:points.map(p=>p.lat).join(','),longitude:points.map(p=>p.lon).join(','),hourly:fields.join(','),forecast_days:'3',timezone:'GMT',wind_speed_unit:'kmh'});
+  const r=await fetch('https://api.open-meteo.com/v1/gfs?'+q.toString(),{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);
+  const raw=await r.json(),arr=Array.isArray(raw)?raw:[raw];if(arr.length!==points.length)throw Error('Počet vrácených lokalit neodpovídá požadavku.');
+  const times=arr[0]?.hourly?.time;if(!Array.isArray(times)||!times.length)throw Error('V odpovědi chybí hodinová časová řada.');
+  arr.forEach((x,i)=>{for(const f of fields)if(!Array.isArray(x.hourly?.[f])||x.hourly[f].length!==times.length)throw Error('Chybí proměnná '+f+' pro '+points[i].name);});
   dataset={times,locations:arr.map((x,i)=>({...points[i],hourly:x.hourly}))};
   const select=$('pv500Time');if(select){select.innerHTML='';times.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t.replace('T',' ')+' UTC';select.appendChild(o);});select.value='0';}
-  render();if(status)status.innerHTML='<b class="good">Společná data GFS načtena.</b> 5 srovnávacích lokalit · '+times.length+' hodinových kroků · '+(data.stale?'uložená data':'aktuální GFS');
- }catch(e){if(status)status.innerHTML='<b class="warn">Data 500 hPa se nepodařilo načíst:</b> '+String(e.message||e);}
+  render();if(status)status.innerHTML='<b class="good">Data GFS na 500 hPa načtena.</b> '+points.length+' lokalit · '+times.length+' hodinových kroků. Časová osa sjednocena s mapou 500 hPa. Jednotky: m, °C, km/h.';
+ }catch(e){if(status)status.innerHTML='<b class="warn">Data 500 hPa se nepodařilo načíst:</b> '+String(e.message||e)+'. Zkontrolujte připojení a dostupnost veřejného API.';}
 }
 const s=$('pv500Time');if(s)s.addEventListener('change',render);const b=$('pv500Refresh');if(b)b.addEventListener('click',load);load();
 })();
