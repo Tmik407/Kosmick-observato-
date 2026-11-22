@@ -27,7 +27,7 @@ function draw(){
  const c=$('pv850mapCanvas');if(!c||!grid.length)return;
  const g=c.getContext('2d'),w=c.width,h=c.height,idx=Number($('pv850mapTime')?.value||0),vals=grid.map(row=>row[idx]),all=vals.flat().filter(Number.isFinite);
  if(!all.length)return;
- const lo=Math.floor(Math.min(...all)/60)*60,hi=Math.ceil(Math.max(...all)/60)*60||lo+60;
+ const lo=Math.floor(Math.min(...all)/5)*5,hi=Math.ceil(Math.max(...all)/5)*5||lo+5;
  const nx=(LON.length-1)*6+1,ny=(LAT.length-1)*6+1,scale=6;
  const dense=Array.from({length:ny},(_,i)=>Array.from({length:nx},(_,j)=>sample(i/scale,j/scale,vals)));
  g.clearRect(0,0,w,h);g.fillStyle='#f4f8fc';g.fillRect(0,0,w,h);
