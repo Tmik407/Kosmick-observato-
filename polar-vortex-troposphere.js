@@ -37,17 +37,15 @@ function draw(){
  g.textAlign='left';let lx=p.l;series.forEach((s,j)=>{g.fillStyle=cols[j];g.fillRect(lx,8,12,4);g.fillStyle='#263b4f';g.fillText(s.name,lx+17,16);lx+=Math.min(205,Math.max(125,s.name.length*7));});
 }
 async function load(){
- const status=$('pv500Status');if(status)status.textContent='Načítám geopotenciál, teplotu a vítr na 500 hPa z modelu GFS…';
+ const status=$('pv500Status');if(status)status.textContent='Načítám společná data GFS pro evropské srovnávací body…';
  try{
-  const q=new URLSearchParams({latitude:points.map(p=>p.lat).join(','),longitude:points.map(p=>p.lon).join(','),hourly:fields.join(','),forecast_days:'3',timezone:'GMT',wind_speed_unit:'kmh'});
-  const r=await fetch('https://api.open-meteo.com/v1/gfs?'+q.toString(),{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);
-  const raw=await r.json(),arr=Array.isArray(raw)?raw:[raw];if(arr.length!==points.length)throw Error('Počet vrácených lokalit neodpovídá požadavku.');
-  const times=arr[0]?.hourly?.time;if(!Array.isArray(times)||!times.length)throw Error('V odpovědi chybí hodinová časová řada.');
-  arr.forEach((x,i)=>{for(const f of fields)if(!Array.isArray(x.hourly?.[f])||x.hourly[f].length!==times.length)throw Error('Chybí proměnná '+f+' pro '+points[i].name);});
-  dataset={times,locations:arr.map((x,i)=>({...points[i],hourly:x.hourly}))};
-  const select=$('pv500Time');if(select){select.innerHTML='';times.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t.replace('T',' ')+' UTC';select.appendChild(o);});select.value='0';}
-  render();if(status)status.innerHTML='<b class="good">Data GFS na 500 hPa načtena.</b> '+points.length+' lokalit · '+times.length+' hodinových kroků. Časová osa sjednocena s mapou 500 hPa. Jednotky: m, °C, km/h.';
- }catch(e){if(status)status.innerHTML='<b class="warn">Data 500 hPa se nepodařilo načíst:</b> '+String(e.message||e)+'. Zkontrolujte připojení a dostupnost veřejného API.';}
+  const data=await window.X5GFS.get();
+  const index=new Map(data.points.map((p,i)=>[p.lat+','+p.lon,i]));
+  const locations=points.map(p=>{const i=index.get(p.lat+','+p.lon);if(i===undefined)throw Error('Chybí bod '+p.name+' ve společném poli GFS');return {...p,hourly:data.arr[i].hourly};});
+  dataset={times:data.times,locations};
+  const select=$('pv500Time');if(select){select.innerHTML='';dataset.times.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t.replace('T',' ')+' UTC';select.appendChild(o);});select.value='0';}
+  render();if(status)status.innerHTML='<b class="good">Data GFS na 500 hPa načtena.</b> 5 lokalit · '+data.times.length+' hodinových kroků · '+(data.stale?'uložená data':'společná data GFS').'.';
+ }catch(e){if(status)status.innerHTML='<b class="warn">Data 500 hPa se nepodařilo načíst:</b> '+String(e.message||e);}
 }
 const s=$('pv500Time');if(s)s.addEventListener('change',render);const b=$('pv500Refresh');if(b)b.addEventListener('click',load);load();
 })();
