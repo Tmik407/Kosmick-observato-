@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const $=id=>document.getElementById(id),LAT=Array.from({length:9},(_,i)=>40+i*5),LON=Array.from({length:15},(_,i)=>-30+i*5),FIELD='geopotential_height_500hPa',API='https://api.open-meteo.com/v1/gfs';
+const $=id=>document.getElementById(id),LAT=Array.from({length:5},(_,i)=>40+i*10),LON=Array.from({length:8},(_,i)=>-30+i*10),FIELD='geopotential_height_500hPa',API='https://api.open-meteo.com/v1/gfs';
 let times=[],grid=[],playing=false,timer=null,coast=null;
 const fmt=v=>Math.round(v).toString();
 const box={l:76,r:34,t:48,b:72};
