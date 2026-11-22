@@ -2,6 +2,13 @@
 const $=id=>document.getElementById(id),LAT=Array.from({length:13},(_,i)=>30+i*5),LON=Array.from({length:25},(_,i)=>-60+i*5),API='https://api.open-meteo.com/v1/gfs';
 const fields=['temperature_850hPa','wind_speed_850hPa','wind_direction_850hPa'];
 let times=[],cells=[],track=[];
+async function x5QueuedFetch(url,init){
+ const run=async()=>{let last;for(let attempt=0;attempt<4;attempt++){try{const response=await fetch(url,init);if(response.status===429){last=new Error('HTTP 429 – veřejné API omezuje četnost požadavků');if(attempt<3){await new Promise(r=>setTimeout(r,[3000,7000,15000][attempt]));continue;}}return response;}catch(e){last=e;if(attempt<3)await new Promise(r=>setTimeout(r,[1500,4000,9000][attempt]));}}throw last||new Error('Požadavek se nezdařil.');};
+ const previous=window.__x5OpenMeteoQueue||Promise.resolve();
+ const task=previous.then(run,run);
+ window.__x5OpenMeteoQueue=task.then(()=>new Promise(r=>setTimeout(r,1200)),()=>new Promise(r=>setTimeout(r,1200)));
+ return task;
+}
 const fmt=(v,d=1)=>Number.isFinite(v)?v.toFixed(d).replace('.',','):'—';
 const mean=a=>a.length?a.reduce((s,v)=>s+v,0)/a.length:NaN;
 const coord=p=>fmt(p.lat,1)+'° s. š., '+fmt(Math.abs(p.lon),1)+'° '+(p.lon<0?'z. d.':'v. d.');
@@ -53,10 +60,10 @@ function drawTrack(idx){
  g.fillStyle='#263b4f';g.fillText('Zeměpisná šířka těžiště studené oblasti (< −10 °C)',p.l,15);g.fillText('Čas →',w-75,h-12);
 }
 async function load(){
- const status=$('pvx5ColdStatus');if(status)status.textContent='Načítám teplotu a vítr 850 hPa pro 325 bodů…';
+ const status=$('pvx5ColdStatus');if(status)status.textContent='Čekám na volný přístup k GFS; načítám 325 bodů v jednom požadavku…';
  try{
   const coords=LAT.flatMap(lat=>LON.map(lon=>({lat,lon}))),res=[];
-  for(let i=0;i<coords.length;i+=40){const q=new URLSearchParams({latitude:coords.slice(i,i+40).map(p=>p.lat).join(','),longitude:coords.slice(i,i+40).map(p=>p.lon).join(','),hourly:fields.join(','),forecast_days:'3',timezone:'GMT',wind_speed_unit:'kmh'});const r=await fetch(API+'?'+q,{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const a=await r.json();res.push(...(Array.isArray(a)?a:[a]));}
+  const q=new URLSearchParams({latitude:coords.map(p=>p.lat).join(','),longitude:coords.map(p=>p.lon).join(','),hourly:fields.join(','),forecast_days:'3',timezone:'GMT',wind_speed_unit:'kmh'});const r=await x5QueuedFetch(API,{method:'POST',body:q,cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const a=await r.json();res.push(...(Array.isArray(a)?a:[a]));
   times=res[0]?.hourly?.time;if(!Array.isArray(times)||!times.length||res.length!==coords.length)throw Error('Neúplná odpověď GFS.');
   for(const r of res)for(const f of fields)if(!Array.isArray(r.hourly?.[f])||r.hourly[f].length!==times.length)throw Error('Chybí pole '+f);
   cells=coords.map((p,i)=>({lat:p.lat,lon:p.lon,temp:res[i].hourly.temperature_850hPa,speed:res[i].hourly.wind_speed_850hPa,direction:res[i].hourly.wind_direction_850hPa}));
