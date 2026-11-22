@@ -23,7 +23,7 @@ function render(){
   }
   signal.textContent=text+' Jde pouze o řídké bodové srovnání, nikoli o mapovou analýzu nebo pravděpodobnost vpádu.';
  }
- const stamp=$('pv500Stamp');if(stamp)stamp.textContent='Platnost: '+dataset.times[i]+' UTC · model NCEP GFS přes Open-Meteo';
+ const stamp=$('pv500Stamp');if(stamp)stamp.textContent='Platnost: '+dataset.times[i]+' UTC · archiv NOAA NOMADS GFS';
  draw();
 }
 function draw(){
@@ -39,12 +39,12 @@ function draw(){
 async function load(){
  const status=$('pv500Status');if(status)status.textContent='Načítám společná data GFS pro evropské srovnávací body…';
  try{
-  const data=await window.X5GFS.get();
+  const data=await window.X5GFS.get({refresh:true});
   const index=new Map(data.points.map((p,i)=>[p.lat+','+p.lon,i]));
   const locations=points.map(p=>{const i=index.get(p.lat+','+p.lon);if(i===undefined)throw Error('Chybí bod '+p.name+' ve společném poli GFS');return {...p,hourly:data.arr[i].hourly};});
   dataset={times:data.times,locations};
   const select=$('pv500Time');if(select){select.innerHTML='';dataset.times.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t.replace('T',' ')+' UTC';select.appendChild(o);});select.value='0';}
-  render();if(status)status.innerHTML='<b class="good">Data GFS na 500 hPa načtena.</b> 5 lokalit · '+data.times.length+' hodinových kroků · '+(data.stale?'uložená data ('+(data.cacheAgeHours??'—')+' h)':'společná data GFS')+'.';
+  render();if(status)status.innerHTML='<b class="good">Data GFS na 500 hPa načtena.</b> 5 lokalit · '+data.times.length+' hodinových kroků · '+(data.stale?'záložní kopie ('+(data.cacheAgeHours??'—')+' h)'+(data.warning?' · '+data.warning:''):'čerstvě načtený archiv NOAA GFS')+'.';
  }catch(e){if(status)status.innerHTML='<b class="warn">Data 500 hPa se nepodařilo načíst:</b> '+String(e.message||e);}
 }
 const s=$('pv500Time');if(s)s.addEventListener('change',render);const b=$('pv500Refresh');if(b)b.addEventListener('click',load);load();
