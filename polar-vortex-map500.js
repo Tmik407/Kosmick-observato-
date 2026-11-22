@@ -62,16 +62,23 @@ function draw(){
  const lx=box.l,ly=h-14,lw=pw,grad=g.createLinearGradient(lx,0,lx+lw,0);for(let k=0;k<=20;k++){const rgb=color(lo+(hi-lo)*k/20,lo,hi);grad.addColorStop(k/20,'rgb('+rgb.join(',')+')');}
  g.fillStyle=grad;g.fillRect(lx,ly-13,lw,11);g.fillStyle='#263b4f';g.font='12px Arial';g.textAlign='left';g.fillText(fmt(lo)+' m',lx,ly+5);g.textAlign='right';g.fillText(fmt(hi)+' m',lx+lw,ly+5);
 }
+async function x5QueuedFetch(url,init){
+ const run=async()=>{let last;for(let attempt=0;attempt<4;attempt++){try{const response=await fetch(url,init);if(response.status===429){last=new Error('HTTP 429 – veřejné API omezuje četnost požadavků');if(attempt<3){await new Promise(r=>setTimeout(r,[3000,7000,15000][attempt]));continue;}}return response;}catch(e){last=e;if(attempt<3)await new Promise(r=>setTimeout(r,[1500,4000,9000][attempt]));}}throw last||new Error('Požadavek se nezdařil.');};
+ const previous=window.__x5OpenMeteoQueue||Promise.resolve();
+ const task=previous.then(run,run);
+ window.__x5OpenMeteoQueue=task.then(()=>new Promise(r=>setTimeout(r,1200)),()=>new Promise(r=>setTimeout(r,1200)));
+ return task;
+}
 async function fetchBatch(coords){
  const q=new URLSearchParams({latitude:coords.map(p=>p.lat).join(','),longitude:coords.map(p=>p.lon).join(','),hourly:FIELD,forecast_days:'3',timezone:'GMT'});
- const r=await fetch(API+'?'+q,{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);
+ const r=await x5QueuedFetch(API,{method:'POST',body:q,cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);
  const raw=await r.json(),arr=Array.isArray(raw)?raw:[raw];if(arr.length!==coords.length)throw Error('API vrátilo jiný počet bodů.');return arr;
 }
 async function load(){
  stop();const s=$('pvmapStatus');if(s)s.textContent='Stahuji evropské pole GFS a připravuji podkladovou mapu…';
  try{
   const coords=LAT.flatMap(lat=>LON.map(lon=>({lat,lon}))),results=[];
-  for(let i=0;i<coords.length;i+=45)results.push(...await fetchBatch(coords.slice(i,i+45)));
+  results.push(...await fetchBatch(coords));
   const t=results[0]?.hourly?.time;if(!Array.isArray(t)||!t.length)throw Error('Chybí časová řada.');
   if(results.some(r=>!Array.isArray(r.hourly?.[FIELD])||r.hourly[FIELD].length!==t.length))throw Error('V některých bodech chybí geopotenciál.');
   times=t;grid=LAT.map((_,i)=>LON.map((_,j)=>results[i*LON.length+j].hourly[FIELD]));
