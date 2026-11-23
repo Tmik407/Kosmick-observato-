@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import math
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import numpy as np
@@ -132,7 +132,7 @@ def main():
         "pressure_level_hpa": LEVEL,
         "forecast_step_hours": STEP,
         "run_utc": run.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "valid_time_utc": (run.replace(tzinfo=timezone.utc) if run.tzinfo is None else run.astimezone(timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "valid_time_utc": ((run.replace(tzinfo=timezone.utc) if run.tzinfo is None else run.astimezone(timezone.utc)) + timedelta(hours=STEP)).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "units": {"t": "K", "u": "m s-1", "v": "m s-1", "z": "m2 s-2"},
         "field_notes": {
