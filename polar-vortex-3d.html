@@ -61,10 +61,10 @@
 </section>
 <section class="panel wide" id="ecmwfTimeline" style="margin-top:14px">
 <h2>Časová animace skutečné předpovědi ECMWF · 10 hPa</h2>
-<p class="small">Přehrávání používá samostatné předpovědní kroky z jednoho běhu ECMWF IFS. Posuvníkem lze přejít na konkrétní platnost; při přehrávání se aktualizuje i teplotní pole, geopotenciální izolinie, větrné šipky a diagnostika 3D globusu.</p>
+<p class="small">Přehrávání používá samostatné předpovědní kroky z jednoho běhu ECMWF IFS. Pohyblivé částice sledují proudnice vypočtené z U/V aktuálního kroku; při přechodu na další krok se současně obnoví teplotní pole, geopotenciální izolinie i proudění.</p>
 <div class="metrics"><div class="metric">Platnost zobrazeného pole<b id="timelineValid">Načítám…</b></div><div class="metric">Předpovědní krok<b id="timelineStep">—</b></div><div class="metric">Zonální vítr na 60° N · 10 hPa<b id="timelineU60">—</b><p class="small">m/s · záporná hodnota = východní vítr</p></div><div class="metric">Teplota polární oblasti · 10 hPa<b id="timelinePolarTemp">—</b><p class="small">K · průměr nad 60° N</p></div></div><div class="status" id="sswForecastSignal" style="margin-top:10px">Vyhodnocuji předpovědní signál zonálního větru…</div>
 <div class="control" style="margin-top:14px"><label for="timelineRange">Čas předpovědi <span class="value" id="timelinePosition">—</span></label><input id="timelineRange" type="range" min="0" max="0" value="0" step="1" disabled></div>
-<div class="buttons" style="margin-top:10px"><button id="timelinePlay" type="button" disabled>▶ Přehrát animaci</button><button id="timelinePauseAll" type="button" disabled>⏸ Pozastavit obě animace</button><button id="timelinePrev" type="button" disabled>◀ Předchozí</button><button id="timelineNext" type="button" disabled>Další ▶</button><button id="timelineRefresh" type="button">Obnovit předpověď</button></div>
+<div class="buttons" style="margin-top:10px"><button id="timelinePlay" type="button" disabled>▶ Přehrát animaci</button><button id="timelinePauseAll" type="button" disabled>⏸ Pozastavit obě animace</button><button id="timelinePrev" type="button" disabled>◀ Předchozí</button><button id="timelineNext" type="button" disabled>Další ▶</button><button id="flowToggle" type="button" aria-pressed="false">Proudnice ⏸</button><button id="timelineRefresh" type="button">Obnovit předpověď</button></div>
 <div class="status" id="timelineStatus" style="margin-top:10px">Načítám časovou řadu ECMWF…</div>
 <div class="panel" style="margin-top:14px;padding:14px;background:#071a2b;border-color:#254762;color:#e6f3ff">
 <h3 style="margin:0 0 6px;color:#e6f3ff">Polární mapa ECMWF · severní polokoule</h3>
@@ -203,6 +203,7 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 const canvas=document.querySelector('#scene'),state=document.querySelector('#sceneState');
 let renderer,scene,camera,globe,vortex,streamGroup,ecmwfLayer,tempLayer,contourLayer,windLayer,centerLayer,geoLayer,auto=true,drag=false,lastX=0,lastY=0,rotX=1.12,rotY=0,zoom=4.45;
+const flowParticles=[];let flowAuto=true,flowClock=0,lastRenderTime=0;
 try{
  renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(canvas.clientWidth,canvas.clientHeight,false);
  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(38,canvas.clientWidth/canvas.clientHeight,.1,100);camera.position.set(0,0,zoom);
@@ -541,6 +542,13 @@ try{
     const glow=new THREE.TubeGeometry(curve,Math.max(24,path.length*2),.007,5,false);
     windLayer.add(new THREE.Mesh(glow,streamlineGlow));
     windLayer.add(new THREE.Mesh(tube,streamlineMaterial));
+    // Pohyblivé částice sledují tutéž trajektorii a stejný ECMWF krok jako podklad.
+    const particleMaterial=new THREE.MeshBasicMaterial({color:0xe6fbff,transparent:true,opacity:.98});
+    for(let n=0;n<3;n++){
+     const particle=new THREE.Mesh(new THREE.SphereGeometry(.012,8,8),particleMaterial);
+     windLayer.add(particle);
+     flowParticles.push({mesh:particle,curve,phase:n/3+streamlineSeeds.indexOf(seed)/streamlineSeeds.length,speed:.055+Math.min(.035,Math.hypot(midWind.u,midWind.v)/1200)});
+    }
     // Směrová šipka na konci trajektorie.
     const end=curve.getPoint(1),tangent=curve.getTangent(1).normalize();
     const arrow=new THREE.Mesh(new THREE.ConeGeometry(.012,.042,8),streamlineMaterial);
@@ -602,7 +610,22 @@ try{
  }
  document.querySelectorAll('.levelSelect').forEach(b=>b.addEventListener('click',()=>loadLevelDiagnostics(b.dataset.level)));
  loadLevelDiagnostics(10);
- function animate(){requestAnimationFrame(animate);if(auto&&!drag)rotY+=.0018;scene.rotation.y=0;globe.parent.rotation.set(rotX,rotY,0);camera.position.z=zoom;renderer.render(scene,camera)}animate();
+ function animate(now=performance.now()){
+  requestAnimationFrame(animate);
+  const dt=lastRenderTime?Math.min(.05,(now-lastRenderTime)/1000):0;lastRenderTime=now;
+  if(auto&&!drag)rotY+=.0018;
+  if(flowAuto)flowClock+=dt;
+  for(const p of flowParticles){const t=((p.phase+flowClock*p.speed)%1+1)%1;p.mesh.position.copy(p.curve.getPointAt(t));}
+  scene.rotation.y=0;globe.parent.rotation.set(rotX,rotY,0);camera.position.z=zoom;renderer.render(scene,camera);
+ }
+ window.X5SetFlowAnimation=function(paused){
+  flowAuto=!paused;
+  const b=document.getElementById('flowToggle');
+  if(b){b.textContent=flowAuto?'Proudnice ⏸':'Proudnice ▶';b.setAttribute('aria-pressed',String(!flowAuto));}
+ };
+ const flowToggle=document.getElementById('flowToggle');
+ if(flowToggle)flowToggle.addEventListener('click',()=>window.X5SetFlowAnimation(flowAuto));
+ animate();
  new ResizeObserver(()=>{const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}).observe(canvas);
 }catch(e){state.textContent='3D modul nelze spustit: '+e.message;canvas.insertAdjacentHTML('afterend','<p class="status">Pro 3D zobrazení je nutné připojení k internetu a podpora WebGL.</p>')}
 </script><script>
@@ -921,11 +944,13 @@ try{
   if(!allPaused){
    resumeTimelineAfterPause=!!timer;stop();allPaused=true;
    if(typeof window.X5SetGlobeRotation==='function')window.X5SetGlobeRotation(true);
+   if(typeof window.X5SetFlowAnimation==='function')window.X5SetFlowAnimation(true);
    pauseAllButton.textContent='▶ Obnovit obě animace';
    pauseAllButton.setAttribute('aria-pressed','true');
   }else{
    allPaused=false;
    if(typeof window.X5SetGlobeRotation==='function')window.X5SetGlobeRotation(false);
+   if(typeof window.X5SetFlowAnimation==='function')window.X5SetFlowAnimation(false);
    pauseAllButton.textContent='⏸ Pozastavit obě animace';
    pauseAllButton.setAttribute('aria-pressed','false');
    if(resumeTimelineAfterPause)startPlayback();
