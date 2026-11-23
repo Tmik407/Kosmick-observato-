@@ -134,5 +134,6 @@ jobs:
           grep -q 'id="timelineU60"' /tmp/x5-vortex.html
           grep -q 'id="timelinePolarTemp"' /tmp/x5-vortex.html
           grep -q 'id="sswForecastSignal"' /tmp/x5-vortex.html
+          grep -q 'id="ecmwfPolarMap"' /tmp/x5-vortex.html
           echo "ECMWF animace a diagnostika SSW předpovědního signálu ověřeny."
           echo "Smoke test X-5 dokončen."
