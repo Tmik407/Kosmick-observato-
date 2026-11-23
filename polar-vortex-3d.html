@@ -38,6 +38,37 @@
 <p class="small" id="vortexHistoryStatus">Načítám archiv předpovědí…</p>
 <div class="buttons"><a class="btn" href="./data/polar-vortex-history.json" target="_blank" rel="noopener">Otevřít archiv historie JSON</a></div>
 </section>
+<section class="panel wide" id="seasonalWinter2027">
+<h2>Sezónní výhled na zimu 2026/2027 · Česká republika</h2>
+<p class="small">Aktuální dlouhodobý signál pro prosinec 2026 až únor 2027. Jde o pravděpodobnostní výhled pro širší Evropu, nikoli o přesnou předpověď pro jednotlivé kraje nebo dny v ČR. Sezónní modely popisují odchylky a převládající režim; neumějí spolehlivě určit konkrétní sněhové epizody několik měsíců dopředu.</p>
+<div class="metrics">
+<div class="metric">Teplotní tendence<b style="color:#ffbd75">Spíše nadnormální</b><p class="small">Evropské modely dávají větší šanci teplejšímu než normálnímu průběhu. Pro severovýchod Evropy je signál méně jistý.</p></div>
+<div class="metric">Srážková tendence<b style="color:#75d8ff">Spíše vlhčí</b><p class="small">Copernicus uvádí vlhčí než obvyklý zimní signál nad většinou Evropy, s výjimkami na krajním severu a jihu.</p></div>
+<div class="metric">Sněhová pokrývka<b>Nelze spolehlivě určit</b><p class="small">Více srážek automaticky neznamená více sněhu. Rozhodne teplota při srážkách a nadmořská výška.</p></div>
+<div class="metric">Jistota výhledu<b>Omezená</b><p class="small">Sezónní výhled neukazuje jednotlivé vpády mrazu. Cirkulace AO/NAO a polární vír se mohou během zimy změnit.</p></div>
+</div>
+<h3 style="margin-top:18px">Měsíční teplotní signál ECMWF · průměr Evropy</h3>
+<table style="width:100%;border-collapse:collapse;font-size:13px">
+<thead><tr style="text-align:left;color:#9fc9e7"><th style="padding:8px">Měsíc</th><th style="padding:8px">Odchylka ECMWF</th><th style="padding:8px">Interpretace pro ČR</th></tr></thead>
+<tbody>
+<tr><td style="padding:8px;border-top:1px solid #29445f">Prosinec 2026</td><td style="padding:8px;border-top:1px solid #29445f">+1,08 °C</td><td style="padding:8px;border-top:1px solid #29445f">Mírnější tendence, ale mrazivé epizody možné</td></tr>
+<tr><td style="padding:8px;border-top:1px solid #29445f">Leden 2027</td><td style="padding:8px;border-top:1px solid #29445f">+1,33 °C</td><td style="padding:8px;border-top:1px solid #29445f">Nadnormální signál, lokální zimní vpády nevyloučeny</td></tr>
+<tr><td style="padding:8px;border-top:1px solid #29445f">Únor 2027</td><td style="padding:8px;border-top:1px solid #29445f">+1,53 °C</td><td style="padding:8px;border-top:1px solid #29445f">Nejvýraznější kladný evropský signál v tomto běhu</td></tr>
+</tbody></table>
+<p class="small">Pozor: číselné odchylky jsou průměrem rozsáhlé evropské oblasti z listopadového běhu ECMWF, nikoli hodnotami pro Českou republiku. Nelze je přímo přenášet na Most, Ústecký kraj ani jinou lokalitu. Referenční klimatologie modelu je 1993–2016. Čísla jsou orientační kontext; hlavní regionální závěr vychází z Copernicus C3S.</p>
+<h3 style="margin-top:18px">Co sledovat během zimy</h3>
+<ul class="small">
+<li>Každou aktualizaci ECMWF 10 hPa: zonální vítr, teplotu a případné známky stratosférického oteplení.</li>
+<li>AO a NAO: déle trvající záporné fáze mohou podpořit blokování a chladnější vpády do střední Evropy.</li>
+<li>Krátkodobé předpovědi ČHMÚ: až ty rozhodují o konkrétním mrazu, sněžení a námraze.</li>
+</ul>
+<div class="status" style="margin-top:12px">Pracovní závěr pro zimu 2026/27: evropské sezónní modely zatím naznačují spíše teplejší a ve velké části Evropy vlhčí zimu. To nevylučuje krátké výrazné mrazové epizody ani sněžení, zejména při změně AO/NAO nebo narušení polárního víru.</div>
+<div class="buttons" style="margin-top:12px">
+<a class="btn" href="https://climate.copernicus.eu/seasonal-forecasts" target="_blank" rel="noopener">Copernicus · aktuální sezónní výhled</a>
+<a class="btn" href="https://www.ecmwf.int/en/forecasts/documentation-and-support/seasonal" target="_blank" rel="noopener">ECMWF · metodika SEAS5</a>
+<a class="btn" href="https://www.chmi.cz/predpoved-pocasi/mesic" target="_blank" rel="noopener">ČHMÚ · měsíční výhled</a>
+</div>
+</section>
 <section class="panel wide" id="czWinterImpact">
 <h2>Vliv polárního víru na zimní počasí v České republice</h2>
 <p class="small">Průběžné vyhodnocení kombinuje stratosférický vítr ECMWF na 10 hPa a 60° s. š. s indexy AO a NAO z NOAA CPC. Nejde o předpověď počasí pro konkrétní město, ale o diagnostiku velkoprostorového režimu, který může ovlivnit pravděpodobnost zimních situací ve střední Evropě.</p>
@@ -60,7 +91,7 @@
 </section>
 <section class="panel wide"><h2>Jak model číst</h2><div class="metrics"><div class="metric">Polární vír<b>Stratosféra</b><p class="small">Rozsáhlá cirkulace studeného vzduchu kolem Arktidy, nejsilnější v zimní stratosféře.</p></div><div class="metric">SSW<b>Oteplování</b><p class="small">Při významném SSW může dojít k obrácení zonálního větru na 60° s. š. a 10 hPa.</p></div><div class="metric">AO / NAO<b>Režim proudění</b><p class="small">Indexy popisují velkoprostorové tlakové vzorce. Samy o sobě neurčují počasí v konkrétní obci.</p></div><div class="metric">Předpověď<b>Nejistota</b><p class="small">Dopad stratosférických změn na počasí u zemského povrchu může mít zpoždění a není zaručen.</p></div></div></section>
 <section class="panel wide"><h2>Datový stav a metodika</h2><p class="note">Toto je první funkční 3D vizualizační modul X-5. Posuvníky mění geometrii a schématické proudění v reálném čase. Parametry nejsou automaticky načítané z ECMWF/ERA5 a jejich hodnoty nejsou pozorování. Další etapa může připojit ověřené denní a předpovědní datové sady (teplota 10 hPa, geopotenciál, zonální vítr, AO a NAO) a zobrazovat jejich časové značky i stáří.</p><p class="small">Ovládací prvky slouží k demonstraci chování modelu, nikoli k vydávání meteorologických výstrah.</p></section>
-<footer>X-5 POLAR VORTEX 3D · vlastní vizualizační modul · verze 1.5 · zimní dopady pro ČR a ECMWF časová osa</footer></main>
+<footer>X-5 POLAR VORTEX 3D · vlastní vizualizační modul · verze 1.6 · zimní výhled 2026/27 a dopady pro ČR</footer></main>
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 const canvas=document.querySelector('#scene'),state=document.querySelector('#sceneState');
