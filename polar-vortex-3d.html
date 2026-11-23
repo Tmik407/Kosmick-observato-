@@ -160,6 +160,17 @@
 .band-dot{width:12px;height:12px;border-radius:50%;display:inline-block;border:1px solid #17324a}
 .band-dot.low{background:#64b5d8}.band-dot.mid{background:#8ac47a}.band-dot.high{background:#e5bd63}.band-dot.mountain{background:#d97969}
 .leaflet-popup-content-wrapper{border-radius:9px}
+@media(max-width:700px){
+ #czLiveForecast72 .wx-table-wrap{overflow:visible!important}
+ #czLiveForecast72 table{min-width:0!important;width:100%!important;border-collapse:separate!important;border-spacing:0 9px!important}
+ #czLiveForecast72 thead{display:none}
+ #czLiveForecast72 tbody,#czLiveForecast72 tr{display:block;width:100%}
+ #czLiveForecast72 tbody tr{background:#f5f9fc;border:1px solid #d7e3ed;border-radius:10px;overflow:hidden;padding:5px 10px;margin-bottom:10px}
+ #czLiveForecast72 tbody td{display:grid;grid-template-columns:minmax(112px,42%) minmax(0,1fr);gap:8px;padding:7px 2px!important;border-top:1px solid #dce6ed!important;overflow-wrap:anywhere}
+ #czLiveForecast72 tbody td:first-child{border-top:0!important}
+ #czLiveForecast72 tbody td:before{content:attr(data-label);font-size:11px;color:#5b7186;font-weight:700}
+ #czLiveForecast72 tbody td:first-child:before{content:"Místo"}
+}
 @media(max-width:820px){.winter-map-layout{grid-template-columns:1fr}#czWinterMap{height:430px;min-height:350px}}
 </style>
 <script>
@@ -184,6 +195,10 @@
  function init(){
   if(!window.L){root.innerHTML='<div style="padding:18px;color:#17324a">Mapový modul se nepodařilo načíst. Zkuste stránku obnovit.</div>';return;}
   const map=L.map(root,{scrollWheelZoom:false}).setView([49.8,15.45],7);
+  // Dedicated top pane keeps clickable region/weather points above borders and raster overlays.
+  map.createPane('winterPoints');
+  map.getPane('winterPoints').style.zIndex='650';
+  map.getPane('winterPoints').style.pointerEvents='auto';
   const osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'});
   const topo=L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxZoom:17,attribution:'© OpenTopoMap (CC-BY-SA) · © OpenStreetMap'});
   osm.addTo(map);L.control.layers({'Základní mapa':osm,'Topografický reliéf':topo},{},{collapsed:false}).addTo(map);
@@ -214,7 +229,7 @@
    weatherGroup.clearLayers();
    items.forEach(w=>{
     if(!Number.isFinite(w.lat)||!Number.isFinite(w.lon)||!Number.isFinite(w.temp))return;
-    const marker=L.circleMarker([w.lat,w.lon],{radius:10,color:'#fff',weight:2.5,fillColor:tempColor(w.temp),fillOpacity:.98});
+    const marker=L.circleMarker([w.lat,w.lon],{pane:'winterPoints',radius:10,color:'#fff',weight:2.5,fillColor:tempColor(w.temp),fillOpacity:.98});
     const safeName=String(w.name).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const details='<b>'+safeName+'</b><br>Modelová teplota: '+w.temp.toFixed(1)+' °C<br>Vítr: '+(Number.isFinite(w.wind)?w.wind.toFixed(1)+' m/s':'—')+'<br>Srážky nyní: '+(Number.isFinite(w.prec)?w.prec.toFixed(1)+' mm':'—')+'<br>Nový sníh nyní: '+(Number.isFinite(w.snow)?w.snow.toFixed(1)+' cm':'—')+'<br>Sněhová pokrývka modelu: '+(Number.isFinite(w.depth)?w.depth.toFixed(1)+' cm':'—')+'<br><small>Modelový stav · '+stamp+'</small>';
     marker.bindPopup(details);marker.bindTooltip(safeName+' · '+w.temp.toFixed(1)+' °C');marker.on('click',()=>renderWeatherDetail(w,stamp));marker.addTo(weatherGroup);
@@ -229,7 +244,7 @@
    box.innerHTML='<b>'+r.name+'</b><p class="small" style="margin:5px 0">Referenční místo: '+r.place+' · orientační výška '+r.elev.toLocaleString('cs-CZ')+' m n. m.</p><p class="small" style="margin:0">'+r.note+'</p>';
   }
   regions.forEach(r=>{
-   const marker=L.circleMarker([r.lat,r.lon],{radius:8,color:'#09263b',weight:2,fillColor:colors[r.band],fillOpacity:.96});
+   const marker=L.circleMarker([r.lat,r.lon],{pane:'winterPoints',radius:8,color:'#09263b',weight:2,fillColor:colors[r.band],fillOpacity:.96});
    marker.bindTooltip(r.name+' · '+r.elev+' m n. m.');
    marker.bindPopup('<b>'+r.name+'</b><br>'+r.place+' · přibližně '+r.elev+' m n. m.');
    marker.on('click',()=>selectRegion(r));marker.addTo(groups[r.band]);
@@ -242,6 +257,8 @@
    .then(data=>{const boundary=L.geoJSON(data,{style:{color:'#0b6d9b',weight:3,fillColor:'#2d86b5',fillOpacity:.08}}).addTo(map);map.fitBounds(boundary.getBounds().pad(.08));})
    .catch(()=>{document.querySelector('.winter-map-caption').textContent+=' Hranice státu se nepodařilo načíst; mapa a referenční body zůstávají dostupné.';});
   setTimeout(()=>map.invalidateSize(),250);
+  setTimeout(()=>map.invalidateSize(),1200);
+  map.whenReady(()=>requestAnimationFrame(()=>map.invalidateSize()));
  }
  if(window.L){init();return;}
  const css=document.createElement('link');css.rel='stylesheet';css.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';document.head.appendChild(css);
@@ -965,14 +982,14 @@ try{
    window.dispatchEvent(new CustomEvent("x5:winter-weather",{detail:{items:currentItems,stamp:currentStamp}}));
    const compared=points.map((p,i)=>{const x=summary(data[i]);return {p,x,s:signal(x)};});
    const rows=compared.slice().sort((a,b)=>(Number.isFinite(b.x.snow)?b.x.snow:-1)-(Number.isFinite(a.x.snow)?a.x.snow:-1)).map(({p,x,s})=>
-    "<tr><td style=\"padding:9px;border-top:1px solid #29445f\"><b>"+p.name+"</b><div class=\"small\">"+p.kind+"</div></td>"+
-    "<td style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.current)+" °C</td>"+
-    "<td style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.min)+" až "+fmt(x.max)+" °C</td>"+
-    "<td style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.prec)+" mm</td>"+
-    "<td style=\"padding:9px;border-top:1px solid #29445f\"><b>"+fmt(x.snow)+" cm</b></td>"+
-    "<td style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.depth)+" cm</td>"+
-    "<td style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.wind)+" m/s</td>"+
-    "<td style=\"padding:9px;border-top:1px solid #29445f\">"+s+"</td></tr>"
+    "<tr><td data-label=\"Oblast / referenční místo\" style=\"padding:9px;border-top:1px solid #29445f\"><b>"+p.name+"</b><div class=\"small\">"+p.kind+"</div></td>"+
+    "<td data-label=\"Teplota nyní\" style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.current)+" °C</td>"+
+    "<td data-label=\"Teplota min–max\" style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.min)+" až "+fmt(x.max)+" °C</td>"+
+    "<td data-label=\"Srážky / 72 h\" style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.prec)+" mm</td>"+
+    "<td data-label=\"Nový sníh / 72 h\" style=\"padding:9px;border-top:1px solid #29445f\"><b>"+fmt(x.snow)+" cm</b></td>"+
+    "<td data-label=\"Pokrývka nyní\" style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.depth)+" cm</td>"+
+    "<td data-label=\"Max. vítr\" style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.wind)+" m/s</td>"+
+    "<td data-label=\"Signál\" style=\"padding:9px;border-top:1px solid #29445f\">"+s+"</td></tr>"
    ).join("");
    $("wxRows").innerHTML=rows;
    const coldest=compared.filter(a=>Number.isFinite(a.x.min)).sort((a,b)=>a.x.min-b.x.min)[0];
