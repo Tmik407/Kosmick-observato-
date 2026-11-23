@@ -133,6 +133,7 @@ function draw(){
  try{
  const g=c.getContext('2d');if(!g)throw Error('Prohlížeč neposkytl 2D kontext plátna.');
  const w=c.width,h=c.height,cx=w*.5,cy=h*.51,scale=155;
+ const staticFallback=$('p3dFallback');if(staticFallback)staticFallback.style.display='none';
  g.clearRect(0,0,w,h);const bg=g.createLinearGradient(0,0,w,h);bg.addColorStop(0,'#061526');bg.addColorStop(1,'#123653');g.fillStyle=bg;g.fillRect(0,0,w,h);
  // polar reference grid
  g.strokeStyle='rgba(139,190,220,.30)';g.lineWidth=1.2;
