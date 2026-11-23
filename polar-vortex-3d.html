@@ -793,6 +793,11 @@ try{
   }else signal.textContent='Diagnostika zonálního větru pro tento krok není dostupná.';
   if(typeof window.X5DrawEcmwfPolarMap==='function')window.X5DrawEcmwfPolarMap(f);
   status.textContent='Vykresluji ECMWF '+f.step_hours+' h · '+fmtDate(f.valid_time_utc)+'…';
+  // Clear prior-frame stamps so a failed render can never inherit a false "synced" state.
+  const sceneStateEl=document.getElementById('sceneState');
+  const centerInfoEl=document.getElementById('vortexCenterInfo');
+  if(sceneStateEl)sceneStateEl.textContent='Načítám krok ECMWF '+f.valid_time_utc+'…';
+  if(centerInfoEl)centerInfoEl.textContent='Centrum ECMWF · čekám na vykreslení '+f.valid_time_utc;
   try{
    if(typeof window.X5LoadEcmwfFrame!=='function')throw Error('3D vykreslovač ještě není připraven');
    await window.X5LoadEcmwfFrame(f);
@@ -805,7 +810,9 @@ try{
    const globeSynced=globeStamp().includes(f.valid_time_utc);
    const globeCenterText=document.getElementById('vortexCenterInfo')?.textContent||'';
    const sharedResult=window.X5AnalyzeVortexFrame?window.X5AnalyzeVortexFrame(f):null;
-   const globeCenterSynced=!!(sharedResult&&globeCenterText.includes(sharedResult.center.lat.toFixed(1)+'° N / '+sharedResult.center.lon.toFixed(1)+'° E'));
+   const globeCenterSynced=!!(sharedResult&&
+    globeCenterText.includes(sharedResult.center.lat.toFixed(1)+'° N / '+sharedResult.center.lon.toFixed(1)+'° E')&&
+    globeCenterText.includes(f.valid_time_utc));
    window.X5CurrentEcmwfFrame=f;
    if(typeof window.X5DrawEcmwfPolarMap==='function')window.X5DrawEcmwfPolarMap(f);
    const sharedBox=document.getElementById('sharedVortexState');
