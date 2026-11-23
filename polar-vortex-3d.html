@@ -70,7 +70,7 @@
 <h3 style="margin:0 0 6px;color:#e6f3ff">Polární mapa ECMWF · severní polokoule</h3>
 <p class="small" style="color:#b7ccdc">Teplota ve výšce 10 hPa, geografická síť a vektory větru U/V. Mapa se synchronizuje s vybraným krokem časové animace.</p>
 <div style="width:100%;overflow:hidden;border-radius:12px;background:#061421"><canvas id="ecmwfPolarMap" height="440" style="width:100%;height:440px;display:block;touch-action:pan-y"></canvas></div>
-<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:#c6d8e8"><span>🟣 Chladnější vzduch</span><span>🔵 Přechodné teploty</span><span>🟠 Teplejší vzduch</span><span>➤ Směr větru U/V</span></div>
+<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:#c6d8e8"><span>🟣–🟠 Plynulé teplotní pole</span><span>⚪ Geopotenciální izolinie (4 000 m²/s²)</span><span>➤ Směr větru U/V</span></div>
 <p class="small" id="ecmwfPolarMapStatus" style="color:#b7ccdc;margin:8px 0 0">Čekám na první předpovědní pole ECMWF…</p>
 </div>
 <p class="small">Zdroj: ECMWF IFS Open Data · 10 hPa · T/U/V/Z · licence CC BY 4.0. Animace zobrazuje diskrétní předpovědní kroky, nikoli kontinuální měření. Chybějící kroky se přeskočí.</p>
@@ -822,27 +822,77 @@ try{
   const cssH=440,dpr=Math.min(2,window.devicePixelRatio||1);
   canvas.width=Math.floor(cssW*dpr);canvas.height=Math.floor(cssH*dpr);
   const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
-  const w=cssW,h=cssH,cx=w/2,cy=h/2+4,R=Math.min(w*0.43,h*0.43);
+  const w=cssW,h=cssH,cx=w/2,cy=h/2+4,R=Math.min(w*.43,h*.43);
   ctx.clearRect(0,0,w,h);
   const bg=ctx.createRadialGradient(cx,cy,4,cx,cy,R*1.55);bg.addColorStop(0,'#183c5b');bg.addColorStop(1,'#061421');ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
   const xy=(lat,lon)=>{const a=lon*Math.PI/180,r=R*Math.cos(lat*Math.PI/180)/Math.cos(Math.PI/4);return [cx+r*Math.sin(a),cy-r*Math.cos(a)];};
+  const rows=[...new Set(frame.grid.map(p=>p.lat).filter(Number.isFinite))].sort((a,b)=>a-b);
+  const lons=[...new Set(frame.grid.map(p=>p.lon).filter(Number.isFinite))].sort((a,b)=>a-b);
+  const lookup=new Map(frame.grid.map(p=>[p.lat+','+p.lon,p]));
+  const vals=frame.grid.map(p=>p.t).filter(Number.isFinite),lo=Math.min(...vals),hi=Math.max(...vals);
+  const zvals=frame.grid.map(p=>p.z).filter(Number.isFinite),zlo=Math.min(...zvals),zhi=Math.max(...zvals);
+  const stops=[[55,27,112],[39,112,170],[57,174,190],[242,176,91],[222,91,66]];
+  const color=t=>{const q=Math.max(0,Math.min(1,(t-lo)/Math.max(.001,hi-lo)));const z=q*(stops.length-1),i=Math.min(stops.length-2,Math.floor(z)),f=z-i,a=stops[i],b=stops[i+1];return a.map((v,k)=>Math.round(v+(b[k]-v)*f));};
+  const sample=(lat,lon,key)=>{
+   if(lat<rows[0]||lat>rows[rows.length-1])return null;
+   let ri=0;while(ri<rows.length-2&&rows[ri+1]<lat)ri++;
+   const la=rows[ri],lb=rows[ri+1],fy=(lat-la)/(lb-la);
+   const norm=((lon-lons[0])%360+360)%360+lons[0];
+   let li=0;while(li<lons.length-1&&lons[li+1]<norm)li++;
+   const l0=lons[li],l1=li===lons.length-1?lons[0]+360:lons[li+1],ln=norm<l0?norm+360:norm,fx=(ln-l0)/(l1-l0);
+   const a=lookup.get(la+','+l0),b=lookup.get(la+','+lons[(li+1)%lons.length]),c=lookup.get(lb+','+l0),d=lookup.get(lb+','+lons[(li+1)%lons.length]);
+   if(!a||!b||!c||!d)return null;
+   const v=[a[key],b[key],c[key],d[key]];
+   if(!v.every(Number.isFinite))return null;
+   return (v[0]*(1-fx)+v[1]*fx)*(1-fy)+(v[2]*(1-fx)+v[3]*fx)*fy;
+  };
   ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.clip();
   ctx.fillStyle='#0b2941';ctx.fillRect(cx-R,cy-R,2*R,2*R);
-  ctx.strokeStyle='rgba(173,213,239,.28)';ctx.lineWidth=1;
+  // Smooth, bilinearly interpolated temperature raster on the polar stereographic projection.
+  const side=420,off=document.createElement('canvas');off.width=side;off.height=side;
+  const oc=off.getContext('2d'),img=oc.createImageData(side,side);
+  for(let py=0;py<side;py++)for(let px=0;px<side;px++){
+   const dx=(px+.5-side/2)/(side/2),dy=(py+.5-side/2)/(side/2),rho=Math.hypot(dx,dy);
+   const ix=(py*side+px)*4;
+   if(rho>1)continue;
+   const lat=Math.acos(Math.min(1,rho*Math.cos(Math.PI/4)))*180/Math.PI;
+   const lon=(Math.atan2(dx,-dy)*180/Math.PI+360)%360;
+   const t=sample(lat,lon,'t');if(t===null)continue;
+   const c=color(t);img.data[ix]=c[0];img.data[ix+1]=c[1];img.data[ix+2]=c[2];img.data[ix+3]=235;
+  }
+  oc.putImageData(img,0,0);
+  ctx.globalAlpha=.94;ctx.drawImage(off,cx-R,cy-R,2*R,2*R);ctx.globalAlpha=1;
+  // Geographic graticule.
+  ctx.strokeStyle='rgba(205,229,245,.38)';ctx.lineWidth=1;
   for(const lat of [50,60,70,80]){const rr=R*Math.cos(lat*Math.PI/180)/Math.cos(Math.PI/4);ctx.beginPath();ctx.arc(cx,cy,rr,0,Math.PI*2);ctx.stroke();}
   for(let lon=0;lon<360;lon+=30){const p=xy(45,lon);ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(p[0],p[1]);ctx.stroke();}
-  const vals=frame.grid.map(p=>p.t).filter(Number.isFinite),lo=vals.length?Math.min(...vals):195,hi=vals.length?Math.max(...vals):245;
-  const color=t=>{const q=Math.max(0,Math.min(1,(t-lo)/Math.max(1,hi-lo)));const stops=[[55,27,112],[39,112,170],[57,174,190],[242,176,91],[222,91,66]];const z=q*(stops.length-1),i=Math.min(stops.length-2,Math.floor(z)),f=z-i,a=stops[i],b=stops[i+1];return 'rgb('+a.map((v,k)=>Math.round(v+(b[k]-v)*f)).join(',')+')';};
-  for(const p of frame.grid){if(!Number.isFinite(p.lat)||p.lat<45||!Number.isFinite(p.lon))continue;const [x,y]=xy(p.lat,p.lon);ctx.beginPath();ctx.arc(x,y,Math.max(5,Math.min(13,R*.035)),0,Math.PI*2);ctx.fillStyle=color(Number(p.t));ctx.globalAlpha=.82;ctx.fill();ctx.globalAlpha=1;}
-  ctx.strokeStyle='rgba(255,255,255,.72)';ctx.fillStyle='#d7f0ff';ctx.lineWidth=1.6;
-  const stride=Math.max(1,Math.ceil(frame.grid.length/85));
-  for(let i=0;i<frame.grid.length;i+=stride){const p=frame.grid[i];if(p.lat<50||!Number.isFinite(p.u)||!Number.isFinite(p.v))continue;const [x,y]=xy(p.lat,p.lon),a=p.lon*Math.PI/180,lat=p.lat*Math.PI/180;let dx=p.u*Math.cos(a)-p.v*Math.sin(lat)*Math.sin(a),dy=p.u*Math.sin(a)+p.v*Math.sin(lat)*Math.cos(a);const mag=Math.hypot(dx,dy)||1;dx=dx/mag*10;dy=dy/mag*10;ctx.beginPath();ctx.moveTo(x-dx*.55,y-dy*.55);ctx.lineTo(x+dx,y+dy);ctx.lineTo(x+dx-3*dx/mag-3*(-dy/mag),y+dy-3*dy/mag+3*dx/mag);ctx.moveTo(x+dx,y+dy);ctx.lineTo(x+dx-3*dx/mag+3*(-dy/mag),y+dy-3*dy/mag-3*dx/mag);ctx.stroke();}
+  // Geopotential height contours, interpolated from the actual ECMWF z field.
+  const zstep=4000,zstart=Math.ceil(zlo/zstep)*zstep;
+  ctx.lineWidth=1.35;ctx.strokeStyle='rgba(246,248,255,.78)';
+  for(let level=zstart;level<=zhi;level+=zstep){
+   ctx.beginPath();
+   for(let ri=0;ri<rows.length-1;ri++)for(let li=0;li<lons.length;li++){
+    const lnext=lons[(li+1)%lons.length],lwrap=li===lons.length-1?lnext+360:lnext;
+    const p00=lookup.get(rows[ri]+','+lons[li]),p01=lookup.get(rows[ri]+','+lnext),p10=lookup.get(rows[ri+1]+','+lons[li]),p11=lookup.get(rows[ri+1]+','+lnext);
+    if(!p00||!p01||!p10||!p11)continue;
+    const corners=[{lat:rows[ri],lon:lons[li],v:p00.z},{lat:rows[ri],lon:lwrap,v:p01.z},{lat:rows[ri+1],lon:lwrap,v:p11.z},{lat:rows[ri+1],lon:lons[li],v:p10.z}];
+    if(!corners.every(c=>Number.isFinite(c.v)))continue;
+    const hits=[];
+    for(let e=0;e<4;e++){const a=corners[e],b=corners[(e+1)%4];if((a.v<level&&b.v>=level)||(b.v<level&&a.v>=level)){const f=(level-a.v)/(b.v-a.v);hits.push({lat:a.lat+(b.lat-a.lat)*f,lon:a.lon+(b.lon-a.lon)*f});}}
+    if(hits.length>=2){const a=xy(hits[0].lat,hits[0].lon),b=xy(hits[1].lat,hits[1].lon);ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);}
+   }
+   ctx.stroke();
+  }
+  // Wind vectors are sampled at a readable density and drawn over the smooth field.
+  ctx.strokeStyle='rgba(255,255,255,.82)';ctx.lineWidth=1.45;
+  const stride=Math.max(1,Math.ceil(frame.grid.length/100));
+  for(let i=0;i<frame.grid.length;i+=stride){const p=frame.grid[i];if(p.lat<50||!Number.isFinite(p.u)||!Number.isFinite(p.v))continue;const [x,y]=xy(p.lat,p.lon),a=p.lon*Math.PI/180,lat=p.lat*Math.PI/180;let dx=p.u*Math.cos(a)-p.v*Math.sin(lat)*Math.sin(a),dy=p.u*Math.sin(a)+p.v*Math.sin(lat)*Math.cos(a);const mag=Math.hypot(dx,dy)||1;dx=dx/mag*9;dy=dy/mag*9;ctx.beginPath();ctx.moveTo(x-dx*.55,y-dy*.55);ctx.lineTo(x+dx,y+dy);ctx.lineTo(x+dx-3*dx/mag+3*dy/mag,y+dy-3*dy/mag-3*dx/mag);ctx.moveTo(x+dx,y+dy);ctx.lineTo(x+dx-3*dx/mag-3*dy/mag,y+dy-3*dy/mag+3*dx/mag);ctx.stroke();}
   ctx.restore();
   ctx.fillStyle='#e8f5ff';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText('SEVERNÍ PÓL',cx,cy+5);
   ctx.font='12px system-ui';ctx.fillStyle='#c5d9e9';ctx.fillText('60° N',cx+R*.76,cy+R*.66);ctx.fillText('80° N',cx+R*.31,cy-R*.22);
   ctx.textAlign='left';ctx.fillStyle='#e8f5ff';ctx.fillText('ECMWF IFS · 10 hPa · +'+frame.step_hours+' h',12,22);
-  ctx.fillStyle='#b8d1e3';ctx.fillText('Teplota: '+(vals.length?lo.toFixed(1)+'–'+hi.toFixed(1)+' K':'bez dat'),12,42);
-  if(label)label.textContent='Mapa aktualizována: '+frame.valid_time_utc+' · '+frame.grid.length+' buněk · barva = teplota, šipky = vítr U/V.';
+  ctx.fillStyle='#b8d1e3';ctx.fillText('Teplota: '+lo.toFixed(1)+'–'+hi.toFixed(1)+' K',12,42);
+  if(label)label.textContent='Mapa aktualizována: '+frame.valid_time_utc+' · interpolované teplotní pole · geopotenciální izolinie po 4 000 m²/s² · '+frame.grid.length+' vstupních buněk.';
  }
  window.X5DrawEcmwfPolarMap=drawX5PolarMap;
  window.addEventListener('resize',()=>{if(window.X5CurrentEcmwfFrame)drawX5PolarMap(window.X5CurrentEcmwfFrame);});
