@@ -34,14 +34,14 @@
 </div>
 <div class="status" id="levelStatus" style="margin-top:10px">Načítám denní řady NASA GSFC…</div>
 <p class="small" id="levelMapNote">Prostorová 3D mapa ECMWF je nyní dostupná na hladině 10 hPa. Pro 30 a 50 hPa jsou zde zobrazena ověřená denní diagnostická data; prostorové mapy těchto hladin zatím nejsou k dispozici.</p>
-</section><aside class="panel controls"><h2 style="margin:0">Ovládání modelu</h2>
+</section><aside class="panel controls"><h2 style="margin:0">Parametry scénáře (oddělené od ECMWF)</h2>
 <div class="control"><label for="strength">Síla víru <span class="value" id="strengthVal">55 %</span></label><input id="strength" type="range" min="0" max="100" value="55"></div>
 <div class="control"><label for="wave">Vlnění / deformace <span class="value" id="waveVal">35 %</span></label><input id="wave" type="range" min="0" max="100" value="35"></div>
 <div class="control"><label for="warming">Stratosférické oteplování <span class="value" id="warmingVal">20 %</span></label><input id="warming" type="range" min="0" max="100" value="20"></div>
 <div class="control"><label for="altitude">Výšková hladina <span class="value" id="altitudeVal">10 hPa</span></label><input id="altitude" type="range" min="1" max="100" value="10"></div>
 <div class="buttons"><button id="play">⏸ Pozastavit rotaci</button><button id="reset">Obnovit model</button></div>
 <div class="metrics"><div class="metric">Síla víru<b id="mStrength">55 %</b></div><div class="metric">Deformace<b id="mWave">35 %</b></div><div class="metric">Oteplování<b id="mWarm">20 %</b></div><div class="metric">Hladina<b id="mLevel">10 hPa</b></div></div>
-<div class="status" id="interpretation">Modelový stav: středně silný vír s mírným vlněním. Nastavte parametry a sledujte změnu tvaru.</div>
+<div class="status" id="interpretation">Parametry scénáře jsou pomocné a nemění skutečná data ECMWF.</div>
 </aside></div>
 <section class="panel wide" id="teleconnectionPanel"><h2>Živá data atmosférické cirkulace · NOAA CPC</h2><p class="small">Denní indexy AO a NAO z oficiálních dat NOAA Climate Prediction Center. Aktualizace zdroje může mít zpoždění; rozhodující je datum posledního měření níže.</p><div class="metrics"><div class="metric">Arktická oscilace · AO<b id="aoValue">Načítám…</b><p class="small" id="aoDate">—</p></div><div class="metric">Severoatlantická oscilace · NAO<b id="naoValue">Načítám…</b><p class="small" id="naoDate">—</p></div></div><div class="status" id="indexStatus" style="margin-top:10px">Připojuji se k NOAA CPC…</div><p class="small">AO popisuje rozsáhlé tlakové uspořádání v Arktidě; NAO severoatlantické tlakové uspořádání. Nejsou přímým měřením síly stratosférického víru a samy neurčují počasí v ČR.</p><div class="buttons"><a class="btn" href="https://ftp.cpc.ncep.noaa.gov/cwlinks/norm.daily.ao.cdas.z1000.19500101_current.csv" target="_blank" rel="noopener">Zdroj AO · NOAA CPC</a><a class="btn" href="https://ftp.cpc.ncep.noaa.gov/cwlinks/norm.daily.nao.cdas.z500.19500101_current.csv" target="_blank" rel="noopener">Zdroj NAO · NOAA CPC</a><button id="refreshIndices" type="button">Obnovit data</button></div></section>
 <section class="panel wide" id="forecastSources"><h2>Výhledové produkty NOAA CPC · GFS / GEFS</h2><p class="small">Oficiální výhledové soubory indexů AO a NAO. Odkazy vedou přímo na CSV NOAA CPC; v této verzi jsou dostupné jako zdrojové soubory, ale jejich prognózy zatím nejsou automaticky vykreslovány v grafu. Před automatickickým zobrazením je nutné ověřit aktuální strukturu CSV a rozlišit deterministický výhled GFS od ansámblového výhledu GEFS.</p><div class="buttons"><a class="btn" href="https://ftp.cpc.ncep.noaa.gov/cwlinks/norm.daily.ao.gfs.z1000.120days.csv" target="_blank" rel="noopener">AO · GFS výhled</a><a class="btn" href="https://ftp.cpc.ncep.noaa.gov/cwlinks/norm.daily.ao.gefs.z1000.120days.csv" target="_blank" rel="noopener">AO · GEFS výhled</a><a class="btn" href="https://ftp.cpc.ncep.noaa.gov/cwlinks/norm.daily.nao.gfs.z500.120days.csv" target="_blank" rel="noopener">NAO · GFS výhled</a><a class="btn" href="https://ftp.cpc.ncep.noaa.gov/cwlinks/norm.daily.nao.gefs.z500.120days.csv" target="_blank" rel="noopener">NAO · GEFS výhled</a></div><p class="small">GFS je jednotlivý deterministický běh; GEFS je ansámblový systém a pomáhá vyjádřit nejistotu. Ani AO/NAO výhled sám o sobě není předpovědí teploty nebo sněžení v ČR.</p></section>
@@ -310,17 +310,21 @@ try{
  vortex=new THREE.Group();group.add(vortex);streamGroup=new THREE.Group();group.add(streamGroup);
  const glow=new THREE.Mesh(new THREE.SphereGeometry(.42,32,24),new THREE.MeshBasicMaterial({color:0x1c9dd8,transparent:true,opacity:.16}));glow.position.y=1.65;vortex.add(glow);
  function ll(lat,lon,r){const a=THREE.MathUtils.degToRad(lat),b=THREE.MathUtils.degToRad(lon);return new THREE.Vector3(r*Math.cos(a)*Math.sin(b),r*Math.sin(a),r*Math.cos(a)*Math.cos(b))}
- function build(){while(vortex.children.length>1)vortex.remove(vortex.children[1]);while(streamGroup.children.length)streamGroup.remove(streamGroup.children[0]);
+ function build(){
+  // Parametry scénáře zůstávají oddělené od skutečných polí ECMWF.
+  // Nevykreslujeme zde žádné syntetické oranžové částice ani smyčkové proudnice.
+  while(vortex.children.length)vortex.remove(vortex.children[0]);
+  while(streamGroup.children.length)streamGroup.remove(streamGroup.children[0]);
   const strength=+document.querySelector('#strength').value/100,wave=+document.querySelector('#wave').value/100,warm=+document.querySelector('#warming').value/100,alt=+document.querySelector('#altitude').value;
-  const base=.48+strength*.46,ell=1+wave*.85;
-  const ringPts=[];for(let i=0;i<=360;i++){const a=i*Math.PI/180,r=base*(1+.13*Math.sin(3*a)*wave);ringPts.push(new THREE.Vector3(Math.cos(a)*r*ell,1.65+Math.sin(2*a)*.12*wave,Math.sin(a)*r))}
-  const ring=new THREE.Line(new THREE.BufferGeometry().setFromPoints(ringPts),new THREE.LineBasicMaterial({color:warm>.65?0xffa45f:0x42c9ff,linewidth:2}));vortex.add(ring);
-  for(let j=0;j<12;j++){const pts=[];for(let k=0;k<=100;k++){const t=k/100*Math.PI*3.2+j*.52,rad=.08+(k/100)*base;const r=rad*(1+wave*.23*Math.sin(3*t+j));pts.push(new THREE.Vector3(Math.cos(t)*r*ell,1.67+(k/100)*.16,Math.sin(t)*r))}const mat=new THREE.LineBasicMaterial({color:j%3===0?0xffa45f:0x86dfff,transparent:true,opacity:.42+strength*.4});streamGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),mat))}
-  for(let j=0;j<Math.round(5+warm*20);j++){const a=j*2.399,r=.55+((j*37)%100)/100*.9;const p=new THREE.Mesh(new THREE.SphereGeometry(.025+warm*.02,8,8),new THREE.MeshBasicMaterial({color:0xffa45f}));p.position.set(Math.cos(a)*r,1.62+warm*.28,Math.sin(a)*r);vortex.add(p)}
-  document.querySelector('#strengthVal').textContent=Math.round(strength*100)+' %';document.querySelector('#waveVal').textContent=Math.round(wave*100)+' %';document.querySelector('#warmingVal').textContent=Math.round(warm*100)+' %';document.querySelector('#altitudeVal').textContent=alt+' hPa';
-  document.querySelector('#mStrength').textContent=Math.round(strength*100)+' %';document.querySelector('#mWave').textContent=Math.round(wave*100)+' %';document.querySelector('#mWarm').textContent=Math.round(warm*100)+' %';document.querySelector('#mLevel').textContent=alt+' hPa';
-  const text=strength<.3?'Slabý vír – v modelu výrazně narušená cirkulace.':wave>.7?'Silně zvlněný vír – výrazná deformace proudění.':warm>.7?'Silné oteplování – modelový scénář výrazného stratosférického zásahu.':'Středně silný až silný vír; schématické proudění odpovídá nastaveným parametrům.';
-  document.querySelector('#interpretation').textContent='Modelový stav: '+text+' Nejde o aktuální meteorologickou diagnózu.';
+  document.querySelector('#strengthVal').textContent=Math.round(strength*100)+' %';
+  document.querySelector('#waveVal').textContent=Math.round(wave*100)+' %';
+  document.querySelector('#warmingVal').textContent=Math.round(warm*100)+' %';
+  document.querySelector('#altitudeVal').textContent=alt+' hPa';
+  document.querySelector('#mStrength').textContent=Math.round(strength*100)+' %';
+  document.querySelector('#mWave').textContent=Math.round(wave*100)+' %';
+  document.querySelector('#mWarm').textContent=Math.round(warm*100)+' %';
+  document.querySelector('#mLevel').textContent=alt+' hPa';
+  document.querySelector('#interpretation').textContent='Parametry scénáře jsou pouze pomocné. Nemění skutečné teplotní pole, geopotenciál ani vítr ECMWF zobrazený na globusu.';
  }
  for(const id of ['strength','wave','warming','altitude'])document.getElementById(id).addEventListener('input',build);
  window.X5SetGlobeRotation=function(paused){auto=!paused;const b=document.getElementById('play');if(b)b.textContent=auto?'⏸ Pozastavit rotaci':'▶ Spustit rotaci';};
@@ -493,6 +497,45 @@ try{
     windBuckets[bucket].push(start.x,start.y,start.z,end.x,end.y,end.z,end.x,end.y,end.z,back.x,back.y,back.z,end.x,end.y,end.z,back2.x,back2.y,back2.z);
    });
    windBuckets.forEach((positions,i)=>{if(!positions.length)return;const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));windLayer.add(new THREE.LineSegments(geometry,new THREE.LineBasicMaterial({color:windColors[i],transparent:true,opacity:.78})));});
+
+   // Prostorové proudnice integrují skutečné ECMWF složky větru U/V.
+   // Každý krok používá inverzně váženou interpolaci čtyř nejbližších bodů mřížky.
+   function interpolateWindAt(lat,lon){
+    const nearest=[];
+    for(const p of data.grid){
+     const plat=Number(p.lat),plon=Number(p.lon),u=Number(p.u),v=Number(p.v);
+     if(!Number.isFinite(plat)||!Number.isFinite(plon)||!Number.isFinite(u)||!Number.isFinite(v))continue;
+     const dlat=plat-lat,dlon=((((plon-lon)+540)%360)-180)*Math.max(.2,Math.cos(lat*Math.PI/180));
+     const distance=dlat*dlat+dlon*dlon;
+     let at=nearest.length;while(at>0&&nearest[at-1].distance>distance)at--;
+     if(at<4){nearest.splice(at,0,{distance,u,v});if(nearest.length>4)nearest.pop();}
+    }
+    let u=0,v=0,total=0;
+    for(const q of nearest){const w=1/Math.max(.0001,q.distance);u+=q.u*w;v+=q.v*w;total+=w;}
+    return total?{u:u/total,v:v/total}:null;
+   }
+   const streamlineSeeds=[];
+   for(const lat of [61,68,75,82])for(let lon=-180;lon<180;lon+=45)streamlineSeeds.push({lat,lon});
+   const streamlineMaterial=new THREE.LineBasicMaterial({color:0x70dcff,transparent:true,opacity:.78,depthWrite:false});
+   for(const seed of streamlineSeeds){
+    let lat=seed.lat,lon=seed.lon;
+    const path=[];
+    for(let step=0;step<34;step++){
+     if(lat<56||lat>88)break;
+     const wind=interpolateWindAt(lat,lon);if(!wind)break;
+     path.push(ll(lat,lon,1.613));
+     const dt=1800,midLat=lat+wind.v*dt/(2*111000);
+     const midLon=lon+wind.u*dt/(2*111000*Math.max(.18,Math.cos(lat*Math.PI/180)));
+     const midWind=interpolateWindAt(midLat,midLon)||wind;
+     lat+=midWind.v*dt/111000;
+     lon+=midWind.u*dt/(111000*Math.max(.18,Math.cos(midLat*Math.PI/180)));
+     lon=((lon+540)%360)-180;
+    }
+    if(path.length>2){
+     const geometry=new THREE.BufferGeometry().setFromPoints(path);
+     windLayer.add(new THREE.Line(geometry,streamlineMaterial.clone()));
+    }
+   }
    state.textContent='ECMWF teplotní pole aktivní · '+surfacePositions.length/3+' interpolovaných bodů · '+tmin.toFixed(1)+'–'+tmax.toFixed(1)+' K · '+data.valid_time_utc;
    const badge=document.querySelector('#ecmwfGlobeState');if(badge)badge.textContent='ECMWF 10 hPa · teplotní pole + geopotenciální izolinie · '+data.valid_time_utc;
   }catch(err){state.textContent='ECMWF vrstvu se nepodařilo vykreslit: '+err.message;const badge=document.querySelector('#ecmwfGlobeState');if(badge)badge.textContent='ECMWF vrstva čeká na data: '+err.message;console.error('X-5 ECMWF globe:',err);}
