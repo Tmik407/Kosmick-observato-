@@ -129,7 +129,10 @@ function drawHistoryCharts(){
 function invalidateDataCaches(){shapeCache={};windCache={};windInterpCache.clear();}
 function requestDraw(){if(drawFrame)return;drawFrame=requestAnimationFrame(()=>{drawFrame=0;draw();});}
 function draw(){
- const c=$('p3dCanvas');if(!c)return;const g=c.getContext('2d'),w=c.width,h=c.height,cx=w*.5,cy=h*.51,scale=155;
+ const c=$('p3dCanvas');if(!c)return;
+ try{
+ const g=c.getContext('2d');if(!g)throw Error('Prohlížeč neposkytl 2D kontext plátna.');
+ const w=c.width,h=c.height,cx=w*.5,cy=h*.51,scale=155;
  g.clearRect(0,0,w,h);const bg=g.createLinearGradient(0,0,w,h);bg.addColorStop(0,'#061526');bg.addColorStop(1,'#123653');g.fillStyle=bg;g.fillRect(0,0,w,h);
  // polar reference grid
  g.strokeStyle='rgba(139,190,220,.30)';g.lineWidth=1.2;
@@ -231,6 +234,12 @@ function draw(){
  g.fillText('Geopotenciální asymetrie σ (m): 10 '+(d10.heightSpread?.toFixed(0)??'—')+' · 30 '+(d30.heightSpread?.toFixed(0)??'—')+' · 50 '+(d50.heightSpread?.toFixed(0)??'—')+' | Vertikální střih (m/s): 10–30 '+(Number.isFinite(shear10_30)?shear10_30.toFixed(1):'—')+' · 30–50 '+(Number.isFinite(shear30_50)?shear30_50.toFixed(1):'—')+' | '+(times[idx]||'').replace('T',' ')+' UTC',28,h-20);
  for(const lev of levels){const vals=points.map((_,p)=>value(lev,p,keys(lev)[0])).filter(Number.isFinite),el=$('p3d'+lev);if(el)el.textContent=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1)+' °C':'—';}
  drawHistoryCharts();
+ }catch(err){
+  const message=String(err&&err.message||err||'Neznámá chyba vykreslení');
+  try{const g=c.getContext('2d');if(g){g.clearRect(0,0,c.width,c.height);g.fillStyle='#071a2d';g.fillRect(0,0,c.width,c.height);g.fillStyle='#ffffff';g.font='bold 25px Arial';g.fillText('3D MODEL – OBNOVA VYKRESLENÍ',34,58);g.font='18px Arial';g.fillText('Vykreslení narazilo na chybu. Zkuste obnovit model.',34,100);g.fillStyle='#ffd166';g.font='14px Arial';g.fillText(message.slice(0,130),34,132);}}catch(_){}
+  status('CHYBA VYKRESLENÍ 3D MODELU: '+message+'. Model zůstává na stránce; lze znovu načíst data.');
+  console.error('[X-5 3D]',err);
+ }
 }
 const CACHE_KEY='x5-gfs-polar-v17-cache';
 const NOAA_BACKUP_URL='./data/polar-vortex/latest.json';
