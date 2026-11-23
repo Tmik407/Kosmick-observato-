@@ -237,17 +237,17 @@ try{
  group.add(polarCap);
  // Vědecká geografická síť: rovnoběžky, poledníky a zvýrazněný polární kruh.
  const gridMat=new THREE.LineBasicMaterial({color:0x91b9d2,transparent:true,opacity:.19});
- for(let lat=-60;lat<=60;lat+=30){const pts=[];for(let lon=0;lon<=360;lon+=2){pts.push(ll(lat,lon,1.562))}group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gridMat))}
- for(let lon=0;lon<360;lon+=30){const pts=[];for(let lat=-90;lat<=90;lat+=2)pts.push(ll(lat,lon,1.562));group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gridMat))}
+ for(let lat=-60;lat<=60;lat+=30){const pts=[];for(let lon=0;lon<=360;lon+=2){pts.push(ll(lat,lon,1.562))}geoLayer.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gridMat))}
+ for(let lon=0;lon<360;lon+=30){const pts=[];for(let lat=-90;lat<=90;lat+=2)pts.push(ll(lat,lon,1.562));geoLayer.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gridMat))}
  const arcticPts=[];for(let lon=0;lon<=360;lon+=2)arcticPts.push(ll(66.56,lon,1.568));
- group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(arcticPts),new THREE.LineBasicMaterial({color:0x9be7ff,transparent:true,opacity:.8})));
+ geoLayer.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(arcticPts),new THREE.LineBasicMaterial({color:0x9be7ff,transparent:true,opacity:.8})));
  // Textové popisky zeměpisné šířky a hlavních poledníků.
  function geoLabel(text,lat,lon,color='#d9efff'){
   const c=document.createElement('canvas');c.width=256;c.height=64;const x=c.getContext('2d');
   x.font='bold 30px Arial';x.textAlign='center';x.textBaseline='middle';x.fillStyle='rgba(3,18,34,.48)';x.fillRect(4,5,248,54);x.fillStyle=color;x.fillText(text,128,32);
   const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
-  sp.scale.set(.34,.085,1);sp.position.copy(ll(lat,lon,1.585));group.add(sp);
+  sp.scale.set(.34,.085,1);sp.position.copy(ll(lat,lon,1.585));geoLayer.add(sp);
  }
  geoLabel('80° N',80,12);geoLabel('70° N',70,12);geoLabel('60° N',60,12);
  geoLabel('0°',18,0,'#9be7ff');geoLabel('90° E',18,90,'#9be7ff');geoLabel('180°',18,180,'#9be7ff');geoLabel('90° W',18,270,'#9be7ff');
@@ -282,8 +282,8 @@ try{
  geoMarker('Sibiř',72,110,0x9be7ff);
  geoMarker('Skandinávie',68,20,0x9be7ff);
   const axisLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,1.56,0),new THREE.Vector3(0,1.88,0)]),new THREE.LineBasicMaterial({color:0xe8f7ff,transparent:true,opacity:.9}));
- group.add(axisLine);
- const axis=new THREE.Mesh(new THREE.SphereGeometry(.035,20,16),new THREE.MeshBasicMaterial({color:0xffffff}));axis.position.set(0,1.57,0);group.add(axis);
+ geoLayer.add(axisLine);
+ const axis=new THREE.Mesh(new THREE.SphereGeometry(.035,20,16),new THREE.MeshBasicMaterial({color:0xffffff}));axis.position.set(0,1.57,0);geoLayer.add(axis);
  vortex=new THREE.Group();group.add(vortex);streamGroup=new THREE.Group();group.add(streamGroup);
  const glow=new THREE.Mesh(new THREE.SphereGeometry(.42,32,24),new THREE.MeshBasicMaterial({color:0x1c9dd8,transparent:true,opacity:.16}));glow.position.y=1.65;vortex.add(glow);
  function ll(lat,lon,r){const a=THREE.MathUtils.degToRad(lat),b=THREE.MathUtils.degToRad(lon);return new THREE.Vector3(r*Math.cos(a)*Math.sin(b),r*Math.sin(a),r*Math.cos(a)*Math.cos(b))}
@@ -421,21 +421,25 @@ try{
    ]);
    if(!tr.ok||!wr.ok)throw new Error('CSV pro '+level+' hPa není dostupné');
    const [tc,wc]=await Promise.all([tr.text(),wr.text()]);
-   function lastValid(csv,key){
-    const rows=csv.trim().split(String.fromCharCode(10)).slice(1);
-    for(let i=rows.length-1;i>=0;i--){
-     const p=rows[i].split(','),v=Number(p[1]),fh=Number(p[2]);
-     if(p[0]&&Number.isFinite(v)&&v>-9000&&fh>=0)return {date:p[0],value:v};
+   function readSeries(csv){
+    const rows=csv.trim().split(/\r?\n/).slice(1),valid=[];
+    for(const row of rows){
+     const p=row.split(','),v=Number(p[1]),fh=Number(p[2]);
+     if(p[0]&&Number.isFinite(v)&&v>-9000&&Number.isFinite(fh)&&fh>=0)valid.push({date:p[0],value:v,forecastHour:fh});
     }
-    return null;
+    const observed=valid.filter(x=>x.forecastHour===0).slice(-1)[0]||null;
+    const forecast=valid.filter(x=>x.forecastHour>0).slice(-1)[0]||null;
+    return {observed,forecast};
    }
-   const t=lastValid(tc,'temp_k'),w=lastValid(wc,'u60_ms');
+   const ts=readSeries(tc),ws=readSeries(wc),t=ts.forecast||ts.observed,w=ws.forecast||ws.observed;
    if(!t||!w)throw new Error('V řadě nejsou platné hodnoty');
+   const fmtDate=d=>new Date(d+'T00:00:00Z').toLocaleDateString('cs-CZ',{timeZone:'UTC'});
+   const label=d=>d.forecastHour>0?'Předpověď '+fmtDate(d.date)+' (+'+d.forecastHour+' h)':'Analýza '+fmtDate(d.date);
    if(tempEl)tempEl.textContent=t.value.toFixed(2)+' K / '+(t.value-273.15).toFixed(2)+' °C';
    if(windEl)windEl.textContent=w.value.toFixed(2)+' m/s';
-   document.getElementById('levelTempDate').textContent='Datum: '+t.date+' · polární průměr';
-   document.getElementById('levelWindDate').textContent='Datum: '+w.date+' · zonální vítr';
-   if(status)status.textContent='NASA GSFC / Ozone Watch · hladina '+level+' hPa · platné poslední záznamy načteny.';
+   document.getElementById('levelTempDate').textContent=label(t)+(ts.observed?' · poslední analýza '+fmtDate(ts.observed.date):'')+' · polární průměr';
+   document.getElementById('levelWindDate').textContent=label(w)+(ws.observed?' · poslední analýza '+fmtDate(ws.observed.date):'')+' · zonální vítr';
+   if(status)status.textContent='NASA GSFC / Ozone Watch · '+level+' hPa · analýza do '+(ts.observed?fmtDate(ts.observed.date):'—')+'; výhled do '+(t.forecastHour>0?fmtDate(t.date)+' (+'+t.forecastHour+' h)':'bez předpovědi')+'.';
    document.querySelectorAll('.levelSelect').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.level===String(level))));
    const note=document.getElementById('levelMapNote');
    if(note)note.textContent=level==='10'?'Prostorová 3D mapa ECMWF zobrazuje současně hladinu 10 hPa.':'Vybraná diagnostická hladina '+level+' hPa. Prostorová 3D mapa ECMWF zůstává na 10 hPa; pro mapu '+level+' hPa zatím nemáme odpovídající prostorovou mřížku.';
