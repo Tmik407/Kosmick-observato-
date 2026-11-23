@@ -271,6 +271,7 @@
   }
   window.X5UpdateWinterWeather=function(items,stamp){
    weatherGroup.clearLayers();weatherLinks.clearLayers();weatherMarkers.length=0;
+   const firstWeather=items.find(w=>Number.isFinite(w.lat)&&Number.isFinite(w.lon)&&Number.isFinite(w.temp)&&Array.isArray(w.forecast?.temperature)&&w.forecast.temperature.some(v=>Number.isFinite(Number(v))));
    items.forEach(w=>{
     if(!Number.isFinite(w.lat)||!Number.isFinite(w.lon)||!Number.isFinite(w.temp))return;
     const base=L.latLng(w.lat,w.lon),color=tempColor(w.temp);
@@ -291,6 +292,7 @@
    scheduleWeatherMarkerLayout();
    if(!map.hasLayer(weatherGroup))weatherGroup.addTo(map);
    scheduleWeatherMarkerLayout();
+   if(firstWeather)renderWeatherDetail(firstWeather,stamp);
    const caption=document.querySelector('.winter-map-caption');
    if(caption)caption.textContent='Barevné kruhy: modelová teplota nyní (modrá = chladněji, červená = tepleji). Přepínač „Aktuální modelové počasí“ ovládá vrstvu. Zdroj: Open-Meteo · '+stamp+'. Nejde o přímé měření.';
   };
