@@ -40,7 +40,7 @@ jobs:
           python - <<'PY'
           import re
           from pathlib import Path
-          files = [Path("_site/index.html"), Path("_site/polarni-vir.html")]
+          files = [Path("_site/index.html"), Path("_site/polarni-vir.html"), Path("_site/polar-vortex-3d.html")]
           count = 0
           for page in files:
               source = page.read_text(encoding="utf-8")
@@ -129,4 +129,10 @@ jobs:
           curl --fail --silent --show-error --location "${SITE_URL}data/polar-vortex/latest.json" -o /tmp/x5-polar-data.json
           python -c 'import json,sys; d=json.load(open(sys.argv[1],encoding="utf-8")); assert d.get("source")=="NOAA NOMADS GFS 0.25° GRIB2"; assert len(d.get("rows",[]))==len(d.get("points",[]))==40; assert len(d.get("times",[]))>=1; assert all(len(r.get("hourly",{}).get("temperature_"+str(p)+"hPa",[]))==len(d["times"]) for r in d["rows"] for p in (10,30,50)); print("NOAA GFS data OK:",len(d["rows"]),"points,",len(d["times"]),"time steps")' /tmp/x5-polar-data.json
           echo "Ověřeno: světlý vzhled, 3D plátno, skript a datová řada NOAA GFS."
+          curl --fail --silent --show-error --location "${SITE_URL}polar-vortex-3d.html" -o /tmp/x5-vortex.html
+          grep -q 'id="ecmwfTimeline"' /tmp/x5-vortex.html
+          grep -q 'id="timelineU60"' /tmp/x5-vortex.html
+          grep -q 'id="timelinePolarTemp"' /tmp/x5-vortex.html
+          grep -q 'id="sswForecastSignal"' /tmp/x5-vortex.html
+          echo "ECMWF animace a diagnostika SSW předpovědního signálu ověřeny."
           echo "Smoke test X-5 dokončen."
