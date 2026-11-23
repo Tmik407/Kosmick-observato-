@@ -191,7 +191,7 @@ def main():
         raw_history = history_path.read_text(encoding="utf-8").strip()
         # Recover legacy files that ended with the two literal characters \\ and n
         # instead of a real newline (older exporter versions wrote "\\\\n").
-        while raw_history.endswith("\\\\n"):
+        while raw_history.endswith("\\n"):
             raw_history = raw_history[:-2].rstrip()
         try:
             history = json.loads(raw_history)
