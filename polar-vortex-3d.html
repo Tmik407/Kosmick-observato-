@@ -18,6 +18,7 @@
 </section>
 <p class="small" id="ecmwfGlobeState">ECMWF vrstva se načítá samostatně. Ovládání: tažením otáčejte glóbem, kolečkem přibližujte. Model zobrazuje fyzikální schéma cirkulace; není to naměřená mapa ani numerická předpověď.</p></section>
 <section class="panel wide" id="vortexDiagnostics" style="margin-top:14px"><h2>Geopotenciální diagnostika · ECMWF 10 hPa</h2><p class="small">Výpočty z prostorové mřížky severně od 55° N. Posun centra je vzdálenost minima geopotenciálu od severního pólu; nejde o automatickou klasifikaci rozštěpení víru.</p><div class="metrics"><div class="metric">Minimum geopotenciálu<b id="diagZmin">—</b></div><div class="metric">Maximum geopotenciálu<b id="diagZmax">—</b></div><div class="metric">Polární průměr geopotenciálu<b id="diagZmean">—</b></div><div class="metric">Posun centra od pólu<b id="diagDisplacement">—</b></div></div><p class="small" id="diagSummary">Čekám na data ECMWF…</p></section>
+<section class="panel wide" id="vortexForecastDiagnostics" style="margin-top:14px"><h2>Vývoj centra a deformace víru · ECMWF 10 hPa</h2><p class="small">Automatická diagnostika každého dostupného prognostického kroku z jednoho běhu ECMWF. Centrum se určuje z lokálních minim geopotenciálu; posun je vzdálenost od severního pólu. „Možné dvojité minimum“ je screeningový signál, nikoli potvrzené rozštěpení SSW.</p><div class="metrics"><div class="metric">Prognostické kroky<b id="vortexForecastCount">Načítám…</b></div><div class="metric">Největší posun centra<b id="vortexForecastMaxShift">—</b></div><div class="metric">Nejvyšší deformace jádra<b id="vortexForecastMaxElongation">—</b></div><div class="metric">Signál dvojitého minima<b id="vortexForecastSplit">—</b></div></div><div style="overflow-x:auto;margin-top:10px"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="text-align:left;background:#edf4fa"><th style="padding:8px">Krok / platnost UTC</th><th style="padding:8px">Centrum</th><th style="padding:8px">Posun</th><th style="padding:8px">Deformace</th><th style="padding:8px">Geometrický signál</th></tr></thead><tbody id="vortexForecastBody"><tr><td colspan="5" style="padding:10px">Načítám prognostickou sekvenci ECMWF…</td></tr></tbody></table></div><p class="small" id="vortexForecastStatus">Čekám na data ECMWF…</p></section>
 <section class="panel wide" id="windDiagnostics" style="margin-top:14px"><h2>Větrná diagnostika · ECMWF 10 hPa</h2><p class="small">Výpočty ze složek U (západ–východ) a V (jih–sever) v mřížce severně od 55° N. Kladná U znamená západní proudění; záporná U východní. Jde o prostorové statistiky dostupné hladiny 10 hPa.</p><div class="metrics"><div class="metric">Průměrná rychlost větru<b id="windMean">—</b></div><div class="metric">Nejvyšší rychlost větru<b id="windMax">—</b></div><div class="metric">Průměrná zonální složka U<b id="windU">—</b></div><div class="metric">Průměrná meridionální složka V<b id="windV">—</b></div></div><p class="small" id="windSummary">Čekám na data ECMWF…</p></section>
 <section class="panel wide" id="vortexStrength" style="margin-top:14px"><h2>Hodnocení síly polárního víru · ECMWF 10 hPa</h2><p class="small">Stav je určen podle průměrné zonální složky U v zeměpisné šířce nejbližší 60° N, zprůměrované přes dostupné délky. Kladné U značí západní vítr, záporné východní. Prahy níže jsou orientační kritéria projektu X-5, nikoli oficiální klasifikace WMO.</p><div class="metrics"><div class="metric">Stav víru<b id="vortexState">Čekám na data…</b></div><div class="metric">Zonální vítr kolem 60° N<b id="vortexU60">—</b></div><div class="metric">Použitá zeměpisná šířka<b id="vortexLat60">—</b></div><div class="metric">Posun geopotenciálního centra<b id="vortexOffset">—</b></div></div><p class="small" id="vortexStateNote">Po načtení ECMWF se vyhodnotí dostupná data.</p></section>
 <section class="panel wide" id="levelCompare" style="margin-top:14px">
@@ -1237,6 +1238,31 @@ try{
   return {center:{lat:Number(min.lat),lon:Number(min.lon),z:Number(min.z)},secondary:secondary?{lat:Number(secondary.lat),lon:Number(secondary.lon),z:Number(secondary.z)}:null,displacement,elongation,classification:secondary?'Možné dvojité minimum – prověřit rozštěpení':displacement>1500?'Posunuté centrum víru':elongation>45?'Protažené / deformované jádro':'Jedno dominantní jádro'};
  }
  window.X5AnalyzeVortexFrame=analyze;
+})();
+</script>
+<script>
+(function(){
+ const $=id=>document.getElementById(id),fmt=(v,d=0)=>Number.isFinite(v)?v.toFixed(d).replace('.',','):'—';
+ const date=s=>{const d=new Date(s);return Number.isNaN(d.getTime())?s:d.toLocaleString('cs-CZ',{timeZone:'UTC',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});};
+ async function loadForecastDiagnostics(){
+  const status=$('vortexForecastStatus'),body=$('vortexForecastBody');
+  try{
+   const r=await fetch('./data/polar-vortex-10hpa-timeline.json?diag='+Date.now(),{cache:'no-store'});
+   if(!r.ok)throw Error('HTTP '+r.status);
+   const data=await r.json();
+   if(!Array.isArray(data.frames)||!data.frames.length)throw Error('Archiv neobsahuje prognostické kroky.');
+   const rows=data.frames.map(f=>({frame:f,result:window.X5AnalyzeVortexFrame?window.X5AnalyzeVortexFrame(f):null})).filter(x=>x.result);
+   if(!rows.length)throw Error('Pro žádný krok nelze vypočítat polohu a geometrii centra.');
+   body.innerHTML=rows.map(({frame:f,result:d})=>'<tr style="border-top:1px solid #d9e4ed"><td style="padding:8px">+'+Number(f.step_hours)+' h<br><span class="small">'+date(f.valid_time_utc)+' UTC</span></td><td style="padding:8px">'+fmt(d.center.lat,1)+'° N / '+fmt(d.center.lon,1)+'° E'+(d.secondary?'<br><span class="small">Druhé minimum: '+fmt(d.secondary.lat,1)+'° N / '+fmt(d.secondary.lon,1)+'° E</span>':'')+'</td><td style="padding:8px">'+fmt(d.displacement,0)+' km</td><td style="padding:8px">'+fmt(d.elongation,0)+' %</td><td style="padding:8px">'+d.classification+'</td></tr>').join('');
+   $('vortexForecastCount').textContent=rows.length+' / '+data.frames.length;
+   $('vortexForecastMaxShift').textContent=fmt(Math.max(...rows.map(x=>x.result.displacement)),0)+' km';
+   $('vortexForecastMaxElongation').textContent=fmt(Math.max(...rows.map(x=>x.result.elongation)),0)+' %';
+   const split=rows.filter(x=>x.result.secondary).length;
+   $('vortexForecastSplit').textContent=split?split+' z '+rows.length+' kroků':'Nezjištěn';
+   status.textContent='Zdroj: '+(data.source||'ECMWF IFS Open Data')+' · běh '+(data.run_utc||'neuveden')+' · vygenerováno '+(data.generated_utc||'neuvedeno')+'. Výsledky jsou odvozeny z '+rows.length+' prostorových polí; rozlišení mřížky omezuje přesnost centra.';
+  }catch(e){if(status)status.textContent='Diagnostiku prognózy nelze vypočítat: '+e.message;if(body)body.innerHTML='<tr><td colspan="5" style="padding:10px">Data nejsou dostupná; výsledky nejsou odhadovány.</td></tr>';$('vortexForecastCount').textContent='Nedostupné';}
+ }
+ loadForecastDiagnostics();
 })();
 </script>
 <script>
