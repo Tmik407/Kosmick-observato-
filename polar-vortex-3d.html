@@ -200,8 +200,8 @@ try{
  const atmosphereRim=new THREE.Mesh(new THREE.SphereGeometry(1.565,96,72),new THREE.MeshBasicMaterial({color:0x7bdcff,transparent:true,opacity:.055,side:THREE.FrontSide,depthWrite:false}));
  group.add(atmosphereRim);
  // Polární ledová oblast jako průsvitná čepička nad severním pólem.
- const polarCap=new THREE.Mesh(new THREE.CircleGeometry(.52,96),new THREE.MeshBasicMaterial({color:0xc9efff,transparent:true,opacity:.17,side:THREE.DoubleSide,depthWrite:false}));
- polarCap.rotation.x=-Math.PI/2;polarCap.position.y=1.548;group.add(polarCap);
+ const polarCap=new THREE.Mesh(new THREE.SphereGeometry(1.558,96,24,0,Math.PI*2,0,.43),new THREE.MeshBasicMaterial({color:0xc9efff,transparent:true,opacity:.16,side:THREE.DoubleSide,depthWrite:false}));
+ group.add(polarCap);
  const gridMat=new THREE.LineBasicMaterial({color:0x5e9fc2,transparent:true,opacity:.42});
  for(let lat=-75;lat<=75;lat+=15){const pts=[];for(let lon=0;lon<=360;lon+=3){const p=ll(lat,lon,1.558);pts.push(p)}const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gridMat);group.add(line)}
  for(let lon=0;lon<360;lon+=15){const pts=[];for(let lat=-90;lat<=90;lat+=3)pts.push(ll(lat,lon,1.558));group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gridMat))}
