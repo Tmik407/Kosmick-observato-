@@ -1,7 +1,7 @@
 {
   "id": "./polar-vortex-3d.html",
   "name": "POLAR VORTEX 3D X-5",
-  "short_name": "POLAR VORTEX 3D",
+  "short_name": "VORTEX X-5",
   "description": "Samostatná aplikace 3D modelu severního polárního víru X-5 s diagnostikou ECMWF a SSW.",
   "lang": "cs-CZ",
   "start_url": "./polar-vortex-3d.html",
@@ -24,7 +24,7 @@
       "src": "./polar-vortex-3d-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }
