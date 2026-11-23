@@ -1,6 +1,11 @@
 name: Update ECMWF polar-vortex 10 hPa data
 
 on:
+  push:
+    paths:
+      - 'polar-vortex-3d.html'
+      - 'scripts/update_polar_vortex.py'
+      - '.github/workflows/update-polar-vortex.yml'
   workflow_dispatch:
   schedule:
     - cron: "35 8,20 * * *"
