@@ -345,6 +345,7 @@ try{
    if(!Array.isArray(data.grid)||!data.grid.length)throw new Error('ECMWF mřížka je prázdná');
    window.X5CurrentEcmwfFrame=data;
    if(!data.grid.every(p=>Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lon))&&Number.isFinite(Number(p.t))))throw new Error('ECMWF mřížka obsahuje neplatné souřadnice nebo teploty');
+   flowParticles.length=0;
    [tempLayer,contourLayer,windLayer,centerLayer].forEach(layer=>{while(layer.children.length)layer.remove(layer.children[0]);});
    const temps=data.grid.map(p=>Number(p.t)).filter(Number.isFinite);
    const tmin=Math.min(...temps),tmax=Math.max(...temps);
@@ -547,7 +548,7 @@ try{
     for(let n=0;n<3;n++){
      const particle=new THREE.Mesh(new THREE.SphereGeometry(.012,8,8),particleMaterial);
      windLayer.add(particle);
-     flowParticles.push({mesh:particle,curve,phase:n/3+streamlineSeeds.indexOf(seed)/streamlineSeeds.length,speed:.055+Math.min(.035,Math.hypot(midWind.u,midWind.v)/1200)});
+     flowParticles.push({mesh:particle,curve,phase:n/3+streamlineSeeds.indexOf(seed)/streamlineSeeds.length,speed:.075});
     }
     // Směrová šipka na konci trajektorie.
     const end=curve.getPoint(1),tangent=curve.getTangent(1).normalize();
