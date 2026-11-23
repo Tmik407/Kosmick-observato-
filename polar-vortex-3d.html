@@ -187,7 +187,10 @@ try{
  const group=new THREE.Group();scene.add(group);
  // Vrstvy vytváříme před geografickými značkami a asynchronním načtením pobřeží.
  ecmwfLayer=new THREE.Group();tempLayer=new THREE.Group();contourLayer=new THREE.Group();windLayer=new THREE.Group();centerLayer=new THREE.Group();geoLayer=new THREE.Group();
- ecmwfLayer.add(tempLayer,contourLayer,windLayer,centerLayer);group.add(ecmwfLayer,geoLayer);
+ // Každou skupinu připojit samostatně kvůli kompatibilitě Three.js a diagnostice.
+ group.add(ecmwfLayer);group.add(geoLayer);
+ ecmwfLayer.add(tempLayer);ecmwfLayer.add(contourLayer);ecmwfLayer.add(windLayer);ecmwfLayer.add(centerLayer);
+ if(![ecmwfLayer,tempLayer,contourLayer,windLayer,centerLayer,geoLayer].every(layer=>layer&&typeof layer.add==='function'))throw new Error('Inicializace vrstev 3D scény selhala');
  // Procedurální textura Země: oceány, kontinenty, pobřeží a jemné reliéfní odstíny.
  const earthCanvas=document.createElement('canvas');earthCanvas.width=2048;earthCanvas.height=1024;
  const ec=earthCanvas.getContext('2d');
