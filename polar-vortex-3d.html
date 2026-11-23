@@ -795,22 +795,26 @@ try{
   try{
    if(typeof window.X5LoadEcmwfFrame!=='function')throw Error('3D vykreslovač ještě není připraven');
    await window.X5LoadEcmwfFrame(f);
-   const globeStamp=()=>document.getElementById('ecmwfGlobeState')?.textContent||'';
-   // Ověř, že 3D scéna skutečně dokončila vykreslení právě zvoleného kroku.
+   const globeStamp=()=>document.getElementById('sceneState')?.textContent||'';
+   // sceneState je skutečný stavový řádek vykreslovače globu; ecmwfGlobeState
+   // je pouze doplňkový panel a nesmí se používat jako důkaz synchronizace.
    if(!globeStamp().includes(f.valid_time_utc)){
     await window.X5LoadEcmwfFrame(f);
    }
    const globeSynced=globeStamp().includes(f.valid_time_utc);
+   const globeCenterText=document.getElementById('vortexCenterInfo')?.textContent||'';
+   const sharedResult=window.X5AnalyzeVortexFrame?window.X5AnalyzeVortexFrame(f):null;
+   const globeCenterSynced=!!(sharedResult&&globeCenterText.includes(sharedResult.center.lat.toFixed(1)+'° N / '+sharedResult.center.lon.toFixed(1)+'° E'));
    window.X5CurrentEcmwfFrame=f;
    if(typeof window.X5DrawEcmwfPolarMap==='function')window.X5DrawEcmwfPolarMap(f);
    const sharedBox=document.getElementById('sharedVortexState');
    if(sharedBox){
     const d=window.X5AnalyzeVortexFrame?window.X5AnalyzeVortexFrame(f):null;
     sharedBox.textContent=d
-     ? 'Společná diagnostika ECMWF · '+d.center.lat.toFixed(1)+'° N / '+d.center.lon.toFixed(1)+'° E · posun '+d.displacement.toFixed(0)+' km · deformace '+d.elongation.toFixed(0)+' % · '+d.classification+' · platnost '+f.valid_time_utc+(d.secondary?' · druhé minimum '+d.secondary.lat.toFixed(1)+'° N / '+d.secondary.lon.toFixed(1)+'° E':'')+' · '+(globeSynced?'3D + mapa synchronizovány':'CHYBA: 3D scéna nepotvrdila stejný čas')
+     ? 'Společná diagnostika ECMWF · '+d.center.lat.toFixed(1)+'° N / '+d.center.lon.toFixed(1)+'° E · posun '+d.displacement.toFixed(0)+' km · deformace '+d.elongation.toFixed(0)+' % · '+d.classification+' · platnost '+f.valid_time_utc+(d.secondary?' · druhé minimum '+d.secondary.lat.toFixed(1)+'° N / '+d.secondary.lon.toFixed(1)+'° E':'')+' · '+(globeSynced&&globeCenterSynced?'3D + mapa synchronizovány':'CHYBA synchronizace: '+(!globeSynced?'čas globu nesouhlasí':'centrum globu nesouhlasí'))
      : 'Společná diagnostika není dostupná · '+f.valid_time_utc;
    }
-   status.textContent='Zobrazen ECMWF +'+f.step_hours+' h · '+fmtDate(f.valid_time_utc)+' · '+(globeSynced?'3D a polární mapa synchronizovány':'VAROVÁNÍ: čas 3D globu nesouhlasí')+'.';
+   status.textContent='Zobrazen ECMWF +'+f.step_hours+' h · '+fmtDate(f.valid_time_utc)+' · '+(globeSynced&&globeCenterSynced?'3D a polární mapa synchronizovány':'VAROVÁNÍ: 3D globus nesouhlasí s mapou')+'.';
   }catch(e){status.textContent='Krok nelze vykreslit: '+e.message;}
  }
  async function load(){
