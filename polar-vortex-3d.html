@@ -1196,7 +1196,7 @@ try{
  document.addEventListener('x5:motion',event=>{
   const paused=!!event.detail?.paused;
   if(paused){resumeTimelineAfterPause=!!timer;stop();allPaused=true;}
-  else {allPaused=false;if(resumeTimelineAfterPause)startPlayback();resumeTimelineAfterPause=false;}
+  else {allPaused=false;resumeTimelineAfterPause=false;startPlayback();}
  });
  $('timelinePrev').addEventListener('click',()=>{stop();show(index-1);});
  $('timelineNext').addEventListener('click',()=>{stop();show(index+1);});
