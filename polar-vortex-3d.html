@@ -162,7 +162,6 @@
 .leaflet-popup-content-wrapper{border-radius:9px}
 .winter-weather-label{background:transparent!important;border:0!important}
 .winter-weather-label span{display:flex;align-items:center;justify-content:center;min-width:48px;height:28px;padding:0 6px;border:2px solid #fff;border-radius:16px;box-shadow:0 2px 7px #10283c88;color:#fff;font-size:12px;font-weight:800;white-space:nowrap;text-shadow:0 1px 2px #10283c;background:var(--wx-color,#3156b8);box-sizing:border-box}
-.winter-weather-label:after{content:"";position:absolute;left:21px;bottom:-5px;width:8px;height:8px;background:var(--wx-color,#3156b8);border-right:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(45deg)}
 .leaflet-marker-icon.winter-weather-label{z-index:700!important}
 .leaflet-popup{z-index:800!important}
 @media(max-width:700px){
@@ -238,7 +237,7 @@
    '<p class="small" style="margin:8px 0 0">Vítr nyní: '+(Number.isFinite(w.wind)?w.wind.toFixed(1).replace('.',',')+' m/s':'—')+' · Srážky nyní: '+(Number.isFinite(w.prec)?w.prec.toFixed(1).replace('.',',')+' mm':'—')+' · Modelová pokrývka: '+(Number.isFinite(w.depth)?w.depth.toFixed(1).replace('.',',')+' cm':'—')+'<br>Aktualizace: '+escHtml(stamp)+'. Zdroj: Open-Meteo. Modelový výstup, nikoli měření ani výstraha.</p>';
   }
   window.X5UpdateWinterWeather=function(items,stamp){
-   weatherGroup.clearLayers();weatherMarkers.length=0;
+   weatherGroup.clearLayers();weatherLinks.clearLayers();weatherMarkers.length=0;
    items.forEach(w=>{
     if(!Number.isFinite(w.lat)||!Number.isFinite(w.lon)||!Number.isFinite(w.temp))return;
     const base=L.latLng(w.lat,w.lon),color=tempColor(w.temp);
@@ -248,6 +247,8 @@
     });
     const safeName=String(w.name).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const details='<b>'+safeName+'</b><br>Modelová teplota: '+w.temp.toFixed(1)+' °C<br>Vítr: '+(Number.isFinite(w.wind)?w.wind.toFixed(1)+' m/s':'—')+'<br>Srážky nyní: '+(Number.isFinite(w.prec)?w.prec.toFixed(1)+' mm':'—')+'<br>Nový sníh nyní: '+(Number.isFinite(w.snow)?w.snow.toFixed(1)+' cm':'—')+'<br>Sněhová pokrývka modelu: '+(Number.isFinite(w.depth)?w.depth.toFixed(1)+' cm':'—')+'<br><small>Modelový stav · '+stamp+'</small>';
+    const displayed=weatherDisplayPoint(base);
+    L.polyline([base,displayed],{pane:'winterPoints',color:'#17364c',weight:1.5,opacity:.8,dashArray:'3 4',interactive:false}).addTo(weatherLinks);
     marker._x5BaseLatLng=base;
     marker.bindPopup(details,{maxWidth:260,autoPan:true});
     marker.on('click',()=>renderWeatherDetail(w,stamp));
