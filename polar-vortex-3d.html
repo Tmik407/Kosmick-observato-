@@ -767,6 +767,7 @@ try{
   button.setAttribute('aria-pressed',String(layer.visible));
  }));
  window.X5LoadEcmwfFrame=loadEcmwfGlobe;
+ window.dispatchEvent(new Event('x5:renderer-ready'));
  loadEcmwfGlobe();
  // NASA GSFC/Ozone Watch daily level comparison (60–90N temperature, 60N zonal wind).
  async function loadLevelDiagnostics(level){
@@ -1102,6 +1103,16 @@ try{
   };
   timer=setTimeout(advance,1600);
  }
+ function waitForRenderer(timeout=15000){
+  if(typeof window.X5LoadEcmwfFrame==='function')return Promise.resolve(true);
+  return new Promise(resolve=>{
+   let done=false;
+   const finish=ready=>{if(done)return;done=true;window.removeEventListener('x5:renderer-ready',onReady);clearTimeout(timer);resolve(ready);};
+   const onReady=()=>finish(typeof window.X5LoadEcmwfFrame==='function');
+   const timer=setTimeout(()=>finish(typeof window.X5LoadEcmwfFrame==='function'),timeout);
+   window.addEventListener('x5:renderer-ready',onReady,{once:true});
+  });
+ }
  async function show(i){
   if(!frames.length)return;
   index=Math.max(0,Math.min(frames.length-1,i));
@@ -1129,7 +1140,7 @@ try{
   if(sceneStateEl)sceneStateEl.textContent='Načítám krok ECMWF '+f.valid_time_utc+'…';
   if(centerInfoEl)centerInfoEl.textContent='Centrum ECMWF · čekám na vykreslení '+f.valid_time_utc;
   try{
-   if(typeof window.X5LoadEcmwfFrame!=='function')throw Error('3D vykreslovač ještě není připraven');
+   if(!await waitForRenderer())throw Error('3D vykreslovač se nespustil do 15 sekund; zkontrolujte připojení a podporu WebGL');
    await window.X5LoadEcmwfFrame(f);
    const globeStamp=()=>document.getElementById('sceneState')?.textContent||'';
    // sceneState je skutečný stavový řádek vykreslovače globu; ecmwfGlobeState
