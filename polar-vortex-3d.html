@@ -359,7 +359,7 @@ try{
      ring2.position.copy(p2);ring2.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),p2.clone().normalize());centerLayer.add(ring2);
     }
     const centerInfo=document.getElementById('vortexCenterInfo');
-    if(centerInfo)centerInfo.textContent='Centrum ECMWF · '+lat.toFixed(1)+'° N / '+lon.toFixed(1)+'° E'+(shared?' · posun '+shared.displacement.toFixed(0)+' km · '+shared.classification:'');
+    if(centerInfo)centerInfo.textContent='Centrum ECMWF · '+lat.toFixed(1)+'° N / '+lon.toFixed(1)+'° E'+(shared?' · posun od pólu '+shared.displacement.toFixed(0)+' km · deformace '+shared.elongation.toFixed(0)+' % · '+shared.classification+(shared.secondary?' · druhé minimum '+shared.secondary.lat.toFixed(1)+'° N / '+shared.secondary.lon.toFixed(1)+'° E':''):'');
    }
    const minEl=document.getElementById('tempMin'),maxEl=document.getElementById('tempMax');
    if(minEl)minEl.textContent=tmin.toFixed(1)+' K / '+(tmin-273.15).toFixed(1)+' °C';
