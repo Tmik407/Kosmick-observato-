@@ -330,30 +330,53 @@ try{
    if(minEl)minEl.textContent=tmin.toFixed(1)+' K / '+(tmin-273.15).toFixed(1)+' °C';
    if(maxEl)maxEl.textContent=tmax.toFixed(1)+' K / '+(tmax-273.15).toFixed(1)+' °C';
    if(!temps.length)throw new Error('Chybí teplotní pole T');
-   // ECMWF temperature field: triangulated polar cap rather than isolated colored dots.
-   const rows=[...new Set(data.grid.map(p=>Number(p.lat)).filter(lat=>lat>=55))].sort((a,b)=>a-b);
-   const lons=[...new Set(data.grid.map(p=>Number(p.lon)))].sort((a,b)=>a-b);
+   // ECMWF temperature field: smooth, bilinearly interpolated polar-cap mesh.
+   const sourceRows=[...new Set(data.grid.map(p=>Number(p.lat)).filter(lat=>lat>=55))].sort((a,b)=>a-b);
+   const sourceLons=[...new Set(data.grid.map(p=>Number(p.lon)))].sort((a,b)=>a-b);
    const lookup=new Map(data.grid.map(p=>[Number(p.lat)+','+Number(p.lon),p]));
+   if(sourceRows.length<2||sourceLons.length<3)throw new Error('Mřížka ECMWF nemá dost bodů pro teplotní pole');
+   const subdivisions=5,latFine=[],lonFine=[];
+   for(let r=0;r<sourceRows.length-1;r++)for(let q=0;q<subdivisions;q++)latFine.push(sourceRows[r]+(sourceRows[r+1]-sourceRows[r])*q/subdivisions);
+   latFine.push(sourceRows[sourceRows.length-1]);
+   const lonStep=360/sourceLons.length;
+   for(let c=0;c<sourceLons.length;c++)for(let q=0;q<subdivisions;q++)lonFine.push(sourceLons[c]+lonStep*q/subdivisions);
    const surfacePositions=[],surfaceColors=[],indices=[];
    const palette=[[190,0x32105f],[200,0x56317f],[210,0x995a9b],[220,0xc58db6],[230,0xe2bfd0],[240,0xf0dce2]];
    function tempColor(k){
-    let c=palette[0];for(let q=1;q<palette.length;q++){if(k<=palette[q][0]){const a=palette[q-1],b=palette[q],f=Math.max(0,Math.min(1,(k-a[0])/(b[0]-a[0])));return new THREE.Color(a[1]).lerp(new THREE.Color(b[1]),f)}c=palette[q]}return new THREE.Color(c[1]);
+    for(let q=1;q<palette.length;q++)if(k<=palette[q][0]){
+     const a=palette[q-1],b=palette[q],f=Math.max(0,Math.min(1,(k-a[0])/(b[0]-a[0])));
+     return new THREE.Color(a[1]).lerp(new THREE.Color(b[1]),f);
+    }
+    return new THREE.Color(palette[palette.length-1][1]);
    }
-   for(const lat of rows)for(const lon of lons){
-    const p=lookup.get(lat+','+lon);if(!p)continue;
-    const v=ll(lat,lon,1.592);surfacePositions.push(v.x,v.y,v.z);
-    const col=tempColor(Number(p.t));surfaceColors.push(col.r,col.g,col.b);
+   function interpolateTemp(lat,lon){
+    let ri=0;while(ri<sourceRows.length-2&&sourceRows[ri+1]<lat)ri++;
+    const rf=Math.max(0,Math.min(1,(lat-sourceRows[ri])/(sourceRows[ri+1]-sourceRows[ri])));
+    let ci=0;while(ci<sourceLons.length-1&&sourceLons[ci+1]<=lon)ci++;
+    const lon0=sourceLons[ci],lon1=ci===sourceLons.length-1?sourceLons[0]+360:sourceLons[ci+1];
+    let x=lon;if(x<lon0)x+=360;
+    const cf=Math.max(0,Math.min(1,(x-lon0)/(lon1-lon0)));
+    const c1=(ci+1)%sourceLons.length;
+    const p00=lookup.get(sourceRows[ri]+','+sourceLons[ci]),p01=lookup.get(sourceRows[ri]+','+sourceLons[c1]);
+    const p10=lookup.get(sourceRows[ri+1]+','+sourceLons[ci]),p11=lookup.get(sourceRows[ri+1]+','+sourceLons[c1]);
+    if(!p00||!p01||!p10||!p11)return tmin;
+    const low=Number(p00.t)*(1-cf)+Number(p01.t)*cf,high=Number(p10.t)*(1-cf)+Number(p11.t)*cf;
+    return low*(1-rf)+high*rf;
    }
-   const cols=lons.length;
-   for(let ri=0;ri<rows.length-1;ri++)for(let ci=0;ci<cols;ci++){
+   for(const lat of latFine)for(const lon of lonFine){
+    const value=interpolateTemp(lat,lon),v=ll(lat,lon,1.592),col=tempColor(value);
+    surfacePositions.push(v.x,v.y,v.z);surfaceColors.push(col.r,col.g,col.b);
+   }
+   const cols=lonFine.length;
+   for(let ri=0;ri<latFine.length-1;ri++)for(let ci=0;ci<cols;ci++){
     const next=(ci+1)%cols,a=ri*cols+ci,b=ri*cols+next,c=(ri+1)*cols+ci,d=(ri+1)*cols+next;
-    if(lookup.has(rows[ri]+','+lons[ci])&&lookup.has(rows[ri]+','+lons[next])&&lookup.has(rows[ri+1]+','+lons[ci])&&lookup.has(rows[ri+1]+','+lons[next]))indices.push(a,c,b,b,c,d);
+    indices.push(a,c,b,b,c,d);
    }
    const surfaceGeometry=new THREE.BufferGeometry();
    surfaceGeometry.setAttribute('position',new THREE.Float32BufferAttribute(surfacePositions,3));
    surfaceGeometry.setAttribute('color',new THREE.Float32BufferAttribute(surfaceColors,3));
    surfaceGeometry.setIndex(indices);surfaceGeometry.computeVertexNormals();
-   tempLayer.add(new THREE.Mesh(surfaceGeometry,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide,transparent:true,opacity:.52,depthWrite:false})));
+   tempLayer.add(new THREE.Mesh(surfaceGeometry,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide,transparent:true,opacity:.78,depthWrite:false})));
    // Geopotential-height contour isolines calculated from ECMWF grid (marching squares).
    const zvals=data.grid.map(p=>Number(p.z)).filter(Number.isFinite),zmin=Math.min(...zvals),zmax=Math.max(...zvals);
    const contourMaterial=new THREE.LineBasicMaterial({color:0xf3e7f2,transparent:true,opacity:.32});
