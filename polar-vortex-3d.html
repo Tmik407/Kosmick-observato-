@@ -774,7 +774,7 @@ try{
     ? 'POZOR: Předpověď v tomto kroku ukazuje východní nebo nulový zonální vítr na 60° N. Jde o modelový signál možného obratu, nikoli potvrzenou událost SSW.'
     : 'Západní zonální vítr na 60° N v tomto předpovědním kroku přetrvává. Kritérium obratu větru pro hlavní SSW zatím není v tomto kroku dosaženo.';
   }else signal.textContent='Diagnostika zonálního větru pro tento krok není dostupná.';
-  drawX5PolarMap(f);
+  if(typeof window.X5DrawEcmwfPolarMap==='function')window.X5DrawEcmwfPolarMap(f);
   status.textContent='Vykresluji ECMWF '+f.step_hours+' h · '+fmtDate(f.valid_time_utc)+'…';
   try{
    if(typeof window.X5LoadEcmwfFrame!=='function')throw Error('3D vykreslovač ještě není připraven');
