@@ -961,7 +961,7 @@ try{
  async function load(){
   $("wxStatus").textContent="Načítám";
   $("wxNotice").textContent="Stahuji hodinové předpovědi pro "+points.length+" referenčních míst…";
-  $("wxRows").innerHTML='<tr><td colspan="6" style="padding:10px">Načítám regionální data…</td></tr>';
+  $("wxRows").innerHTML='<tr><td colspan="8" style="padding:10px">Načítám regionální data…</td></tr>';
   try{
    const lat=points.map(p=>p.lat).join(","),lon=points.map(p=>p.lon).join(",");
    const params=new URLSearchParams({latitude:lat,longitude:lon,hourly:"temperature_2m,precipitation,snowfall,snow_depth,wind_speed_10m",current:"temperature_2m,precipitation,snowfall,weather_code,wind_speed_10m",forecast_days:"4",timezone:"Europe/Prague",wind_speed_unit:"ms"});
