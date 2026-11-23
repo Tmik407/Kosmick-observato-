@@ -1,0 +1,45 @@
+name: Update ECMWF polar-vortex 10 hPa data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "35 8,20 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: x5-ecmwf-polar-vortex
+  cancel-in-progress: false
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install ECMWF GRIB tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libeccodes0 libeccodes-tools
+          python -m pip install --upgrade pip
+          python -m pip install ecmwf-opendata eccodes numpy
+      - name: Download and process latest ECMWF IFS 10 hPa forecast
+        run: python scripts/update_polar_vortex.py
+      - name: Publish compact JSON data
+        run: |
+          if git diff --quiet -- data/polar-vortex-10hpa.json; then
+            echo "No data changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/polar-vortex-10hpa.json
+          git commit -m "Update ECMWF 10 hPa polar-vortex data"
+          git push
