@@ -1,5 +1,5 @@
 /* Kosmická observatoř X-5 – PWA service worker */
-const CACHE_NAME="x5-pwa-shell-v49";
+const CACHE_NAME="x5-pwa-shell-v50";
 const SHELL=["./","./index.html","./polar-vortex-3d.html","./polarni-vir.html","./offline.html","./manifest.webmanifest","./polarni-vir.webmanifest","./icon.svg","./polarni-vir-animace.js","./gfs-polarni-animace.js","./gfs-vortex-comparison.js","./gfs-polarni-3d.js","./data/polar-vortex/latest.json","./data/polar-vortex-10hpa.json","./data/polar-vortex-history.json","./data/noaa-gfs/meta.json","./polar-vortex-shared-data.js","./polar-vortex-troposphere.js","./polar-vortex-vertical.js","./polar-vortex-advanced.js","./polar-vortex-troposphere.js","./polar-vortex-map500.js","./polar-vortex-map850.js","./polar-vortex-cold-air.js","./polar-vortex-vertical.js"];
 self.addEventListener("install",event=>{
  event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));
