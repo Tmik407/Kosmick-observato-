@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Download and aggregate ECMWF IFS 10 hPa fields for the X-5 polar-vortex viewer.
-The job retrieves only one forecast step and a compact set of fields.
+The job retrieves one forecast step and publishes a compact, versioned JSON product.
 """
 from __future__ import annotations
 import json
