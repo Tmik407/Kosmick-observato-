@@ -5,7 +5,21 @@
 </style></head><body><main>
 <div class="top"><div><div class="tag">KOSMICKÁ OBSERVATOŘ X-5 · ATMOSFÉRA · VERZE 1.7</div><h1>🌐 POLAR VORTEX 3D</h1><div class="sub">Interaktivní prostorový model severního polárního víru</div></div><a class="btn" href="./index.html">← Zpět do observatoře</a></div>
 <div class="layout"><section class="panel"><div class="stage"><canvas id="scene"></canvas><div class="overlay">X-5 / 3D MODEL<br><span id="sceneState">Inicializuji 3D scénu…</span><br>Severní pól · teplota ECMWF a geopotenciální izolinie</div><div id="vortexCenterInfo" style="position:absolute;right:12px;top:12px;max-width:245px;padding:8px 10px;background:#061526df;border:1px solid #b69b55;border-radius:9px;color:#ffe6a3;font-size:11px;line-height:1.45;pointer-events:none">Centrum víru · výpočet z ECMWF…</div><div class="legend"><span><i class="dot" style="background:#42c9ff"></i>Stratosférický vír</span><span><i class="dot" style="background:#ff9c55"></i>Teplý vzduch</span><span><i class="dot" style="background:#a9dfff"></i>Polární vzduch</span></div><div id="temperatureLegend" style="position:absolute;right:12px;bottom:48px;width:min(250px,58%);padding:9px 10px;background:#061526d9;border:1px solid #456984;border-radius:9px;font-size:11px;color:#eaf4ff"><div style="display:flex;justify-content:space-between;gap:8px"><b>ECMWF · teplota 10 hPa</b><span id="tempUnit">K / °C</span></div><div style="height:10px;margin:7px 0 4px;border-radius:8px;background:linear-gradient(90deg,#32105f,#56317f,#995a9b,#c58db6,#e2bfd0,#f0dce2)"></div><div style="display:flex;justify-content:space-between"><span id="tempMin">—</span><span id="tempMax">—</span></div></div><div id="coastSource" style="position:absolute;left:12px;bottom:48px;padding:4px 7px;background:#061526bd;border-radius:6px;color:#d5e7f3;font-size:10px">Načítám geografické pobřeží…</div></div><p class="small" id="ecmwfGlobeState">ECMWF vrstva se načítá samostatně. Ovládání: tažením otáčejte glóbem, kolečkem přibližujte. Model zobrazuje fyzikální schéma cirkulace; není to naměřená mapa ani numerická předpověď.</p></section>
-<aside class="panel controls"><h2 style="margin:0">Ovládání modelu</h2>
+<section class="panel wide" id="levelCompare" style="margin-top:14px">
+<h2>Porovnání stratosférických hladin · NASA GSFC</h2>
+<p class="small">Vyberte hladinu a porovnejte polární průměr teploty 60–90° N a zonální vítr na 60° N. Jde o denní diagnostické řady NASA GSFC/Ozone Watch, nikoli o prostorové mapy.</p>
+<div class="buttons" role="group" aria-label="Výběr tlakové hladiny">
+<button type="button" class="levelSelect" data-level="10" aria-pressed="true">10 hPa</button>
+<button type="button" class="levelSelect" data-level="30" aria-pressed="false">30 hPa</button>
+<button type="button" class="levelSelect" data-level="50" aria-pressed="false">50 hPa</button>
+</div>
+<div class="metrics" style="margin-top:12px">
+<div class="metric">Polární průměr teploty · 60–90° N<b id="levelTemp">Načítám…</b><p class="small" id="levelTempDate">—</p></div>
+<div class="metric">Zonální vítr · 60° N<b id="levelWind">Načítám…</b><p class="small" id="levelWindDate">—</p></div>
+</div>
+<div class="status" id="levelStatus" style="margin-top:10px">Načítám denní řady NASA GSFC…</div>
+<p class="small" id="levelMapNote">Prostorová 3D mapa ECMWF je nyní dostupná na hladině 10 hPa. Pro 30 a 50 hPa jsou zde zobrazena ověřená denní diagnostická data; prostorové mapy těchto hladin zatím nejsou k dispozici.</p>
+</section><aside class="panel controls"><h2 style="margin:0">Ovládání modelu</h2>
 <div class="control"><label for="strength">Síla víru <span class="value" id="strengthVal">55 %</span></label><input id="strength" type="range" min="0" max="100" value="55"></div>
 <div class="control"><label for="wave">Vlnění / deformace <span class="value" id="waveVal">35 %</span></label><input id="wave" type="range" min="0" max="100" value="35"></div>
 <div class="control"><label for="warming">Stratosférické oteplování <span class="value" id="warmingVal">20 %</span></label><input id="warming" type="range" min="0" max="100" value="20"></div>
@@ -366,7 +380,43 @@ try{
   }catch(err){const badge=document.querySelector('#ecmwfGlobeState');if(badge)badge.textContent='ECMWF vrstva čeká na data: '+err.message;}
  }
  build();state.textContent='3D scéna aktivní · schématický model';
+
  loadEcmwfGlobe();
+ // NASA GSFC/Ozone Watch daily level comparison (60–90N temperature, 60N zonal wind).
+ async function loadLevelDiagnostics(level){
+  const status=document.getElementById('levelStatus');
+  const tempEl=document.getElementById('levelTemp'),windEl=document.getElementById('levelWind');
+  if(status)status.textContent='Načítám NASA GSFC pro '+level+' hPa…';
+  try{
+   const base='./data/nasa-gsfc/';
+   const [tr,wr]=await Promise.all([
+    fetch(base+'tcap_'+level+'hpa_60_90n_ozonewatch.csv',{cache:'no-store'}),
+    fetch(base+'u60_'+level+'hpa_60n_ozonewatch.csv',{cache:'no-store'})
+   ]);
+   if(!tr.ok||!wr.ok)throw new Error('CSV pro '+level+' hPa není dostupné');
+   const [tc,wc]=await Promise.all([tr.text(),wr.text()]);
+   function lastValid(csv,key){
+    const rows=csv.trim().split(/\\r?\\n/).slice(1);
+    for(let i=rows.length-1;i>=0;i--){
+     const p=rows[i].split(','),v=Number(p[1]),fh=Number(p[2]);
+     if(p[0]&&Number.isFinite(v)&&v>-9000&&fh>=0)return {date:p[0],value:v};
+    }
+    return null;
+   }
+   const t=lastValid(tc,'temp_k'),w=lastValid(wc,'u60_ms');
+   if(!t||!w)throw new Error('V řadě nejsou platné hodnoty');
+   if(tempEl)tempEl.textContent=t.value.toFixed(2)+' K / '+(t.value-273.15).toFixed(2)+' °C';
+   if(windEl)windEl.textContent=w.value.toFixed(2)+' m/s';
+   document.getElementById('levelTempDate').textContent='Datum: '+t.date+' · polární průměr';
+   document.getElementById('levelWindDate').textContent='Datum: '+w.date+' · zonální vítr';
+   if(status)status.textContent='NASA GSFC / Ozone Watch · hladina '+level+' hPa · platné poslední záznamy načteny.';
+   document.querySelectorAll('.levelSelect').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.level===String(level))));
+   const note=document.getElementById('levelMapNote');
+   if(note)note.textContent=level==='10'?'Prostorová 3D mapa ECMWF zobrazuje současně hladinu 10 hPa.':'Vybraná diagnostická hladina '+level+' hPa. Prostorová 3D mapa ECMWF zůstává na 10 hPa; pro mapu '+level+' hPa zatím nemáme odpovídající prostorovou mřížku.';
+  }catch(err){if(status)status.textContent='Data NASA GSFC se nepodařilo načíst: '+err.message;}
+ }
+ document.querySelectorAll('.levelSelect').forEach(b=>b.addEventListener('click',()=>loadLevelDiagnostics(b.dataset.level)));
+ loadLevelDiagnostics(10);
  function animate(){requestAnimationFrame(animate);if(auto&&!drag)rotY+=.0018;scene.rotation.y=0;globe.parent.rotation.set(rotX,rotY,0);camera.position.z=zoom;renderer.render(scene,camera)}animate();
  new ResizeObserver(()=>{const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}).observe(canvas);
 }catch(e){state.textContent='3D modul nelze spustit: '+e.message;canvas.insertAdjacentHTML('afterend','<p class="status">Pro 3D zobrazení je nutné připojení k internetu a podpora WebGL.</p>')}
