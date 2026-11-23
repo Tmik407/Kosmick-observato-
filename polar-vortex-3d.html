@@ -196,11 +196,12 @@ try{
  ec.lineJoin='round';ec.lineWidth=5;
  landShapes.forEach((poly,i)=>{
   ec.beginPath();poly.forEach((p,j)=>j?ec.lineTo(p[0],p[1]):ec.moveTo(p[0],p[1]));ec.closePath();
+  // Tlumená tmavě modrošedá pevnina: zelené plochy nesmějí soupeřit s teplotní vrstvou ECMWF.
   const g=ec.createLinearGradient(0,poly[0][1],0,Math.max(...poly.map(p=>p[1])));
-  g.addColorStop(0,'#789b83');g.addColorStop(.45,'#557b69');g.addColorStop(1,'#294f50');
-  ec.fillStyle=g;ec.fill();ec.strokeStyle='rgba(166,204,183,.42)';ec.stroke();
-  // Relief shading bands give continents a subtle physical surface.
-  for(let k=0;k<5;k++){ec.beginPath();ec.moveTo(poly[0][0]+k*9,poly[0][1]+k*7);poly.slice(1).forEach(p=>ec.lineTo(p[0]+k*4,p[1]+k*3));ec.strokeStyle='rgba(220,220,166,.045)';ec.lineWidth=9;ec.stroke()}
+  g.addColorStop(0,'#29465d');g.addColorStop(.5,'#1c354c');g.addColorStop(1,'#102a40');
+  ec.fillStyle=g;ec.fill();ec.strokeStyle='rgba(169,198,218,.16)';ec.lineWidth=2;ec.stroke();
+  // Jemné neutrální reliéfní stínování bez zelených či žlutých odstínů.
+  for(let k=0;k<3;k++){ec.beginPath();ec.moveTo(poly[0][0]+k*9,poly[0][1]+k*7);poly.slice(1).forEach(p=>ec.lineTo(p[0]+k*4,p[1]+k*3));ec.strokeStyle='rgba(190,211,228,.018)';ec.lineWidth=6;ec.stroke()}
  });
  // Subtle polar ice cap and atmospheric haze in the texture.
  const ice=ec.createRadialGradient(1024,8,12,1024,8,210);ice.addColorStop(0,'rgba(231,246,255,.9)');ice.addColorStop(.55,'rgba(170,216,235,.42)');ice.addColorStop(1,'rgba(170,216,235,0)');
