@@ -12,23 +12,24 @@ OPERATION X-5 je dlouhodobý projekt taktické real-time strategické hry pro PC
 - Inspirace: taktické real-time strategie ve stylu Men of War; nejde o tvrzení o oficiální návaznosti.
 
 ## Evidovaný stav projektu
-- Podle dosavadních projektových záznamů jsou zpracovány etapy 1–113.
-- Evidovaný rozsah: 718 souborů.
-- Nejnovější známý dokončený krok: etapa 113 — centralizované statistiky ztrát armády a logistiky.
-- Nejbližší pokračování: etapa 114.
-- Aktuální stav je evidován jako zdrojový prototyp. Není potvrzeno dokončené sestavení v Unreal Engine, spuštění hry, hratelné bojiště ani vydání hotové hry.
+- Archiv etap 1–113 byl nyní dodán a zkontrolován.
+- Archiv obsahuje 718 souborů; ZIP CRC kontrola je úspěšná.
+- Etapa 113: centralizované statistiky ztrát armády a logistiky.
+- Etapa 114 byla připravena jako zdrojová etapa: automatické obnovení statistik posádek a logistiky.
+- Aktuální pracovní balíček po etapě 114 obsahuje 720 souborů.
+- Není potvrzena kompilace, spuštění ani runtime funkčnost v Unreal Engine 5.
 
 ## Umístění a správa
 - Projekt zatím nemá vlastní GitHub repozitář.
-- Tato dokumentace je dočasně vedena v centrálním repozitáři X-5 CONTINUITY SYSTEM v cestě `docs/operation-x5/`.
-- Před dalším vývojem je nutné získat a ověřit aktuální pracovní balíček a jeho obsah. Dříve byl v konverzaci uveden archiv konsolidovaného projektu etap 1–113; jeho aktuální dostupnost ani integrita zde nejsou ověřeny.
+- Tato dokumentace je vedena v centrálním repozitáři X-5 CONTINUITY SYSTEM v cestě `docs/operation-x5/`.
+- Pracovní ZIP po etapě 114 je předán jako příloha této konverzace; není zatím uložen do samostatného GitHub repozitáře.
 
 ## Zásady
 1. Nepřepisovat ani neopakovat dokončené etapy bez důvodu.
-2. Navazovat od etapy 114 až po ověření skutečného obsahu zdrojů.
+2. Navazovat od etapy 115.
 3. Oddělovat hotové zdrojové soubory od funkcí ověřených v běžící hře.
 4. Každou etapu evidovat v changelogu a odpovídajících testech.
 5. Neoznačovat projekt za hratelný nebo sestavitelný bez skutečného testu.
 
 ## Struktura
-Dosavadní návrh členění projektu zahrnuje oblasti Game, Maps, AI, Combat, Ballistics, Destruction, UI, Campaign a Builds. Skutečnou strukturu je nutné potvrdit kontrolou pracovního balíčku.
+Archiv obsahuje modul `Source/OPERATION_X5`, konfiguraci `Config`, soubor `OPERATION_X5.uproject`, dokumentaci a další pracovní soubory. Unreal Engine verze není v projektu pevně nastavena (`EngineAssociation` je prázdné).
