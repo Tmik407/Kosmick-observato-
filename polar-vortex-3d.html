@@ -988,7 +988,7 @@ try{
   }catch(e){
    $("wxStatus").textContent="Nedostupná";
    $("wxNotice").textContent="Předpověď se nepodařilo načíst: "+e.message+". Zkuste obnovit data nebo ověřte předpověď přímo u ČHMÚ.";
-   $("wxRows").innerHTML='<tr><td colspan="6" style="padding:10px">Regionální data nejsou momentálně dostupná. Nejsou nahrazena odhadovanými hodnotami.</td></tr>';
+   $("wxRows").innerHTML='<tr><td colspan="8" style="padding:10px">Regionální data nejsou momentálně dostupná. Nejsou nahrazena odhadovanými hodnotami.</td></tr>';
   }
  }
  const button=$("wxRefresh");if(button)button.addEventListener("click",load);
