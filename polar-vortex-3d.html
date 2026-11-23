@@ -64,7 +64,7 @@
 <p class="small">Přehrávání používá samostatné předpovědní kroky z jednoho běhu ECMWF IFS. Posuvníkem lze přejít na konkrétní platnost; při přehrávání se aktualizuje i teplotní pole, geopotenciální izolinie, větrné šipky a diagnostika 3D globusu.</p>
 <div class="metrics"><div class="metric">Platnost zobrazeného pole<b id="timelineValid">Načítám…</b></div><div class="metric">Předpovědní krok<b id="timelineStep">—</b></div><div class="metric">Zonální vítr na 60° N · 10 hPa<b id="timelineU60">—</b><p class="small">m/s · záporná hodnota = východní vítr</p></div><div class="metric">Teplota polární oblasti · 10 hPa<b id="timelinePolarTemp">—</b><p class="small">K · průměr nad 60° N</p></div></div><div class="status" id="sswForecastSignal" style="margin-top:10px">Vyhodnocuji předpovědní signál zonálního větru…</div>
 <div class="control" style="margin-top:14px"><label for="timelineRange">Čas předpovědi <span class="value" id="timelinePosition">—</span></label><input id="timelineRange" type="range" min="0" max="0" value="0" step="1" disabled></div>
-<div class="buttons" style="margin-top:10px"><button id="timelinePlay" type="button" disabled>▶ Přehrát animaci</button><button id="timelinePrev" type="button" disabled>◀ Předchozí</button><button id="timelineNext" type="button" disabled>Další ▶</button><button id="timelineRefresh" type="button">Obnovit předpověď</button></div>
+<div class="buttons" style="margin-top:10px"><button id="timelinePlay" type="button" disabled>▶ Přehrát animaci</button><button id="timelinePauseAll" type="button" disabled>⏸ Pozastavit obě animace</button><button id="timelinePrev" type="button" disabled>◀ Předchozí</button><button id="timelineNext" type="button" disabled>Další ▶</button><button id="timelineRefresh" type="button">Obnovit předpověď</button></div>
 <div class="status" id="timelineStatus" style="margin-top:10px">Načítám časovou řadu ECMWF…</div>
 <div class="panel" style="margin-top:14px;padding:14px;background:#071a2b;border-color:#254762;color:#e6f3ff">
 <h3 style="margin:0 0 6px;color:#e6f3ff">Polární mapa ECMWF · severní polokoule</h3>
@@ -323,7 +323,8 @@ try{
   document.querySelector('#interpretation').textContent='Modelový stav: '+text+' Nejde o aktuální meteorologickou diagnózu.';
  }
  for(const id of ['strength','wave','warming','altitude'])document.getElementById(id).addEventListener('input',build);
- document.getElementById('play').onclick=()=>{auto=!auto;document.getElementById('play').textContent=auto?'⏸ Pozastavit rotaci':'▶ Spustit rotaci'};
+ window.X5SetGlobeRotation=function(paused){auto=!paused;const b=document.getElementById('play');if(b)b.textContent=auto?'⏸ Pozastavit rotaci':'▶ Spustit rotaci';};
+ document.getElementById('play').onclick=()=>window.X5SetGlobeRotation(!auto);
  document.getElementById('reset').onclick=()=>{Object.entries({strength:55,wave:35,warming:20,altitude:10}).forEach(([k,v])=>document.getElementById(k).value=v);rotX=1.12;rotY=0;zoom=4.45;build()};
  canvas.addEventListener('pointerdown',e=>{drag=true;lastX=e.clientX;lastY=e.clientY;canvas.setPointerCapture(e.pointerId)});canvas.addEventListener('pointerup',()=>drag=false);canvas.addEventListener('pointercancel',()=>drag=false);
  canvas.addEventListener('pointermove',e=>{if(!drag)return;rotY+=(e.clientX-lastX)*.008;rotX+=(e.clientY-lastY)*.008;rotX=Math.max(-1.2,Math.min(1.2,rotX));lastX=e.clientX;lastY=e.clientY});
@@ -769,9 +770,23 @@ try{
  const $=id=>document.getElementById(id);
  const range=$('timelineRange'),status=$('timelineStatus'),play=$('timelinePlay');
  if(!range||!status)return;
- let frames=[],index=0,timer=null;
+ let frames=[],index=0,timer=null,playToken=0,allPaused=false,resumeTimelineAfterPause=false;
+ const pauseAllButton=$('timelinePauseAll');
  const fmtDate=s=>{const d=new Date(s);return Number.isNaN(d.getTime())?s:d.toLocaleString('cs-CZ',{timeZone:'Europe/Prague',dateStyle:'medium',timeStyle:'short'});};
- function stop(){if(timer){clearInterval(timer);timer=null;}play.textContent='▶ Přehrát animaci';}
+ function stop(){playToken++;if(timer){clearTimeout(timer);timer=null;}play.textContent='▶ Přehrát animaci';}
+ function startPlayback(){
+  if(!frames.length||timer||allPaused)return;
+  const token=++playToken;
+  play.textContent='⏸ Pozastavit animaci';
+  const advance=async()=>{
+   if(token!==playToken||allPaused)return;
+   if(index>=frames.length-1){stop();return;}
+   await show(index+1);
+   if(token!==playToken||allPaused)return;
+   timer=setTimeout(advance,1600);
+  };
+  timer=setTimeout(advance,1600);
+ }
  async function show(i){
   if(!frames.length)return;
   index=Math.max(0,Math.min(frames.length-1,i));
@@ -835,18 +850,32 @@ try{
    frames=d.frames.filter(f=>Array.isArray(f.grid)&&f.grid.length&&f.diagnostics&&f.valid_time_utc);
    if(frames.length<2)throw Error('nedostatek kompletních prostorových polí');
    range.min='0';range.max=String(frames.length-1);range.step='1';range.disabled=false;
-   ['timelinePlay','timelinePrev','timelineNext'].forEach(id=>$(id).disabled=false);
+   ['timelinePlay','timelinePauseAll','timelinePrev','timelineNext'].forEach(id=>$(id).disabled=false);
    await show(0);
    status.textContent='Načteno '+frames.length+' prostorových polí z jednoho běhu ECMWF. '+status.textContent;
   }catch(e){frames=[];range.disabled=true;play.disabled=true;status.textContent='Časovou animaci se nepodařilo načíst: '+e.message+'. Zkontrolujte dokončení aktualizace GitHub Actions.';}
  }
  range.addEventListener('input',()=>{stop();show(Number(range.value));});
  play.addEventListener('click',()=>{
-  if(!frames.length)return;
+  if(!frames.length||allPaused)return;
   if(timer){stop();return;}
-  if(index>=frames.length-1)show(0);
-  play.textContent='⏸ Pozastavit';
-  timer=setInterval(()=>{if(index>=frames.length-1){stop();return;}show(index+1);},1600);
+  if(index>=frames.length-1){show(0).then(startPlayback);return;}
+  startPlayback();
+ });
+ if(pauseAllButton)pauseAllButton.addEventListener('click',()=>{
+  if(!allPaused){
+   resumeTimelineAfterPause=!!timer;stop();allPaused=true;
+   if(typeof window.X5SetGlobeRotation==='function')window.X5SetGlobeRotation(true);
+   pauseAllButton.textContent='▶ Obnovit obě animace';
+   pauseAllButton.setAttribute('aria-pressed','true');
+  }else{
+   allPaused=false;
+   if(typeof window.X5SetGlobeRotation==='function')window.X5SetGlobeRotation(false);
+   pauseAllButton.textContent='⏸ Pozastavit obě animace';
+   pauseAllButton.setAttribute('aria-pressed','false');
+   if(resumeTimelineAfterPause)startPlayback();
+   resumeTimelineAfterPause=false;
+  }
  });
  $('timelinePrev').addEventListener('click',()=>{stop();show(index-1);});
  $('timelineNext').addEventListener('click',()=>{stop();show(index+1);});
