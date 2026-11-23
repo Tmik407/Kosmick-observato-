@@ -110,6 +110,24 @@ footer{color:#637587}.good{color:#18733a}.warn{color:#9a5700}
 </div>
 <p class="muted">Ovládání: tažením prstu nebo myši otáčej modelem. Animace přehrává dostupné hodinové kroky GFS. Výška vrstev je schematicky oddělena pro čitelnost, není v měřítku geometrické výšky atmosféry.</p>
 </section>
+
+<section class="panel" id="ecmwfPolarPanel">
+ <h2>Samostatný model ECMWF IFS · 10 hPa</h2>
+ <p class="muted">Nezávislá předpověď ECMWF Open Data, oddělená od NOAA GFS a NASA GSFC. Polární mapa zobrazuje teplotu v 10 hPa a směr větru; vedle ní je zonální profil. Nejde o přímé měření ani o reanalýzu.</p>
+ <div class="grid">
+  <div><div class="unit">Zonální vítr · 60° s. š.</div><div class="metric" id="ecmwfWind">Načítám…</div><div class="muted">m/s · vážená hodnota v okolí 60° N</div></div>
+  <div><div class="unit">Teplota polární oblasti · 10 hPa</div><div class="metric" id="ecmwfTemp">—</div><div class="muted">°C · průměrná hodnota polární oblasti</div></div>
+  <div><div class="unit">Platnost předpovědi</div><div class="metric" id="ecmwfValid">—</div><div class="muted" id="ecmwfRun">Běh modelu: —</div></div>
+ </div>
+ <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));align-items:start">
+  <div><h3>Teplotní pole ECMWF · polární projekce</h3><canvas id="ecmwfMap" width="900" height="650" style="width:100%;height:auto;background:#f7fbff;border:1px solid #d4e0eb;border-radius:14px"></canvas></div>
+  <div><h3>Zonální vítr podle zeměpisné šířky</h3><canvas id="ecmwfProfile" width="700" height="650" style="width:100%;height:auto;background:#f7fbff;border:1px solid #d4e0eb;border-radius:14px"></canvas></div>
+ </div>
+ <div class="status" id="ecmwfStatus" role="status" aria-live="polite">Načítám samostatná data ECMWF…</div>
+ <p class="muted" id="ecmwfAttribution">Zdroj: ECMWF Open Data · licence CC BY 4.0. Obsahuje upravené informace Copernicus/ECMWF.</p>
+ <button type="button" id="ecmwfRefresh">↻ Obnovit data ECMWF</button>
+ <a class="tag" href="./polar-vortex-3d.html">Otevřít samostatný model POLAR VORTEX 3D</a>
+</section>
 <section class="panel" id="real-polar-map">
 <h2>Polární atmosféra X-5 · satelitní snímky a stratosférický model</h2>
 <p class="muted">Nový společný pozorovací panel. Nejprve skutečný meteorologický satelitní snímek, pod ním samostatně numerická diagnostika polární stratosféry. Satelitní obraz zachycuje oblačnost a teplotní strukturu oblačných vrcholů; model GFS popisuje stav ve výšce na tlakových hladinách 10, 30 a 50 hPa. Nejde o totožný typ dat.</p>
@@ -934,4 +952,71 @@ setInterval(refreshX5Infographic,30*60*1000);
   button.hidden=true;status.textContent="Aplikace Polární vír X-5 byla nainstalována.";
  });
 })();
-</script><script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}</script></body></html>
+</script><script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}</script>
+<script>
+(function(){
+ 'use strict';
+ const $=id=>document.getElementById(id),url='./data/polar-vortex-10hpa.json';
+ const fmt=(v,d=1)=>Number.isFinite(v)?v.toFixed(d).replace('.',','):'—';
+ function color(t){
+  const stops=[[190,[28,77,180]],[200,[0,160,210]],[210,[40,180,150]],[220,[240,190,55]],[230,[210,65,50]]];
+  if(t<=stops[0][0])return 'rgb('+stops[0][1].join(',')+')';
+  for(let i=1;i<stops.length;i++)if(t<=stops[i][0]){
+   const a=stops[i-1],b=stops[i],q=(t-a[0])/(b[0]-a[0]);
+   return 'rgb('+a[1].map((v,j)=>Math.round(v+(b[1][j]-v)*q)).join(',')+')';
+  }
+  return 'rgb(210,65,50)';
+ }
+ function drawMap(d){
+  const c=$('ecmwfMap'),g=c.getContext('2d'),w=c.width,h=c.height,cx=w/2,cy=h/2+10,R=260;
+  g.clearRect(0,0,w,h);g.fillStyle='#f7fbff';g.fillRect(0,0,w,h);
+  for(const lat of [45,60,75,90]){
+   const r=R*(90-lat)/50;g.beginPath();g.arc(cx,cy,r,0,Math.PI*2);g.strokeStyle='#c5d5e2';g.lineWidth=1;g.stroke();
+  }
+  for(let lon=0;lon<360;lon+=30){
+   const a=(lon-90)*Math.PI/180;g.beginPath();g.moveTo(cx,cy);g.lineTo(cx+R*Math.cos(a),cy+R*Math.sin(a));g.strokeStyle='#dce6ee';g.stroke();
+  }
+  d.grid.forEach(p=>{
+   const r=R*(90-p.lat)/50,a=(p.lon-90)*Math.PI/180,x=cx+r*Math.cos(a),y=cy+r*Math.sin(a);
+   g.beginPath();g.arc(x,y,5,0,Math.PI*2);g.fillStyle=color(p.t-273.15);g.fill();
+   const scale=.65,ex=x+p.u*scale,ey=y-p.v*scale;
+   g.strokeStyle='#183b58';g.lineWidth=1.5;g.beginPath();g.moveTo(x,y);g.lineTo(ex,ey);g.stroke();
+   const ang=Math.atan2(ey-y,ex-x);g.beginPath();g.moveTo(ex,ey);g.lineTo(ex-7*Math.cos(ang-.45),ey-7*Math.sin(ang-.45));g.lineTo(ex-7*Math.cos(ang+.45),ey-7*Math.sin(ang+.45));g.closePath();g.fillStyle='#183b58';g.fill();
+  });
+  g.fillStyle='#29465e';g.font='18px Arial';g.textAlign='center';g.fillText('Severní polokoule · teplota (°C) a vítr (u/v)',cx,32);
+  g.textAlign='left';g.font='13px Arial';g.fillText('Modrá = chladnější · červená = teplejší',24,h-22);
+ }
+ function drawProfile(d){
+  const c=$('ecmwfProfile'),g=c.getContext('2d'),w=c.width,h=c.height,p={l:75,r:28,t:55,b:55};
+  g.clearRect(0,0,w,h);g.fillStyle='#f7fbff';g.fillRect(0,0,w,h);
+  const a=d.zonal_profile,vals=a.map(x=>x.u),lo=Math.min(0,...vals)-5,hi=Math.max(...vals)+5;
+  const x=v=>p.l+(v-lo)/(hi-lo)*(w-p.l-p.r),y=lat=>h-p.b-(lat-40)/50*(h-p.t-p.b);
+  g.font='13px Arial';g.strokeStyle='#d5e1ea';g.fillStyle='#52677a';g.textAlign='right';
+  for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4,xx=x(v);g.beginPath();g.moveTo(xx,p.t);g.lineTo(xx,h-p.b);g.stroke();g.fillText(fmt(v,0),xx-4,h-p.b+22);}
+  for(let lat=40;lat<=90;lat+=10){const yy=y(lat);g.beginPath();g.moveTo(p.l,yy);g.lineTo(w-p.r,yy);g.stroke();g.fillText(lat+'°N',p.l-10,yy+4);}
+  g.strokeStyle='#087fa5';g.lineWidth=4;g.beginPath();a.forEach((q,i)=>{const xx=x(q.u),yy=y(q.lat);if(i)g.lineTo(xx,yy);else g.moveTo(xx,yy);});g.stroke();
+  a.forEach(q=>{g.beginPath();g.arc(x(q.u),y(q.lat),5,0,Math.PI*2);g.fillStyle='#087fa5';g.fill();});
+  g.textAlign='center';g.fillStyle='#29465e';g.font='17px Arial';g.fillText('Zonální vítr (m/s)',(p.l+w-p.r)/2,28);
+ }
+ async function load(){
+  const status=$('ecmwfStatus');if(status)status.textContent='Načítám data ECMWF Open Data…';
+  try{
+   const r=await fetch(url+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);
+   const d=await r.json();
+   if(!Array.isArray(d.grid)||!Array.isArray(d.zonal_profile)||!d.diagnostics)throw Error('Datový soubor nemá očekávanou strukturu.');
+   $('ecmwfWind').textContent=fmt(d.diagnostics.zonal_wind_60N_ms,1)+' m/s';
+   $('ecmwfTemp').textContent=fmt(d.diagnostics.polar_cap_temperature_10hpa_k-273.15,1)+' °C';
+   $('ecmwfValid').textContent=d.valid_time_utc?new Date(d.valid_time_utc).toLocaleString('cs-CZ',{timeZone:'UTC',dateStyle:'short',timeStyle:'short'})+' UTC':'—';
+   $('ecmwfRun').textContent='Běh modelu: '+(d.run_utc||'—')+' · krok +'+d.forecast_step_hours+' h';
+   drawMap(d);drawProfile(d);
+   status.innerHTML='<b class="good">Data ECMWF načtena.</b> '+d.grid.length.toLocaleString('cs-CZ')+' prostorových bodů; '+d.zonal_profile.length+' hodnot zonálního profilu. Vygenerováno '+(d.generated_utc||'—')+'.';
+   $('ecmwfAttribution').textContent='Zdroj: '+d.source+' · licence '+d.license+'. '+d.attribution+'. Data jsou předpověď ECMWF IFS pro 10 hPa; nejde o měření.';
+  }catch(e){
+   status.innerHTML='<b class="warn">Data ECMWF se nepodařilo načíst:</b> '+String(e.message||e);
+   $('ecmwfWind').textContent='—';$('ecmwfTemp').textContent='—';$('ecmwfValid').textContent='—';
+  }
+ }
+ const b=$('ecmwfRefresh');if(b)b.addEventListener('click',load);load();
+})();
+</script>
+</body></html>
