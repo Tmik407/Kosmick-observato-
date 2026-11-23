@@ -105,6 +105,28 @@
 </div>
 <div class="status" style="margin-top:12px">Jak číst tento panel: výškové pásmo popisuje obecnou klimatickou výhodu pro sníh, nikoli aktuální stav. Bez aktuálních regionálních modelových polí zde záměrně nejsou procenta pravděpodobnosti, centimetrové úhrny ani barevné výstražné stupně.</div>
 </section>
+<section class="panel wide" id="czLiveForecast72">
+<h2>Krátkodobá předpověď pro zimní oblasti ČR · 72 hodin</h2>
+<p class="small">Automaticky načítaná hodinová předpověď pro reprezentativní místa. Hodnoty shrnují následujících 72 hodin od okamžiku načtení; nejde o měření ani oficiální výstrahu. Modelový přehled Open-Meteo může být odlišný od lokální předpovědi ČHMÚ, zejména v horském terénu.</p>
+<div class="metrics">
+<div class="metric">Stav dat<b id="wxStatus">Načítám…</b><p class="small" id="wxUpdated">—</p></div>
+<div class="metric">Časový rozsah<b id="wxRange">72 hodin</b><p class="small">Hodinová data od aktuálního času</p></div>
+</div>
+<div class="status" id="wxNotice" style="margin-top:10px">Připojuji se k předpovědnímu rozhraní…</div>
+<div style="overflow-x:auto;margin-top:12px">
+<table style="width:100%;border-collapse:collapse;font-size:13px;min-width:650px">
+<thead><tr style="color:#9fc9e7;text-align:left"><th style="padding:9px">Oblast / referenční místo</th><th style="padding:9px">Teplota min–max</th><th style="padding:9px">Srážky</th><th style="padding:9px">Nový sníh</th><th style="padding:9px">Max. vítr</th><th style="padding:9px">Signál</th></tr></thead>
+<tbody id="wxRows"><tr><td colspan="6" style="padding:10px">Čekám na hodinová data…</td></tr></tbody>
+</table>
+</div>
+<div class="buttons" style="margin-top:12px">
+<button id="wxRefresh" type="button">Obnovit předpověď</button>
+<a class="btn" href="https://www.chmi.cz/predpoved-pocasi" target="_blank" rel="noopener">Oficiální předpověď ČHMÚ</a>
+<a class="btn" href="https://www.chmi.cz/vystrahy" target="_blank" rel="noopener">Výstrahy ČHMÚ</a>
+<a class="btn" href="https://open-meteo.com/en/docs" target="_blank" rel="noopener">Metodika a proměnné Open-Meteo</a>
+</div>
+<p class="small" style="margin-top:10px">Referenční body: Most, Klínovec, Pec pod Sněžkou, Praděd, Kvilda, Lysá hora, Jihlava, Praha a Brno. Souhrny jsou vypočteny z hodinových hodnot: minimum a maximum teploty, součet srážek a sněžení, maximum rychlosti větru. Sníh v okolí bodu se může výrazně lišit podle nadmořské výšky a expozice.</p>
+</section>
 <section class="panel wide" id="czWinterImpact">
 <h2>Vliv polárního víru na zimní počasí v České republice</h2>
 <p class="small">Průběžné vyhodnocení kombinuje stratosférický vítr ECMWF na 10 hPa a 60° s. š. s indexy AO a NAO z NOAA CPC. Nejde o předpověď počasí pro konkrétní město, ale o diagnostiku velkoprostorového režimu, který může ovlivnit pravděpodobnost zimních situací ve střední Evropě.</p>
@@ -361,5 +383,73 @@ try{
  const observer=new MutationObserver(update);
  ['aoValue','naoValue','ecmwfU60'].forEach(id=>{const el=$(id);if(el)observer.observe(el,{childList:true,characterData:true,subtree:true});});
  update();setInterval(update,5000);
+})();
+</script><script>
+(function(){
+ const points=[
+  {name:"Most · Poohří",lat:50.503,lon:13.636,kind:"nížina"},
+  {name:"Klínovec · Krušné hory",lat:50.396,lon:12.967,kind:"hory"},
+  {name:"Pec pod Sněžkou · Krkonoše",lat:50.694,lon:15.739,kind:"hory"},
+  {name:"Praděd · Jeseníky",lat:50.083,lon:17.231,kind:"hory"},
+  {name:"Kvilda · Šumava",lat:49.019,lon:13.580,kind:"hory"},
+  {name:"Lysá hora · Beskydy",lat:49.546,lon:18.447,kind:"hory"},
+  {name:"Jihlava · Vysočina",lat:49.396,lon:15.591,kind:"pahorkatina"},
+  {name:"Praha · Polabí",lat:50.0755,lon:14.4378,kind:"nížina"},
+  {name:"Brno · jižní Morava",lat:49.195,lon:16.608,kind:"nížina"}
+ ];
+ const $=id=>document.getElementById(id);
+ const fmt=(v,n=1)=>Number.isFinite(v)?v.toFixed(n).replace(".",","):"—";
+ function summary(d){
+  const h=d.hourly||{},times=h.time||[];
+  const start=Date.now(),end=start+72*3600000;
+  const ix=times.map((t,i)=>({t:new Date(t).getTime(),i})).filter(x=>x.t>=start-3600000&&x.t<=end).map(x=>x.i);
+  if(!ix.length)throw new Error("Rozhraní nevrátilo hodinové hodnoty pro následující 72 hodin.");
+  const vals=k=>ix.map(i=>Number((h[k]||[])[i])).filter(Number.isFinite);
+  const temp=vals("temperature_2m"),prec=vals("precipitation"),snow=vals("snowfall"),wind=vals("wind_speed_10m");
+  const total=a=>a.reduce((s,v)=>s+v,0);
+  return {min:Math.min(...temp),max:Math.max(...temp),prec:total(prec),snow:total(snow),wind:Math.max(...wind)};
+ }
+ function signal(x){
+  if(x.snow>=5)return "Sněhové srážky";
+  if(x.snow>=0.5)return "Možný sníh";
+  if(x.min<=0&&x.prec>=1)return "Pozor na náledí";
+  if(x.prec>=5)return "Déšť / srážky";
+  if(x.min<=0)return "Mráz";
+  return "Bez výrazného signálu";
+ }
+ async function load(){
+  $("wxStatus").textContent="Načítám";
+  $("wxNotice").textContent="Stahuji hodinové předpovědi pro "+points.length+" referenčních míst…";
+  $("wxRows").innerHTML='<tr><td colspan="6" style="padding:10px">Načítám regionální data…</td></tr>';
+  try{
+   const lat=points.map(p=>p.lat).join(","),lon=points.map(p=>p.lon).join(",");
+   const params=new URLSearchParams({latitude:lat,longitude:lon,hourly:"temperature_2m,precipitation,snowfall,wind_speed_10m",forecast_days:"4",timezone:"Europe/Prague",wind_speed_unit:"ms"});
+   const response=await fetch("https://api.open-meteo.com/v1/forecast?"+params.toString(),{cache:"no-store"});
+   if(!response.ok)throw new Error("Open-Meteo HTTP "+response.status);
+   const raw=await response.json(),data=Array.isArray(raw)?raw:[raw];
+   if(data.length!==points.length)throw new Error("Počet vrácených míst neodpovídá požadavku.");
+   const rows=points.map((p,i)=>{
+    const x=summary(data[i]),s=signal(x);
+    return "<tr><td style=\"padding:9px;border-top:1px solid #29445f\"><b>"+p.name+"</b><div class=\"small\">"+p.kind+"</div></td>"+
+     "<td style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.min)+" až "+fmt(x.max)+" °C</td>"+
+     "<td style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.prec)+" mm</td>"+
+     "<td style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.snow)+" cm</td>"+
+     "<td style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.wind)+" m/s</td>"+
+     "<td style=\"padding:9px;border-top:1px solid #29445f\">"+s+"</td></tr>";
+   }).join("");
+   $("wxRows").innerHTML=rows;
+   const now=new Date();
+   $("wxStatus").textContent="Data načtena";
+   $("wxUpdated").textContent="Načteno: "+now.toLocaleString("cs-CZ");
+   $("wxNotice").textContent="Předpověď načtena pro všech "+points.length+" míst. Zobrazené souhrny pokrývají přibližně 72 hodin od načtení. Model: "+(data[0].hourly_units?.temperature_2m||"°C")+"; časové pásmo Europe/Prague.";
+  }catch(e){
+   $("wxStatus").textContent="Nedostupná";
+   $("wxNotice").textContent="Předpověď se nepodařilo načíst: "+e.message+". Zkuste obnovit data nebo ověřte předpověď přímo u ČHMÚ.";
+   $("wxRows").innerHTML='<tr><td colspan="6" style="padding:10px">Regionální data nejsou momentálně dostupná. Nejsou nahrazena odhadovanými hodnotami.</td></tr>';
+  }
+ }
+ const button=$("wxRefresh");if(button)button.addEventListener("click",load);
+ load();
+ setInterval(()=>{if(!document.hidden)load()},60*60*1000);
 })();
 </script></body></html>
