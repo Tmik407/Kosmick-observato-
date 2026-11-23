@@ -18,6 +18,7 @@
 </section>
 <p class="small" id="ecmwfGlobeState">ECMWF vrstva se načítá samostatně. Ovládání: tažením otáčejte glóbem, kolečkem přibližujte. Model zobrazuje fyzikální schéma cirkulace; není to naměřená mapa ani numerická předpověď.</p></section>
 <section class="panel wide" id="vortexDiagnostics" style="margin-top:14px"><h2>Geopotenciální diagnostika · ECMWF 10 hPa</h2><p class="small">Výpočty z prostorové mřížky severně od 55° N. Posun centra je vzdálenost minima geopotenciálu od severního pólu; nejde o automatickou klasifikaci rozštěpení víru.</p><div class="metrics"><div class="metric">Minimum geopotenciálu<b id="diagZmin">—</b></div><div class="metric">Maximum geopotenciálu<b id="diagZmax">—</b></div><div class="metric">Polární průměr geopotenciálu<b id="diagZmean">—</b></div><div class="metric">Posun centra od pólu<b id="diagDisplacement">—</b></div></div><p class="small" id="diagSummary">Čekám na data ECMWF…</p></section>
+<section class="panel wide" id="windDiagnostics" style="margin-top:14px"><h2>Větrná diagnostika · ECMWF 10 hPa</h2><p class="small">Výpočty ze složek U (západ–východ) a V (jih–sever) v mřížce severně od 55° N. Kladná U znamená západní proudění; záporná U východní. Jde o prostorové statistiky dostupné hladiny 10 hPa.</p><div class="metrics"><div class="metric">Průměrná rychlost větru<b id="windMean">—</b></div><div class="metric">Nejvyšší rychlost větru<b id="windMax">—</b></div><div class="metric">Průměrná zonální složka U<b id="windU">—</b></div><div class="metric">Průměrná meridionální složka V<b id="windV">—</b></div></div><p class="small" id="windSummary">Čekám na data ECMWF…</p></section>
 <section class="panel wide" id="levelCompare" style="margin-top:14px">
 <h2>Porovnání stratosférických hladin · NASA GSFC</h2>
 <p class="small">Vyberte hladinu a porovnejte polární průměr teploty 60–90° N a zonální vítr na 60° N. Jde o denní diagnostické řady NASA GSFC/Ozone Watch, nikoli o prostorové mapy.</p>
@@ -406,28 +407,36 @@ try{
     }
     if(seg.length){const geo=new THREE.BufferGeometry().setFromPoints(seg);const material=new THREE.LineBasicMaterial({color:contourPalette[contourIndex%contourPalette.length],transparent:true,opacity:contourIndex===0||contourIndex===6?.82:.58});contourLayer.add(new THREE.LineSegments(geo,material));}
    }
-   // Směrové šipky větru U/V: východní a severní složka na hladině 10 hPa.
-   const windPositions=[];
+   // Větrná diagnostika U/V a barevné šipky podle rychlosti.
+   const polarWind=data.grid.filter(p=>Number(p.lat)>=55&&Number.isFinite(Number(p.u))&&Number.isFinite(Number(p.v)));
+   if(!polarWind.length)throw new Error('ECMWF mřížka neobsahuje složky větru U/V');
+   const speeds=polarWind.map(p=>Math.hypot(Number(p.u),Number(p.v)));
+   const meanSpeed=speeds.reduce((a,b)=>a+b,0)/speeds.length,maxSpeed=Math.max(...speeds);
+   const meanU=polarWind.reduce((a,p)=>a+Number(p.u),0)/polarWind.length;
+   const meanV=polarWind.reduce((a,p)=>a+Number(p.v),0)/polarWind.length;
+   const setWind=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value;};
+   setWind('windMean',meanSpeed.toFixed(1)+' m/s');setWind('windMax',maxSpeed.toFixed(1)+' m/s');
+   setWind('windU',(meanU>=0?'+':'')+meanU.toFixed(1)+' m/s');setWind('windV',(meanV>=0?'+':'')+meanV.toFixed(1)+' m/s');
+   setWind('windSummary',polarWind.length+' platných bodů · '+(meanU>=0?'převažuje západní':'převažuje východní')+' zonální složka · '+data.valid_time_utc+'.');
+   const windBuckets=[[],[],[]],windColors=[0x55d9ff,0xffc46b,0xff765f];
    data.grid.forEach((p,i)=>{
-    if(i%8!==0||Number(p.lat)<55)return;
+    if(i%4!==0||Number(p.lat)<55)return;
     const lat=Number(p.lat),lon=Number(p.lon),u=Number(p.u),v=Number(p.v);
     if(!Number.isFinite(lat)||!Number.isFinite(lon)||!Number.isFinite(u)||!Number.isFinite(v))return;
+    const speed=Math.hypot(u,v),bucket=speed<20?0:speed<40?1:2;
+    if(speed<2)return;
     const a=THREE.MathUtils.degToRad(lat),b=THREE.MathUtils.degToRad(lon);
-    const east=new THREE.Vector3(Math.cos(b),0,-Math.sin(b));
-    const north=new THREE.Vector3(-Math.sin(a)*Math.sin(b),Math.cos(a),-Math.sin(a)*Math.cos(b));
-    const tangent=east.multiplyScalar(u).add(north.multiplyScalar(v));
-    const speed=tangent.length();if(speed<2)return;
-    tangent.normalize();
+    const east=new THREE.Vector3(-Math.sin(b),0,Math.cos(b));
+    const north=new THREE.Vector3(-Math.sin(a)*Math.cos(b),Math.cos(a),-Math.sin(a)*Math.sin(b));
+    const tangent=east.multiplyScalar(u).add(north.multiplyScalar(v)).normalize();
     const start=ll(lat,lon,1.574);
-    const end=start.clone().addScaledVector(tangent,Math.min(.19,.035+speed*.0028)).normalize().multiplyScalar(1.574);
+    const end=start.clone().addScaledVector(tangent,Math.min(.18,.035+speed*.002)).normalize().multiplyScalar(1.574);
     const side=new THREE.Vector3().crossVectors(end.clone().normalize(),tangent).normalize();
-    const back=end.clone().addScaledVector(tangent,-.045).addScaledVector(side,.022);
-    const back2=end.clone().addScaledVector(tangent,-.045).addScaledVector(side,-.022);
-    windPositions.push(start.x,start.y,start.z,end.x,end.y,end.z,end.x,end.y,end.z,back.x,back.y,back.z,end.x,end.y,end.z,back2.x,back2.y,back2.z);
+    const back=end.clone().addScaledVector(tangent,-.04).addScaledVector(side,.019);
+    const back2=end.clone().addScaledVector(tangent,-.04).addScaledVector(side,-.019);
+    windBuckets[bucket].push(start.x,start.y,start.z,end.x,end.y,end.z,end.x,end.y,end.z,back.x,back.y,back.z,end.x,end.y,end.z,back2.x,back2.y,back2.z);
    });
-   const windGeometry=new THREE.BufferGeometry();
-   windGeometry.setAttribute('position',new THREE.Float32BufferAttribute(windPositions,3));
-   windLayer.add(new THREE.LineSegments(windGeometry,new THREE.LineBasicMaterial({color:0x8df5ff,transparent:true,opacity:.56})));
+   windBuckets.forEach((positions,i)=>{if(!positions.length)return;const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));windLayer.add(new THREE.LineSegments(geometry,new THREE.LineBasicMaterial({color:windColors[i],transparent:true,opacity:.78})));});
    state.textContent='ECMWF teplotní pole aktivní · '+surfacePositions.length/3+' interpolovaných bodů · '+tmin.toFixed(1)+'–'+tmax.toFixed(1)+' K · '+data.valid_time_utc;
    const badge=document.querySelector('#ecmwfGlobeState');if(badge)badge.textContent='ECMWF 10 hPa · teplotní pole + geopotenciální izolinie · '+data.valid_time_utc;
   }catch(err){state.textContent='ECMWF vrstvu se nepodařilo vykreslit: '+err.message;const badge=document.querySelector('#ecmwfGlobeState');if(badge)badge.textContent='ECMWF vrstva čeká na data: '+err.message;console.error('X-5 ECMWF globe:',err);}
