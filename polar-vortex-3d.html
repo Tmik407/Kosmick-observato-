@@ -344,14 +344,15 @@ try{
    const tmin=Math.min(...temps),tmax=Math.max(...temps);
    // Odhad středu víru: minimum geopotenciální výšky v ECMWF poli severně od 55°N.
    const zCandidates=data.grid.filter(p=>Number(p.lat)>=55&&Number.isFinite(Number(p.z)));
+   const shared=window.X5AnalyzeVortexFrame?window.X5AnalyzeVortexFrame(data):null;
    if(zCandidates.length){
-    const center=zCandidates.reduce((a,b)=>Number(b.z)<Number(a.z)?b:a);
+    // 3D marker uses the exact same analyzed minimum as the polar map/diagnostic.
+    const center=shared?.center||zCandidates.reduce((a,b)=>Number(b.z)<Number(a.z)?b:a);
     const lat=Number(center.lat),lon=Number(center.lon),pos=ll(lat,lon,1.575);
     const core=new THREE.Mesh(new THREE.SphereGeometry(.058,20,16),new THREE.MeshBasicMaterial({color:0xffe08a}));
     core.position.copy(pos);centerLayer.add(core);
     const ring=new THREE.Mesh(new THREE.TorusGeometry(.085,.009,8,48),new THREE.MeshBasicMaterial({color:0xffe08a,transparent:true,opacity:.95}));
     ring.position.copy(pos);ring.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),pos.clone().normalize());centerLayer.add(ring);
-    const shared=window.X5AnalyzeVortexFrame?window.X5AnalyzeVortexFrame(data):null;
     if(shared&&shared.secondary){
      const p2=ll(shared.secondary.lat,shared.secondary.lon,1.575);
      const core2=new THREE.Mesh(new THREE.SphereGeometry(.045,16,12),new THREE.MeshBasicMaterial({color:0xff765f}));
@@ -979,7 +980,9 @@ try{
   }
   ctx.fillStyle='#e8f5ff';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText('SEVERNÍ PÓL',cx,cy+5);
   ctx.font='12px system-ui';ctx.fillStyle='#c5d9e9';ctx.fillText('60° N',cx+R*.76,cy+R*.66);ctx.fillText('80° N',cx+R*.31,cy-R*.22);
-  ctx.textAlign='left';ctx.fillStyle='#e8f5ff';ctx.fillText('ECMWF IFS · 10 hPa · +'+frame.step_hours+' h',12,22);
+  const stepHours=Number(frame.step_hours);
+  const stepLabel=Number.isFinite(stepHours)?'+'+stepHours+' h':'platnost '+String(frame.valid_time_utc||'čas neznámý');
+  ctx.textAlign='left';ctx.fillStyle='#e8f5ff';ctx.fillText('ECMWF IFS · 10 hPa · '+stepLabel,12,22);
   ctx.fillStyle='#b8d1e3';ctx.fillText('Teplota: '+lo.toFixed(1)+'–'+hi.toFixed(1)+' K',12,42);
   if(label)label.textContent='Mapa aktualizována: '+frame.valid_time_utc+' · interpolované teplotní pole · geopotenciální izolinie po 4 000 m²/s² · '+frame.grid.length+' vstupních buněk.';
  }
