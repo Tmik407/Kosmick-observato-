@@ -218,6 +218,39 @@ try{
  }
  geoLabel('80° N',80,12);geoLabel('70° N',70,12);geoLabel('60° N',60,12);
  geoLabel('0°',18,0,'#9be7ff');geoLabel('90° E',18,90,'#9be7ff');geoLabel('180°',18,180,'#9be7ff');geoLabel('90° W',18,270,'#9be7ff');
+ // Orientační geografické obrysy klíčových oblastí Arktidy (souřadnice lat/lon).
+ // Jsou to referenční pobřežní linie, nikoli navigační mapa.
+ const arcticCoasts=[
+  {name:'Grónsko',pts:[[59,-43],[63,-50],[68,-53],[72,-58],[76,-62],[80,-48],[83,-35],[81,-20],[77,-18],[72,-22],[67,-28],[63,-38],[59,-43]]},
+  {name:'Severní Amerika',pts:[[52,-128],[57,-135],[62,-140],[67,-150],[70,-160],[72,-155],[70,-145],[73,-135],[75,-125],[72,-115],[70,-105],[72,-95],[75,-88],[72,-80],[68,-75],[64,-78],[60,-85],[57,-95],[55,-110],[52,-128]]},
+  {name:'Kanadské ostrovy',pts:[[68,-110],[72,-115],[76,-112],[79,-105],[82,-95],[80,-85],[77,-88],[74,-95],[71,-100],[68,-110]]},
+  {name:'Skandinávie',pts:[[55,5],[59,8],[63,10],[67,14],[70,20],[72,26],[70,31],[67,27],[64,22],[61,17],[58,12],[55,5]]},
+  {name:'Sibiř',pts:[[70,30],[72,45],[72,65],[71,85],[73,105],[72,125],[70,145],[67,165],[65,178],[68,160],[70,140],[72,120],[73,100],[72,80],[72,60],[70,45],[70,30]]},
+  {name:'Island',pts:[[63,-24],[66,-22],[67,-18],[65,-13],[63,-16],[63,-24]]},
+  {name:'Aljaška',pts:[[60,-165],[63,-170],[67,-168],[70,-160],[68,-152],[64,-150],[61,-156],[60,-165]]}
+ ];
+ for(const coast of arcticCoasts){
+  const pts=coast.pts.map(([lat,lon])=>ll(lat,lon,1.569));
+  const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xe4f4e8,transparent:true,opacity:.88}));
+  group.add(line);
+ }
+ // Referenční body pro orientaci nad severní polokoulí.
+ function geoMarker(name,lat,lon,color){
+  const pos=ll(lat,lon,1.575);
+  const dot=new THREE.Mesh(new THREE.SphereGeometry(.018,12,10),new THREE.MeshBasicMaterial({color}));
+  dot.position.copy(pos);group.add(dot);
+  const label=geoLabel; // sdílený styl popisků z geografické vrstvy
+  const c=document.createElement('canvas');c.width=300;c.height=58;const x=c.getContext('2d');
+  x.font='bold 25px Arial';x.textAlign='center';x.textBaseline='middle';x.fillStyle='rgba(4,19,35,.72)';x.fillRect(2,3,296,52);x.fillStyle='#f2f8ff';x.fillText(name,150,29);
+  const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  sp.scale.set(.48,.093,1);sp.position.copy(ll(lat,lon,1.61));group.add(sp);
+ }
+ geoMarker('Grónsko',73,-42,0x9be7ff);
+ geoMarker('Kanada',72,-105,0x9be7ff);
+ geoMarker('Sibiř',72,110,0x9be7ff);
+ geoMarker('Skandinávie',68,20,0x9be7ff);
+
  const axisLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,1.56,0),new THREE.Vector3(0,1.88,0)]),new THREE.LineBasicMaterial({color:0xe8f7ff,transparent:true,opacity:.9}));
  group.add(axisLine);
  const axis=new THREE.Mesh(new THREE.SphereGeometry(.035,20,16),new THREE.MeshBasicMaterial({color:0xffffff}));axis.position.set(0,1.57,0);group.add(axis);
