@@ -481,7 +481,8 @@ try{
   button.classList.toggle('active',layer.visible);
   button.setAttribute('aria-pressed',String(layer.visible));
  }));
- window.X5LoadEcmwfFrame=loadEcmwfGlobe;\n loadEcmwfGlobe();
+ window.X5LoadEcmwfFrame=loadEcmwfGlobe;
+ loadEcmwfGlobe();
  // NASA GSFC/Ozone Watch daily level comparison (60–90N temperature, 60N zonal wind).
  async function loadLevelDiagnostics(level){
   const status=document.getElementById('levelStatus');
