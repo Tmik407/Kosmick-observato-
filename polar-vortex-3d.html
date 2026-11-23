@@ -4,7 +4,7 @@
 :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#061222;color:#eaf4ff;font:15px Arial,sans-serif}main{max-width:1180px;margin:auto;padding:16px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}h1{font-size:clamp(24px,4vw,38px);margin:8px 0}.sub,.note,.muted{color:#9fb6cf;line-height:1.5}.tag{border:1px solid #35658b;border-radius:30px;padding:6px 10px;color:#8cddff;font-size:12px}.layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(260px,.8fr);gap:14px;margin-top:14px}.panel{background:#10243b;border:1px solid #29445f;border-radius:15px;padding:14px;min-width:0}.stage{height: min(67vw,650px);min-height:380px;position:relative;background:radial-gradient(ellipse at 50% 45%,#173a5b,#071426 68%);border-radius:12px;overflow:hidden}#scene{width:100%;height:100%;display:block}.overlay{position:absolute;left:12px;top:12px;background:#061526c9;border:1px solid #31516d;border-radius:9px;padding:9px;font-size:12px;line-height:1.6}.legend{position:absolute;bottom:12px;left:12px;right:12px;display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:#c7d8e8}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}.controls{display:grid;gap:14px}.control label{display:flex;justify-content:space-between;gap:10px;margin-bottom:7px}.control input{width:100%;accent-color:#55cfff}.value{color:#6ddcff;font-weight:bold;font-variant-numeric:tabular-nums}.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px}.metric{background:#081a2c;border:1px solid #29445f;border-radius:10px;padding:10px}.metric b{display:block;color:#6ddcff;font-size:22px;margin-top:5px}.buttons{display:flex;gap:8px;flex-wrap:wrap}button,a.btn{background:#16466a;border:1px solid #3b789f;color:#fff;padding:9px 12px;border-radius:8px;text-decoration:none;cursor:pointer;font-weight:bold}.status{padding:10px;border-radius:9px;background:#0a1c30;color:#ffd18b;line-height:1.5}.wide{margin-top:14px}.small{font-size:12px;color:#9fb6cf;line-height:1.5}footer{padding:18px;text-align:center;color:#8ca5be;font-size:12px}@media(max-width:820px){.layout{grid-template-columns:1fr}.stage{height:65vh;min-height:360px}}
 </style></head><body><main>
 <div class="top"><div><div class="tag">KOSMICKÁ OBSERVATOŘ X-5 · ATMOSFÉRA</div><h1>🌐 POLAR VORTEX 3D</h1><div class="sub">Interaktivní prostorový model severního polárního víru</div></div><a class="btn" href="./index.html">← Zpět do observatoře</a></div>
-<div class="layout"><section class="panel"><div class="stage"><canvas id="scene"></canvas><div class="overlay">X-5 / 3D MODEL<br><span id="sceneState">Inicializuji 3D scénu…</span><br>Severní polokoule · schematické proudění</div><div class="legend"><span><i class="dot" style="background:#42c9ff"></i>Stratosférický vír</span><span><i class="dot" style="background:#ff9c55"></i>Teplý vzduch</span><span><i class="dot" style="background:#a9dfff"></i>Polární vzduch</span></div></div><p class="small">Ovládání: tažením otáčejte glóbem, kolečkem přibližujte. Model zobrazuje fyzikální schéma cirkulace; není to naměřená mapa ani numerická předpověď.</p></section>
+<div class="layout"><section class="panel"><div class="stage"><canvas id="scene"></canvas><div class="overlay">X-5 / 3D MODEL<br><span id="sceneState">Inicializuji 3D scénu…</span><br>Severní polokoule · schematické proudění</div><div class="legend"><span><i class="dot" style="background:#42c9ff"></i>Stratosférický vír</span><span><i class="dot" style="background:#ff9c55"></i>Teplý vzduch</span><span><i class="dot" style="background:#a9dfff"></i>Polární vzduch</span></div></div><p class="small" id="ecmwfGlobeState">ECMWF vrstva se načítá samostatně. Ovládání: tažením otáčejte glóbem, kolečkem přibližujte. Model zobrazuje fyzikální schéma cirkulace; není to naměřená mapa ani numerická předpověď.</p></section>
 <aside class="panel controls"><h2 style="margin:0">Ovládání modelu</h2>
 <div class="control"><label for="strength">Síla víru <span class="value" id="strengthVal">55 %</span></label><input id="strength" type="range" min="0" max="100" value="55"></div>
 <div class="control"><label for="wave">Vlnění / deformace <span class="value" id="waveVal">35 %</span></label><input id="wave" type="range" min="0" max="100" value="35"></div>
@@ -32,11 +32,11 @@
 </section>
 <section class="panel wide"><h2>Jak model číst</h2><div class="metrics"><div class="metric">Polární vír<b>Stratosféra</b><p class="small">Rozsáhlá cirkulace studeného vzduchu kolem Arktidy, nejsilnější v zimní stratosféře.</p></div><div class="metric">SSW<b>Oteplování</b><p class="small">Při významném SSW může dojít k obrácení zonálního větru na 60° s. š. a 10 hPa.</p></div><div class="metric">AO / NAO<b>Režim proudění</b><p class="small">Indexy popisují velkoprostorové tlakové vzorce. Samy o sobě neurčují počasí v konkrétní obci.</p></div><div class="metric">Předpověď<b>Nejistota</b><p class="small">Dopad stratosférických změn na počasí u zemského povrchu může mít zpoždění a není zaručen.</p></div></div></section>
 <section class="panel wide"><h2>Datový stav a metodika</h2><p class="note">Toto je první funkční 3D vizualizační modul X-5. Posuvníky mění geometrii a schématické proudění v reálném čase. Parametry nejsou automaticky načítané z ECMWF/ERA5 a jejich hodnoty nejsou pozorování. Další etapa může připojit ověřené denní a předpovědní datové sady (teplota 10 hPa, geopotenciál, zonální vítr, AO a NAO) a zobrazovat jejich časové značky i stáří.</p><p class="small">Ovládací prvky slouží k demonstraci chování modelu, nikoli k vydávání meteorologických výstrah.</p></section>
-<footer>X-5 POLAR VORTEX 3D · vlastní vizualizační modul · verze 1.2 · ECMWF IFS 10 hPa datový panel</footer></main>
+<footer>X-5 POLAR VORTEX 3D · vlastní vizualizační modul · verze 1.3 · ECMWF 10 hPa vrstva v 3D scéně</footer></main>
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 const canvas=document.querySelector('#scene'),state=document.querySelector('#sceneState');
-let renderer,scene,camera,globe,vortex,streamGroup,auto=true,drag=false,lastX=0,lastY=0,rotX=-.25,rotY=.25,zoom=5.1;
+let renderer,scene,camera,globe,vortex,streamGroup,ecmwfLayer,auto=true,drag=false,lastX=0,lastY=0,rotX=-.25,rotY=.25,zoom=5.1;
 try{
  renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(canvas.clientWidth,canvas.clientHeight,false);
  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(38,canvas.clientWidth/canvas.clientHeight,.1,100);camera.position.set(0,0,zoom);
@@ -48,7 +48,7 @@ try{
  for(let lat=-75;lat<=75;lat+=15){const pts=[];for(let lon=0;lon<=360;lon+=3){const p=ll(lat,lon,1.558);pts.push(p)}const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gridMat);group.add(line)}
  for(let lon=0;lon<360;lon+=15){const pts=[];for(let lat=-90;lat<=90;lat+=3)pts.push(ll(lat,lon,1.558));group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gridMat))}
  const axis=new THREE.Mesh(new THREE.SphereGeometry(.045,16,12),new THREE.MeshBasicMaterial({color:0xffffff}));axis.position.set(0,1.57,0);group.add(axis);
- vortex=new THREE.Group();group.add(vortex);streamGroup=new THREE.Group();group.add(streamGroup);
+ vortex=new THREE.Group();group.add(vortex);streamGroup=new THREE.Group();group.add(streamGroup);ecmwfLayer=new THREE.Group();group.add(ecmwfLayer);
  const glow=new THREE.Mesh(new THREE.SphereGeometry(.42,32,24),new THREE.MeshBasicMaterial({color:0x1c9dd8,transparent:true,opacity:.16}));glow.position.y=1.65;vortex.add(glow);
  function ll(lat,lon,r){const a=THREE.MathUtils.degToRad(lat),b=THREE.MathUtils.degToRad(lon);return new THREE.Vector3(r*Math.cos(a)*Math.sin(b),r*Math.sin(a),r*Math.cos(a)*Math.cos(b))}
  function build(){while(vortex.children.length>1)vortex.remove(vortex.children[1]);while(streamGroup.children.length)streamGroup.remove(streamGroup.children[0]);
@@ -69,7 +69,32 @@ try{
  canvas.addEventListener('pointerdown',e=>{drag=true;lastX=e.clientX;lastY=e.clientY;canvas.setPointerCapture(e.pointerId)});canvas.addEventListener('pointerup',()=>drag=false);canvas.addEventListener('pointercancel',()=>drag=false);
  canvas.addEventListener('pointermove',e=>{if(!drag)return;rotY+=(e.clientX-lastX)*.008;rotX+=(e.clientY-lastY)*.008;rotX=Math.max(-1.2,Math.min(1.2,rotX));lastX=e.clientX;lastY=e.clientY});
  canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(3.3,Math.min(8,zoom+e.deltaY*.004));},{passive:false});
+ async function loadEcmwfGlobe(){
+  try{
+   const response=await fetch('./data/polar-vortex-10hpa.json?v='+Date.now(),{cache:'no-store'});
+   if(!response.ok)throw new Error('ECMWF JSON zatím není dostupný');
+   const data=await response.json();
+   if(!Array.isArray(data.grid)||!data.grid.length)throw new Error('ECMWF mřížka je prázdná');
+   while(ecmwfLayer.children.length)ecmwfLayer.remove(ecmwfLayer.children[0]);
+   const temps=data.grid.map(p=>Number(p.t)).filter(Number.isFinite);
+   if(!temps.length)throw new Error('Chybí teplotní pole T');
+   const min=Math.min(...temps),max=Math.max(...temps),positions=[],colors=[];
+   for(const p of data.grid){
+    const t=Number(p.t);if(!Number.isFinite(t))continue;
+    const pos=ll(Number(p.lat),Number(p.lon),1.585);positions.push(pos.x,pos.y,pos.z);
+    const n=max===min ? 0.5 : (t-min)/(max-min);
+    const col=new THREE.Color().setHSL(0.62-0.62*n,0.9,0.55);colors.push(col.r,col.g,col.b);
+   }
+   const geometry=new THREE.BufferGeometry();
+   geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+   geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+   ecmwfLayer.add(new THREE.Points(geometry,new THREE.PointsMaterial({size:0.045,vertexColors:true,sizeAttenuation:true,transparent:true,opacity:0.92})));
+   state.textContent='3D scéna aktivní · ECMWF 10 hPa · '+data.valid_time_utc;
+   const badge=document.querySelector('#ecmwfGlobeState');if(badge)badge.textContent='ECMWF vrstva aktivní · '+data.valid_time_utc;
+  }catch(err){const badge=document.querySelector('#ecmwfGlobeState');if(badge)badge.textContent='ECMWF vrstva čeká na data: '+err.message;}
+ }
  build();state.textContent='3D scéna aktivní · schématický model';
+ loadEcmwfGlobe();
  function animate(){requestAnimationFrame(animate);if(auto&&!drag)rotY+=.0018;scene.rotation.y=0;globe.parent.rotation.set(rotX,rotY,0);camera.position.z=zoom;renderer.render(scene,camera)}animate();
  new ResizeObserver(()=>{const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}).observe(canvas);
 }catch(e){state.textContent='3D modul nelze spustit: '+e.message;canvas.insertAdjacentHTML('afterend','<p class="status">Pro 3D zobrazení je nutné připojení k internetu a podpora WebGL.</p>')}
