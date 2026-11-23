@@ -66,6 +66,13 @@
 <div class="control" style="margin-top:14px"><label for="timelineRange">Čas předpovědi <span class="value" id="timelinePosition">—</span></label><input id="timelineRange" type="range" min="0" max="0" value="0" step="1" disabled></div>
 <div class="buttons" style="margin-top:10px"><button id="timelinePlay" type="button" disabled>▶ Přehrát animaci</button><button id="timelinePrev" type="button" disabled>◀ Předchozí</button><button id="timelineNext" type="button" disabled>Další ▶</button><button id="timelineRefresh" type="button">Obnovit předpověď</button></div>
 <div class="status" id="timelineStatus" style="margin-top:10px">Načítám časovou řadu ECMWF…</div>
+<div class="panel" style="margin-top:14px;padding:14px;background:#071a2b;border-color:#254762;color:#e6f3ff">
+<h3 style="margin:0 0 6px;color:#e6f3ff">Polární mapa ECMWF · severní polokoule</h3>
+<p class="small" style="color:#b7ccdc">Teplota ve výšce 10 hPa, geografická síť a vektory větru U/V. Mapa se synchronizuje s vybraným krokem časové animace.</p>
+<div style="width:100%;overflow:hidden;border-radius:12px;background:#061421"><canvas id="ecmwfPolarMap" height="440" style="width:100%;height:440px;display:block;touch-action:pan-y"></canvas></div>
+<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:#c6d8e8"><span>🟣 Chladnější vzduch</span><span>🔵 Přechodné teploty</span><span>🟠 Teplejší vzduch</span><span>➤ Směr větru U/V</span></div>
+<p class="small" id="ecmwfPolarMapStatus" style="color:#b7ccdc;margin:8px 0 0">Čekám na první předpovědní pole ECMWF…</p>
+</div>
 <p class="small">Zdroj: ECMWF IFS Open Data · 10 hPa · T/U/V/Z · licence CC BY 4.0. Animace zobrazuje diskrétní předpovědní kroky, nikoli kontinuální měření. Chybějící kroky se přeskočí.</p>
 </section>
 <section class="panel wide" id="vortexHistory">
@@ -752,6 +759,7 @@ try{
   if(!frames.length)return;
   index=Math.max(0,Math.min(frames.length-1,i));
   const f=frames[index];
+  window.X5CurrentEcmwfFrame=f;
   range.value=String(index);
   $('timelineValid').textContent=fmtDate(f.valid_time_utc);
   $('timelineStep').textContent='+'+f.step_hours+' hodin';
@@ -766,6 +774,7 @@ try{
     ? 'POZOR: Předpověď v tomto kroku ukazuje východní nebo nulový zonální vítr na 60° N. Jde o modelový signál možného obratu, nikoli potvrzenou událost SSW.'
     : 'Západní zonální vítr na 60° N v tomto předpovědním kroku přetrvává. Kritérium obratu větru pro hlavní SSW zatím není v tomto kroku dosaženo.';
   }else signal.textContent='Diagnostika zonálního větru pro tento krok není dostupná.';
+  drawX5PolarMap(f);
   status.textContent='Vykresluji ECMWF '+f.step_hours+' h · '+fmtDate(f.valid_time_utc)+'…';
   try{
    if(typeof window.X5LoadEcmwfFrame!=='function')throw Error('3D vykreslovač ještě není připraven');
@@ -800,6 +809,43 @@ try{
  $('timelineNext').addEventListener('click',()=>{stop();show(index+1);});
  $('timelineRefresh').addEventListener('click',load);
  load();
+})();
+</script>
+<script>
+(function(){
+ function drawX5PolarMap(frame){
+  const canvas=document.getElementById('ecmwfPolarMap');
+  const label=document.getElementById('ecmwfPolarMapStatus');
+  if(!canvas||!frame||!Array.isArray(frame.grid))return;
+  const rect=canvas.getBoundingClientRect();
+  const cssW=Math.max(300,Math.floor(rect.width||canvas.parentElement.clientWidth||700));
+  const cssH=440,dpr=Math.min(2,window.devicePixelRatio||1);
+  canvas.width=Math.floor(cssW*dpr);canvas.height=Math.floor(cssH*dpr);
+  const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
+  const w=cssW,h=cssH,cx=w/2,cy=h/2+4,R=Math.min(w*0.43,h*0.43);
+  ctx.clearRect(0,0,w,h);
+  const bg=ctx.createRadialGradient(cx,cy,4,cx,cy,R*1.55);bg.addColorStop(0,'#183c5b');bg.addColorStop(1,'#061421');ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+  const xy=(lat,lon)=>{const a=lon*Math.PI/180,r=R*Math.cos(lat*Math.PI/180)/Math.cos(Math.PI/4);return [cx+r*Math.sin(a),cy-r*Math.cos(a)];};
+  ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.clip();
+  ctx.fillStyle='#0b2941';ctx.fillRect(cx-R,cy-R,2*R,2*R);
+  ctx.strokeStyle='rgba(173,213,239,.28)';ctx.lineWidth=1;
+  for(const lat of [50,60,70,80]){const rr=R*Math.cos(lat*Math.PI/180)/Math.cos(Math.PI/4);ctx.beginPath();ctx.arc(cx,cy,rr,0,Math.PI*2);ctx.stroke();}
+  for(let lon=0;lon<360;lon+=30){const p=xy(45,lon);ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(p[0],p[1]);ctx.stroke();}
+  const vals=frame.grid.map(p=>p.t).filter(Number.isFinite),lo=vals.length?Math.min(...vals):195,hi=vals.length?Math.max(...vals):245;
+  const color=t=>{const q=Math.max(0,Math.min(1,(t-lo)/Math.max(1,hi-lo)));const stops=[[55,27,112],[39,112,170],[57,174,190],[242,176,91],[222,91,66]];const z=q*(stops.length-1),i=Math.min(stops.length-2,Math.floor(z)),f=z-i,a=stops[i],b=stops[i+1];return 'rgb('+a.map((v,k)=>Math.round(v+(b[k]-v)*f)).join(',')+')';};
+  for(const p of frame.grid){if(!Number.isFinite(p.lat)||p.lat<45||!Number.isFinite(p.lon))continue;const [x,y]=xy(p.lat,p.lon);ctx.beginPath();ctx.arc(x,y,Math.max(5,Math.min(13,R*.035)),0,Math.PI*2);ctx.fillStyle=color(Number(p.t));ctx.globalAlpha=.82;ctx.fill();ctx.globalAlpha=1;}
+  ctx.strokeStyle='rgba(255,255,255,.72)';ctx.fillStyle='#d7f0ff';ctx.lineWidth=1.6;
+  const stride=Math.max(1,Math.ceil(frame.grid.length/85));
+  for(let i=0;i<frame.grid.length;i+=stride){const p=frame.grid[i];if(p.lat<50||!Number.isFinite(p.u)||!Number.isFinite(p.v))continue;const [x,y]=xy(p.lat,p.lon),a=p.lon*Math.PI/180,lat=p.lat*Math.PI/180;let dx=p.u*Math.cos(a)-p.v*Math.sin(lat)*Math.sin(a),dy=p.u*Math.sin(a)+p.v*Math.sin(lat)*Math.cos(a);const mag=Math.hypot(dx,dy)||1;dx=dx/mag*10;dy=dy/mag*10;ctx.beginPath();ctx.moveTo(x-dx*.55,y-dy*.55);ctx.lineTo(x+dx,y+dy);ctx.lineTo(x+dx-3*dx/mag-3*(-dy/mag),y+dy-3*dy/mag+3*dx/mag);ctx.moveTo(x+dx,y+dy);ctx.lineTo(x+dx-3*dx/mag+3*(-dy/mag),y+dy-3*dy/mag-3*dx/mag);ctx.stroke();}
+  ctx.restore();
+  ctx.fillStyle='#e8f5ff';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText('SEVERNÍ PÓL',cx,cy+5);
+  ctx.font='12px system-ui';ctx.fillStyle='#c5d9e9';ctx.fillText('60° N',cx+R*.76,cy+R*.66);ctx.fillText('80° N',cx+R*.31,cy-R*.22);
+  ctx.textAlign='left';ctx.fillStyle='#e8f5ff';ctx.fillText('ECMWF IFS · 10 hPa · +'+frame.step_hours+' h',12,22);
+  ctx.fillStyle='#b8d1e3';ctx.fillText('Teplota: '+(vals.length?lo.toFixed(1)+'–'+hi.toFixed(1)+' K':'bez dat'),12,42);
+  if(label)label.textContent='Mapa aktualizována: '+frame.valid_time_utc+' · '+frame.grid.length+' buněk · barva = teplota, šipky = vítr U/V.';
+ }
+ window.X5DrawEcmwfPolarMap=drawX5PolarMap;
+ window.addEventListener('resize',()=>{if(window.X5CurrentEcmwfFrame)drawX5PolarMap(window.X5CurrentEcmwfFrame);});
 })();
 </script>
 </body></html>
