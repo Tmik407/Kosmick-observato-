@@ -62,7 +62,7 @@
 <section class="panel wide" id="ecmwfTimeline" style="margin-top:14px">
 <h2>Časová animace skutečné předpovědi ECMWF · 10 hPa</h2>
 <p class="small">Přehrávání používá samostatné předpovědní kroky z jednoho běhu ECMWF IFS. Posuvníkem lze přejít na konkrétní platnost; při přehrávání se aktualizuje i teplotní pole, geopotenciální izolinie, větrné šipky a diagnostika 3D globusu.</p>
-<div class="metrics"><div class="metric">Platnost zobrazeného pole<b id="timelineValid">Načítám…</b></div><div class="metric">Předpovědní krok<b id="timelineStep">—</b></div></div>
+<div class="metrics"><div class="metric">Platnost zobrazeného pole<b id="timelineValid">Načítám…</b></div><div class="metric">Předpovědní krok<b id="timelineStep">—</b></div><div class="metric">Zonální vítr na 60° N · 10 hPa<b id="timelineU60">—</b><p class="small">m/s · záporná hodnota = východní vítr</p></div><div class="metric">Teplota polární oblasti · 10 hPa<b id="timelinePolarTemp">—</b><p class="small">K · průměr nad 60° N</p></div></div><div class="status" id="sswForecastSignal" style="margin-top:10px">Vyhodnocuji předpovědní signál zonálního větru…</div>
 <div class="control" style="margin-top:14px"><label for="timelineRange">Čas předpovědi <span class="value" id="timelinePosition">—</span></label><input id="timelineRange" type="range" min="0" max="0" value="0" step="1" disabled></div>
 <div class="buttons" style="margin-top:10px"><button id="timelinePlay" type="button" disabled>▶ Přehrát animaci</button><button id="timelinePrev" type="button" disabled>◀ Předchozí</button><button id="timelineNext" type="button" disabled>Další ▶</button><button id="timelineRefresh" type="button">Obnovit předpověď</button></div>
 <div class="status" id="timelineStatus" style="margin-top:10px">Načítám časovou řadu ECMWF…</div>
@@ -756,6 +756,16 @@ try{
   $('timelineValid').textContent=fmtDate(f.valid_time_utc);
   $('timelineStep').textContent='+'+f.step_hours+' hodin';
   $('timelinePosition').textContent=(index+1)+' / '+frames.length;
+  const u60=Number(f.diagnostics?.zonal_wind_60N_ms);
+  const tcap=Number(f.diagnostics?.polar_cap_temperature_10hpa_k);
+  $('timelineU60').textContent=Number.isFinite(u60)?u60.toFixed(2)+' m/s':'Nedostupné';
+  $('timelinePolarTemp').textContent=Number.isFinite(tcap)?tcap.toFixed(2)+' K':'Nedostupné';
+  const signal=$('sswForecastSignal');
+  if(Number.isFinite(u60)){
+   signal.textContent=u60<=0
+    ? 'POZOR: Předpověď v tomto kroku ukazuje východní nebo nulový zonální vítr na 60° N. Jde o modelový signál možného obratu, nikoli potvrzenou událost SSW.'
+    : 'Západní zonální vítr na 60° N v tomto předpovědním kroku přetrvává. Kritérium obratu větru pro hlavní SSW zatím není v tomto kroku dosaženo.';
+  }else signal.textContent='Diagnostika zonálního větru pro tento krok není dostupná.';
   status.textContent='Vykresluji ECMWF '+f.step_hours+' h · '+fmtDate(f.valid_time_utc)+'…';
   try{
    if(typeof window.X5LoadEcmwfFrame!=='function')throw Error('3D vykreslovač ještě není připraven');
