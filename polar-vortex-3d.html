@@ -337,6 +337,7 @@ try{
     data=await response.json();
    }
    if(!Array.isArray(data.grid)||!data.grid.length)throw new Error('ECMWF mřížka je prázdná');
+   window.X5CurrentEcmwfFrame=data;
    if(!data.grid.every(p=>Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lon))&&Number.isFinite(Number(p.t))))throw new Error('ECMWF mřížka obsahuje neplatné souřadnice nebo teploty');
    [tempLayer,contourLayer,windLayer,centerLayer].forEach(layer=>{while(layer.children.length)layer.remove(layer.children[0]);});
    const temps=data.grid.map(p=>Number(p.t)).filter(Number.isFinite);
@@ -359,7 +360,7 @@ try{
      ring2.position.copy(p2);ring2.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),p2.clone().normalize());centerLayer.add(ring2);
     }
     const centerInfo=document.getElementById('vortexCenterInfo');
-    if(centerInfo)centerInfo.textContent='Centrum ECMWF · '+lat.toFixed(1)+'° N / '+lon.toFixed(1)+'° E'+(shared?' · posun od pólu '+shared.displacement.toFixed(0)+' km · deformace '+shared.elongation.toFixed(0)+' % · '+shared.classification+(shared.secondary?' · druhé minimum '+shared.secondary.lat.toFixed(1)+'° N / '+shared.secondary.lon.toFixed(1)+'° E':''):'');
+    if(centerInfo)centerInfo.textContent='Centrum ECMWF · '+lat.toFixed(1)+'° N / '+lon.toFixed(1)+'° E'+(shared?' · posun od pólu '+shared.displacement.toFixed(0)+' km · deformace '+shared.elongation.toFixed(0)+' % · '+shared.classification+(shared.secondary?' · druhé minimum '+shared.secondary.lat.toFixed(1)+'° N / '+shared.secondary.lon.toFixed(1)+'° E':''):'')+' · '+(data.valid_time_utc||'čas nedostupný');
    }
    const minEl=document.getElementById('tempMin'),maxEl=document.getElementById('tempMax');
    if(minEl)minEl.textContent=tmin.toFixed(1)+' K / '+(tmin-273.15).toFixed(1)+' °C';
@@ -794,6 +795,14 @@ try{
   try{
    if(typeof window.X5LoadEcmwfFrame!=='function')throw Error('3D vykreslovač ještě není připraven');
    await window.X5LoadEcmwfFrame(f);
+   // Po vykreslení 3D globu znovu vykresli polární mapu ze stejného objektu.
+   // Tím se zabrání tomu, aby mapa zůstala na předchozím kroku animace.
+   window.X5CurrentEcmwfFrame=f;
+   if(typeof window.X5DrawEcmwfPolarMap==='function')window.X5DrawEcmwfPolarMap(f);
+   const globeStamp=(document.getElementById('sceneState')?.textContent||'');
+   const sameTime=globeStamp.includes(f.valid_time_utc);
+   const sharedBox=document.getElementById('sharedVortexState');
+   if(sharedBox)sharedBox.textContent+=' · Čas společného pole: '+f.valid_time_utc+(sameTime?' · 3D a mapa synchronizovány':' · ověřte čas 3D globu');
    status.textContent='Zobrazen skutečný předpovědní krok ECMWF +'+f.step_hours+' h. '+fmtDate(f.valid_time_utc)+'.';
   }catch(e){status.textContent='Krok nelze vykreslit: '+e.message;}
  }
