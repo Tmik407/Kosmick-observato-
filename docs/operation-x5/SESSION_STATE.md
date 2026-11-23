@@ -2,26 +2,36 @@
 
 Aktualizováno: 23. 11. 2026
 
-## Poslední známý stav
-- Dokončené etapy podle předchozí evidence: 1–113.
-- Evidovaný počet souborů: 718.
-- Etapa 113: centralizované statistiky ztrát armády a logistiky.
-- Další krok: etapa 114.
+## Poslední potvrzený pracovní stav
+- Výchozí archiv etap 1–113 byl přijat.
+- Obsahuje 718 souborů; ZIP CRC kontrola: OK.
+- Etapa 113 je doložena dokumentací i zdrojovým reportovacím systémem.
+- Etapa 114 byla doplněna do pracovního ZIP balíčku.
+- Balíček po etapě 114 obsahuje 720 souborů; ZIP CRC kontrola: OK.
+- Další etapa: 115.
 
-## Co je potvrzeno
-- Projekt je zamýšlen jako taktická real-time strategie pro PC/Windows.
-- Zvolený směr technologie: Unreal Engine 5, C++ a Blueprint.
-- V centrálním repozitáři je založena kontinuita projektu.
+## Obsah etapy 114
+- Událost `OnCrewStateChanged` v `UO5CrewComponent`.
+- Událost `OnConsumptionStateChanged` v `UO5VehicleConsumptionComponent`.
+- `UO5BattleAfterActionReportComponent` se při `BeginPlay` připojuje ke komponentám posádky a logistiky sledovaných aktérů.
+- Při `EndPlay` se odpojuje; změny posádky a zásob mohou automaticky obnovit report.
+- Stávající `NotifyTrackedActorStateChanged` a `RefreshReport` zůstaly zachovány.
 
-## Co zatím není ověřeno
-- Dostupnost a aktuální obsah archivu se zdrojovým projektem.
-- Shoda evidovaných 718 souborů s aktuálním pracovním balíčkem.
-- Úspěšná integrace do Unreal Engine 5 a kompilace.
-- Spuštění a funkčnost herních systémů v runtime.
-- Hratelné bojiště, UI, kampaň, optimalizace a distribuovatelný build.
+## Ověřeno
+- Struktura výchozího archivu a počet 718 souborů.
+- ZIP CRC výchozího archivu.
+- Přítomnost dokumentace etap 111–113 a návaznost reportovací komponenty.
+- Statické textové kontroly nových delegátů, broadcastů, připojení/odpojení a zachování původních API.
+- ZIP CRC nového balíčku a počet 720 souborů.
+
+## Neověřeno
+- Unreal Header Tool, Unreal Build Tool a kompilace C++.
+- Otevření projektu v UE5, spuštění editoru a runtime chování.
+- Skutečné automatické obnovení reportu v běžící hře.
+- UMG napojení a nastavení sledovaných aktérů v mapě/Blueprintu.
 
 ## Přesné místo pokračování
-Nezačínat automaticky psát etapu 114 naslepo. Nejprve získat pracovní balíček etap 1–113, ověřit jeho obsah a dohledat návaznost posledních souborů. Poté navázat etapou 114 bez duplikování již hotové práce.
+Etapa 114 je připravena na úrovni zdrojového kódu a statických kontrol. Dalším krokem je etapa 115. Doporučený milník po etapě 115 je integrační kontrola a příprava prvního hratelného prototypu jedné bojové mise, jak uvádí předchozí projektový plán.
 
-## První potřebný vstup
-Uživatel musí v novém chatu přiložit archiv projektu nebo poskytnout jeho dostupné umístění. Projekt zatím nemá vlastní GitHub repozitář.
+## Důležitá provozní poznámka
+Projekt stále nemá vlastní GitHub repozitář. Pracovní ZIP po etapě 114 je příloha této konverzace; při pokračování v novém chatu je nutné přiložit tento aktuální ZIP.
