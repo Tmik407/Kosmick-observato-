@@ -38,9 +38,29 @@
 <p class="small" id="vortexHistoryStatus">Načítám archiv předpovědí…</p>
 <div class="buttons"><a class="btn" href="./data/polar-vortex-history.json" target="_blank" rel="noopener">Otevřít archiv historie JSON</a></div>
 </section>
+<section class="panel wide" id="czWinterImpact">
+<h2>Vliv polárního víru na zimní počasí v České republice</h2>
+<p class="small">Průběžné vyhodnocení kombinuje stratosférický vítr ECMWF na 10 hPa a 60° s. š. s indexy AO a NAO z NOAA CPC. Nejde o předpověď počasí pro konkrétní město, ale o diagnostiku velkoprostorového režimu, který může ovlivnit pravděpodobnost zimních situací ve střední Evropě.</p>
+<div class="metrics">
+<div class="metric">Signál polárního víru<b id="czVortexSignal">Čekám na ECMWF</b><p class="small" id="czVortexDetail">Zonální vítr U60</p></div>
+<div class="metric">Režim AO / NAO<b id="czIndexSignal">Čekám na indexy</b><p class="small" id="czIndexDetail">Arktická a severoatlantická oscilace</p></div>
+<div class="metric">Možný dopad pro ČR<b id="czWinterSignal">Zatím neurčeno</b><p class="small" id="czWinterDetail">Vyhodnocení po načtení dat</p></div>
+<div class="metric">Síla podkladu<b id="czConfidence">Nedostatečná</b><p class="small" id="czConfidenceDetail">Závisí na souběhu nezávislých ukazatelů</p></div>
+</div>
+<div class="status" id="czWinterStatus" style="margin-top:12px">Čekám na aktuální hodnoty AO, NAO a ECMWF.</div>
+<div class="metrics" style="margin-top:10px">
+<div class="metric"><b>Negativní AO + NAO</b><p class="small">Častěji souvisí s blokováním proudění a možností vpádů chladnějšího vzduchu do Evropy. Pro ČR to může zvýšit šanci na zimní epizody, nikoli je zaručit.</p></div>
+<div class="metric"><b>Oslabený polární vír</b><p class="small">Pokles západního zonálního větru může předcházet změně cirkulace. Po výrazném SSW se vliv do troposféry někdy promítá se zpožděním přibližně 1–3 týdnů, ale ne vždy.</p></div>
+<div class="metric"><b>Pozitivní AO + NAO</b><p class="small">Častěji podporují silnější západní proudění a atlantský přenos mírnějšího vzduchu. Ani tento režim nevylučuje krátké mrazy nebo sněžení.</p></div>
+<div class="metric"><b>Smíšené signály</b><p class="small">Když se AO, NAO a stratosférický vítr neshodují, výhled pro střední Evropu je méně jednoznačný. Rozhoduje také poloha tlakových útvarů a teplota vzduchu.</p></div>
+</div>
+<p class="small">Metodika: AO/NAO pod −0,5 = negativní fáze; nad +0,5 = pozitivní fáze. Zonální vítr U60 pod 10 m/s označuje v tomto přehledu oslabený vítr; hodnota 0 m/s nebo nižší znamená obrat směru. Jde o orientační diagnostická pravidla, nikoli oficiální výstražné limity.</p>
+<p class="small">Absolutní teplota polární oblasti v kelvinech se bez klimatologické odchylky neinterpretuje jako oteplení. Závěr o SSW proto nevydáváme jen podle teploty. Pro konkrétní výhled na sníh, mráz a teploty v ČR sledujte také předpovědi ČHMÚ.</p>
+<div class="buttons"><a class="btn" href="https://www.chmi.cz/" target="_blank" rel="noopener">ČHMÚ · předpovědi pro ČR</a><a class="btn" href="https://www.cpc.ncep.noaa.gov/products/precip/CWlink/daily_ao_index/ao.shtml" target="_blank" rel="noopener">NOAA · AO</a><a class="btn" href="https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/nao.shtml" target="_blank" rel="noopener">NOAA · NAO</a></div>
+</section>
 <section class="panel wide"><h2>Jak model číst</h2><div class="metrics"><div class="metric">Polární vír<b>Stratosféra</b><p class="small">Rozsáhlá cirkulace studeného vzduchu kolem Arktidy, nejsilnější v zimní stratosféře.</p></div><div class="metric">SSW<b>Oteplování</b><p class="small">Při významném SSW může dojít k obrácení zonálního větru na 60° s. š. a 10 hPa.</p></div><div class="metric">AO / NAO<b>Režim proudění</b><p class="small">Indexy popisují velkoprostorové tlakové vzorce. Samy o sobě neurčují počasí v konkrétní obci.</p></div><div class="metric">Předpověď<b>Nejistota</b><p class="small">Dopad stratosférických změn na počasí u zemského povrchu může mít zpoždění a není zaručen.</p></div></div></section>
 <section class="panel wide"><h2>Datový stav a metodika</h2><p class="note">Toto je první funkční 3D vizualizační modul X-5. Posuvníky mění geometrii a schématické proudění v reálném čase. Parametry nejsou automaticky načítané z ECMWF/ERA5 a jejich hodnoty nejsou pozorování. Další etapa může připojit ověřené denní a předpovědní datové sady (teplota 10 hPa, geopotenciál, zonální vítr, AO a NAO) a zobrazovat jejich časové značky i stáří.</p><p class="small">Ovládací prvky slouží k demonstraci chování modelu, nikoli k vydávání meteorologických výstrah.</p></section>
-<footer>X-5 POLAR VORTEX 3D · vlastní vizualizační modul · verze 1.4 · ECMWF časová osa a 3D vektory větru</footer></main>
+<footer>X-5 POLAR VORTEX 3D · vlastní vizualizační modul · verze 1.5 · zimní dopady pro ČR a ECMWF časová osa</footer></main>
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 const canvas=document.querySelector('#scene'),state=document.querySelector('#sceneState');
@@ -246,5 +266,33 @@ try{
   status.textContent=records.length<2?'První záznam je uložen. Graf vývoje se vykreslí po dalších bězích ECMWF.':'Archiv načten. Zobrazeno '+records.length+' běhů ECMWF; poslední aktualizace '+(data.updated_utc||'není uvedena')+'.';
   window.addEventListener('resize',()=>draw(records));
  }catch(e){count.textContent='0';status.textContent='Historie zatím není dostupná: '+e.message;}
+})();
+</script><script>
+(function(){
+ const $=id=>document.getElementById(id);
+ const read=id=>{const el=$(id);if(!el)return null;const m=el.textContent.match(/[+-]?\d+(?:[.,]\d+)?/);return m?Number(m[0].replace(',','.')):null;};
+ const fmt=(v,n=1)=>(v>0?'+':'')+v.toFixed(n);
+ function update(){
+  const ao=read('aoValue'),nao=read('naoValue'),u=read('ecmwfU60');
+  const haveIndices=Number.isFinite(ao)&&Number.isFinite(nao),uOK=Number.isFinite(u);
+  if(uOK){$('czVortexSignal').textContent=u<=0?'Obrat větru':u<10?'Oslabený':'Západní vítr';$('czVortexDetail').textContent='U60 = '+fmt(u,1)+' m/s · 10 hPa';}
+  else{$('czVortexSignal').textContent='Nedostupné';$('czVortexDetail').textContent='Čekám na publikaci ECMWF JSON';}
+  let phase='Neurčeno',idxText='Chybí AO nebo NAO';
+  if(haveIndices){const neg=ao<-.5&&nao<-.5,pos=ao>.5&&nao>.5;phase=neg?'Negativní AO + NAO':pos?'Pozitivní AO + NAO':(Math.abs(ao)<=.5&&Math.abs(nao)<=.5)?'Oba indexy blízko nuly':'Smíšené fáze';idxText='AO '+fmt(ao,2)+' · NAO '+fmt(nao,2);}
+  $('czIndexSignal').textContent=phase;$('czIndexDetail').textContent=idxText;
+  let winter='Zatím neurčeno',detail='Pro vyhodnocení jsou potřeba současná data AO, NAO a ECMWF.',confidence='Nedostatečná',confDetail='Chybí některé vstupní hodnoty.';
+  if(haveIndices&&uOK){
+   const neg=ao<-.5&&nao<-.5,pos=ao>.5&&nao>.5;
+   if(u<=0&&neg){winter='Zvýšený potenciál zimních vpádů';detail='Všechny tři ukazatele podporují blokovanější režim. Chladnější epizody ve střední Evropě jsou pravděpodobnější, ne jisté.';confidence='Silnější shoda signálů';confDetail='Stratosféra i oba indexy ukazují podobným směrem.';}
+   else if(u<10&&neg){winter='Možné zvýšení zimního rizika';detail='Slabší vír a negativní AO/NAO mohou podpořit blokování a vpády studeného vzduchu do Evropy.';confidence='Střední shoda';confDetail='Vítr je oslabený, ale zatím není obrácený.';}
+   else if(pos&&u>=10){winter='Spíše atlantský režim';detail='Signály častěji odpovídají západnímu proudění a mírnějšímu přenosu od Atlantiku; krátké zimní epizody zůstávají možné.';confidence='Střední shoda';confDetail='Indexy a stratosférický vítr jsou ve shodě.';}
+   else{winter='Nejednoznačný výhled';detail='Ukazatele se neshodují nebo jsou blízko neutrálních hodnot. Z těchto dat nelze vyvozovat převahu mrazivého či mírného počasí.';confidence='Omezená';confDetail='Režim může být přechodný nebo regionálně odlišný.';}
+  }else if(haveIndices){winter=ao<-.5&&nao<-.5?'Možný blokovaný režim':'Bez jasného signálu';detail='AO/NAO jsou dostupné, ale chybí potvrzení stratosférickým větrem ECMWF.';confidence='Částečná';confDetail='Zatím pouze troposférické indexy.';}
+  $('czWinterSignal').textContent=winter;$('czWinterDetail').textContent=detail;$('czConfidence').textContent=confidence;$('czConfidenceDetail').textContent=confDetail;
+  $('czWinterStatus').textContent='Automatické vyhodnocení podle posledních načtených hodnot. Jde o pravděpodobnostní cirkulační signál, nikoli předpověď teploty nebo sněžení v konkrétním místě ČR.';
+ }
+ const observer=new MutationObserver(update);
+ ['aoValue','naoValue','ecmwfU60'].forEach(id=>{const el=$(id);if(el)observer.observe(el,{childList:true,characterData:true,subtree:true});});
+ update();setInterval(update,5000);
 })();
 </script></body></html>
