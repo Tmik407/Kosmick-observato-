@@ -211,11 +211,35 @@
   const weatherMarkers=[];
   const weatherLinks=L.layerGroup().addTo(map);
   L.control.layers(null,{'Aktuální modelové počasí':weatherGroup},{collapsed:false}).addTo(map);
-  const weatherDisplayPoint=latlng=>map.unproject(map.project(latlng,map.getZoom()).add([24,-22]),map.getZoom());
+  const weatherLabelOffsets=[[24,-22],[-62,-22],[24,28],[-62,28],[0,-52],[0,52],[68,0],[-76,0],[54,-48],[-54,-48],[54,48],[-54,48]];
   function repositionWeatherMarkers(){
-   weatherMarkers.forEach(item=>{const point=weatherDisplayPoint(item.base);item.marker.setLatLng(point);if(item.line)item.line.setLatLngs([item.base,point]);});
+   const size=map.getSize(),occupied=[];
+   const controls=[...root.querySelectorAll('.leaflet-control')].map(el=>{
+    const r=el.getBoundingClientRect(),m=root.getBoundingClientRect();
+    return {left:r.left-m.left-7,right:r.right-m.left+7,top:r.top-m.top-7,bottom:r.bottom-m.top+7};
+   });
+   weatherMarkers.forEach(item=>{
+    const origin=map.latLngToContainerPoint(item.base);
+    let best=null,bestScore=Infinity;
+    weatherLabelOffsets.forEach((offset,index)=>{
+     const x=origin.x+offset[0],y=origin.y+offset[1],rect={left:x-31,right:x+31,top:y-17,bottom:y+17};
+     const outside=rect.left<5||rect.right>size.x-5||rect.top<5||rect.bottom>size.y-5;
+     const controlHit=controls.some(c=>rect.left<c.right&&rect.right>c.left&&rect.top<c.bottom&&rect.bottom>c.top);
+     const labelHits=occupied.some(c=>rect.left<c.right+5&&rect.right>c.left-5&&rect.top<c.bottom+5&&rect.bottom>c.top-5);
+     const score=Math.hypot(offset[0],offset[1])+index*.15+(outside?10000:0)+(controlHit?10000:0)+(labelHits?2500:0);
+     if(score<bestScore){bestScore=score;best={x,y,rect};}
+    });
+    if(!best){
+     const x=Math.max(34,Math.min(size.x-34,origin.x-70)),y=Math.max(20,Math.min(size.y-20,origin.y+48));
+     best={x,y,rect:{left:x-31,right:x+31,top:y-17,bottom:y+17}};
+    }
+    occupied.push(best.rect);
+    const point=map.containerPointToLatLng([best.x,best.y]);
+    item.marker.setLatLng(point);
+    if(item.line)item.line.setLatLngs([item.base,point]);
+   });
   }
-  map.on('zoomend moveend',repositionWeatherMarkers);
+  map.on('zoomend moveend resize',repositionWeatherMarkers);
   const tempColor=t=>t<=-5?'#3156b8':t<=0?'#39a6d5':t<=5?'#61ad79':t<=15?'#e3b34d':'#d85d45';
   const escHtml=v=>String(v??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   function renderWeatherDetail(w,stamp){
