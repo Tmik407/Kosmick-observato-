@@ -10,7 +10,7 @@ Tento systém slouží k předávání dlouhodobých projektů mezi chaty bez op
 |---|---|---|
 | POLAR VORTEX 3D X-5 | [Projektová karta](PROJECT_MASTER.md) | Založeno; funkčnost PWA potvrzena uživatelem |
 | Kosmická observatoř X-5 | [Projektová karta observatoře](../observatory-x5/PROJECT_MASTER.md) | Dokumentace založena; další úkoly a testy evidovány |
-| OPERATION X-5 | Samostatný projekt | Kartu založit v jeho vlastním repozitáři po ověření aktuálního stavu a poslední dokončené etapy |
+| OPERATION X-5 | [Projektová karta](../operation-x5/PROJECT_MASTER.md) | Dokumentace založena zde; vlastní GitHub repozitář zatím neexistuje; pokračování od etapy 114 po kontrole zdrojů |
 
 ## Povinná sada souborů pro každý projekt
 1. `PROJECT_MASTER.md` — účel, architektura, odkazy a pravidla.
