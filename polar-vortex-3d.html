@@ -17,6 +17,7 @@
 </div>
 </section>
 <p class="small" id="ecmwfGlobeState">ECMWF vrstva se načítá samostatně. Ovládání: tažením otáčejte glóbem, kolečkem přibližujte. Model zobrazuje fyzikální schéma cirkulace; není to naměřená mapa ani numerická předpověď.</p></section>
+<section class="panel wide" id="vortexDiagnostics" style="margin-top:14px"><h2>Geopotenciální diagnostika · ECMWF 10 hPa</h2><p class="small">Výpočty z prostorové mřížky severně od 55° N. Posun centra je vzdálenost minima geopotenciálu od severního pólu; nejde o automatickou klasifikaci rozštěpení víru.</p><div class="metrics"><div class="metric">Minimum geopotenciálu<b id="diagZmin">—</b></div><div class="metric">Maximum geopotenciálu<b id="diagZmax">—</b></div><div class="metric">Polární průměr geopotenciálu<b id="diagZmean">—</b></div><div class="metric">Posun centra od pólu<b id="diagDisplacement">—</b></div></div><p class="small" id="diagSummary">Čekám na data ECMWF…</p></section>
 <section class="panel wide" id="levelCompare" style="margin-top:14px">
 <h2>Porovnání stratosférických hladin · NASA GSFC</h2>
 <p class="small">Vyberte hladinu a porovnejte polární průměr teploty 60–90° N a zonální vítr na 60° N. Jde o denní diagnostické řady NASA GSFC/Ozone Watch, nikoli o prostorové mapy.</p>
@@ -380,13 +381,21 @@ try{
    surfaceGeometry.setIndex(indices);surfaceGeometry.computeVertexNormals();
    tempLayer.add(new THREE.Mesh(surfaceGeometry,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide,transparent:true,opacity:.78,depthWrite:false})));
    // Geopotential-height contour isolines calculated from ECMWF grid (marching squares).
-   const zvals=data.grid.map(p=>Number(p.z)).filter(Number.isFinite),zmin=Math.min(...zvals),zmax=Math.max(...zvals);
-   const contourMaterial=new THREE.LineBasicMaterial({color:0xf3e7f2,transparent:true,opacity:.32});
+   const polarGrid=data.grid.filter(p=>Number(p.lat)>=55&&Number.isFinite(Number(p.z)));
+   const zvals=polarGrid.map(p=>Number(p.z)),zmin=Math.min(...zvals),zmax=Math.max(...zvals),zmean=zvals.reduce((a,b)=>a+b,0)/zvals.length;
+   const contourPalette=[0x70d8ff,0xf2d18a,0xd6b6ff,0x9be5d0,0xffb38a,0xe6efff];
+   const centerPoint=polarGrid.reduce((a,b)=>Number(b.z)<Number(a.z)?b:a,polarGrid[0]);
+   const centerLat=Number(centerPoint.lat),centerLon=Number(centerPoint.lon);
+   const displacement=6371*Math.acos(Math.max(-1,Math.min(1,Math.sin(THREE.MathUtils.degToRad(centerLat)))));
+   const setDiag=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value;};
+   setDiag('diagZmin',(zmin/10).toFixed(0)+' dam');setDiag('diagZmax',(zmax/10).toFixed(0)+' dam');setDiag('diagZmean',(zmean/10).toFixed(0)+' dam');setDiag('diagDisplacement',displacement.toFixed(0)+' km');
+   setDiag('diagSummary','Minimum v '+centerLat.toFixed(1)+'° N / '+centerLon.toFixed(1)+'° E · rozpětí geopotenciálu '+((zmax-zmin)/10).toFixed(0)+' dam · čas platnosti '+data.valid_time_utc+'.');
    function contourPoint(a,b,level){
     const f=(level-a.z)/(b.z-a.z),lat=a.lat+(b.lat-a.lat)*f,lon=a.lon+(b.lon-a.lon)*f;
     return ll(lat,lon,1.601);
    }
-   for(let level=zmin;level<=zmax;level+=(zmax-zmin)/6){
+   for(let contourIndex=0;contourIndex<=6;contourIndex++){
+    const level=zmin+(zmax-zmin)*contourIndex/6;
     const seg=[];
     for(let ri=0;ri<rows.length-1;ri++)for(let ci=0;ci<cols;ci++){
      const nj=(ci+1)%cols,ps=[lookup.get(rows[ri]+','+lons[ci]),lookup.get(rows[ri]+','+lons[nj]),lookup.get(rows[ri+1]+','+lons[nj]),lookup.get(rows[ri+1]+','+lons[ci])];
@@ -395,7 +404,7 @@ try{
      for(const [a,b] of edges)if((ps[a].z<level&&ps[b].z>=level)||(ps[b].z<level&&ps[a].z>=level))hits.push(contourPoint(ps[a],ps[b],level));
      for(let q=0;q+1<hits.length;q+=2)seg.push(hits[q],hits[q+1]);
     }
-    if(seg.length){const geo=new THREE.BufferGeometry().setFromPoints(seg);contourLayer.add(new THREE.LineSegments(geo,contourMaterial));}
+    if(seg.length){const geo=new THREE.BufferGeometry().setFromPoints(seg);const material=new THREE.LineBasicMaterial({color:contourPalette[contourIndex%contourPalette.length],transparent:true,opacity:contourIndex===0||contourIndex===6?.82:.58});contourLayer.add(new THREE.LineSegments(geo,material));}
    }
    // Směrové šipky větru U/V: východní a severní složka na hladině 10 hPa.
    const windPositions=[];
