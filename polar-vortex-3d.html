@@ -160,6 +160,11 @@
 .band-dot{width:12px;height:12px;border-radius:50%;display:inline-block;border:1px solid #17324a}
 .band-dot.low{background:#64b5d8}.band-dot.mid{background:#8ac47a}.band-dot.high{background:#e5bd63}.band-dot.mountain{background:#d97969}
 .leaflet-popup-content-wrapper{border-radius:9px}
+.winter-weather-label{background:transparent!important;border:0!important}
+.winter-weather-label span{display:flex;align-items:center;justify-content:center;min-width:48px;height:28px;padding:0 6px;border:2px solid #fff;border-radius:16px;box-shadow:0 2px 7px #10283c88;color:#fff;font-size:12px;font-weight:800;white-space:nowrap;text-shadow:0 1px 2px #10283c;background:var(--wx-color,#3156b8);box-sizing:border-box}
+.winter-weather-label:after{content:"";position:absolute;left:21px;bottom:-5px;width:8px;height:8px;background:var(--wx-color,#3156b8);border-right:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(45deg)}
+.leaflet-marker-icon.winter-weather-label{z-index:700!important}
+.leaflet-popup{z-index:800!important}
 @media(max-width:700px){
  #czLiveForecast72 .wx-table-wrap{overflow:visible!important}
  #czLiveForecast72 table{min-width:0!important;width:100%!important;border-collapse:separate!important;border-spacing:0 9px!important}
@@ -204,7 +209,14 @@
   osm.addTo(map);L.control.layers({'Základní mapa':osm,'Topografický reliéf':topo},{},{collapsed:false}).addTo(map);
   const groups={low:L.layerGroup().addTo(map),mid:L.layerGroup().addTo(map),high:L.layerGroup().addTo(map),mountain:L.layerGroup().addTo(map)};
   const weatherGroup=L.layerGroup();
+  const weatherMarkers=[];
+  const weatherLinks=L.layerGroup().addTo(map);
   L.control.layers(null,{'Aktuální modelové počasí':weatherGroup},{collapsed:false}).addTo(map);
+  const weatherDisplayPoint=latlng=>map.unproject(map.project(latlng,map.getZoom()).add([24,-22]),map.getZoom());
+  function repositionWeatherMarkers(){
+   weatherMarkers.forEach(item=>item.marker.setLatLng(weatherDisplayPoint(item.base)));
+  }
+  map.on('zoomend moveend',repositionWeatherMarkers);
   const tempColor=t=>t<=-5?'#3156b8':t<=0?'#39a6d5':t<=5?'#61ad79':t<=15?'#e3b34d':'#d85d45';
   const escHtml=v=>String(v??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   function renderWeatherDetail(w,stamp){
@@ -226,14 +238,23 @@
    '<p class="small" style="margin:8px 0 0">Vítr nyní: '+(Number.isFinite(w.wind)?w.wind.toFixed(1).replace('.',',')+' m/s':'—')+' · Srážky nyní: '+(Number.isFinite(w.prec)?w.prec.toFixed(1).replace('.',',')+' mm':'—')+' · Modelová pokrývka: '+(Number.isFinite(w.depth)?w.depth.toFixed(1).replace('.',',')+' cm':'—')+'<br>Aktualizace: '+escHtml(stamp)+'. Zdroj: Open-Meteo. Modelový výstup, nikoli měření ani výstraha.</p>';
   }
   window.X5UpdateWinterWeather=function(items,stamp){
-   weatherGroup.clearLayers();
+   weatherGroup.clearLayers();weatherMarkers.length=0;
    items.forEach(w=>{
     if(!Number.isFinite(w.lat)||!Number.isFinite(w.lon)||!Number.isFinite(w.temp))return;
-    const marker=L.circleMarker([w.lat,w.lon],{pane:'winterPoints',radius:10,color:'#fff',weight:2.5,fillColor:tempColor(w.temp),fillOpacity:.98});
+    const base=L.latLng(w.lat,w.lon),color=tempColor(w.temp);
+    const marker=L.marker(weatherDisplayPoint(base),{
+     pane:'winterPoints',riseOnHover:true,bubblingMouseEvents:false,
+     icon:L.divIcon({className:'winter-weather-label',html:'<span style="--wx-color:'+color+'">'+w.temp.toFixed(1).replace('.',',')+'°</span>',iconSize:[48,30],iconAnchor:[24,15],popupAnchor:[0,-13]})
+    });
     const safeName=String(w.name).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const details='<b>'+safeName+'</b><br>Modelová teplota: '+w.temp.toFixed(1)+' °C<br>Vítr: '+(Number.isFinite(w.wind)?w.wind.toFixed(1)+' m/s':'—')+'<br>Srážky nyní: '+(Number.isFinite(w.prec)?w.prec.toFixed(1)+' mm':'—')+'<br>Nový sníh nyní: '+(Number.isFinite(w.snow)?w.snow.toFixed(1)+' cm':'—')+'<br>Sněhová pokrývka modelu: '+(Number.isFinite(w.depth)?w.depth.toFixed(1)+' cm':'—')+'<br><small>Modelový stav · '+stamp+'</small>';
-    marker.bindPopup(details);marker.bindTooltip(safeName+' · '+w.temp.toFixed(1)+' °C');marker.on('click',()=>renderWeatherDetail(w,stamp));marker.addTo(weatherGroup);
+    marker._x5BaseLatLng=base;
+    marker.bindPopup(details,{maxWidth:260,autoPan:true});
+    marker.on('click',()=>renderWeatherDetail(w,stamp));
+    marker.addTo(weatherGroup);
+    weatherMarkers.push({marker,base});
    });
+   repositionWeatherMarkers();
    if(!map.hasLayer(weatherGroup))weatherGroup.addTo(map);
    const caption=document.querySelector('.winter-map-caption');
    if(caption)caption.textContent='Barevné kruhy: modelová teplota nyní (modrá = chladněji, červená = tepleji). Přepínač „Aktuální modelové počasí“ ovládá vrstvu. Zdroj: Open-Meteo · '+stamp+'. Nejde o přímé měření.';
@@ -245,8 +266,8 @@
   }
   regions.forEach(r=>{
    const marker=L.circleMarker([r.lat,r.lon],{pane:'winterPoints',radius:8,color:'#09263b',weight:2,fillColor:colors[r.band],fillOpacity:.96});
-   marker.bindTooltip(r.name+' · '+r.elev+' m n. m.');
-   marker.bindPopup('<b>'+r.name+'</b><br>'+r.place+' · přibližně '+r.elev+' m n. m.');
+   marker.bindTooltip(r.name+' · '+r.elev+' m n. m.',{direction:'top',offset:[0,-7]});
+   marker.bindPopup('<b>'+r.name+'</b><br>'+r.place+' · přibližně '+r.elev+' m n. m.',{maxWidth:250,autoPan:true});
    marker.on('click',()=>selectRegion(r));marker.addTo(groups[r.band]);
   });
   document.querySelectorAll('.winter-band-toggle').forEach(input=>{
