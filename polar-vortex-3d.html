@@ -359,19 +359,18 @@ try{
    const lookup=new Map(data.grid.map(p=>[Number(p.lat)+','+Number(p.lon),p]));
    const rows=sourceRows,lons=sourceLons; // původní ECMWF mřížka pro izolinie a větrné šipky
    if(sourceRows.length<2||sourceLons.length<3)throw new Error('Mřížka ECMWF nemá dost bodů pro teplotní pole');
-   const subdivisions=5,latFine=[],lonFine=[];
+   const subdivisions=8,latFine=[],lonFine=[];
    for(let r=0;r<sourceRows.length-1;r++)for(let q=0;q<subdivisions;q++)latFine.push(sourceRows[r]+(sourceRows[r+1]-sourceRows[r])*q/subdivisions);
    latFine.push(sourceRows[sourceRows.length-1]);
    const lonStep=360/sourceLons.length;
    for(let c=0;c<sourceLons.length;c++)for(let q=0;q<subdivisions;q++)lonFine.push(sourceLons[c]+lonStep*q/subdivisions);
    const surfacePositions=[],surfaceColors=[],indices=[];
-   const palette=[[190,0x32105f],[200,0x56317f],[210,0x995a9b],[220,0xc58db6],[230,0xe2bfd0],[240,0xf0dce2]];
+   // Stejná barevná škála jako v synchronizované polární mapě: fialová–modrá–tyrkysová–oranžová–červená.
+   const palette=[0x371b70,0x2770aa,0x39aebe,0xf2b05b,0xde5b42];
    function tempColor(k){
-    for(let q=1;q<palette.length;q++)if(k<=palette[q][0]){
-     const a=palette[q-1],b=palette[q],f=Math.max(0,Math.min(1,(k-a[0])/(b[0]-a[0])));
-     return new THREE.Color(a[1]).lerp(new THREE.Color(b[1]),f);
-    }
-    return new THREE.Color(palette[palette.length-1][1]);
+    const f=Math.max(0,Math.min(1,(k-tmin)/Math.max(.001,tmax-tmin)))*(palette.length-1);
+    const i=Math.min(palette.length-2,Math.floor(f));
+    return new THREE.Color(palette[i]).lerp(new THREE.Color(palette[i+1]),f-i);
    }
    function interpolateTemp(lat,lon){
     let ri=0;while(ri<sourceRows.length-2&&sourceRows[ri+1]<lat)ri++;
@@ -404,7 +403,7 @@ try{
    // Geopotential-height contour isolines calculated from ECMWF grid (marching squares).
    const polarGrid=data.grid.filter(p=>Number(p.lat)>=55&&Number.isFinite(Number(p.z)));
    const zvals=polarGrid.map(p=>Number(p.z)),zmin=Math.min(...zvals),zmax=Math.max(...zvals),zmean=zvals.reduce((a,b)=>a+b,0)/zvals.length;
-   const contourPalette=[0x70d8ff,0xf2d18a,0xd6b6ff,0x9be5d0,0xffb38a,0xe6efff];
+   const contourPalette=[0xeaf4ff];
    const centerPoint=polarGrid.reduce((a,b)=>Number(b.z)<Number(a.z)?b:a,polarGrid[0]);
    const centerLat=Number(centerPoint.lat),centerLon=Number(centerPoint.lon);
    const displacement=6371*Math.acos(Math.max(-1,Math.min(1,Math.sin(THREE.MathUtils.degToRad(centerLat)))));
@@ -415,8 +414,12 @@ try{
     const f=(level-a.z)/(b.z-a.z),lat=a.lat+(b.lat-a.lat)*f,lon=a.lon+(b.lon-a.lon)*f;
     return ll(lat,lon,1.601);
    }
-   for(let contourIndex=0;contourIndex<=6;contourIndex++){
-    const level=zmin+(zmax-zmin)*contourIndex/6;
+   const contourInterval=4000;
+   const firstContour=Math.ceil(zmin/contourInterval)*contourInterval;
+   const contourLevels=[];
+   for(let level=firstContour;level<=zmax;level+=contourInterval)contourLevels.push(level);
+   for(let contourIndex=0;contourIndex<contourLevels.length;contourIndex++){
+    const level=contourLevels[contourIndex];
     const seg=[];
     for(let ri=0;ri<rows.length-1;ri++)for(let ci=0;ci<cols;ci++){
      const nj=(ci+1)%cols,ps=[lookup.get(rows[ri]+','+lons[ci]),lookup.get(rows[ri]+','+lons[nj]),lookup.get(rows[ri+1]+','+lons[nj]),lookup.get(rows[ri+1]+','+lons[ci])];
@@ -425,7 +428,7 @@ try{
      for(const [a,b] of edges)if((ps[a].z<level&&ps[b].z>=level)||(ps[b].z<level&&ps[a].z>=level))hits.push(contourPoint(ps[a],ps[b],level));
      for(let q=0;q+1<hits.length;q+=2)seg.push(hits[q],hits[q+1]);
     }
-    if(seg.length){const geo=new THREE.BufferGeometry().setFromPoints(seg);const material=new THREE.LineBasicMaterial({color:contourPalette[contourIndex%contourPalette.length],transparent:true,opacity:contourIndex===0||contourIndex===6?.82:.58});contourLayer.add(new THREE.LineSegments(geo,material));}
+    if(seg.length){const geo=new THREE.BufferGeometry().setFromPoints(seg);const material=new THREE.LineBasicMaterial({color:contourPalette[0],transparent:true,opacity:.72});contourLayer.add(new THREE.LineSegments(geo,material));}
    }
    // Větrná diagnostika U/V a barevné šipky podle rychlosti.
    const polarWind=data.grid.filter(p=>Number(p.lat)>=55&&Number.isFinite(Number(p.u))&&Number.isFinite(Number(p.v)));
