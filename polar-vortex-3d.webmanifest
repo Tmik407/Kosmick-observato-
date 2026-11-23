@@ -1,0 +1,30 @@
+{
+  "id": "./polar-vortex-3d.html",
+  "name": "POLAR VORTEX 3D X-5",
+  "short_name": "POLAR VORTEX 3D",
+  "description": "Samostatná aplikace 3D modelu severního polárního víru X-5 s diagnostikou ECMWF a SSW.",
+  "lang": "cs-CZ",
+  "start_url": "./polar-vortex-3d.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "any",
+  "background_color": "#071426",
+  "theme_color": "#071426",
+  "categories": [
+    "education",
+    "science",
+    "weather"
+  ],
+  "icons": [
+    {
+      "src": "./polar-vortex-3d-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
