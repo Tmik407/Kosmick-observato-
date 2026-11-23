@@ -4,7 +4,7 @@
 :root{color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#f2f6fb;color:#172b40;font:15px Arial,sans-serif}main{max-width:1180px;margin:auto;padding:16px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}h1{font-size:clamp(24px,4vw,38px);margin:8px 0;color:#142b43}.sub,.note,.muted{color:#526b82;line-height:1.5}.tag{border:1px solid #b7ccdf;border-radius:30px;padding:6px 10px;color:#17658c;font-size:12px}.layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(260px,.8fr);gap:14px;margin-top:14px}.panel{background:#fff;border:1px solid #d6e1eb;border-radius:15px;padding:14px;min-width:0;box-shadow:0 3px 12px #18344d0a}.layer-toggles{display:flex;gap:8px;flex-wrap:wrap}.layerToggle{border:1px solid #c1d3e2;background:#edf4fa;color:#25445f;border-radius:9px;padding:9px 12px;font-weight:650}.layerToggle.active{background:#d8efff;border-color:#2387bd;color:#075b87;box-shadow:inset 0 0 0 1px #75c8ef}.layerToggle:focus-visible{outline:2px solid #d18a22;outline-offset:2px}.stage{height:min(67vw,650px);min-height:380px;position:relative;background:radial-gradient(ellipse at 50% 45%,#173a5b,#071426 68%);border-radius:12px;overflow:hidden}#scene{width:100%;height:100%;display:block}.overlay{position:absolute;left:12px;top:12px;background:#061526d9;border:1px solid #54738e;border-radius:9px;padding:9px;font-size:12px;line-height:1.6;color:#eaf4ff}.legend{position:absolute;bottom:12px;left:12px;right:12px;display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:#e1edf7}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}.controls{display:grid;gap:14px}.control label{display:flex;justify-content:space-between;gap:10px;margin-bottom:7px}.control input{width:100%;accent-color:#1688bf}.value{color:#0879a9;font-weight:bold;font-variant-numeric:tabular-nums}.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px}.metric{background:#f5f9fc;border:1px solid #d7e3ed;border-radius:10px;padding:10px;color:#203b54}.metric b{display:block;color:#087eaf;font-size:22px;margin-top:5px}.buttons{display:flex;gap:8px;flex-wrap:wrap}button,a.btn{background:#e5f2fa;border:1px solid #9dbed3;color:#174b6a;padding:9px 12px;border-radius:8px;text-decoration:none;cursor:pointer;font-weight:bold}.status{padding:10px;border-radius:9px;background:#fff6e5;border:1px solid #f0d9a9;color:#78551b;line-height:1.5}.wide{margin-top:14px}.small{font-size:12px;color:#5b7186;line-height:1.5}footer{padding:18px;text-align:center;color:#61788d;font-size:12px}@media(max-width:820px){.layout{grid-template-columns:1fr}.stage{height:65vh;min-height:360px}}
 </style></head><body><main>
 <div class="top"><div><div class="tag">KOSMICKÁ OBSERVATOŘ X-5 · ATMOSFÉRA · VERZE 1.7</div><h1>🌐 POLAR VORTEX 3D</h1><div class="sub">Interaktivní prostorový model severního polárního víru</div></div></div>
-<div class="layout"><section class="panel"><div class="stage"><canvas id="scene"></canvas><div class="overlay">X-5 / 3D MODEL<br><span id="sceneState">Inicializuji 3D scénu…</span><br>Severní pól · ECMWF teplota, geopotenciál a proudnice větru U/V</div><div id="vortexCenterInfo" style="position:absolute;right:12px;top:12px;max-width:245px;padding:8px 10px;background:#061526df;border:1px solid #b69b55;border-radius:9px;color:#ffe6a3;font-size:11px;line-height:1.45;pointer-events:none">Centrum víru · výpočet z ECMWF…</div><div class="legend"><span><i class="dot" style="background:linear-gradient(90deg,#371b70,#2770aa,#39aebe,#f2b05b,#de5b42)"></i>Teplotní pole ECMWF</span><span><i class="dot" style="background:#eaf4ff"></i>Geopotenciální izolinie</span><span><i class="dot" style="background:#55d9ff"></i>Vektory větru U/V</span><span><i class="dot" style="background:#8cecff;box-shadow:0 0 7px #28bfff"></i>Proudnice · integrace U/V</span></div><div id="temperatureLegend" style="position:absolute;right:12px;bottom:48px;width:min(250px,58%);padding:9px 10px;background:#061526d9;border:1px solid #456984;border-radius:9px;font-size:11px;color:#eaf4ff"><div style="display:flex;justify-content:space-between;gap:8px"><b>ECMWF · teplota 10 hPa</b><span id="tempUnit">K / °C</span></div><div style="height:10px;margin:7px 0 4px;border-radius:8px;background:linear-gradient(90deg,#371b70 0%,#2770aa 25%,#39aebe 50%,#f2b05b 75%,#de5b42 100%)"></div><div style="display:flex;justify-content:space-between"><span id="tempMin">—</span><span id="tempMax">—</span></div></div><div id="coastSource" style="position:absolute;left:12px;bottom:48px;padding:4px 7px;background:#061526bd;border-radius:6px;color:#d5e7f3;font-size:10px">Načítám geografické pobřeží…</div></div>
+<div class="layout"><section class="panel"><div class="stage"><canvas id="scene"></canvas><button id="stageMotionToggle" type="button" aria-pressed="false" style="position:absolute;left:12px;top:12px;z-index:20;background:#e5f2fa;border:2px solid #5b9fbd;color:#123c55;border-radius:9px;padding:10px 13px;font-weight:800;box-shadow:0 2px 10px #00182799">⏸ Zastavit vše</button><div class="overlay">X-5 / 3D MODEL<br><span id="sceneState">Inicializuji 3D scénu…</span><br>Severní pól · ECMWF teplota, geopotenciál a proudnice větru U/V</div><div id="vortexCenterInfo" style="position:absolute;right:12px;top:12px;max-width:245px;padding:8px 10px;background:#061526df;border:1px solid #b69b55;border-radius:9px;color:#ffe6a3;font-size:11px;line-height:1.45;pointer-events:none">Centrum víru · výpočet z ECMWF…</div><div class="legend"><span><i class="dot" style="background:linear-gradient(90deg,#371b70,#2770aa,#39aebe,#f2b05b,#de5b42)"></i>Teplotní pole ECMWF</span><span><i class="dot" style="background:#eaf4ff"></i>Geopotenciální izolinie</span><span><i class="dot" style="background:#55d9ff"></i>Vektory větru U/V</span><span><i class="dot" style="background:#8cecff;box-shadow:0 0 7px #28bfff"></i>Proudnice · integrace U/V</span></div><div id="temperatureLegend" style="position:absolute;right:12px;bottom:48px;width:min(250px,58%);padding:9px 10px;background:#061526d9;border:1px solid #456984;border-radius:9px;font-size:11px;color:#eaf4ff"><div style="display:flex;justify-content:space-between;gap:8px"><b>ECMWF · teplota 10 hPa</b><span id="tempUnit">K / °C</span></div><div style="height:10px;margin:7px 0 4px;border-radius:8px;background:linear-gradient(90deg,#371b70 0%,#2770aa 25%,#39aebe 50%,#f2b05b 75%,#de5b42 100%)"></div><div style="display:flex;justify-content:space-between"><span id="tempMin">—</span><span id="tempMax">—</span></div></div><div id="coastSource" style="position:absolute;left:12px;bottom:48px;padding:4px 7px;background:#061526bd;border-radius:6px;color:#d5e7f3;font-size:10px">Načítám geografické pobřeží…</div></div>
 <section class="panel wide layer-panel" aria-label="Vrstvy globusu" style="margin-top:12px">
 <h2 style="margin:0 0 8px">Zobrazené vrstvy globusu</h2>
 <p class="small">Zapínejte a vypínejte jednotlivé datové vrstvy. Geografické popisky a pobřeží lze skrýt samostatně.</p>
@@ -64,7 +64,7 @@
 <p class="small">Přehrávání používá samostatné předpovědní kroky z jednoho běhu ECMWF IFS. Pohyblivé částice sledují proudnice vypočtené z U/V aktuálního kroku; při přechodu na další krok se současně obnoví teplotní pole, geopotenciální izolinie i proudění.</p>
 <div class="metrics"><div class="metric">Platnost zobrazeného pole<b id="timelineValid">Načítám…</b></div><div class="metric">Předpovědní krok<b id="timelineStep">—</b></div><div class="metric">Zonální vítr na 60° N · 10 hPa<b id="timelineU60">—</b><p class="small">m/s · záporná hodnota = východní vítr</p></div><div class="metric">Teplota polární oblasti · 10 hPa<b id="timelinePolarTemp">—</b><p class="small">K · průměr nad 60° N</p></div></div><div class="status" id="sswForecastSignal" style="margin-top:10px">Vyhodnocuji předpovědní signál zonálního větru…</div>
 <div class="control" style="margin-top:14px"><label for="timelineRange">Čas předpovědi <span class="value" id="timelinePosition">—</span></label><input id="timelineRange" type="range" min="0" max="0" value="0" step="1" disabled></div>
-<div class="buttons" style="margin-top:10px"><button id="timelinePlay" type="button" disabled>▶ Přehrát animaci</button><button id="timelinePauseAll" type="button" disabled>⏸ Pozastavit obě animace</button><button id="timelinePrev" type="button" disabled>◀ Předchozí</button><button id="timelineNext" type="button" disabled>Další ▶</button><button id="flowToggle" type="button" aria-pressed="false">Proudnice ⏸</button><button id="timelineRefresh" type="button">Obnovit předpověď</button></div>
+<div class="buttons" style="margin-top:10px"><button id="timelinePlay" type="button" disabled>▶ Přehrát animaci</button><button id="timelinePauseAll" type="button" aria-pressed="false">⏸ Pozastavit vše</button><button id="timelinePrev" type="button" disabled>◀ Předchozí</button><button id="timelineNext" type="button" disabled>Další ▶</button><button id="flowToggle" type="button" aria-pressed="false">Proudnice ⏸</button><button id="timelineRefresh" type="button">Obnovit předpověď</button></div>
 <div class="status" id="timelineStatus" style="margin-top:10px">Načítám časovou řadu ECMWF…</div>
 <div class="panel" style="margin-top:14px;padding:14px;background:#071a2b;border-color:#254762;color:#e6f3ff">
 <h3 style="margin:0 0 6px;color:#e6f3ff">Polární mapa ECMWF · severní polokoule</h3>
@@ -203,7 +203,7 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 const canvas=document.querySelector('#scene'),state=document.querySelector('#sceneState');
 let renderer,scene,camera,globe,vortex,streamGroup,ecmwfLayer,tempLayer,contourLayer,windLayer,centerLayer,geoLayer,auto=true,drag=false,lastX=0,lastY=0,rotX=1.12,rotY=0,zoom=4.45;
-const flowParticles=[];let flowAuto=true,flowClock=0,lastRenderTime=0;
+const flowParticles=[];let flowAuto=true,flowClock=0,lastRenderTime=0;let motionPaused=false;
 try{
  renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(canvas.clientWidth,canvas.clientHeight,false);
  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(38,canvas.clientWidth/canvas.clientHeight,.1,100);camera.position.set(0,0,zoom);
@@ -614,8 +614,8 @@ try{
  function animate(now=performance.now()){
   requestAnimationFrame(animate);
   const dt=lastRenderTime?Math.min(.05,(now-lastRenderTime)/1000):0;lastRenderTime=now;
-  if(auto&&!drag)rotY+=.0018;
-  if(flowAuto)flowClock+=dt;
+  if(auto&&!drag&&!motionPaused)rotY+=.0018;
+  if(flowAuto&&!motionPaused)flowClock+=dt;
   for(const p of flowParticles){const t=((p.phase+flowClock*p.speed)%1+1)%1;p.mesh.position.copy(p.curve.getPointAt(t));}
   scene.rotation.y=0;globe.parent.rotation.set(rotX,rotY,0);camera.position.z=zoom;renderer.render(scene,camera);
  }
@@ -624,6 +624,19 @@ try{
   const b=document.getElementById('flowToggle');
   if(b){b.textContent=flowAuto?'Proudnice ⏸':'Proudnice ▶';b.setAttribute('aria-pressed',String(!flowAuto));}
  };
+ window.X5SetAllMotion=function(paused){
+  motionPaused=!!paused;auto=!motionPaused;flowAuto=!motionPaused;
+  const label=motionPaused?'▶ Spustit vše':'⏸ Zastavit vše';
+  const stageButton=document.getElementById('stageMotionToggle');
+  const timelineButton=document.getElementById('timelinePauseAll');
+  if(stageButton){stageButton.textContent=label;stageButton.setAttribute('aria-pressed',String(motionPaused));}
+  if(timelineButton){timelineButton.textContent=label;timelineButton.setAttribute('aria-pressed',String(motionPaused));}
+  const flowButton=document.getElementById('flowToggle');
+  if(flowButton){flowButton.textContent=motionPaused?'Proudnice ▶':'Proudnice ⏸';flowButton.setAttribute('aria-pressed',String(motionPaused));}
+  document.dispatchEvent(new CustomEvent('x5:motion', {detail:{paused:motionPaused}}));
+ };
+ const stageMotionToggle=document.getElementById('stageMotionToggle');
+ if(stageMotionToggle)stageMotionToggle.addEventListener('click',()=>window.X5SetAllMotion(!motionPaused));
  const flowToggle=document.getElementById('flowToggle');
  if(flowToggle)flowToggle.addEventListener('click',()=>window.X5SetFlowAnimation(flowAuto));
  animate();
@@ -929,7 +942,7 @@ try{
    frames=d.frames.filter(f=>Array.isArray(f.grid)&&f.grid.length&&f.diagnostics&&f.valid_time_utc);
    if(frames.length<2)throw Error('nedostatek kompletních prostorových polí');
    range.min='0';range.max=String(frames.length-1);range.step='1';range.disabled=false;
-   ['timelinePlay','timelinePauseAll','timelinePrev','timelineNext'].forEach(id=>$(id).disabled=false);
+   ['timelinePlay','timelinePrev','timelineNext'].forEach(id=>$(id).disabled=false);
    await show(0);
    status.textContent='Načteno '+frames.length+' prostorových polí z jednoho běhu ECMWF. '+status.textContent;
   }catch(e){frames=[];range.disabled=true;play.disabled=true;status.textContent='Časovou animaci se nepodařilo načíst: '+e.message+'. Zkontrolujte dokončení aktualizace GitHub Actions.';}
@@ -942,21 +955,14 @@ try{
   startPlayback();
  });
  if(pauseAllButton)pauseAllButton.addEventListener('click',()=>{
-  if(!allPaused){
-   resumeTimelineAfterPause=!!timer;stop();allPaused=true;
-   if(typeof window.X5SetGlobeRotation==='function')window.X5SetGlobeRotation(true);
-   if(typeof window.X5SetFlowAnimation==='function')window.X5SetFlowAnimation(true);
-   pauseAllButton.textContent='▶ Obnovit obě animace';
-   pauseAllButton.setAttribute('aria-pressed','true');
-  }else{
-   allPaused=false;
-   if(typeof window.X5SetGlobeRotation==='function')window.X5SetGlobeRotation(false);
-   if(typeof window.X5SetFlowAnimation==='function')window.X5SetFlowAnimation(false);
-   pauseAllButton.textContent='⏸ Pozastavit obě animace';
-   pauseAllButton.setAttribute('aria-pressed','false');
-   if(resumeTimelineAfterPause)startPlayback();
-   resumeTimelineAfterPause=false;
-  }
+  const paused=pauseAllButton.getAttribute('aria-pressed')!=='true';
+  if(typeof window.X5SetAllMotion==='function')window.X5SetAllMotion(paused);
+  else {allPaused=paused;if(paused){resumeTimelineAfterPause=!!timer;stop();}else if(resumeTimelineAfterPause){startPlayback();resumeTimelineAfterPause=false;}}
+ });
+ document.addEventListener('x5:motion',event=>{
+  const paused=!!event.detail?.paused;
+  if(paused){resumeTimelineAfterPause=!!timer;stop();allPaused=true;}
+  else {allPaused=false;if(resumeTimelineAfterPause)startPlayback();resumeTimelineAfterPause=false;}
  });
  $('timelinePrev').addEventListener('click',()=>{stop();show(index-1);});
  $('timelineNext').addEventListener('click',()=>{stop();show(index+1);});
