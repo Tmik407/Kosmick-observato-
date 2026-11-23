@@ -19,6 +19,7 @@
 <p class="small" id="ecmwfGlobeState">ECMWF vrstva se načítá samostatně. Ovládání: tažením otáčejte glóbem, kolečkem přibližujte. Model zobrazuje fyzikální schéma cirkulace; není to naměřená mapa ani numerická předpověď.</p></section>
 <section class="panel wide" id="vortexDiagnostics" style="margin-top:14px"><h2>Geopotenciální diagnostika · ECMWF 10 hPa</h2><p class="small">Výpočty z prostorové mřížky severně od 55° N. Posun centra je vzdálenost minima geopotenciálu od severního pólu; nejde o automatickou klasifikaci rozštěpení víru.</p><div class="metrics"><div class="metric">Minimum geopotenciálu<b id="diagZmin">—</b></div><div class="metric">Maximum geopotenciálu<b id="diagZmax">—</b></div><div class="metric">Polární průměr geopotenciálu<b id="diagZmean">—</b></div><div class="metric">Posun centra od pólu<b id="diagDisplacement">—</b></div></div><p class="small" id="diagSummary">Čekám na data ECMWF…</p></section>
 <section class="panel wide" id="windDiagnostics" style="margin-top:14px"><h2>Větrná diagnostika · ECMWF 10 hPa</h2><p class="small">Výpočty ze složek U (západ–východ) a V (jih–sever) v mřížce severně od 55° N. Kladná U znamená západní proudění; záporná U východní. Jde o prostorové statistiky dostupné hladiny 10 hPa.</p><div class="metrics"><div class="metric">Průměrná rychlost větru<b id="windMean">—</b></div><div class="metric">Nejvyšší rychlost větru<b id="windMax">—</b></div><div class="metric">Průměrná zonální složka U<b id="windU">—</b></div><div class="metric">Průměrná meridionální složka V<b id="windV">—</b></div></div><p class="small" id="windSummary">Čekám na data ECMWF…</p></section>
+<section class="panel wide" id="vortexStrength" style="margin-top:14px"><h2>Hodnocení síly polárního víru · ECMWF 10 hPa</h2><p class="small">Stav je určen podle průměrné zonální složky U v zeměpisné šířce nejbližší 60° N, zprůměrované přes dostupné délky. Kladné U značí západní vítr, záporné východní. Prahy níže jsou orientační kritéria projektu X-5, nikoli oficiální klasifikace WMO.</p><div class="metrics"><div class="metric">Stav víru<b id="vortexState">Čekám na data…</b></div><div class="metric">Zonální vítr kolem 60° N<b id="vortexU60">—</b></div><div class="metric">Použitá zeměpisná šířka<b id="vortexLat60">—</b></div><div class="metric">Posun geopotenciálního centra<b id="vortexOffset">—</b></div></div><p class="small" id="vortexStateNote">Po načtení ECMWF se vyhodnotí dostupná data.</p></section>
 <section class="panel wide" id="levelCompare" style="margin-top:14px">
 <h2>Porovnání stratosférických hladin · NASA GSFC</h2>
 <p class="small">Vyberte hladinu a porovnejte polární průměr teploty 60–90° N a zonální vítr na 60° N. Jde o denní diagnostické řady NASA GSFC/Ozone Watch, nikoli o prostorové mapy.</p>
@@ -418,6 +419,24 @@ try{
    setWind('windMean',meanSpeed.toFixed(1)+' m/s');setWind('windMax',maxSpeed.toFixed(1)+' m/s');
    setWind('windU',(meanU>=0?'+':'')+meanU.toFixed(1)+' m/s');setWind('windV',(meanV>=0?'+':'')+meanV.toFixed(1)+' m/s');
    setWind('windSummary',polarWind.length+' platných bodů · '+(meanU>=0?'převažuje západní':'převažuje východní')+' zonální složka · '+data.valid_time_utc+'.');
+   // Stav víru: zonální průměr U na dostupné šířce nejblíže 60° N.
+   const latitudeRows=new Map();
+   polarWind.forEach(p=>{const key=Number(p.lat).toFixed(3);if(!latitudeRows.has(key))latitudeRows.set(key,[]);latitudeRows.get(key).push(Number(p.u));});
+   const row60=[...latitudeRows.entries()].map(([lat,values])=>({lat:Number(lat),values})).sort((a,b)=>Math.abs(a.lat-60)-Math.abs(b.lat-60))[0];
+   if(row60&&row60.values.length>=8){
+    const u60=row60.values.reduce((a,b)=>a+b,0)/row60.values.length;
+    let state,note;
+    if(u60<=0){state='Obrácené proudění';note='Průměrný zonální vítr je východní nebo nulový. Jde o signál možného výrazného oslabení; samotný údaj nepotvrzuje náhlé stratosférické oteplení.';}
+    else if(u60<15){state='Oslabený vír';note='Západní proudění je slabé podle orientačního prahu projektu X-5.';}
+    else if(u60<30){state='Běžná síla';note='Západní proudění je ve středním pásmu orientační klasifikace projektu X-5.';}
+    else{state='Silný vír';note='Západní proudění je výrazné podle orientačního prahu projektu X-5.';}
+    setWind('vortexState',state);setWind('vortexU60',(u60>=0?'+':'')+u60.toFixed(1)+' m/s');
+    setWind('vortexLat60',row60.lat.toFixed(2)+'° N · '+row60.values.length+' bodů');
+    const offsetEl=document.getElementById('diagDisplacement');
+    setWind('vortexOffset',offsetEl&&offsetEl.textContent!=='—'?offsetEl.textContent:'viz geopotenciální diagnostika');
+    setWind('vortexStateNote',note+' Čas platnosti: '+data.valid_time_utc+'.');
+   }else{setWind('vortexState','Nedostatek dat');setWind('vortexStateNote','Pro šířkový průměr kolem 60° N není dost platných bodů.');}
+
    const windBuckets=[[],[],[]],windColors=[0x55d9ff,0xffc46b,0xff765f];
    data.grid.forEach((p,i)=>{
     if(i%4!==0||Number(p.lat)<55)return;
