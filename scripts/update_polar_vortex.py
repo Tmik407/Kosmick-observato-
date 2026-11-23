@@ -188,7 +188,16 @@ def main():
 
     history_path = Path("data/polar-vortex-history.json")
     if history_path.exists():
-        history = json.loads(history_path.read_text(encoding="utf-8"))
+        raw_history = history_path.read_text(encoding="utf-8").strip()
+        # Recover legacy files that ended with the two literal characters \\ and n
+        # instead of a real newline (older exporter versions wrote "\\\\n").
+        while raw_history.endswith("\\\\n"):
+            raw_history = raw_history[:-2].rstrip()
+        try:
+            history = json.loads(raw_history)
+        except json.JSONDecodeError:
+            print("Warning: invalid historical JSON; rebuilding a clean archive from the current run.")
+            history = {"schema_version": 1, "source": "ECMWF IFS Open Data", "records": []}
         if not isinstance(history, dict) or not isinstance(history.get("records"), list):
             raise RuntimeError("Invalid polar-vortex history file")
     else:
