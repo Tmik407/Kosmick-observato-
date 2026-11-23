@@ -38,14 +38,35 @@ jobs:
           python - <<'PY'
           import re
           from pathlib import Path
-          html=Path("_site/index.html").read_text(encoding="utf-8")
-          scripts=re.findall(r"<script\b[^>]*>(.*?)</script>",html,re.I|re.S)
-          for i,source in enumerate(scripts,1):
-              Path(f"/tmp/x5-inline-{i}.js").write_text(source,encoding="utf-8")
-          print(f"Extracted {len(scripts)} inline JavaScript blocks for syntax validation.")
+          files = [Path("_site/index.html"), Path("_site/polarni-vir.html")]
+          count = 0
+          for page in files:
+              source = page.read_text(encoding="utf-8")
+              for i, match in enumerate(re.finditer(r"<script\\b([^>]*)>(.*?)</script>", source, re.I|re.S), 1):
+                  attrs, body = match.groups()
+                  if re.search(r'type=["\\']text/plain["\\']', attrs, re.I) or not body.strip():
+                      continue
+                  target = Path(f"/tmp/x5-{page.stem}-inline-{i}.js")
+                  target.write_text(body, encoding="utf-8")
+                  count += 1
+              if page.name == "polarni-vir.html":
+                  for src in re.findall(r'<script\\b[^>]*\\bsrc=["\\']([^"\\']+)', source, re.I):
+                      if src.startswith(("http://", "https://", "//")):
+                          continue
+                      local = (page.parent / src.split("?", 1)[0].lstrip("/")).resolve() if not src.startswith("/") else (Path("_site") / src.lstrip("/")).resolve()
+                      if not local.is_file():
+                          raise SystemExit(f"Missing local script: {src}")
+                      if local.suffix == ".js":
+                          Path(f"/tmp/x5-external-{count}.js").write_text(local.read_text(encoding="utf-8"), encoding="utf-8")
+                          count += 1
+          print(f"Extracted {count} active inline and local JavaScript files for syntax validation.")
           PY
-          for file in /tmp/x5-inline-*.js; do node --check "$file"; done
-          echo "Inline JavaScript syntax checks passed."
+          for file in /tmp/x5-*.js; do node --check "$file"; done
+          grep -q 'color-scheme:dark' _site/polarni-vir.html
+          ! grep -q 'X-5 LIGHT SCIENTIFIC THEME' _site/polarni-vir.html
+          grep -q 'id="p3dCanvas"' _site/polarni-vir.html
+          grep -q 'gfs-polarni-3d.js' _site/polarni-vir.html
+          echo "Polární vír: tmavý motiv, 3D plátno a JavaScriptové závislosti ověřeny."
       - name: Nahrát kompletní web
         uses: actions/upload-pages-artifact@v3
         with:
@@ -59,7 +80,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$SITE_URL"
-          for path in index.html polarni-vir.html ch1411-impact.json space-weather-history.json space-weather-status.json coronal-hole-history.json giro-status.json irtam-density.json aurora-history.json bfo-bdv-quality-2026-11-01.json manifest.webmanifest sw.js offline.html icon.svg; do
+          for path in index.html polarni-vir.html gfs-polarni-3d.js ch1411-impact.json space-weather-history.json space-weather-status.json coronal-hole-history.json giro-status.json irtam-density.json aurora-history.json bfo-bdv-quality-2026-11-01.json manifest.webmanifest sw.js offline.html icon.svg; do
             ok=0
             for attempt in $(seq 1 12); do
               code=$(curl --silent --show-error --location --output "/tmp/x5-check" --write-out "%{http_code}" "$SITE_URL$path" || true)
@@ -91,4 +112,12 @@ jobs:
           grep -q 'serviceWorker.register' /tmp/x5-index.html
           grep -q 'beforeinstallprompt' /tmp/x5-index.html
           echo "PWA manifest, service worker, offline stránka a instalační rozhraní ověřeny."
+          curl --fail --silent --show-error --location "${SITE_URL}polarni-vir.html" -o /tmp/x5-polar.html
+          grep -q 'id="polar3dModel"' /tmp/x5-polar.html
+          grep -q 'id="p3dCanvas"' /tmp/x5-polar.html
+          grep -q 'gfs-polarni-3d.js' /tmp/x5-polar.html
+          ! grep -q 'X-5 LIGHT SCIENTIFIC THEME' /tmp/x5-polar.html
+          curl --fail --silent --show-error --location "${SITE_URL}gfs-polarni-3d.js" -o /tmp/x5-gfs-3d.js
+          node --check /tmp/x5-gfs-3d.js
+          echo "Ověřeno: stránka Polární vír obsahuje aktivní 3D plátno a nasazený 3D skript."
           echo "Smoke test X-5 dokončen."
