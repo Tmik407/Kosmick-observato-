@@ -18,7 +18,7 @@
 </section>
 <p class="small" id="ecmwfGlobeState">ECMWF vrstva se načítá samostatně. Ovládání: tažením otáčejte glóbem, kolečkem přibližujte. Model zobrazuje fyzikální schéma cirkulace; není to naměřená mapa ani numerická předpověď.</p></section>
 <section class="panel wide" id="vortexDiagnostics" style="margin-top:14px"><h2>Geopotenciální diagnostika · ECMWF 10 hPa</h2><p class="small">Výpočty z prostorové mřížky severně od 55° N. Posun centra je vzdálenost minima geopotenciálu od severního pólu; nejde o automatickou klasifikaci rozštěpení víru.</p><div class="metrics"><div class="metric">Minimum geopotenciálu<b id="diagZmin">—</b></div><div class="metric">Maximum geopotenciálu<b id="diagZmax">—</b></div><div class="metric">Polární průměr geopotenciálu<b id="diagZmean">—</b></div><div class="metric">Posun centra od pólu<b id="diagDisplacement">—</b></div></div><p class="small" id="diagSummary">Čekám na data ECMWF…</p></section>
-<section class="panel wide" id="vortexForecastDiagnostics" style="margin-top:14px"><h2>Vývoj centra a deformace víru · ECMWF 10 hPa</h2><p class="small">Automatická diagnostika každého dostupného prognostického kroku z jednoho běhu ECMWF. Centrum se určuje z lokálních minim geopotenciálu; posun je vzdálenost od severního pólu. „Možné dvojité minimum“ je screeningový signál, nikoli potvrzené rozštěpení SSW.</p><div class="metrics"><div class="metric">Prognostické kroky<b id="vortexForecastCount">Načítám…</b></div><div class="metric">Největší posun centra<b id="vortexForecastMaxShift">—</b></div><div class="metric">Nejvyšší deformace jádra<b id="vortexForecastMaxElongation">—</b></div><div class="metric">Signál dvojitého minima<b id="vortexForecastSplit">—</b></div></div><div style="overflow-x:auto;margin-top:10px"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="text-align:left;background:#edf4fa"><th style="padding:8px">Krok / platnost UTC</th><th style="padding:8px">Centrum</th><th style="padding:8px">Posun</th><th style="padding:8px">Deformace</th><th style="padding:8px">Geometrický signál</th></tr></thead><tbody id="vortexForecastBody"><tr><td colspan="5" style="padding:10px">Načítám prognostickou sekvenci ECMWF…</td></tr></tbody></table></div><div class="forecastCharts" aria-label="Grafy vývoje předpovědi ECMWF"><div class="forecastChart"><h3>Poloha centra · zeměpisná šířka a délka</h3><canvas id="forecastPositionChart" aria-label="Vývoj zeměpisné šířky a délky centra víru"></canvas><p class="small">Modrá: šířka ° N · oranžová: délka ° E</p></div><div class="forecastChart"><h3>Deformace jádra</h3><canvas id="forecastElongationChart" aria-label="Vývoj deformace jádra v procentech"></canvas></div><div class="forecastChart"><h3>Vzdálenost centra od severního pólu</h3><canvas id="forecastShiftChart" aria-label="Vývoj vzdálenosti centra od severního pólu v kilometrech"></canvas></div><div class="forecastChart"><h3>Zonální vítr kolem 60° N</h3><canvas id="forecastWindChart" aria-label="Vývoj zonálního větru kolem 60 stupňů severní šířky"></canvas><p class="small">Průměr složky U přes délky; interpolace na 60° N z dostupných šířek</p></div></div><p class="small" id="vortexForecastStatus">Čekám na data ECMWF…</p></section>
+<section class="panel wide" id="vortexForecastDiagnostics" style="margin-top:14px"><h2>Vývoj centra a deformace víru · ECMWF 10 hPa</h2><p class="small">Automatická diagnostika každého dostupného prognostického kroku z jednoho běhu ECMWF. Centrum se určuje z lokálních minim geopotenciálu; posun je vzdálenost od severního pólu. „Možné dvojité minimum“ je screeningový signál, nikoli potvrzené rozštěpení SSW.</p><div class="metrics"><div class="metric">Prognostické kroky<b id="vortexForecastCount">Načítám…</b></div><div class="metric">Největší posun centra<b id="vortexForecastMaxShift">—</b></div><div class="metric">Nejvyšší deformace jádra<b id="vortexForecastMaxElongation">—</b></div><div class="metric">Signál dvojitého minima<b id="vortexForecastSplit">—</b></div></div><div style="overflow-x:auto;margin-top:10px"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="text-align:left;background:#edf4fa"><th style="padding:8px">Krok / platnost UTC</th><th style="padding:8px">Centrum</th><th style="padding:8px">Posun</th><th style="padding:8px">Deformace</th><th style="padding:8px">Geometrický signál</th></tr></thead><tbody id="vortexForecastBody"><tr><td colspan="5" style="padding:10px">Načítám prognostickou sekvenci ECMWF…</td></tr></tbody></table></div><div class="forecastCharts" aria-label="Grafy vývoje předpovědi ECMWF"><div class="forecastChart"><h3>Zeměpisná šířka centra (° N)</h3><canvas id="forecastLatitudeChart" aria-label="Vývoj zeměpisné šířky centra víru"></canvas></div><div class="forecastChart"><h3>Zeměpisná délka centra (° E)</h3><canvas id="forecastLongitudeChart" aria-label="Vývoj zeměpisné délky centra víru"></canvas></div><div class="forecastChart"><h3>Deformace jádra (%)</h3><canvas id="forecastElongationChart" aria-label="Vývoj deformace jádra v procentech"></canvas></div><div class="forecastChart"><h3>Vzdálenost centra od severního pólu (km)</h3><canvas id="forecastShiftChart" aria-label="Vývoj vzdálenosti centra od severního pólu v kilometrech"></canvas></div><div class="forecastChart"><h3>Zonální vítr kolem 60° N (m/s)</h3><canvas id="forecastWindChart" aria-label="Vývoj zonálního větru kolem 60 stupňů severní šířky"></canvas><p class="small">Průměr složky U přes délky; interpolace na 60° N z dostupných šířek. Kladné hodnoty = západní vítr, záporné = východní.</p></div></div><p class="small" id="vortexForecastStatus">Čekám na data ECMWF…</p></section>
 <section class="panel wide" id="windDiagnostics" style="margin-top:14px"><h2>Větrná diagnostika · ECMWF 10 hPa</h2><p class="small">Výpočty ze složek U (západ–východ) a V (jih–sever) v mřížce severně od 55° N. Kladná U znamená západní proudění; záporná U východní. Jde o prostorové statistiky dostupné hladiny 10 hPa.</p><div class="metrics"><div class="metric">Průměrná rychlost větru<b id="windMean">—</b></div><div class="metric">Nejvyšší rychlost větru<b id="windMax">—</b></div><div class="metric">Průměrná zonální složka U<b id="windU">—</b></div><div class="metric">Průměrná meridionální složka V<b id="windV">—</b></div></div><p class="small" id="windSummary">Čekám na data ECMWF…</p></section>
 <section class="panel wide" id="vortexStrength" style="margin-top:14px"><h2>Hodnocení síly polárního víru · ECMWF 10 hPa</h2><p class="small">Stav je určen podle průměrné zonální složky U v zeměpisné šířce nejbližší 60° N, zprůměrované přes dostupné délky. Kladné U značí západní vítr, záporné východní. Prahy níže jsou orientační kritéria projektu X-5, nikoli oficiální klasifikace WMO.</p><div class="metrics"><div class="metric">Stav víru<b id="vortexState">Čekám na data…</b></div><div class="metric">Zonální vítr kolem 60° N<b id="vortexU60">—</b></div><div class="metric">Použitá zeměpisná šířka<b id="vortexLat60">—</b></div><div class="metric">Posun geopotenciálního centra<b id="vortexOffset">—</b></div></div><p class="small" id="vortexStateNote">Po načtení ECMWF se vyhodnotí dostupná data.</p></section>
 <section class="panel wide" id="levelCompare" style="margin-top:14px">
@@ -1270,37 +1270,44 @@ try{
   const f=(60-lo.lat)/(hi.lat-lo.lat);
   return lo.u+(hi.u-lo.u)*f;
  }
- function drawForecastChart(id,rows,series){
+ function drawForecastChart(id,rows,values,options={}){
   const canvas=$(id);if(!canvas)return;
-  const rect=canvas.getBoundingClientRect(),w=Math.max(280,Math.floor(rect.width||320)),h=170,dpr=Math.min(2,window.devicePixelRatio||1);
+  const rect=canvas.getBoundingClientRect(),w=Math.max(280,Math.floor(rect.width||320)),h=190,dpr=Math.min(2,window.devicePixelRatio||1);
   canvas.width=Math.floor(w*dpr);canvas.height=Math.floor(h*dpr);
   const c=canvas.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,w,h);
-  const left=38,right=12,top=12,bottom=28,pw=w-left-right,ph=h-top-bottom;
-  const values=series.flatMap(x=>x.values).filter(Number.isFinite);
-  if(!values.length){c.fillStyle='#526b82';c.font='12px Arial';c.fillText('Data nejsou dostupná',12,30);return;}
-  let min=Math.min(...values),max=Math.max(...values);
-  if(min===max){min-=1;max+=1;}else{const pad=(max-min)*.14;min-=pad;max+=pad;}
+  const left=48,right=options.zeroLine?22:12,top=20,bottom=32,pw=w-left-right,ph=h-top-bottom;
+  const finite=values.filter(Number.isFinite);
+  if(!finite.length){c.fillStyle='#526b82';c.font='12px Arial';c.fillText('Data nejsou dostupná',12,30);return;}
+  let min=Math.min(...finite),max=Math.max(...finite);
+  if(options.zeroLine){min=Math.min(0,min);max=Math.max(0,max);}
+  if(min===max){min-=1;max+=1;}
+  const pad=(max-min)*.12;min-=pad;max+=pad;
   const x=i=>left+(rows.length===1?pw/2:i*pw/(rows.length-1)),y=v=>top+(max-v)*ph/(max-min);
+  const decimals=options.decimals??1,fmtV=v=>v.toFixed(decimals)+(options.suffix||'');
   c.font='10px Arial';c.textAlign='right';c.textBaseline='middle';c.fillStyle='#526b82';
-  for(let k=0;k<=4;k++){const v=min+(max-min)*k/4,yy=y(v);c.strokeStyle='#dce6ee';c.lineWidth=1;c.beginPath();c.moveTo(left,yy);c.lineTo(w-right,yy);c.stroke();c.fillText(v.toFixed(0),left-6,yy);}
-  c.textAlign='center';c.textBaseline='top';
-  rows.forEach((r,i)=>c.fillText('+'+r.frame.step_hours+'h',x(i),h-bottom+8));
-  for(const item of series){
-   c.strokeStyle=item.color;c.fillStyle=item.color;c.lineWidth=2.5;c.beginPath();
-   let started=false;
-   item.values.forEach((v,i)=>{if(!Number.isFinite(v))return;const xx=x(i),yy=y(v);if(!started){c.moveTo(xx,yy);started=true;}else c.lineTo(xx,yy);});
-   c.stroke();
-   item.values.forEach((v,i)=>{if(!Number.isFinite(v))return;c.beginPath();c.arc(x(i),y(v),3.5,0,Math.PI*2);c.fill();});
-  }
+  for(let k=0;k<=4;k++){const v=min+(max-min)*k/4,yy=y(v);c.strokeStyle='#dce6ee';c.lineWidth=1;c.beginPath();c.moveTo(left,yy);c.lineTo(w-right,yy);c.stroke();c.fillText(v.toFixed(decimals),left-6,yy);}
+  if(options.zeroLine&&min<0&&max>0){const yy=y(0);c.strokeStyle='#d97732';c.lineWidth=1.8;c.setLineDash([5,3]);c.beginPath();c.moveTo(left,yy);c.lineTo(w-right,yy);c.stroke();c.setLineDash([]);c.textAlign='left';c.fillStyle='#b45c22';c.fillText('0',w-right+3,yy);}
+  c.textAlign='center';c.textBaseline='top';c.fillStyle='#526b82';
+  rows.forEach((r,i)=>c.fillText('+'+r.frame.step_hours+'h',x(i),h-bottom+10));
+  c.strokeStyle=options.color||'#1688bf';c.fillStyle=options.color||'#1688bf';c.lineWidth=2.5;c.beginPath();
+  let started=false;
+  values.forEach((v,i)=>{if(!Number.isFinite(v))return;const xx=x(i),yy=y(v);if(!started){c.moveTo(xx,yy);started=true;}else c.lineTo(xx,yy);});
+  c.stroke();
+  values.forEach((v,i)=>{
+   if(!Number.isFinite(v))return;
+   const xx=x(i),yy=y(v),crossing=options.zeroLine&&v<=0&&(i===0||values[i-1]>0);
+   c.beginPath();c.arc(xx,yy,4,0,Math.PI*2);c.fillStyle=crossing?'#dc4b45':(options.color||'#1688bf');c.fill();
+   c.font='bold 10px Arial';c.textAlign='center';c.textBaseline=yy<top+18?'top':'bottom';
+   c.fillStyle=crossing?'#c03932':'#29465d';
+   c.fillText(fmtV(v),xx,yy+(yy<top+18?8:-7));
+  });
  }
  function renderForecastCharts(rows){
-  drawForecastChart('forecastPositionChart',rows,[
-   {values:rows.map(x=>x.result.center.lat),color:'#1688bf'},
-   {values:rows.map(x=>x.result.center.lon),color:'#e28a32'}
-  ]);
-  drawForecastChart('forecastElongationChart',rows,[{values:rows.map(x=>x.result.elongation),color:'#1688bf'}]);
-  drawForecastChart('forecastShiftChart',rows,[{values:rows.map(x=>x.result.displacement),color:'#1688bf'}]);
-  drawForecastChart('forecastWindChart',rows,[{values:rows.map(x=>x.wind60),color:'#1688bf'}]);
+  drawForecastChart('forecastLatitudeChart',rows,rows.map(x=>x.result.center.lat),{decimals:1,suffix:'°',color:'#1688bf'});
+  drawForecastChart('forecastLongitudeChart',rows,rows.map(x=>x.result.center.lon),{decimals:1,suffix:'°',color:'#e28a32'});
+  drawForecastChart('forecastElongationChart',rows,rows.map(x=>x.result.elongation),{decimals:1,suffix:'%',color:'#1688bf'});
+  drawForecastChart('forecastShiftChart',rows,rows.map(x=>x.result.displacement),{decimals:0,suffix:' km',color:'#1688bf'});
+  drawForecastChart('forecastWindChart',rows,rows.map(x=>x.wind60),{decimals:1,suffix:'',color:'#1688bf',zeroLine:true});
  }
  window.addEventListener('resize',()=>{if(window.X5ForecastChartRows)renderForecastCharts(window.X5ForecastChartRows);});
  async function loadForecastDiagnostics(){
