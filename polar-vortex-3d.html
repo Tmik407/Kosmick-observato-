@@ -170,6 +170,8 @@
   {name:'České vnitrozemí',lat:49.95,lon:14.45,elev:350,band:'mid',place:'Pražská kotlina a okolí',note:'Přechodové podmínky ovlivňuje poloha tlakových útvarů, teplota v přízemní vrstvě a intenzita srážek.'}
  ];
  const colors={low:'#64b5d8',mid:'#8ac47a',high:'#e5bd63',mountain:'#d97969'};
+ let pendingWeatherUpdate=null;
+ window.addEventListener('x5:winter-weather',event=>{pendingWeatherUpdate=event.detail;if(typeof window.X5UpdateWinterWeather==='function'&&event.detail)window.X5UpdateWinterWeather(event.detail.items,event.detail.stamp);});
  function init(){
   if(!window.L){root.innerHTML='<div style="padding:18px;color:#17324a">Mapový modul se nepodařilo načíst. Zkuste stránku obnovit.</div>';return;}
   const map=L.map(root,{scrollWheelZoom:false}).setView([49.8,15.45],7);
@@ -193,6 +195,7 @@
    const caption=document.querySelector('.winter-map-caption');
    if(caption)caption.textContent='Barevné kruhy: modelová teplota nyní (modrá = chladněji, červená = tepleji). Přepínač „Aktuální modelové počasí“ ovládá vrstvu. Zdroj: Open-Meteo · '+stamp+'. Nejde o přímé měření.';
   };
+  if(pendingWeatherUpdate)window.X5UpdateWinterWeather(pendingWeatherUpdate.items,pendingWeatherUpdate.stamp);
   function selectRegion(r){
    const box=document.getElementById('czWinterRegionInfo');
    box.innerHTML='<b>'+r.name+'</b><p class="small" style="margin:5px 0">Referenční místo: '+r.place+' · orientační výška '+r.elev.toLocaleString('cs-CZ')+' m n. m.</p><p class="small" style="margin:0">'+r.note+'</p>';
@@ -920,7 +923,7 @@ try{
     return {name:points[i].name,lat:points[i].lat,lon:points[i].lon,temp:Number(c.temperature_2m),wind:Number(c.wind_speed_10m),prec:Number(c.precipitation),snow:Number(c.snowfall),weatherCode:Number(c.weather_code),depth:Number.isFinite(depth)?depth*100:NaN};
    });
    const currentStamp=new Date().toLocaleString("cs-CZ",{timeZone:"Europe/Prague"});
-   if(typeof window.X5UpdateWinterWeather==="function")window.X5UpdateWinterWeather(currentItems,currentStamp);
+   window.dispatchEvent(new CustomEvent("x5:winter-weather",{detail:{items:currentItems,stamp:currentStamp}}));
    const rows=points.map((p,i)=>{
     const x=summary(data[i]),s=signal(x);
     return "<tr><td style=\"padding:9px;border-top:1px solid #29445f\"><b>"+p.name+"</b><div class=\"small\">"+p.kind+"</div></td>"+
