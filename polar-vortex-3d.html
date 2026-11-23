@@ -269,10 +269,16 @@
 <div class="metric">Časový rozsah<b id="wxRange">72 hodin</b><p class="small">Hodinová data od aktuálního času</p></div>
 </div>
 <div class="status" id="wxNotice" style="margin-top:10px">Připojuji se k předpovědnímu rozhraní…</div>
+<div class="metrics" style="margin-top:12px">
+<div class="metric">Nejchladnější místo<b id="wxColdest">Čekám na data</b><p class="small">Podle minimální teploty za 72 hodin</p></div>
+<div class="metric">Nejvíce nového sněhu<b id="wxSnowiest">Čekám na data</b><p class="small">Součet modelového sněžení za 72 hodin</p></div>
+<div class="metric">Nejvyšší pokrývka<b id="wxDeepest">Čekám na data</b><p class="small">Aktuální modelová výška sněhu</p></div>
+</div>
+<div class="status" style="margin-top:10px">Porovnání 9 referenčních míst: aktuální teplota, rozsah teplot, srážky a nový sníh za 72 hodin, modelová sněhová pokrývka a maximální vítr. Tabulka je seřazena podle nového sněhu sestupně.</div>
 <div style="overflow-x:auto;margin-top:12px">
-<table style="width:100%;border-collapse:collapse;font-size:13px;min-width:650px">
-<thead><tr style="color:#9fc9e7;text-align:left"><th style="padding:9px">Oblast / referenční místo</th><th style="padding:9px">Teplota min–max</th><th style="padding:9px">Srážky</th><th style="padding:9px">Nový sníh</th><th style="padding:9px">Max. vítr</th><th style="padding:9px">Signál</th></tr></thead>
-<tbody id="wxRows"><tr><td colspan="6" style="padding:10px">Čekám na hodinová data…</td></tr></tbody>
+<table style="width:100%;border-collapse:collapse;font-size:13px;min-width:900px">
+<thead><tr style="color:#9fc9e7;text-align:left"><th style="padding:9px">Oblast / referenční místo</th><th style="padding:9px">Teplota nyní</th><th style="padding:9px">Teplota min–max</th><th style="padding:9px">Srážky / 72 h</th><th style="padding:9px">Nový sníh / 72 h</th><th style="padding:9px">Pokrývka nyní</th><th style="padding:9px">Max. vítr</th><th style="padding:9px">Signál</th></tr></thead>
+<tbody id="wxRows"><tr><td colspan="8" style="padding:10px">Čekám na hodinová data…</td></tr></tbody>
 </table>
 </div>
 <div class="buttons" style="margin-top:12px">
@@ -281,7 +287,7 @@
 <a class="btn" href="https://www.chmi.cz/predpoved-pocasi/rizika" target="_blank" rel="noopener">Výstrahy ČHMÚ</a>
 <a class="btn" href="https://open-meteo.com/en/docs" target="_blank" rel="noopener">Metodika a proměnné Open-Meteo</a>
 </div>
-<p class="small" style="margin-top:10px">Referenční body: Most, Klínovec, Pec pod Sněžkou, Praděd, Kvilda, Lysá hora, Jihlava, Praha a Brno. Souhrny jsou vypočteny z hodinových hodnot: minimum a maximum teploty, součet srážek a sněžení, maximum rychlosti větru. Sníh v okolí bodu se může výrazně lišit podle nadmořské výšky a expozice.</p>
+<p class="small" style="margin-top:10px">Referenční body: Most, Klínovec, Pec pod Sněžkou, Praděd, Kvilda, Lysá hora, Jihlava, Praha a Brno. Souhrny jsou vypočteny z hodinových hodnot: aktuální teplota, minimum a maximum teploty, součet srážek a nového sněžení, aktuální modelová sněhová pokrývka a maximum rychlosti větru. Sníh v okolí bodu se může výrazně lišit podle nadmořské výšky a expozice.</p>
 </section>
 <section class="panel wide" id="czWinterImpact">
 <h2>Vliv polárního víru na zimní počasí v České republice</h2>
@@ -922,7 +928,10 @@ try{
   const vals=k=>ix.map(i=>Number((h[k]||[])[i])).filter(Number.isFinite);
   const temp=vals("temperature_2m"),prec=vals("precipitation"),snow=vals("snowfall"),wind=vals("wind_speed_10m");
   const total=a=>a.reduce((s,v)=>s+v,0);
-  return {min:Math.min(...temp),max:Math.max(...temp),prec:total(prec),snow:total(snow),wind:Math.max(...wind)};
+  const c=d.current||{};
+  const near=times.map((t,i)=>({delta:Math.abs(new Date(t).getTime()-Date.now()),i})).sort((a,b)=>a.delta-b.delta)[0];
+  const depth=near&&Number.isFinite(Number((h.snow_depth||[])[near.i]))?Number((h.snow_depth||[])[near.i])*100:NaN;
+  return {current:Number(c.temperature_2m),depth,min:Math.min(...temp),max:Math.max(...temp),prec:total(prec),snow:total(snow),wind:Math.max(...wind)};
  }
  function signal(x){
   if(x.snow>=5)return "Sněhové srážky";
@@ -954,16 +963,24 @@ try{
    });
    const currentStamp=new Date().toLocaleString("cs-CZ",{timeZone:"Europe/Prague"});
    window.dispatchEvent(new CustomEvent("x5:winter-weather",{detail:{items:currentItems,stamp:currentStamp}}));
-   const rows=points.map((p,i)=>{
-    const x=summary(data[i]),s=signal(x);
-    return "<tr><td style=\"padding:9px;border-top:1px solid #29445f\"><b>"+p.name+"</b><div class=\"small\">"+p.kind+"</div></td>"+
-     "<td style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.min)+" až "+fmt(x.max)+" °C</td>"+
-     "<td style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.prec)+" mm</td>"+
-     "<td style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.snow)+" cm</td>"+
-     "<td style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.wind)+" m/s</td>"+
-     "<td style=\"padding:9px;border-top:1px solid #29445f\">"+s+"</td></tr>";
-   }).join("");
+   const compared=points.map((p,i)=>{const x=summary(data[i]);return {p,x,s:signal(x)};});
+   const rows=compared.slice().sort((a,b)=>(Number.isFinite(b.x.snow)?b.x.snow:-1)-(Number.isFinite(a.x.snow)?a.x.snow:-1)).map(({p,x,s})=>
+    "<tr><td style=\"padding:9px;border-top:1px solid #29445f\"><b>"+p.name+"</b><div class=\"small\">"+p.kind+"</div></td>"+
+    "<td style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.current)+" °C</td>"+
+    "<td style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.min)+" až "+fmt(x.max)+" °C</td>"+
+    "<td style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.prec)+" mm</td>"+
+    "<td style=\"padding:9px;border-top:1px solid #29445f\"><b>"+fmt(x.snow)+" cm</b></td>"+
+    "<td style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.depth)+" cm</td>"+
+    "<td style=\"padding:9px;border-top:1px solid #29445f\">"+fmt(x.wind)+" m/s</td>"+
+    "<td style=\"padding:9px;border-top:1px solid #29445f\">"+s+"</td></tr>"
+   ).join("");
    $("wxRows").innerHTML=rows;
+   const coldest=compared.filter(a=>Number.isFinite(a.x.min)).sort((a,b)=>a.x.min-b.x.min)[0];
+   const snowiest=compared.filter(a=>Number.isFinite(a.x.snow)).sort((a,b)=>b.x.snow-a.x.snow)[0];
+   const deepest=compared.filter(a=>Number.isFinite(a.x.depth)).sort((a,b)=>b.x.depth-a.x.depth)[0];
+   $("wxColdest").textContent=coldest?coldest.p.name+" · "+fmt(coldest.x.min)+" °C":"Nedostupné";
+   $("wxSnowiest").textContent=snowiest?snowiest.p.name+" · "+fmt(snowiest.x.snow)+" cm":"Nedostupné";
+   $("wxDeepest").textContent=deepest?deepest.p.name+" · "+fmt(deepest.x.depth)+" cm":"Nedostupné";
    const now=new Date();
    $("wxStatus").textContent="Data načtena";
    $("wxUpdated").textContent="Načteno: "+now.toLocaleString("cs-CZ");
