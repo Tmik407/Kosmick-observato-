@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Download and aggregate ECMWF IFS 10 hPa fields for the X-5 polar-vortex viewer."""
+"""Download and aggregate ECMWF IFS 10 hPa fields for the X-5 polar-vortex viewer.
+The job retrieves only one forecast step and a compact set of fields.
+"""
 from __future__ import annotations
 import json
 import math
