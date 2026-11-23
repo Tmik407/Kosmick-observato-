@@ -42,18 +42,21 @@ jobs:
           count = 0
           for page in files:
               source = page.read_text(encoding="utf-8")
-              for i, match in enumerate(re.finditer(r"<script\\b([^>]*)>(.*?)</script>", source, re.I|re.S), 1):
+              for i, match in enumerate(re.finditer(r"""<script\b([^>]*)>(.*?)</script>""", source, re.I|re.S), 1):
                   attrs, body = match.groups()
-                  if re.search(r'type=["\\']text/plain["\\']', attrs, re.I) or not body.strip():
+                  if re.search(r"""type=["']text/plain["']""", attrs, re.I) or not body.strip():
                       continue
-                  target = Path(f"/tmp/x5-{page.stem}-inline-{i}.js")
-                  target.write_text(body, encoding="utf-8")
+                  Path(f"/tmp/x5-{page.stem}-inline-{i}.js").write_text(body, encoding="utf-8")
                   count += 1
               if page.name == "polarni-vir.html":
-                  for src in re.findall(r'<script\\b[^>]*\\bsrc=["\\']([^"\\']+)', source, re.I):
+                  for src in re.findall(r"""<script\b[^>]*\bsrc=["']([^"']+)""", source, re.I):
                       if src.startswith(("http://", "https://", "//")):
                           continue
-                      local = (page.parent / src.split("?", 1)[0].lstrip("/")).resolve() if not src.startswith("/") else (Path("_site") / src.lstrip("/")).resolve()
+                      clean = src.split("?", 1)[0]
+                      if clean.startswith("/Kosmick-observato-/"):
+                          local = Path("_site") / clean.split("/Kosmick-observato-/", 1)[1]
+                      else:
+                          local = Path("_site") / clean.lstrip("/")
                       if not local.is_file():
                           raise SystemExit(f"Missing local script: {src}")
                       if local.suffix == ".js":
