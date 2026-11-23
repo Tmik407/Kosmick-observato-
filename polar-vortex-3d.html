@@ -1,10 +1,22 @@
 <!doctype html>
 <html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#071426"><title>X-5 POLAR VORTEX 3D</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#061222;color:#eaf4ff;font:15px Arial,sans-serif}main{max-width:1180px;margin:auto;padding:16px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}h1{font-size:clamp(24px,4vw,38px);margin:8px 0}.sub,.note,.muted{color:#9fb6cf;line-height:1.5}.tag{border:1px solid #35658b;border-radius:30px;padding:6px 10px;color:#8cddff;font-size:12px}.layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(260px,.8fr);gap:14px;margin-top:14px}.panel{background:#10243b;border:1px solid #29445f;border-radius:15px;padding:14px;min-width:0}.stage{height: min(67vw,650px);min-height:380px;position:relative;background:radial-gradient(ellipse at 50% 45%,#173a5b,#071426 68%);border-radius:12px;overflow:hidden}#scene{width:100%;height:100%;display:block}.overlay{position:absolute;left:12px;top:12px;background:#061526c9;border:1px solid #31516d;border-radius:9px;padding:9px;font-size:12px;line-height:1.6}.legend{position:absolute;bottom:12px;left:12px;right:12px;display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:#c7d8e8}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}.controls{display:grid;gap:14px}.control label{display:flex;justify-content:space-between;gap:10px;margin-bottom:7px}.control input{width:100%;accent-color:#55cfff}.value{color:#6ddcff;font-weight:bold;font-variant-numeric:tabular-nums}.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px}.metric{background:#081a2c;border:1px solid #29445f;border-radius:10px;padding:10px}.metric b{display:block;color:#6ddcff;font-size:22px;margin-top:5px}.buttons{display:flex;gap:8px;flex-wrap:wrap}button,a.btn{background:#16466a;border:1px solid #3b789f;color:#fff;padding:9px 12px;border-radius:8px;text-decoration:none;cursor:pointer;font-weight:bold}.status{padding:10px;border-radius:9px;background:#0a1c30;color:#ffd18b;line-height:1.5}.wide{margin-top:14px}.small{font-size:12px;color:#9fb6cf;line-height:1.5}footer{padding:18px;text-align:center;color:#8ca5be;font-size:12px}@media(max-width:820px){.layout{grid-template-columns:1fr}.stage{height:65vh;min-height:360px}}
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#061222;color:#eaf4ff;font:15px Arial,sans-serif}main{max-width:1180px;margin:auto;padding:16px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}h1{font-size:clamp(24px,4vw,38px);margin:8px 0}.sub,.note,.muted{color:#9fb6cf;line-height:1.5}.tag{border:1px solid #35658b;border-radius:30px;padding:6px 10px;color:#8cddff;font-size:12px}.layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(260px,.8fr);gap:14px;margin-top:14px}.panel{background:#10243b;border:1px solid #29445f;border-radius:15px;padding:14px;min-width:0}.layer-toggles{display:flex;gap:8px;flex-wrap:wrap}.layerToggle{border:1px solid #42617e;background:#0b2035;color:#d9eaf7;border-radius:9px;padding:9px 12px;font-weight:650}.layerToggle.active{background:#174b6b;border-color:#55cfff;color:#fff;box-shadow:inset 0 0 0 1px #55cfff}.layerToggle:focus-visible{outline:2px solid #ffe08a;outline-offset:2px}.stage{height: min(67vw,650px);min-height:380px;position:relative;background:radial-gradient(ellipse at 50% 45%,#173a5b,#071426 68%);border-radius:12px;overflow:hidden}#scene{width:100%;height:100%;display:block}.overlay{position:absolute;left:12px;top:12px;background:#061526c9;border:1px solid #31516d;border-radius:9px;padding:9px;font-size:12px;line-height:1.6}.legend{position:absolute;bottom:12px;left:12px;right:12px;display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:#c7d8e8}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}.controls{display:grid;gap:14px}.control label{display:flex;justify-content:space-between;gap:10px;margin-bottom:7px}.control input{width:100%;accent-color:#55cfff}.value{color:#6ddcff;font-weight:bold;font-variant-numeric:tabular-nums}.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px}.metric{background:#081a2c;border:1px solid #29445f;border-radius:10px;padding:10px}.metric b{display:block;color:#6ddcff;font-size:22px;margin-top:5px}.buttons{display:flex;gap:8px;flex-wrap:wrap}button,a.btn{background:#16466a;border:1px solid #3b789f;color:#fff;padding:9px 12px;border-radius:8px;text-decoration:none;cursor:pointer;font-weight:bold}.status{padding:10px;border-radius:9px;background:#0a1c30;color:#ffd18b;line-height:1.5}.wide{margin-top:14px}.small{font-size:12px;color:#9fb6cf;line-height:1.5}footer{padding:18px;text-align:center;color:#8ca5be;font-size:12px}@media(max-width:820px){.layout{grid-template-columns:1fr}.stage{height:65vh;min-height:360px}}
 </style></head><body><main>
 <div class="top"><div><div class="tag">KOSMICKÁ OBSERVATOŘ X-5 · ATMOSFÉRA · VERZE 1.7</div><h1>🌐 POLAR VORTEX 3D</h1><div class="sub">Interaktivní prostorový model severního polárního víru</div></div><a class="btn" href="./index.html">← Zpět do observatoře</a></div>
-<div class="layout"><section class="panel"><div class="stage"><canvas id="scene"></canvas><div class="overlay">X-5 / 3D MODEL<br><span id="sceneState">Inicializuji 3D scénu…</span><br>Severní pól · teplota ECMWF a geopotenciální izolinie</div><div id="vortexCenterInfo" style="position:absolute;right:12px;top:12px;max-width:245px;padding:8px 10px;background:#061526df;border:1px solid #b69b55;border-radius:9px;color:#ffe6a3;font-size:11px;line-height:1.45;pointer-events:none">Centrum víru · výpočet z ECMWF…</div><div class="legend"><span><i class="dot" style="background:#42c9ff"></i>Stratosférický vír</span><span><i class="dot" style="background:#ff9c55"></i>Teplý vzduch</span><span><i class="dot" style="background:#a9dfff"></i>Polární vzduch</span></div><div id="temperatureLegend" style="position:absolute;right:12px;bottom:48px;width:min(250px,58%);padding:9px 10px;background:#061526d9;border:1px solid #456984;border-radius:9px;font-size:11px;color:#eaf4ff"><div style="display:flex;justify-content:space-between;gap:8px"><b>ECMWF · teplota 10 hPa</b><span id="tempUnit">K / °C</span></div><div style="height:10px;margin:7px 0 4px;border-radius:8px;background:linear-gradient(90deg,#32105f,#56317f,#995a9b,#c58db6,#e2bfd0,#f0dce2)"></div><div style="display:flex;justify-content:space-between"><span id="tempMin">—</span><span id="tempMax">—</span></div></div><div id="coastSource" style="position:absolute;left:12px;bottom:48px;padding:4px 7px;background:#061526bd;border-radius:6px;color:#d5e7f3;font-size:10px">Načítám geografické pobřeží…</div></div><p class="small" id="ecmwfGlobeState">ECMWF vrstva se načítá samostatně. Ovládání: tažením otáčejte glóbem, kolečkem přibližujte. Model zobrazuje fyzikální schéma cirkulace; není to naměřená mapa ani numerická předpověď.</p></section>
+<div class="layout"><section class="panel"><div class="stage"><canvas id="scene"></canvas><div class="overlay">X-5 / 3D MODEL<br><span id="sceneState">Inicializuji 3D scénu…</span><br>Severní pól · teplota ECMWF a geopotenciální izolinie</div><div id="vortexCenterInfo" style="position:absolute;right:12px;top:12px;max-width:245px;padding:8px 10px;background:#061526df;border:1px solid #b69b55;border-radius:9px;color:#ffe6a3;font-size:11px;line-height:1.45;pointer-events:none">Centrum víru · výpočet z ECMWF…</div><div class="legend"><span><i class="dot" style="background:#42c9ff"></i>Stratosférický vír</span><span><i class="dot" style="background:#ff9c55"></i>Teplý vzduch</span><span><i class="dot" style="background:#a9dfff"></i>Polární vzduch</span></div><div id="temperatureLegend" style="position:absolute;right:12px;bottom:48px;width:min(250px,58%);padding:9px 10px;background:#061526d9;border:1px solid #456984;border-radius:9px;font-size:11px;color:#eaf4ff"><div style="display:flex;justify-content:space-between;gap:8px"><b>ECMWF · teplota 10 hPa</b><span id="tempUnit">K / °C</span></div><div style="height:10px;margin:7px 0 4px;border-radius:8px;background:linear-gradient(90deg,#32105f,#56317f,#995a9b,#c58db6,#e2bfd0,#f0dce2)"></div><div style="display:flex;justify-content:space-between"><span id="tempMin">—</span><span id="tempMax">—</span></div></div><div id="coastSource" style="position:absolute;left:12px;bottom:48px;padding:4px 7px;background:#061526bd;border-radius:6px;color:#d5e7f3;font-size:10px">Načítám geografické pobřeží…</div></div>
+<section class="panel wide layer-panel" aria-label="Vrstvy globusu" style="margin-top:12px">
+<h2 style="margin:0 0 8px">Zobrazené vrstvy globusu</h2>
+<p class="small">Zapínejte a vypínejte jednotlivé datové vrstvy. Geografické popisky a pobřeží lze skrýt samostatně.</p>
+<div class="layer-toggles">
+<button type="button" class="layerToggle active" data-layer="tempLayer" aria-pressed="true">🌡 Teplota</button>
+<button type="button" class="layerToggle active" data-layer="contourLayer" aria-pressed="true">〰 Geopotenciál</button>
+<button type="button" class="layerToggle active" data-layer="windLayer" aria-pressed="true">➤ Vítr</button>
+<button type="button" class="layerToggle active" data-layer="geoLayer" aria-pressed="true">🌐 Geografie</button>
+<button type="button" class="layerToggle active" data-layer="centerLayer" aria-pressed="true">◎ Centrum víru</button>
+</div>
+</section>
+<p class="small" id="ecmwfGlobeState">ECMWF vrstva se načítá samostatně. Ovládání: tažením otáčejte glóbem, kolečkem přibližujte. Model zobrazuje fyzikální schéma cirkulace; není to naměřená mapa ani numerická předpověď.</p></section>
 <section class="panel wide" id="levelCompare" style="margin-top:14px">
 <h2>Porovnání stratosférických hladin · NASA GSFC</h2>
 <p class="small">Vyberte hladinu a porovnejte polární průměr teploty 60–90° N a zonální vítr na 60° N. Jde o denní diagnostické řady NASA GSFC/Ozone Watch, nikoli o prostorové mapy.</p>
@@ -167,7 +179,7 @@
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 const canvas=document.querySelector('#scene'),state=document.querySelector('#sceneState');
-let renderer,scene,camera,globe,vortex,streamGroup,ecmwfLayer,auto=true,drag=false,lastX=0,lastY=0,rotX=1.12,rotY=0,zoom=4.45;
+let renderer,scene,camera,globe,vortex,streamGroup,ecmwfLayer,tempLayer,contourLayer,windLayer,centerLayer,geoLayer,auto=true,drag=false,lastX=0,lastY=0,rotX=1.12,rotY=0,zoom=4.45;
 try{
  renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(canvas.clientWidth,canvas.clientHeight,false);
  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(38,canvas.clientWidth/canvas.clientHeight,.1,100);camera.position.set(0,0,zoom);
@@ -243,7 +255,7 @@ try{
    const data=await response.json();
    for(const lineData of data.lines||[]){
     const pts=lineData.map(([lat,lon])=>ll(lat,lon,1.571));
-    if(pts.length>1)group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xd8e9e8,transparent:true,opacity:.82})));
+    if(pts.length>1)geoLayer.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xd8e9e8,transparent:true,opacity:.82})));
    }
    const note=document.getElementById('coastSource');if(note)note.textContent='Pobřeží: Natural Earth 1:110m · veřejná doména';
   }catch(err){const note=document.getElementById('coastSource');if(note)note.textContent='Pobřežní data se nepodařilo načíst: '+err.message;}
@@ -252,12 +264,12 @@ try{
  // Referenční geografické popisky.
  function geoMarker(name,lat,lon,color){
   const pos=ll(lat,lon,1.575),dot=new THREE.Mesh(new THREE.SphereGeometry(.014,12,10),new THREE.MeshBasicMaterial({color}));
-  dot.position.copy(pos);group.add(dot);
+  dot.position.copy(pos);geoLayer.add(dot);
   const c=document.createElement('canvas');c.width=300;c.height=58;const x=c.getContext('2d');
   x.font='bold 25px Arial';x.textAlign='center';x.textBaseline='middle';x.fillStyle='rgba(4,19,35,.66)';x.fillRect(2,3,296,52);x.fillStyle='#f2f8ff';x.fillText(name,150,29);
   const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
-  sp.scale.set(.40,.078,1);sp.position.copy(ll(lat,lon,1.61));group.add(sp);
+  sp.scale.set(.40,.078,1);sp.position.copy(ll(lat,lon,1.61));geoLayer.add(sp);
  }
  geoMarker('Grónsko',73,-42,0x9be7ff);
  geoMarker('Kanada',72,-105,0x9be7ff);
@@ -266,7 +278,7 @@ try{
   const axisLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,1.56,0),new THREE.Vector3(0,1.88,0)]),new THREE.LineBasicMaterial({color:0xe8f7ff,transparent:true,opacity:.9}));
  group.add(axisLine);
  const axis=new THREE.Mesh(new THREE.SphereGeometry(.035,20,16),new THREE.MeshBasicMaterial({color:0xffffff}));axis.position.set(0,1.57,0);group.add(axis);
- vortex=new THREE.Group();group.add(vortex);streamGroup=new THREE.Group();group.add(streamGroup);ecmwfLayer=new THREE.Group();group.add(ecmwfLayer);
+ vortex=new THREE.Group();group.add(vortex);streamGroup=new THREE.Group();group.add(streamGroup);ecmwfLayer=new THREE.Group();group.add(ecmwfLayer);tempLayer=new THREE.Group();contourLayer=new THREE.Group();windLayer=new THREE.Group();centerLayer=new THREE.Group();geoLayer=new THREE.Group();ecmwfLayer.add(tempLayer,contourLayer,windLayer,centerLayer);group.add(geoLayer);
  const glow=new THREE.Mesh(new THREE.SphereGeometry(.42,32,24),new THREE.MeshBasicMaterial({color:0x1c9dd8,transparent:true,opacity:.16}));glow.position.y=1.65;vortex.add(glow);
  function ll(lat,lon,r){const a=THREE.MathUtils.degToRad(lat),b=THREE.MathUtils.degToRad(lon);return new THREE.Vector3(r*Math.cos(a)*Math.sin(b),r*Math.sin(a),r*Math.cos(a)*Math.cos(b))}
  function build(){while(vortex.children.length>1)vortex.remove(vortex.children[1]);while(streamGroup.children.length)streamGroup.remove(streamGroup.children[0]);
@@ -293,7 +305,7 @@ try{
    if(!response.ok)throw new Error('ECMWF JSON zatím není dostupný');
    const data=await response.json();
    if(!Array.isArray(data.grid)||!data.grid.length)throw new Error('ECMWF mřížka je prázdná');
-   while(ecmwfLayer.children.length)ecmwfLayer.remove(ecmwfLayer.children[0]);
+   [tempLayer,contourLayer,windLayer,centerLayer].forEach(layer=>{while(layer.children.length)layer.remove(layer.children[0]);});
    const temps=data.grid.map(p=>Number(p.t)).filter(Number.isFinite);
    const tmin=Math.min(...temps),tmax=Math.max(...temps);
    // Odhad středu víru: minimum geopotenciální výšky v ECMWF poli severně od 55°N.
@@ -302,9 +314,9 @@ try{
     const center=zCandidates.reduce((a,b)=>Number(b.z)<Number(a.z)?b:a);
     const lat=Number(center.lat),lon=Number(center.lon),pos=ll(lat,lon,1.575);
     const core=new THREE.Mesh(new THREE.SphereGeometry(.058,20,16),new THREE.MeshBasicMaterial({color:0xffe08a}));
-    core.position.copy(pos);ecmwfLayer.add(core);
+    core.position.copy(pos);centerLayer.add(core);
     const ring=new THREE.Mesh(new THREE.TorusGeometry(.085,.009,8,48),new THREE.MeshBasicMaterial({color:0xffe08a,transparent:true,opacity:.95}));
-    ring.position.copy(pos);ring.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),pos.clone().normalize());ecmwfLayer.add(ring);
+    ring.position.copy(pos);ring.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),pos.clone().normalize());centerLayer.add(ring);
     const centerInfo=document.getElementById('vortexCenterInfo');
     if(centerInfo)centerInfo.textContent='Odhad centra víru · minimum geopotenciálu 10 hPa · '+lat.toFixed(1)+'° N / '+lon.toFixed(1)+'° E';
    }
@@ -335,7 +347,7 @@ try{
    surfaceGeometry.setAttribute('position',new THREE.Float32BufferAttribute(surfacePositions,3));
    surfaceGeometry.setAttribute('color',new THREE.Float32BufferAttribute(surfaceColors,3));
    surfaceGeometry.setIndex(indices);surfaceGeometry.computeVertexNormals();
-   ecmwfLayer.add(new THREE.Mesh(surfaceGeometry,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide,transparent:true,opacity:.52,depthWrite:false})));
+   tempLayer.add(new THREE.Mesh(surfaceGeometry,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide,transparent:true,opacity:.52,depthWrite:false})));
    // Geopotential-height contour isolines calculated from ECMWF grid (marching squares).
    const zvals=data.grid.map(p=>Number(p.z)).filter(Number.isFinite),zmin=Math.min(...zvals),zmax=Math.max(...zvals);
    const contourMaterial=new THREE.LineBasicMaterial({color:0xf3e7f2,transparent:true,opacity:.32});
@@ -352,7 +364,7 @@ try{
      for(const [a,b] of edges)if((ps[a].z<level&&ps[b].z>=level)||(ps[b].z<level&&ps[a].z>=level))hits.push(contourPoint(ps[a],ps[b],level));
      for(let q=0;q+1<hits.length;q+=2)seg.push(hits[q],hits[q+1]);
     }
-    if(seg.length){const geo=new THREE.BufferGeometry().setFromPoints(seg);ecmwfLayer.add(new THREE.LineSegments(geo,contourMaterial));}
+    if(seg.length){const geo=new THREE.BufferGeometry().setFromPoints(seg);contourLayer.add(new THREE.LineSegments(geo,contourMaterial));}
    }
    // Směrové šipky větru U/V: východní a severní složka na hladině 10 hPa.
    const windPositions=[];
@@ -375,13 +387,20 @@ try{
    });
    const windGeometry=new THREE.BufferGeometry();
    windGeometry.setAttribute('position',new THREE.Float32BufferAttribute(windPositions,3));
-   ecmwfLayer.add(new THREE.LineSegments(windGeometry,new THREE.LineBasicMaterial({color:0x8df5ff,transparent:true,opacity:.56})));
+   windLayer.add(new THREE.LineSegments(windGeometry,new THREE.LineBasicMaterial({color:0x8df5ff,transparent:true,opacity:.56})));
    state.textContent='3D scéna aktivní · ECMWF 10 hPa · '+data.valid_time_utc;
    const badge=document.querySelector('#ecmwfGlobeState');if(badge)badge.textContent='ECMWF 10 hPa · teplotní pole + geopotenciální izolinie · '+data.valid_time_utc;
   }catch(err){const badge=document.querySelector('#ecmwfGlobeState');if(badge)badge.textContent='ECMWF vrstva čeká na data: '+err.message;}
  }
  build();state.textContent='3D scéna aktivní · schématický model';
 
+ document.querySelectorAll('.layerToggle').forEach(button=>button.addEventListener('click',()=>{
+  const key=button.dataset.layer,layer={tempLayer,contourLayer,windLayer,geoLayer,centerLayer}[key];
+  if(!layer)return;
+  layer.visible=!layer.visible;
+  button.classList.toggle('active',layer.visible);
+  button.setAttribute('aria-pressed',String(layer.visible));
+ }));
  loadEcmwfGlobe();
  // NASA GSFC/Ozone Watch daily level comparison (60–90N temperature, 60N zonal wind).
  async function loadLevelDiagnostics(level){
