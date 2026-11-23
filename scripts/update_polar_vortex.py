@@ -111,20 +111,42 @@ def aggregate(fields):
 
 def main():
     client = Client(source="ecmwf", model="ifs", resol="0p25")
+    # The 24-hour step identifies the latest operational run; retrieve a small,
+    # evenly spaced sequence from that same run for a consistent animation.
     latest = client.latest(
-        stream="oper", type="fc", step=STEP, levtype="pl",
+        stream="oper", type="fc", step=24, levtype="pl",
         levelist=LEVEL, param=PARAMS, target=str(GRIB),
     )
     if latest is None:
         raise RuntimeError("ECMWF did not report a matching recent forecast run")
     run = latest if isinstance(latest, datetime) else datetime.fromisoformat(str(latest))
-    client.retrieve(
-        date=run.strftime("%Y%m%d"), time=run.hour, stream="oper",
-        type="fc", step=STEP, levtype="pl", levelist=LEVEL,
-        param=PARAMS, target=str(GRIB),
-    )
-    fields = read_fields(GRIB)
-    result = aggregate(fields)
+    run_utc = run.replace(tzinfo=timezone.utc) if run.tzinfo is None else run.astimezone(timezone.utc)
+
+    frames = []
+    for step in (24, 48, 72, 96, 120):
+        try:
+            client.retrieve(
+                date=run.strftime("%Y%m%d"), time=run.hour, stream="oper",
+                type="fc", step=step, levtype="pl", levelist=LEVEL,
+                param=PARAMS, target=str(GRIB),
+            )
+            fields = read_fields(GRIB)
+            result = aggregate(fields)
+            frames.append({
+                "step_hours": step,
+                "valid_time_utc": (run_utc + timedelta(hours=step)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                **result,
+            })
+            print(f"Processed ECMWF +{step} h: {len(result['grid'])} cells")
+        except Exception as exc:
+            print(f"Forecast step +{step} h unavailable: {exc}")
+            if step == 24:
+                raise
+
+    if len(frames) < 2:
+        raise RuntimeError("Fewer than two ECMWF forecast frames were available")
+
+    first = frames[0]
     payload = {
         "schema_version": 1,
         "product": "ECMWF IFS operational forecast",
@@ -132,9 +154,9 @@ def main():
         "license": "CC-BY-4.0",
         "attribution": "Contains modified Copernicus/ECMWF information",
         "pressure_level_hpa": LEVEL,
-        "forecast_step_hours": STEP,
-        "run_utc": run.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "valid_time_utc": ((run.replace(tzinfo=timezone.utc) if run.tzinfo is None else run.astimezone(timezone.utc)) + timedelta(hours=STEP)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "forecast_step_hours": first["step_hours"],
+        "run_utc": run_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "valid_time_utc": first["valid_time_utc"],
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "units": {"t": "K", "u": "m s-1", "v": "m s-1", "z": "m2 s-2"},
         "field_notes": {
@@ -143,13 +165,27 @@ def main():
             "v": "Northward wind component",
             "z": "Geopotential",
         },
-        **result,
+        "grid": first["grid"],
+        "zonal_profile": first["zonal_profile"],
+        "diagnostics": first["diagnostics"],
         "method": "Forecast fields sampled at 10 hPa, aggregated to 5-degree latitude by 10-degree longitude bins north of 40N. Zonal means use cosine-latitude weighting.",
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
+    OUT.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\\n", encoding="utf-8")
 
-    # Keep a compact forecast history for the viewer's time series.
+    timeline_path = Path("data/polar-vortex-10hpa-timeline.json")
+    timeline = {
+        "schema_version": 1,
+        "source": "ECMWF IFS Open Data",
+        "product": "Operational forecast sequence · 10 hPa",
+        "license": "CC-BY-4.0",
+        "run_utc": payload["run_utc"],
+        "generated_utc": payload["generated_utc"],
+        "pressure_level_hpa": LEVEL,
+        "frames": frames,
+    }
+    timeline_path.write_text(json.dumps(timeline, ensure_ascii=False, separators=(",", ":")) + "\\n", encoding="utf-8")
+
     history_path = Path("data/polar-vortex-history.json")
     if history_path.exists():
         history = json.loads(history_path.read_text(encoding="utf-8"))
@@ -169,10 +205,10 @@ def main():
     records.sort(key=lambda r: r.get("run_utc", ""))
     history["records"] = records[-365:]
     history["updated_utc"] = payload["generated_utc"]
-    history_path.write_text(json.dumps(history, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
+    history_path.write_text(json.dumps(history, ensure_ascii=False, separators=(",", ":")) + "\\n", encoding="utf-8")
     print(f"Wrote {OUT}: {len(payload['grid'])} grid cells; run {payload['run_utc']}")
+    print(f"Wrote {timeline_path}: {len(frames)} forecast frames")
     print(f"Wrote {history_path}: {len(history['records'])} forecast records")
-
 
 if __name__ == "__main__":
     main()
