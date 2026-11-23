@@ -16,9 +16,23 @@
 </aside></div>
 <section class="panel wide" id="teleconnectionPanel"><h2>Živá data atmosférické cirkulace · NOAA CPC</h2><p class="small">Denní indexy AO a NAO z oficiálních dat NOAA Climate Prediction Center. Aktualizace zdroje může mít zpoždění; rozhodující je datum posledního měření níže.</p><div class="metrics"><div class="metric">Arktická oscilace · AO<b id="aoValue">Načítám…</b><p class="small" id="aoDate">—</p></div><div class="metric">Severoatlantická oscilace · NAO<b id="naoValue">Načítám…</b><p class="small" id="naoDate">—</p></div></div><div class="status" id="indexStatus" style="margin-top:10px">Připojuji se k NOAA CPC…</div><p class="small">AO popisuje rozsáhlé tlakové uspořádání v Arktidě; NAO severoatlantické tlakové uspořádání. Nejsou přímým měřením síly stratosférického víru a samy neurčují počasí v ČR.</p><div class="buttons"><a class="btn" href="https://ftp.cpc.ncep.noaa.gov/cwlinks/norm.daily.ao.cdas.z1000.19500101_current.csv" target="_blank" rel="noopener">Zdroj AO · NOAA CPC</a><a class="btn" href="https://ftp.cpc.ncep.noaa.gov/cwlinks/norm.daily.nao.cdas.z500.19500101_current.csv" target="_blank" rel="noopener">Zdroj NAO · NOAA CPC</a><button id="refreshIndices" type="button">Obnovit data</button></div></section>
 <section class="panel wide" id="forecastSources"><h2>Výhledové produkty NOAA CPC · GFS / GEFS</h2><p class="small">Oficiální výhledové soubory indexů AO a NAO. Odkazy vedou přímo na CSV NOAA CPC; v této verzi jsou dostupné jako zdrojové soubory, ale jejich prognózy zatím nejsou automaticky vykreslovány v grafu. Před automatickickým zobrazením je nutné ověřit aktuální strukturu CSV a rozlišit deterministický výhled GFS od ansámblového výhledu GEFS.</p><div class="buttons"><a class="btn" href="https://ftp.cpc.ncep.noaa.gov/cwlinks/norm.daily.ao.gfs.z1000.120days.csv" target="_blank" rel="noopener">AO · GFS výhled</a><a class="btn" href="https://ftp.cpc.ncep.noaa.gov/cwlinks/norm.daily.ao.gefs.z1000.120days.csv" target="_blank" rel="noopener">AO · GEFS výhled</a><a class="btn" href="https://ftp.cpc.ncep.noaa.gov/cwlinks/norm.daily.nao.gfs.z500.120days.csv" target="_blank" rel="noopener">NAO · GFS výhled</a><a class="btn" href="https://ftp.cpc.ncep.noaa.gov/cwlinks/norm.daily.nao.gefs.z500.120days.csv" target="_blank" rel="noopener">NAO · GEFS výhled</a></div><p class="small">GFS je jednotlivý deterministický běh; GEFS je ansámblový systém a pomáhá vyjádřit nejistotu. Ani AO/NAO výhled sám o sobě není předpovědí teploty nebo sněžení v ČR.</p></section>
+<section class="panel wide" id="ecmwfPanel">
+<h2>Skutečná data ECMWF · 10 hPa</h2>
+<p class="small">Automaticky zpracovaná předpovědní pole IFS: teplota (T), východo-západní vítr (U), severo-jižní vítr (V) a geopotenciál (Z). Data se zobrazí po úspěšném serverovém převodu GRIB → JSON.</p>
+<div class="metrics">
+<div class="metric">Zonální vítr na 60° s. š.<b id="ecmwfU60">Čekám na data…</b><p class="small">m/s · kladná hodnota = západní vítr</p></div>
+<div class="metric">Teplota polární oblasti<b id="ecmwfTemp">—</b><p class="small">K · průměr nad 60° s. š.</p></div>
+<div class="metric">Platnost výhledu<b id="ecmwfValid">—</b><p class="small" id="ecmwfRun">Běh modelu: —</p></div>
+<div class="metric">Prostorové buňky<b id="ecmwfCells">—</b><p class="small">agregace severně od 40° s. š.</p></div>
+</div>
+<div class="status" id="ecmwfStatus" style="margin-top:10px">Čekám na první automatické zpracování ECMWF.</div>
+<div style="overflow-x:auto;margin-top:12px"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:#9fc9e7;text-align:left"><th style="padding:8px">Zeměpisná šířka</th><th style="padding:8px">U (m/s)</th><th style="padding:8px">V (m/s)</th><th style="padding:8px">T (K)</th><th style="padding:8px">Z (m²/s²)</th></tr></thead><tbody id="ecmwfProfile"><tr><td colspan="5" style="padding:8px">Profil se načte spolu s daty.</td></tr></tbody></table></div>
+<p class="small">Zdroj: ECMWF Open Data, IFS operational forecast, 10 hPa, +24 h. Licence CC BY 4.0. Jde o předpovědní data modelu, nikoli přímé měření. Vítr na 60° s. š. je důležitý diagnostický ukazatel, ale tento produkt sám nevydává výstrahu SSW.</p>
+<a class="btn" href="./data/polar-vortex-10hpa.json" target="_blank" rel="noopener">Otevřít zpracovaná data JSON</a>
+</section>
 <section class="panel wide"><h2>Jak model číst</h2><div class="metrics"><div class="metric">Polární vír<b>Stratosféra</b><p class="small">Rozsáhlá cirkulace studeného vzduchu kolem Arktidy, nejsilnější v zimní stratosféře.</p></div><div class="metric">SSW<b>Oteplování</b><p class="small">Při významném SSW může dojít k obrácení zonálního větru na 60° s. š. a 10 hPa.</p></div><div class="metric">AO / NAO<b>Režim proudění</b><p class="small">Indexy popisují velkoprostorové tlakové vzorce. Samy o sobě neurčují počasí v konkrétní obci.</p></div><div class="metric">Předpověď<b>Nejistota</b><p class="small">Dopad stratosférických změn na počasí u zemského povrchu může mít zpoždění a není zaručen.</p></div></div></section>
 <section class="panel wide"><h2>Datový stav a metodika</h2><p class="note">Toto je první funkční 3D vizualizační modul X-5. Posuvníky mění geometrii a schématické proudění v reálném čase. Parametry nejsou automaticky načítané z ECMWF/ERA5 a jejich hodnoty nejsou pozorování. Další etapa může připojit ověřené denní a předpovědní datové sady (teplota 10 hPa, geopotenciál, zonální vítr, AO a NAO) a zobrazovat jejich časové značky i stáří.</p><p class="small">Ovládací prvky slouží k demonstraci chování modelu, nikoli k vydávání meteorologických výstrah.</p></section>
-<footer>X-5 POLAR VORTEX 3D · vlastní vizualizační modul · verze 1.1 · oprava CSV parseru + NOAA výhledové zdroje</footer></main>
+<footer>X-5 POLAR VORTEX 3D · vlastní vizualizační modul · verze 1.2 · ECMWF IFS 10 hPa datový panel</footer></main>
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 const canvas=document.querySelector('#scene'),state=document.querySelector('#sceneState');
@@ -104,4 +118,27 @@ try{
  setInterval(()=>{if(!document.hidden)load().catch(()=>{})},3*60*60*1000);
 })();
 </script>
-</body></html>
+<script>
+(async function(){
+ const $=id=>document.getElementById(id),url="./data/polar-vortex-10hpa.json";
+ const fmt=(v,n=1)=>Number.isFinite(Number(v))?Number(v).toFixed(n):"—";
+ try{
+  const r=await fetch(url+"?v="+Date.now(),{cache:"no-store"});
+  if(!r.ok)throw new Error("datový soubor zatím není publikován (HTTP "+r.status+")");
+  const d=await r.json();
+  if(d.schema_version!==1||!d.diagnostics||!Array.isArray(d.zonal_profile))throw new Error("neznámý formát datového souboru");
+  $("ecmwfU60").textContent=fmt(d.diagnostics.zonal_wind_60N_ms,1)+" m/s";
+  $("ecmwfTemp").textContent=fmt(d.diagnostics.polar_cap_temperature_10hpa_k,1)+" K";
+  $("ecmwfValid").textContent=d.valid_time_utc||"—";
+  $("ecmwfRun").textContent="Běh modelu: "+(d.run_utc||"—");
+  $("ecmwfCells").textContent=String(d.diagnostics.aggregated_cells??(d.grid?d.grid.length:"—"));
+  const rows=d.zonal_profile.map(x=>"<tr><td>"+fmt(x.lat,1)+"° N</td><td>"+fmt(x.u,2)+"</td><td>"+fmt(x.v,2)+"</td><td>"+fmt(x.t,2)+"</td><td>"+fmt(x.z,0)+"</td></tr>").join("");
+  $("ecmwfProfile").innerHTML=rows||'<tr><td colspan="5">Profil není dostupný.</td></tr>';
+  const age=(Date.now()-Date.parse(d.generated_utc))/3600000;
+  $("ecmwfStatus").textContent=(Number.isFinite(age)&&age>36?"POZOR: ":"")+"Data ECMWF načtena. "+d.product+", "+d.pressure_level_hpa+" hPa, krok +"+d.forecast_step_hours+" h. Vygenerováno "+d.generated_utc+". "+(Number.isFinite(age)&&age>36?"Data jsou starší než 36 hodin.":"Stáří dat je v očekávaném limitu.");
+ }catch(e){
+  $("ecmwfStatus").textContent="Data ECMWF zatím nejsou k dispozici: "+e.message+". První úspěšný běh GitHub Actions je nutné ověřit.";
+  $("ecmwfU60").textContent="Nedostupné";$("ecmwfTemp").textContent="—";
+ }
+})();
+</script></body></html>
