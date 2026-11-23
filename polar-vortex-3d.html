@@ -89,6 +89,28 @@ try{
    geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
    geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
    ecmwfLayer.add(new THREE.Points(geometry,new THREE.PointsMaterial({size:0.045,vertexColors:true,sizeAttenuation:true,transparent:true,opacity:0.92})));
+   // Směrové šipky větru U/V: východní a severní složka na hladině 10 hPa.
+   const windPositions=[];
+   data.grid.forEach((p,i)=>{
+    if(i%3!==0)return;
+    const lat=Number(p.lat),lon=Number(p.lon),u=Number(p.u),v=Number(p.v);
+    if(!Number.isFinite(lat)||!Number.isFinite(lon)||!Number.isFinite(u)||!Number.isFinite(v))return;
+    const a=THREE.MathUtils.degToRad(lat),b=THREE.MathUtils.degToRad(lon);
+    const east=new THREE.Vector3(Math.cos(b),0,-Math.sin(b));
+    const north=new THREE.Vector3(-Math.sin(a)*Math.sin(b),Math.cos(a),-Math.sin(a)*Math.cos(b));
+    const tangent=east.multiplyScalar(u).add(north.multiplyScalar(v));
+    const speed=tangent.length();if(speed<2)return;
+    tangent.normalize();
+    const start=ll(lat,lon,1.592);
+    const end=start.clone().addScaledVector(tangent,Math.min(.19,.035+speed*.0028)).normalize().multiplyScalar(1.592);
+    const side=new THREE.Vector3().crossVectors(end.clone().normalize(),tangent).normalize();
+    const back=end.clone().addScaledVector(tangent,-.045).addScaledVector(side,.022);
+    const back2=end.clone().addScaledVector(tangent,-.045).addScaledVector(side,-.022);
+    windPositions.push(start.x,start.y,start.z,end.x,end.y,end.z,end.x,end.y,end.z,back.x,back.y,back.z,end.x,end.y,end.z,back2.x,back2.y,back2.z);
+   });
+   const windGeometry=new THREE.BufferGeometry();
+   windGeometry.setAttribute('position',new THREE.Float32BufferAttribute(windPositions,3));
+   ecmwfLayer.add(new THREE.LineSegments(windGeometry,new THREE.LineBasicMaterial({color:0x8df5ff,transparent:true,opacity:.88})));
    state.textContent='3D scéna aktivní · ECMWF 10 hPa · '+data.valid_time_utc;
    const badge=document.querySelector('#ecmwfGlobeState');if(badge)badge.textContent='ECMWF vrstva aktivní · '+data.valid_time_utc;
   }catch(err){const badge=document.querySelector('#ecmwfGlobeState');if(badge)badge.textContent='ECMWF vrstva čeká na data: '+err.message;}
