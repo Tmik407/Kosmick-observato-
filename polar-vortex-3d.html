@@ -311,6 +311,7 @@ try{
    if(!response.ok)throw new Error('ECMWF JSON zatím není dostupný');
    const data=await response.json();
    if(!Array.isArray(data.grid)||!data.grid.length)throw new Error('ECMWF mřížka je prázdná');
+   if(!data.grid.every(p=>Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lon))&&Number.isFinite(Number(p.t))))throw new Error('ECMWF mřížka obsahuje neplatné souřadnice nebo teploty');
    [tempLayer,contourLayer,windLayer,centerLayer].forEach(layer=>{while(layer.children.length)layer.remove(layer.children[0]);});
    const temps=data.grid.map(p=>Number(p.t)).filter(Number.isFinite);
    const tmin=Math.min(...temps),tmax=Math.max(...temps);
@@ -418,9 +419,9 @@ try{
    const windGeometry=new THREE.BufferGeometry();
    windGeometry.setAttribute('position',new THREE.Float32BufferAttribute(windPositions,3));
    windLayer.add(new THREE.LineSegments(windGeometry,new THREE.LineBasicMaterial({color:0x8df5ff,transparent:true,opacity:.56})));
-   state.textContent='3D scéna aktivní · ECMWF 10 hPa · '+data.valid_time_utc;
+   state.textContent='ECMWF teplotní pole aktivní · '+surfacePositions.length/3+' interpolovaných bodů · '+tmin.toFixed(1)+'–'+tmax.toFixed(1)+' K · '+data.valid_time_utc;
    const badge=document.querySelector('#ecmwfGlobeState');if(badge)badge.textContent='ECMWF 10 hPa · teplotní pole + geopotenciální izolinie · '+data.valid_time_utc;
-  }catch(err){const badge=document.querySelector('#ecmwfGlobeState');if(badge)badge.textContent='ECMWF vrstva čeká na data: '+err.message;}
+  }catch(err){state.textContent='ECMWF vrstvu se nepodařilo vykreslit: '+err.message;const badge=document.querySelector('#ecmwfGlobeState');if(badge)badge.textContent='ECMWF vrstva čeká na data: '+err.message;console.error('X-5 ECMWF globe:',err);}
  }
  build();state.textContent='3D scéna aktivní · schématický model';
 
