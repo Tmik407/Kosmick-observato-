@@ -613,9 +613,12 @@ try{
  loadLevelDiagnostics(10);
  function animate(now=performance.now()){
   requestAnimationFrame(animate);
+  // Při globálním pozastavení se nevykresluje ani nepřepočítává žádný snímek.
+  // Tím zůstane obraz globusu i poloha částic přesně zmrazená.
+  if(motionPaused){lastRenderTime=now;return;}
   const dt=lastRenderTime?Math.min(.05,(now-lastRenderTime)/1000):0;lastRenderTime=now;
-  if(auto&&!drag&&!motionPaused)rotY+=.0018;
-  if(flowAuto&&!motionPaused)flowClock+=dt;
+  if(auto&&!drag)rotY+=.0018;
+  if(flowAuto)flowClock+=dt;
   for(const p of flowParticles){const t=((p.phase+flowClock*p.speed)%1+1)%1;p.mesh.position.copy(p.curve.getPointAt(t));}
   scene.rotation.y=0;globe.parent.rotation.set(rotX,rotY,0);camera.position.z=zoom;renderer.render(scene,camera);
  }
