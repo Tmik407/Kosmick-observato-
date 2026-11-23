@@ -218,18 +218,18 @@ try{
  const polarCap=new THREE.Mesh(new THREE.SphereGeometry(1.558,96,24,0,Math.PI*2,0,.43),new THREE.MeshBasicMaterial({color:0xc9efff,transparent:true,opacity:.16,side:THREE.DoubleSide,depthWrite:false}));
  group.add(polarCap);
  // Vědecká geografická síť: rovnoběžky, poledníky a zvýrazněný polární kruh.
- const gridMat=new THREE.LineBasicMaterial({color:0x91b9d2,transparent:true,opacity:.28});
- for(let lat=-75;lat<=75;lat+=15){const pts=[];for(let lon=0;lon<=360;lon+=2){pts.push(ll(lat,lon,1.562))}group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gridMat))}
- for(let lon=0;lon<360;lon+=15){const pts=[];for(let lat=-90;lat<=90;lat+=2)pts.push(ll(lat,lon,1.562));group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gridMat))}
+ const gridMat=new THREE.LineBasicMaterial({color:0x91b9d2,transparent:true,opacity:.19});
+ for(let lat=-60;lat<=60;lat+=30){const pts=[];for(let lon=0;lon<=360;lon+=2){pts.push(ll(lat,lon,1.562))}group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gridMat))}
+ for(let lon=0;lon<360;lon+=30){const pts=[];for(let lat=-90;lat<=90;lat+=2)pts.push(ll(lat,lon,1.562));group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gridMat))}
  const arcticPts=[];for(let lon=0;lon<=360;lon+=2)arcticPts.push(ll(66.56,lon,1.568));
  group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(arcticPts),new THREE.LineBasicMaterial({color:0x9be7ff,transparent:true,opacity:.8})));
  // Textové popisky zeměpisné šířky a hlavních poledníků.
  function geoLabel(text,lat,lon,color='#d9efff'){
   const c=document.createElement('canvas');c.width=256;c.height=64;const x=c.getContext('2d');
-  x.font='bold 30px Arial';x.textAlign='center';x.textBaseline='middle';x.fillStyle='rgba(3,18,34,.68)';x.fillRect(4,5,248,54);x.fillStyle=color;x.fillText(text,128,32);
+  x.font='bold 30px Arial';x.textAlign='center';x.textBaseline='middle';x.fillStyle='rgba(3,18,34,.48)';x.fillRect(4,5,248,54);x.fillStyle=color;x.fillText(text,128,32);
   const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
-  sp.scale.set(.42,.105,1);sp.position.copy(ll(lat,lon,1.585));group.add(sp);
+  sp.scale.set(.34,.085,1);sp.position.copy(ll(lat,lon,1.585));group.add(sp);
  }
  geoLabel('80° N',80,12);geoLabel('70° N',70,12);geoLabel('60° N',60,12);
  geoLabel('0°',18,0,'#9be7ff');geoLabel('90° E',18,90,'#9be7ff');geoLabel('180°',18,180,'#9be7ff');geoLabel('90° W',18,270,'#9be7ff');
@@ -301,9 +301,9 @@ try{
    if(zCandidates.length){
     const center=zCandidates.reduce((a,b)=>Number(b.z)<Number(a.z)?b:a);
     const lat=Number(center.lat),lon=Number(center.lon),pos=ll(lat,lon,1.575);
-    const core=new THREE.Mesh(new THREE.SphereGeometry(.045,20,16),new THREE.MeshBasicMaterial({color:0xffe08a}));
+    const core=new THREE.Mesh(new THREE.SphereGeometry(.058,20,16),new THREE.MeshBasicMaterial({color:0xffe08a}));
     core.position.copy(pos);ecmwfLayer.add(core);
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(.065,.006,8,48),new THREE.MeshBasicMaterial({color:0xffe08a,transparent:true,opacity:.95}));
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(.085,.009,8,48),new THREE.MeshBasicMaterial({color:0xffe08a,transparent:true,opacity:.95}));
     ring.position.copy(pos);ring.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),pos.clone().normalize());ecmwfLayer.add(ring);
     const centerInfo=document.getElementById('vortexCenterInfo');
     if(centerInfo)centerInfo.textContent='Odhad centra víru · minimum geopotenciálu 10 hPa · '+lat.toFixed(1)+'° N / '+lon.toFixed(1)+'° E';
@@ -338,12 +338,12 @@ try{
    ecmwfLayer.add(new THREE.Mesh(surfaceGeometry,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide,transparent:true,opacity:.52,depthWrite:false})));
    // Geopotential-height contour isolines calculated from ECMWF grid (marching squares).
    const zvals=data.grid.map(p=>Number(p.z)).filter(Number.isFinite),zmin=Math.min(...zvals),zmax=Math.max(...zvals);
-   const contourMaterial=new THREE.LineBasicMaterial({color:0xf3e7f2,transparent:true,opacity:.42});
+   const contourMaterial=new THREE.LineBasicMaterial({color:0xf3e7f2,transparent:true,opacity:.32});
    function contourPoint(a,b,level){
     const f=(level-a.z)/(b.z-a.z),lat=a.lat+(b.lat-a.lat)*f,lon=a.lon+(b.lon-a.lon)*f;
     return ll(lat,lon,1.601);
    }
-   for(let level=zmin;level<=zmax;level+=(zmax-zmin)/9){
+   for(let level=zmin;level<=zmax;level+=(zmax-zmin)/6){
     const seg=[];
     for(let ri=0;ri<rows.length-1;ri++)for(let ci=0;ci<cols;ci++){
      const nj=(ci+1)%cols,ps=[lookup.get(rows[ri]+','+lons[ci]),lookup.get(rows[ri]+','+lons[nj]),lookup.get(rows[ri+1]+','+lons[nj]),lookup.get(rows[ri+1]+','+lons[ci])];
@@ -357,7 +357,7 @@ try{
    // Směrové šipky větru U/V: východní a severní složka na hladině 10 hPa.
    const windPositions=[];
    data.grid.forEach((p,i)=>{
-    if(i%5!==0||Number(p.lat)<55)return;
+    if(i%8!==0||Number(p.lat)<55)return;
     const lat=Number(p.lat),lon=Number(p.lon),u=Number(p.u),v=Number(p.v);
     if(!Number.isFinite(lat)||!Number.isFinite(lon)||!Number.isFinite(u)||!Number.isFinite(v))return;
     const a=THREE.MathUtils.degToRad(lat),b=THREE.MathUtils.degToRad(lon);
@@ -375,7 +375,7 @@ try{
    });
    const windGeometry=new THREE.BufferGeometry();
    windGeometry.setAttribute('position',new THREE.Float32BufferAttribute(windPositions,3));
-   ecmwfLayer.add(new THREE.LineSegments(windGeometry,new THREE.LineBasicMaterial({color:0x8df5ff,transparent:true,opacity:.72})));
+   ecmwfLayer.add(new THREE.LineSegments(windGeometry,new THREE.LineBasicMaterial({color:0x8df5ff,transparent:true,opacity:.56})));
    state.textContent='3D scéna aktivní · ECMWF 10 hPa · '+data.valid_time_utc;
    const badge=document.querySelector('#ecmwfGlobeState');if(badge)badge.textContent='ECMWF 10 hPa · teplotní pole + geopotenciální izolinie · '+data.valid_time_utc;
   }catch(err){const badge=document.querySelector('#ecmwfGlobeState');if(badge)badge.textContent='ECMWF vrstva čeká na data: '+err.message;}
