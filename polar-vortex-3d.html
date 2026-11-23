@@ -122,7 +122,7 @@
 <div class="buttons" style="margin-top:12px">
 <button id="wxRefresh" type="button">Obnovit předpověď</button>
 <a class="btn" href="https://www.chmi.cz/predpoved-pocasi" target="_blank" rel="noopener">Oficiální předpověď ČHMÚ</a>
-<a class="btn" href="https://www.chmi.cz/vystrahy" target="_blank" rel="noopener">Výstrahy ČHMÚ</a>
+<a class="btn" href="https://www.chmi.cz/predpoved-pocasi/rizika" target="_blank" rel="noopener">Výstrahy ČHMÚ</a>
 <a class="btn" href="https://open-meteo.com/en/docs" target="_blank" rel="noopener">Metodika a proměnné Open-Meteo</a>
 </div>
 <p class="small" style="margin-top:10px">Referenční body: Most, Klínovec, Pec pod Sněžkou, Praděd, Kvilda, Lysá hora, Jihlava, Praha a Brno. Souhrny jsou vypočteny z hodinových hodnot: minimum a maximum teploty, součet srážek a sněžení, maximum rychlosti větru. Sníh v okolí bodu se může výrazně lišit podle nadmořské výšky a expozice.</p>
@@ -441,7 +441,7 @@ try{
    const now=new Date();
    $("wxStatus").textContent="Data načtena";
    $("wxUpdated").textContent="Načteno: "+now.toLocaleString("cs-CZ");
-   $("wxNotice").textContent="Předpověď načtena pro všech "+points.length+" míst. Zobrazené souhrny pokrývají přibližně 72 hodin od načtení. Model: "+(data[0].hourly_units?.temperature_2m||"°C")+"; časové pásmo Europe/Prague.";
+   $("wxNotice").textContent="Předpověď načtena pro všech "+points.length+" míst. Souhrny pokrývají přibližně 72 hodin od načtení. Teplota je v °C, vítr v m/s a nový sníh v cm; časové pásmo Europe/Prague.";
   }catch(e){
    $("wxStatus").textContent="Nedostupná";
    $("wxNotice").textContent="Předpověď se nepodařilo načíst: "+e.message+". Zkuste obnovit data nebo ověřte předpověď přímo u ČHMÚ.";
