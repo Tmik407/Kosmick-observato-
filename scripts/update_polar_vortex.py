@@ -148,7 +148,30 @@ def main():
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
+
+    # Keep a compact forecast history for the viewer's time series.
+    history_path = Path("data/polar-vortex-history.json")
+    if history_path.exists():
+        history = json.loads(history_path.read_text(encoding="utf-8"))
+        if not isinstance(history, dict) or not isinstance(history.get("records"), list):
+            raise RuntimeError("Invalid polar-vortex history file")
+    else:
+        history = {"schema_version": 1, "source": "ECMWF IFS Open Data", "records": []}
+    record = {
+        "run_utc": payload["run_utc"],
+        "valid_time_utc": payload["valid_time_utc"],
+        "generated_utc": payload["generated_utc"],
+        "zonal_wind_60N_ms": payload["diagnostics"]["zonal_wind_60N_ms"],
+        "polar_cap_temperature_10hpa_k": payload["diagnostics"]["polar_cap_temperature_10hpa_k"],
+    }
+    records = [r for r in history["records"] if r.get("run_utc") != record["run_utc"]]
+    records.append(record)
+    records.sort(key=lambda r: r.get("run_utc", ""))
+    history["records"] = records[-365:]
+    history["updated_utc"] = payload["generated_utc"]
+    history_path.write_text(json.dumps(history, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
     print(f"Wrote {OUT}: {len(payload['grid'])} grid cells; run {payload['run_utc']}")
+    print(f"Wrote {history_path}: {len(history['records'])} forecast records")
 
 
 if __name__ == "__main__":
