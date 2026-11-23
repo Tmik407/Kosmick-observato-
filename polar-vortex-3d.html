@@ -59,6 +59,15 @@
 <p class="small">Zdroj: ECMWF Open Data, IFS operational forecast, 10 hPa, +24 h. Licence CC BY 4.0. Jde o předpovědní data modelu, nikoli přímé měření. Vítr na 60° s. š. je důležitý diagnostický ukazatel, ale tento produkt sám nevydává výstrahu SSW.</p>
 <div class="buttons"><a class="btn" href="./data/polar-vortex-10hpa.json" target="_blank" rel="noopener">Otevřít zpracovaná data JSON</a><a class="btn" href="https://github.com/Tmik407/Kosmick-observato-/actions/workflows/update-polar-vortex.yml" target="_blank" rel="noopener">Otevřít aktualizaci dat v GitHub Actions</a></div>
 </section>
+<section class="panel wide" id="ecmwfTimeline" style="margin-top:14px">
+<h2>Časová animace skutečné předpovědi ECMWF · 10 hPa</h2>
+<p class="small">Přehrávání používá samostatné předpovědní kroky z jednoho běhu ECMWF IFS. Posuvníkem lze přejít na konkrétní platnost; při přehrávání se aktualizuje i teplotní pole, geopotenciální izolinie, větrné šipky a diagnostika 3D globusu.</p>
+<div class="metrics"><div class="metric">Platnost zobrazeného pole<b id="timelineValid">Načítám…</b></div><div class="metric">Předpovědní krok<b id="timelineStep">—</b></div></div>
+<div class="control" style="margin-top:14px"><label for="timelineRange">Čas předpovědi <span class="value" id="timelinePosition">—</span></label><input id="timelineRange" type="range" min="0" max="0" value="0" step="1" disabled></div>
+<div class="buttons" style="margin-top:10px"><button id="timelinePlay" type="button" disabled>▶ Přehrát animaci</button><button id="timelinePrev" type="button" disabled>◀ Předchozí</button><button id="timelineNext" type="button" disabled>Další ▶</button><button id="timelineRefresh" type="button">Obnovit předpověď</button></div>
+<div class="status" id="timelineStatus" style="margin-top:10px">Načítám časovou řadu ECMWF…</div>
+<p class="small">Zdroj: ECMWF IFS Open Data · 10 hPa · T/U/V/Z · licence CC BY 4.0. Animace zobrazuje diskrétní předpovědní kroky, nikoli kontinuální měření. Chybějící kroky se přeskočí.</p>
+</section>
 <section class="panel wide" id="vortexHistory">
 <h2>Časová osa polárního víru · ECMWF 10 hPa</h2>
 <p class="small">Historie jednotlivých běhů ECMWF IFS. Graf porovnává zonální vítr na 60° s. š. a průměrnou teplotu polární oblasti nad 60° s. š. na hladině 10 hPa. Jde o hodnoty předpovědních běhů, nikoli o souvislou řadu pozorování.</p>
@@ -308,11 +317,14 @@ try{
  canvas.addEventListener('pointerdown',e=>{drag=true;lastX=e.clientX;lastY=e.clientY;canvas.setPointerCapture(e.pointerId)});canvas.addEventListener('pointerup',()=>drag=false);canvas.addEventListener('pointercancel',()=>drag=false);
  canvas.addEventListener('pointermove',e=>{if(!drag)return;rotY+=(e.clientX-lastX)*.008;rotX+=(e.clientY-lastY)*.008;rotX=Math.max(-1.2,Math.min(1.2,rotX));lastX=e.clientX;lastY=e.clientY});
  canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(3.3,Math.min(8,zoom+e.deltaY*.004));},{passive:false});
- async function loadEcmwfGlobe(){
+ async function loadEcmwfGlobe(frameOverride){
   try{
-   const response=await fetch('./data/polar-vortex-10hpa.json?v='+Date.now(),{cache:'no-store'});
-   if(!response.ok)throw new Error('ECMWF JSON zatím není dostupný');
-   const data=await response.json();
+   let data=frameOverride;
+   if(!data){
+    const response=await fetch('./data/polar-vortex-10hpa.json?v='+Date.now(),{cache:'no-store'});
+    if(!response.ok)throw new Error('ECMWF JSON zatím není dostupný');
+    data=await response.json();
+   }
    if(!Array.isArray(data.grid)||!data.grid.length)throw new Error('ECMWF mřížka je prázdná');
    if(!data.grid.every(p=>Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lon))&&Number.isFinite(Number(p.t))))throw new Error('ECMWF mřížka obsahuje neplatné souřadnice nebo teploty');
    [tempLayer,contourLayer,windLayer,centerLayer].forEach(layer=>{while(layer.children.length)layer.remove(layer.children[0]);});
@@ -469,7 +481,7 @@ try{
   button.classList.toggle('active',layer.visible);
   button.setAttribute('aria-pressed',String(layer.visible));
  }));
- loadEcmwfGlobe();
+ window.X5LoadEcmwfFrame=loadEcmwfGlobe;\n loadEcmwfGlobe();
  // NASA GSFC/Ozone Watch daily level comparison (60–90N temperature, 60N zonal wind).
  async function loadLevelDiagnostics(level){
   const status=document.getElementById('levelStatus');
@@ -727,4 +739,56 @@ try{
  load();
  setInterval(()=>{if(!document.hidden)load()},60*60*1000);
 })();
-</script></body></html>
+</script><script>
+(function(){
+ const $=id=>document.getElementById(id);
+ const range=$('timelineRange'),status=$('timelineStatus'),play=$('timelinePlay');
+ if(!range||!status)return;
+ let frames=[],index=0,timer=null;
+ const fmtDate=s=>{const d=new Date(s);return Number.isNaN(d.getTime())?s:d.toLocaleString('cs-CZ',{timeZone:'Europe/Prague',dateStyle:'medium',timeStyle:'short'});};
+ function stop(){if(timer){clearInterval(timer);timer=null;}play.textContent='▶ Přehrát animaci';}
+ async function show(i){
+  if(!frames.length)return;
+  index=Math.max(0,Math.min(frames.length-1,i));
+  const f=frames[index];
+  range.value=String(index);
+  $('timelineValid').textContent=fmtDate(f.valid_time_utc);
+  $('timelineStep').textContent='+'+f.step_hours+' hodin';
+  $('timelinePosition').textContent=(index+1)+' / '+frames.length;
+  status.textContent='Vykresluji ECMWF '+f.step_hours+' h · '+fmtDate(f.valid_time_utc)+'…';
+  try{
+   if(typeof window.X5LoadEcmwfFrame!=='function')throw Error('3D vykreslovač ještě není připraven');
+   await window.X5LoadEcmwfFrame(f);
+   status.textContent='Zobrazen skutečný předpovědní krok ECMWF +'+f.step_hours+' h. '+fmtDate(f.valid_time_utc)+'.';
+  }catch(e){status.textContent='Krok nelze vykreslit: '+e.message;}
+ }
+ async function load(){
+  stop();status.textContent='Načítám předpovědní sekvenci ECMWF…';
+  try{
+   const r=await fetch('./data/polar-vortex-10hpa-timeline.json?v='+Date.now(),{cache:'no-store'});
+   if(!r.ok)throw Error('časová řada není publikována (HTTP '+r.status+')');
+   const d=await r.json();
+   if(d.schema_version!==1||!Array.isArray(d.frames)||d.frames.length<2)throw Error('časová řada neobsahuje alespoň dva platné kroky');
+   frames=d.frames.filter(f=>Array.isArray(f.grid)&&f.grid.length&&f.diagnostics&&f.valid_time_utc);
+   if(frames.length<2)throw Error('nedostatek kompletních prostorových polí');
+   range.min='0';range.max=String(frames.length-1);range.step='1';range.disabled=false;
+   ['timelinePlay','timelinePrev','timelineNext'].forEach(id=>$(id).disabled=false);
+   await show(0);
+   status.textContent='Načteno '+frames.length+' prostorových polí z jednoho běhu ECMWF. '+status.textContent;
+  }catch(e){frames=[];range.disabled=true;play.disabled=true;status.textContent='Časovou animaci se nepodařilo načíst: '+e.message+'. Zkontrolujte dokončení aktualizace GitHub Actions.';}
+ }
+ range.addEventListener('input',()=>{stop();show(Number(range.value));});
+ play.addEventListener('click',()=>{
+  if(!frames.length)return;
+  if(timer){stop();return;}
+  if(index>=frames.length-1)show(0);
+  play.textContent='⏸ Pozastavit';
+  timer=setInterval(()=>{if(index>=frames.length-1){stop();return;}show(index+1);},1600);
+ });
+ $('timelinePrev').addEventListener('click',()=>{stop();show(index-1);});
+ $('timelineNext').addEventListener('click',()=>{stop();show(index+1);});
+ $('timelineRefresh').addEventListener('click',load);
+ load();
+})();
+</script>
+</body></html>
