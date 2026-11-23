@@ -214,6 +214,8 @@
   const weatherLabelOffsets=[[24,-22],[-62,-22],[24,28],[-62,28],[0,-52],[0,52],[68,0],[-76,0],[54,-48],[-54,-48],[54,48],[-54,48]];
   function repositionWeatherMarkers(){
    const size=map.getSize(),occupied=[];
+   const compact=size.x<520;
+   const labelHalfW=compact?29:31,labelHalfH=compact?15:17;
    const controls=[...root.querySelectorAll('.leaflet-control')].map(el=>{
     const r=el.getBoundingClientRect(),m=root.getBoundingClientRect();
     return {left:r.left-m.left-7,right:r.right-m.left+7,top:r.top-m.top-7,bottom:r.bottom-m.top+7};
@@ -222,8 +224,9 @@
     const origin=map.latLngToContainerPoint(item.base);
     let best=null,bestScore=Infinity;
     weatherLabelOffsets.forEach((offset,index)=>{
-     const x=origin.x+offset[0],y=origin.y+offset[1],rect={left:x-31,right:x+31,top:y-17,bottom:y+17};
-     const outside=rect.left<5||rect.right>size.x-5||rect.top<5||rect.bottom>size.y-5;
+     const x=origin.x+offset[0],y=origin.y+offset[1],rect={left:x-labelHalfW,right:x+labelHalfW,top:y-labelHalfH,bottom:y+labelHalfH};
+     const margin=compact?10:7;
+    const outside=rect.left<margin||rect.right>size.x-margin||rect.top<margin||rect.bottom>size.y-margin;
      const controlHit=controls.some(c=>rect.left<c.right&&rect.right>c.left&&rect.top<c.bottom&&rect.bottom>c.top);
      const labelHits=occupied.some(c=>rect.left<c.right+5&&rect.right>c.left-5&&rect.top<c.bottom+5&&rect.bottom>c.top-5);
      const score=Math.hypot(offset[0],offset[1])+index*.15+(outside?10000:0)+(controlHit?10000:0)+(labelHits?2500:0);
@@ -231,7 +234,7 @@
     });
     if(!best){
      const x=Math.max(34,Math.min(size.x-34,origin.x-70)),y=Math.max(20,Math.min(size.y-20,origin.y+48));
-     best={x,y,rect:{left:x-31,right:x+31,top:y-17,bottom:y+17}};
+     best={x,y,rect:{left:x-labelHalfW,right:x+labelHalfW,top:y-labelHalfH,bottom:y+labelHalfH}};
     }
     occupied.push(best.rect);
     const point=map.containerPointToLatLng([best.x,best.y]);
@@ -239,12 +242,18 @@
     if(item.line)item.line.setLatLngs([item.base,point]);
    });
   }
-  map.on('zoomend moveend resize',repositionWeatherMarkers);
+  const scheduleWeatherMarkerLayout=()=>requestAnimationFrame(()=>requestAnimationFrame(repositionWeatherMarkers));
+  map.on('zoomend moveend resize overlayadd overlayremove',scheduleWeatherMarkerLayout);
+  window.addEventListener('resize',scheduleWeatherMarkerLayout,{passive:true});
   const tempColor=t=>t<=-5?'#3156b8':t<=0?'#39a6d5':t<=5?'#61ad79':t<=15?'#e3b34d':'#d85d45';
   const escHtml=v=>String(v??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  function weatherDisplayName(w){
+   const region=regions.find(r=>r.place.toLocaleLowerCase('cs-CZ')===String(w.name||'').toLocaleLowerCase('cs-CZ'));
+   return region?String(w.name)+' · '+region.name:String(w.name||'Meteorologický bod');
+  }
   function renderWeatherDetail(w,stamp){
    const info=document.getElementById('czWinterRegionInfo'),detail=document.getElementById('czWinterWeatherDetail');
-   if(info)info.innerHTML='<b>'+escHtml(w.name)+'</b><p class="small" style="margin:5px 0">Meteorologický referenční bod · modelový stav, nikoli přímé měření.</p>';
+   if(info)info.innerHTML='<b>'+escHtml(weatherDisplayName(w))+'</b><p class="small" style="margin:5px 0">Meteorologický referenční bod · modelový stav, nikoli přímé měření.</p>';
    if(!detail)return;
    const f=w.forecast||{},temps=(f.temperature||[]).map(Number),snow=(f.snowfall||[]).map(Number),prec=(f.precipitation||[]).map(Number),times=f.time||[];
    const validTemps=temps.filter(Number.isFinite),min=validTemps.length?Math.min(...validTemps):NaN,max=validTemps.length?Math.max(...validTemps):NaN;
@@ -269,7 +278,7 @@
      pane:'winterPoints',riseOnHover:true,bubblingMouseEvents:false,
      icon:L.divIcon({className:'winter-weather-label',html:'<span style="--wx-color:'+color+'">'+w.temp.toFixed(1).replace('.',',')+'°</span>',iconSize:[48,30],iconAnchor:[24,15],popupAnchor:[0,-13]})
     });
-    const safeName=String(w.name).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const safeName=escHtml(weatherDisplayName(w));
     const details='<b>'+safeName+'</b><br>Modelová teplota: '+w.temp.toFixed(1)+' °C<br>Vítr: '+(Number.isFinite(w.wind)?w.wind.toFixed(1)+' m/s':'—')+'<br>Srážky nyní: '+(Number.isFinite(w.prec)?w.prec.toFixed(1)+' mm':'—')+'<br>Nový sníh nyní: '+(Number.isFinite(w.snow)?w.snow.toFixed(1)+' cm':'—')+'<br>Sněhová pokrývka modelu: '+(Number.isFinite(w.depth)?w.depth.toFixed(1)+' cm':'—')+'<br><small>Modelový stav · '+stamp+'</small>';
     const displayed=weatherDisplayPoint(base);
     const link=L.polyline([base,displayed],{pane:'winterPoints',color:'#17364c',weight:1.5,opacity:.8,dashArray:'3 4',interactive:false}).addTo(weatherLinks);
@@ -279,20 +288,21 @@
     marker.addTo(weatherGroup);
     weatherMarkers.push({marker,base,line:link});
    });
-   repositionWeatherMarkers();
+   scheduleWeatherMarkerLayout();
    if(!map.hasLayer(weatherGroup))weatherGroup.addTo(map);
+   scheduleWeatherMarkerLayout();
    const caption=document.querySelector('.winter-map-caption');
    if(caption)caption.textContent='Barevné kruhy: modelová teplota nyní (modrá = chladněji, červená = tepleji). Přepínač „Aktuální modelové počasí“ ovládá vrstvu. Zdroj: Open-Meteo · '+stamp+'. Nejde o přímé měření.';
   };
   if(pendingWeatherUpdate)window.X5UpdateWinterWeather(pendingWeatherUpdate.items,pendingWeatherUpdate.stamp);
   function selectRegion(r){
    const box=document.getElementById('czWinterRegionInfo');
-   box.innerHTML='<b>'+r.name+'</b><p class="small" style="margin:5px 0">Referenční místo: '+r.place+' · orientační výška '+r.elev.toLocaleString('cs-CZ')+' m n. m.</p><p class="small" style="margin:0">'+r.note+'</p>';
+   box.innerHTML='<b>'+escHtml(r.place+' · '+r.name)+'</b><p class="small" style="margin:5px 0">Referenční místo · orientační výška '+r.elev.toLocaleString('cs-CZ')+' m n. m.</p><p class="small" style="margin:0">'+escHtml(r.note)+'</p>';
   }
   regions.forEach(r=>{
    const marker=L.circleMarker([r.lat,r.lon],{pane:'winterPoints',radius:8,color:'#09263b',weight:2,fillColor:colors[r.band],fillOpacity:.96});
    marker.bindTooltip(r.name+' · '+r.elev+' m n. m.',{direction:'top',offset:[0,-7]});
-   marker.bindPopup('<b>'+r.name+'</b><br>'+r.place+' · přibližně '+r.elev+' m n. m.',{maxWidth:250,autoPan:true});
+   marker.bindPopup('<b>'+escHtml(r.place+' · '+r.name)+'</b><br>Přibližně '+r.elev+' m n. m.',{maxWidth:250,autoPan:true});
    marker.on('click',()=>selectRegion(r));marker.addTo(groups[r.band]);
   });
   document.querySelectorAll('.winter-band-toggle').forEach(input=>{
