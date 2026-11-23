@@ -1021,12 +1021,12 @@ try{
   $("wxNotice").textContent="Stahuji hodinové předpovědi pro "+points.length+" referenčních míst…";
   $("wxRows").innerHTML='<tr><td colspan="8" style="padding:10px">Načítám regionální data…</td></tr>';
   try{
-   const lat=points.map(p=>p.lat).join(","),lon=points.map(p=>p.lon).join(",");
-   const params=new URLSearchParams({latitude:lat,longitude:lon,hourly:"temperature_2m,precipitation,snowfall,snow_depth,wind_speed_10m",current:"temperature_2m,precipitation,snowfall,weather_code,wind_speed_10m",forecast_days:"4",timezone:"Europe/Prague",wind_speed_unit:"ms"});
-   const response=await fetch("https://api.open-meteo.com/v1/forecast?"+params.toString(),{cache:"no-store"});
-   if(!response.ok)throw new Error("Open-Meteo HTTP "+response.status);
-   const raw=await response.json(),data=Array.isArray(raw)?raw:[raw];
-   if(data.length!==points.length)throw new Error("Počet vrácených míst neodpovídá požadavku.");
+   const data=await Promise.all(points.map(async p=>{
+    const params=new URLSearchParams({latitude:String(p.lat),longitude:String(p.lon),hourly:"temperature_2m,precipitation,snowfall,snow_depth,wind_speed_10m",current:"temperature_2m,precipitation,snowfall,weather_code,wind_speed_10m",forecast_days:"4",timezone:"Europe/Prague",wind_speed_unit:"ms"});
+    const response=await fetch("https://api.open-meteo.com/v1/forecast?"+params.toString(),{cache:"no-store"});
+    if(!response.ok)throw new Error("Open-Meteo "+p.name+" HTTP "+response.status);
+    return await response.json();
+   }));
    const currentItems=data.map((d,i)=>{
     const c=d.current||{},h=d.hourly||{},times=h.time||[];
     let nearest=-1,best=Infinity;
@@ -1062,7 +1062,9 @@ try{
    $("wxNotice").textContent="Předpověď načtena pro všech "+points.length+" míst. Souhrny pokrývají přibližně 72 hodin od načtení. Teplota je v °C, vítr v m/s a nový sníh v cm; časové pásmo Europe/Prague.";
   }catch(e){
    $("wxStatus").textContent="Nedostupná";
-   $("wxNotice").textContent="Předpověď se nepodařilo načíst: "+e.message+". Zkuste obnovit data nebo ověřte předpověď přímo u ČHMÚ.";
+   $("wxNotice").textContent="Meteorologická data se nepodařilo načíst: "+e.message+". Zkontrolujte připojení a zkuste obnovit data.";
+   const detail=document.getElementById("czWinterWeatherDetail");
+   if(detail)detail.innerHTML='<b>Podrobná předpověď není dostupná</b><p class="small">Zdroj Open-Meteo nevrátil data. Zkuste tlačítko Obnovit data.</p>';
    $("wxRows").innerHTML='<tr><td colspan="8" style="padding:10px">Regionální data nejsou momentálně dostupná. Nejsou nahrazena odhadovanými hodnotami.</td></tr>';
   }
  }
