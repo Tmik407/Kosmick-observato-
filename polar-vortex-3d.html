@@ -128,7 +128,8 @@
 </div>
 <aside class="winter-map-side">
  <h3 style="margin:0 0 8px">Vybraná oblast</h3>
- <div id="czWinterRegionInfo" class="metric" aria-live="polite"><b>Krušné hory</b><p class="small">Vyberte bod na mapě pro zobrazení regionálního zimního kontextu.</p></div>
+ <div id="czWinterRegionInfo" class="metric" aria-live="polite"><b>Krušné hory</b><p class="small">Vyberte meteorologický bod na mapě pro aktuální stav a 72hodinový vývoj.</p></div>
+ <div id="czWinterWeatherDetail" class="metric" aria-live="polite" style="margin-top:10px"><b>Podrobná předpověď</b><p class="small">Po výběru barevného meteorologického bodu se zde zobrazí teplota, srážky a hodinové grafy na 72 hodin.</p></div>
  <h3 style="margin:14px 0 8px">Zobrazit výšková pásma</h3>
  <div class="winter-layer-controls">
   <label><input type="checkbox" class="winter-band-toggle" data-band="low" checked> <span class="band-dot low"></span> Nížiny · do 300 m</label>
@@ -146,6 +147,14 @@
 .winter-map-caption{font-size:11px;line-height:1.45;color:#b9cede;padding:8px 4px 2px}
 .winter-map-side{background:#f5f9fc;border:1px solid #d7e3ed;border-radius:12px;padding:12px;min-width:0}
 .winter-layer-controls{display:grid;gap:10px}
+.winter-weather-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:9px 0}
+.winter-weather-kpi{background:#eaf3f8;border:1px solid #d3e3ed;border-radius:8px;padding:8px}
+.winter-weather-kpi b{display:block;font-size:16px;color:#126f96}
+.winter-weather-chart{width:100%;height:auto;display:block;margin:5px 0 2px}
+.winter-chart-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#587083}
+.winter-chart-legend span{display:inline-flex;align-items:center;gap:5px}
+.winter-chart-dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+
 .winter-layer-controls label{display:flex;align-items:center;gap:8px;font-size:13px;color:#28455d}
 .winter-layer-controls input{width:18px;height:18px;accent-color:#087eaf}
 .band-dot{width:12px;height:12px;border-radius:50%;display:inline-block;border:1px solid #17324a}
@@ -182,6 +191,25 @@
   const weatherGroup=L.layerGroup();
   L.control.layers(null,{'Aktuální modelové počasí':weatherGroup},{collapsed:false}).addTo(map);
   const tempColor=t=>t<=-5?'#3156b8':t<=0?'#39a6d5':t<=5?'#61ad79':t<=15?'#e3b34d':'#d85d45';
+  const escHtml=v=>String(v??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  function renderWeatherDetail(w,stamp){
+   const info=document.getElementById('czWinterRegionInfo'),detail=document.getElementById('czWinterWeatherDetail');
+   if(info)info.innerHTML='<b>'+escHtml(w.name)+'</b><p class="small" style="margin:5px 0">Meteorologický referenční bod · modelový stav, nikoli přímé měření.</p>';
+   if(!detail)return;
+   const f=w.forecast||{},temps=(f.temperature||[]).map(Number),snow=(f.snowfall||[]).map(Number),prec=(f.precipitation||[]).map(Number),times=f.time||[];
+   const validTemps=temps.filter(Number.isFinite),min=validTemps.length?Math.min(...validTemps):NaN,max=validTemps.length?Math.max(...validTemps):NaN;
+   const snowTotal=snow.reduce((a,v)=>a+(Number.isFinite(v)?v:0),0),precTotal=prec.reduce((a,v)=>a+(Number.isFinite(v)?v:0),0);
+   const W=320,H=104,pad=9,lo=Number.isFinite(min)?Math.floor(min-1):-10,hi=Number.isFinite(max)?Math.ceil(max+1):5,span=Math.max(1,hi-lo);
+   const pts=temps.map((v,i)=>Number.isFinite(v)?(pad+i*Math.max(1,(W-2*pad)/Math.max(1,temps.length-1))).toFixed(1)+','+(H-pad-((v-lo)/span)*(H-2*pad)).toFixed(1):null).filter(Boolean).join(' ');
+   const maxSnow=Math.max(.1,...snow.filter(Number.isFinite));
+   const bars=snow.map((v,i)=>{const x=pad+i*(W-2*pad)/Math.max(1,snow.length),bw=Math.max(1,(W-2*pad)/Math.max(1,snow.length)-1),barH=Math.max(0,(Number.isFinite(v)?v:0)/maxSnow*(H-2*pad));return '<rect x="'+x.toFixed(1)+'" y="'+(H-pad-barH).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+barH.toFixed(1)+'" rx="1" fill="#55a9d1"/>';}).join('');
+   const first=times.length?new Date(times[0]).toLocaleString('cs-CZ',{timeZone:'Europe/Prague',day:'2-digit',month:'2-digit',hour:'2-digit'}):'—';
+   const last=times.length?new Date(times[times.length-1]).toLocaleString('cs-CZ',{timeZone:'Europe/Prague',day:'2-digit',month:'2-digit',hour:'2-digit'}):'—';
+   detail.innerHTML='<b>Výhled na 72 hodin</b><div class="winter-weather-kpis"><div class="winter-weather-kpi"><span class="small">Teplota nyní</span><b>'+ (Number.isFinite(w.temp)?w.temp.toFixed(1).replace('.',',')+' °C':'—')+'</b></div><div class="winter-weather-kpi"><span class="small">Rozsah teplot</span><b>'+ (Number.isFinite(min)?min.toFixed(1).replace('.',',')+' až '+max.toFixed(1).replace('.',',')+' °C':'—')+'</b></div><div class="winter-weather-kpi"><span class="small">Srážky / 72 h</span><b>'+precTotal.toFixed(1).replace('.',',')+' mm</b></div><div class="winter-weather-kpi"><span class="small">Nový sníh / 72 h</span><b>'+snowTotal.toFixed(1).replace('.',',')+' cm</b></div></div>'+
+   '<div class="small"><b>Teplota po hodinách</b></div><svg class="winter-weather-chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Graf hodinové teploty na 72 hodin"><line x1="'+pad+'" y1="'+(H/2)+'" x2="'+(W-pad)+'" y2="'+(H/2)+'" stroke="#cbd9e3" stroke-dasharray="3 3"/><polyline points="'+pts+'" fill="none" stroke="#d66a3b" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="winter-chart-legend"><span><i class="winter-chart-dot" style="background:#d66a3b"></i>Teplota °C</span><span>Min. '+(Number.isFinite(min)?min.toFixed(1):'—')+' °C · max. '+(Number.isFinite(max)?max.toFixed(1):'—')+' °C</span></div>'+
+   '<div class="small" style="margin-top:10px"><b>Nové sněžení po hodinách</b></div><svg class="winter-weather-chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Graf hodinového nového sněžení na 72 hodin">'+bars+'</svg><div class="winter-chart-legend"><span><i class="winter-chart-dot" style="background:#55a9d1"></i>Nový sníh cm/h</span><span>'+first+' – '+last+'</span></div>'+
+   '<p class="small" style="margin:8px 0 0">Vítr nyní: '+(Number.isFinite(w.wind)?w.wind.toFixed(1).replace('.',',')+' m/s':'—')+' · Srážky nyní: '+(Number.isFinite(w.prec)?w.prec.toFixed(1).replace('.',',')+' mm':'—')+' · Modelová pokrývka: '+(Number.isFinite(w.depth)?w.depth.toFixed(1).replace('.',',')+' cm':'—')+'<br>Aktualizace: '+escHtml(stamp)+'. Zdroj: Open-Meteo. Modelový výstup, nikoli měření ani výstraha.</p>';
+  }
   window.X5UpdateWinterWeather=function(items,stamp){
    weatherGroup.clearLayers();
    items.forEach(w=>{
@@ -189,7 +217,7 @@
     const marker=L.circleMarker([w.lat,w.lon],{radius:10,color:'#fff',weight:2.5,fillColor:tempColor(w.temp),fillOpacity:.98});
     const safeName=String(w.name).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const details='<b>'+safeName+'</b><br>Modelová teplota: '+w.temp.toFixed(1)+' °C<br>Vítr: '+(Number.isFinite(w.wind)?w.wind.toFixed(1)+' m/s':'—')+'<br>Srážky nyní: '+(Number.isFinite(w.prec)?w.prec.toFixed(1)+' mm':'—')+'<br>Nový sníh nyní: '+(Number.isFinite(w.snow)?w.snow.toFixed(1)+' cm':'—')+'<br>Sněhová pokrývka modelu: '+(Number.isFinite(w.depth)?w.depth.toFixed(1)+' cm':'—')+'<br><small>Modelový stav · '+stamp+'</small>';
-    marker.bindPopup(details);marker.bindTooltip(safeName+' · '+w.temp.toFixed(1)+' °C');marker.addTo(weatherGroup);
+    marker.bindPopup(details);marker.bindTooltip(safeName+' · '+w.temp.toFixed(1)+' °C');marker.on('click',()=>renderWeatherDetail(w,stamp));marker.addTo(weatherGroup);
    });
    if(!map.hasLayer(weatherGroup))weatherGroup.addTo(map);
    const caption=document.querySelector('.winter-map-caption');
@@ -920,7 +948,9 @@ try{
     let nearest=-1,best=Infinity;
     times.forEach((t,j)=>{const delta=Math.abs(new Date(t).getTime()-Date.now());if(delta<best){best=delta;nearest=j;}});
     const depth=nearest>=0?Number((h.snow_depth||[])[nearest]):NaN;
-    return {name:points[i].name,lat:points[i].lat,lon:points[i].lon,temp:Number(c.temperature_2m),wind:Number(c.wind_speed_10m),prec:Number(c.precipitation),snow:Number(c.snowfall),weatherCode:Number(c.weather_code),depth:Number.isFinite(depth)?depth*100:NaN};
+    const forecastTimes=times.filter(t=>new Date(t).getTime()>=Date.now()-3600000&&new Date(t).getTime()<=Date.now()+72*3600000);
+    const forecastIndices=forecastTimes.map(t=>times.indexOf(t));
+    return {name:points[i].name,lat:points[i].lat,lon:points[i].lon,temp:Number(c.temperature_2m),wind:Number(c.wind_speed_10m),prec:Number(c.precipitation),snow:Number(c.snowfall),weatherCode:Number(c.weather_code),depth:Number.isFinite(depth)?depth*100:NaN,forecast:{time:forecastTimes,temperature:forecastIndices.map(j=>Number((h.temperature_2m||[])[j])),snowfall:forecastIndices.map(j=>Number((h.snowfall||[])[j])),precipitation:forecastIndices.map(j=>Number((h.precipitation||[])[j]))}};
    });
    const currentStamp=new Date().toLocaleString("cs-CZ",{timeZone:"Europe/Prague"});
    window.dispatchEvent(new CustomEvent("x5:winter-weather",{detail:{items:currentItems,stamp:currentStamp}}));
