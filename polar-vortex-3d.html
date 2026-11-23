@@ -157,7 +157,7 @@ let renderer,scene,camera,globe,vortex,streamGroup,ecmwfLayer,auto=true,drag=fal
 try{
  renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(canvas.clientWidth,canvas.clientHeight,false);
  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(38,canvas.clientWidth/canvas.clientHeight,.1,100);camera.position.set(0,0,zoom);
- scene.add(new THREE.AmbientLight(0x9ecfff,1.5));const light=new THREE.DirectionalLight(0xffffff,2.2);light.position.set(4,3,5);scene.add(light);
+ scene.add(new THREE.AmbientLight(0x9ecfff,1.05));const light=new THREE.DirectionalLight(0xffffff,2.0);light.position.set(4,3,5);scene.add(light);const rimLight=new THREE.DirectionalLight(0x4ebeff,.55);rimLight.position.set(-4,1,-3);scene.add(rimLight);
  const group=new THREE.Group();scene.add(group);
  // Procedurální textura Země: oceány, kontinenty, pobřeží a jemné reliéfní odstíny.
  const earthCanvas=document.createElement('canvas');earthCanvas.width=2048;earthCanvas.height=1024;
@@ -202,10 +202,25 @@ try{
  // Polární ledová oblast jako průsvitná čepička nad severním pólem.
  const polarCap=new THREE.Mesh(new THREE.SphereGeometry(1.558,96,24,0,Math.PI*2,0,.43),new THREE.MeshBasicMaterial({color:0xc9efff,transparent:true,opacity:.16,side:THREE.DoubleSide,depthWrite:false}));
  group.add(polarCap);
- const gridMat=new THREE.LineBasicMaterial({color:0x5e9fc2,transparent:true,opacity:.42});
- for(let lat=-75;lat<=75;lat+=15){const pts=[];for(let lon=0;lon<=360;lon+=3){const p=ll(lat,lon,1.558);pts.push(p)}const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gridMat);group.add(line)}
- for(let lon=0;lon<360;lon+=15){const pts=[];for(let lat=-90;lat<=90;lat+=3)pts.push(ll(lat,lon,1.558));group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gridMat))}
- const axis=new THREE.Mesh(new THREE.SphereGeometry(.045,16,12),new THREE.MeshBasicMaterial({color:0xffffff}));axis.position.set(0,1.57,0);group.add(axis);
+ // Vědecká geografická síť: rovnoběžky, poledníky a zvýrazněný polární kruh.
+ const gridMat=new THREE.LineBasicMaterial({color:0x91b9d2,transparent:true,opacity:.28});
+ for(let lat=-75;lat<=75;lat+=15){const pts=[];for(let lon=0;lon<=360;lon+=2){pts.push(ll(lat,lon,1.562))}group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gridMat))}
+ for(let lon=0;lon<360;lon+=15){const pts=[];for(let lat=-90;lat<=90;lat+=2)pts.push(ll(lat,lon,1.562));group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),gridMat))}
+ const arcticPts=[];for(let lon=0;lon<=360;lon+=2)arcticPts.push(ll(66.56,lon,1.568));
+ group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(arcticPts),new THREE.LineBasicMaterial({color:0x9be7ff,transparent:true,opacity:.8})));
+ // Textové popisky zeměpisné šířky a hlavních poledníků.
+ function geoLabel(text,lat,lon,color='#d9efff'){
+  const c=document.createElement('canvas');c.width=256;c.height=64;const x=c.getContext('2d');
+  x.font='bold 30px Arial';x.textAlign='center';x.textBaseline='middle';x.fillStyle='rgba(3,18,34,.68)';x.fillRect(4,5,248,54);x.fillStyle=color;x.fillText(text,128,32);
+  const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  sp.scale.set(.42,.105,1);sp.position.copy(ll(lat,lon,1.585));group.add(sp);
+ }
+ geoLabel('80° N',80,12);geoLabel('70° N',70,12);geoLabel('60° N',60,12);
+ geoLabel('0°',18,0,'#9be7ff');geoLabel('90° E',18,90,'#9be7ff');geoLabel('180°',18,180,'#9be7ff');geoLabel('90° W',18,270,'#9be7ff');
+ const axisLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,1.56,0),new THREE.Vector3(0,1.88,0)]),new THREE.LineBasicMaterial({color:0xe8f7ff,transparent:true,opacity:.9}));
+ group.add(axisLine);
+ const axis=new THREE.Mesh(new THREE.SphereGeometry(.035,20,16),new THREE.MeshBasicMaterial({color:0xffffff}));axis.position.set(0,1.57,0);group.add(axis);
  vortex=new THREE.Group();group.add(vortex);streamGroup=new THREE.Group();group.add(streamGroup);ecmwfLayer=new THREE.Group();group.add(ecmwfLayer);
  const glow=new THREE.Mesh(new THREE.SphereGeometry(.42,32,24),new THREE.MeshBasicMaterial({color:0x1c9dd8,transparent:true,opacity:.16}));glow.position.y=1.65;vortex.add(glow);
  function ll(lat,lon,r){const a=THREE.MathUtils.degToRad(lat),b=THREE.MathUtils.degToRad(lon);return new THREE.Vector3(r*Math.cos(a)*Math.sin(b),r*Math.sin(a),r*Math.cos(a)*Math.cos(b))}
