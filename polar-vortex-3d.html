@@ -213,7 +213,7 @@
   L.control.layers(null,{'Aktuální modelové počasí':weatherGroup},{collapsed:false}).addTo(map);
   const weatherDisplayPoint=latlng=>map.unproject(map.project(latlng,map.getZoom()).add([24,-22]),map.getZoom());
   function repositionWeatherMarkers(){
-   weatherMarkers.forEach(item=>item.marker.setLatLng(weatherDisplayPoint(item.base)));
+   weatherMarkers.forEach(item=>{const point=weatherDisplayPoint(item.base);item.marker.setLatLng(point);if(item.line)item.line.setLatLngs([item.base,point]);});
   }
   map.on('zoomend moveend',repositionWeatherMarkers);
   const tempColor=t=>t<=-5?'#3156b8':t<=0?'#39a6d5':t<=5?'#61ad79':t<=15?'#e3b34d':'#d85d45';
@@ -248,12 +248,12 @@
     const safeName=String(w.name).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const details='<b>'+safeName+'</b><br>Modelová teplota: '+w.temp.toFixed(1)+' °C<br>Vítr: '+(Number.isFinite(w.wind)?w.wind.toFixed(1)+' m/s':'—')+'<br>Srážky nyní: '+(Number.isFinite(w.prec)?w.prec.toFixed(1)+' mm':'—')+'<br>Nový sníh nyní: '+(Number.isFinite(w.snow)?w.snow.toFixed(1)+' cm':'—')+'<br>Sněhová pokrývka modelu: '+(Number.isFinite(w.depth)?w.depth.toFixed(1)+' cm':'—')+'<br><small>Modelový stav · '+stamp+'</small>';
     const displayed=weatherDisplayPoint(base);
-    L.polyline([base,displayed],{pane:'winterPoints',color:'#17364c',weight:1.5,opacity:.8,dashArray:'3 4',interactive:false}).addTo(weatherLinks);
+    const link=L.polyline([base,displayed],{pane:'winterPoints',color:'#17364c',weight:1.5,opacity:.8,dashArray:'3 4',interactive:false}).addTo(weatherLinks);
     marker._x5BaseLatLng=base;
     marker.bindPopup(details,{maxWidth:260,autoPan:true});
     marker.on('click',()=>renderWeatherDetail(w,stamp));
     marker.addTo(weatherGroup);
-    weatherMarkers.push({marker,base});
+    weatherMarkers.push({marker,base,line:link});
    });
    repositionWeatherMarkers();
    if(!map.hasLayer(weatherGroup))weatherGroup.addTo(map);
