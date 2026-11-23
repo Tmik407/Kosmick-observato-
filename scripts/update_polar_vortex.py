@@ -171,7 +171,7 @@ def main():
         "method": "Forecast fields sampled at 10 hPa, aggregated to 5-degree latitude by 10-degree longitude bins north of 40N. Zonal means use cosine-latitude weighting.",
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\\n", encoding="utf-8")
+    OUT.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
 
     timeline_path = Path("data/polar-vortex-10hpa-timeline.json")
     timeline = {
@@ -184,7 +184,7 @@ def main():
         "pressure_level_hpa": LEVEL,
         "frames": frames,
     }
-    timeline_path.write_text(json.dumps(timeline, ensure_ascii=False, separators=(",", ":")) + "\\n", encoding="utf-8")
+    timeline_path.write_text(json.dumps(timeline, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
 
     history_path = Path("data/polar-vortex-history.json")
     if history_path.exists():
@@ -205,7 +205,7 @@ def main():
     records.sort(key=lambda r: r.get("run_utc", ""))
     history["records"] = records[-365:]
     history["updated_utc"] = payload["generated_utc"]
-    history_path.write_text(json.dumps(history, ensure_ascii=False, separators=(",", ":")) + "\\n", encoding="utf-8")
+    history_path.write_text(json.dumps(history, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
     print(f"Wrote {OUT}: {len(payload['grid'])} grid cells; run {payload['run_utc']}")
     print(f"Wrote {timeline_path}: {len(frames)} forecast frames")
     print(f"Wrote {history_path}: {len(history['records'])} forecast records")
