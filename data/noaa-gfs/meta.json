@@ -1,5 +1,5 @@
 {
-  "retrieved_utc": "2026-11-24T01:47:46.895195+00:00",
+  "retrieved_utc": "2026-11-24T23:35:42.741896+00:00",
   "source": "NOAA NCEP Climate Prediction Center / GFS 00Z stratospheric analysis",
   "classification": "NUMERICAL_MODEL_ANALYSIS_MAP",
   "region": "Northern Hemisphere",
@@ -13,18 +13,18 @@
   "files": {
     "10": {
       "file": "gfs_t10_nh_f00.png",
-      "bytes": 131426,
-      "sha256": "78e4ea8ae0246e7240ba8acb59c23a694721019de3cb69472cf3aa38ace1bae6"
+      "bytes": 132081,
+      "sha256": "2c6c489be810a259de20f7cf130d9b25d6a05ef6562705af63cfc12d8765598d"
     },
     "30": {
       "file": "gfs_t30_nh_f00.png",
-      "bytes": 130457,
-      "sha256": "3968028ea6eef8d97076c0ede91931c5a6eb3605d0aeb749b201b440d4b2c01a"
+      "bytes": 133849,
+      "sha256": "329e945aeb9701f83f470f9a043867acff148cec37672bbaa27a96c3b2407c72"
     },
     "50": {
       "file": "gfs_t50_nh_f00.png",
-      "bytes": 127498,
-      "sha256": "486b1cf1e5cb5545f89a99ec9af59c6fc9138b0e69e135d08305de87d848b2db"
+      "bytes": 127704,
+      "sha256": "307cdface7ecd505d42b99cc72c78bd53ecacceee9a443453fb277c67afbd0b3"
     }
   }
 }
