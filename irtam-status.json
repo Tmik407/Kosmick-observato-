@@ -1,10 +1,10 @@
 {
   "source": "PyIRTAM / GIRO GAMBIT",
   "status": "success",
-  "requested_target_utc": "2026-11-21T12:00:00Z",
-  "actual_model_target_utc": "2026-11-21T12:00:00Z",
-  "generated_utc": "2026-11-24T09:52:41Z",
-  "data_age_hours": 69.88,
+  "requested_target_utc": "2026-11-22T12:00:00Z",
+  "actual_model_target_utc": "2026-11-22T12:00:00Z",
+  "generated_utc": "2026-11-24T22:25:32Z",
+  "data_age_hours": 58.43,
   "coefficient_fallback_days": 0,
   "fallback_errors": [],
   "note": "Older epochs are explicitly identified; no interpolation or relabeling."
