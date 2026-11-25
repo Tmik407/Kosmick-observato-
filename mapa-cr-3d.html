@@ -188,6 +188,8 @@ function updateLayers(){
  ["chmi-station-points","chmi-station-labels","chmi-station-clusters","chmi-station-cluster-count"].forEach(id=>{
   if(map.getLayer(id))map.setLayoutProperty(id,"visibility",v.stations?"visible":"none");
  });
+ const mapPrecipButton=document.querySelector('[data-layer="precipitation"]');if(mapPrecipButton)mapPrecipButton.setAttribute("aria-pressed",String(!!v.precipitation));
+ window.__weatherVortexSetPrecipitationVisible?.(!!v.precipitation);
  $("legend").innerHTML=v.precipitation?'<span><i class="key" style="background:#0877dc"></i>Déšť · mm/h</span><span><i class="key" style="background:#75d3f6"></i>Sníh · cm/h</span><span>Velikost značky = intenzita srážek</span>':v.temperature?'<span><i class="key" style="background:#286fc4"></i>−15 °C</span><span><i class="key" style="background:#28a9dc"></i>−8 °C</span><span><i class="key" style="background:#39c6b5"></i>0 °C</span><span><i class="key" style="background:#78c96b"></i>8 °C</span><span><i class="key" style="background:#e6d34b"></i>16 °C</span><span><i class="key" style="background:#f39a38"></i>24 °C a více</span>':'<span>Šipky: směr větru · pohyb částic: směr proudění</span>';
 }
 function seedParticles(){
@@ -358,6 +360,7 @@ $("findPrecip").addEventListener("click",()=>{
 });
 
 $("layerControls").addEventListener("click",e=>{const b=e.target.closest("button[data-layer]");if(!b)return;const k=b.dataset.layer;state.visible[k]=!state.visible[k];b.setAttribute("aria-pressed",String(state.visible[k]));updateLayers()});
+window.__weatherVortexTogglePrecipitation=()=>{state.visible.precipitation=!state.visible.precipitation;updateLayers()};
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){if(state.rows.length)loadWeather();loadStations()}});
 window.setInterval(loadStations,15*60*1000);
 map.on("load",()=>{if(!state.raf)animateFlow()});
@@ -436,9 +439,11 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    snowGroup.visible=vortexLayers.precipitation&&snowGroup.children.some(x=>x.visible);
    streamGroup.visible=vortexLayers.wind;particles.forEach(p=>p.mesh.visible=vortexLayers.wind);core.visible=vortexLayers.wind;ring.visible=vortexLayers.wind;
   }
+  window.__weatherVortexSetPrecipitationVisible=visible=>{vortexLayers.precipitation=!!visible;const b=layerControls?.querySelector('[data-vortex-layer="precipitation"]');if(b)b.setAttribute('aria-pressed',String(vortexLayers.precipitation));applyVortexLayers()};
   layerControls?.querySelectorAll('[data-vortex-layer]').forEach(btn=>btn.addEventListener('click',()=>{
-   const key=btn.dataset.vortexLayer;vortexLayers[key]=!vortexLayers[key];btn.setAttribute('aria-pressed',String(vortexLayers[key]));applyVortexLayers();
+   const key=btn.dataset.vortexLayer;if(key==='precipitation'){window.__weatherVortexTogglePrecipitation?.();return;}vortexLayers[key]=!vortexLayers[key];btn.setAttribute('aria-pressed',String(vortexLayers[key]));applyVortexLayers();
   }));
+  window.__weatherVortexSetPrecipitationVisible?.(document.querySelector('[data-layer="precipitation"]')?.getAttribute('aria-pressed')==='true');
 
   function updateCamera(){const target=new THREE.Vector3(0,.35,0);camera.position.set(Math.sin(orbitYaw)*Math.cos(orbitPitch)*orbitRadius,target.y+Math.sin(orbitPitch)*orbitRadius,Math.cos(orbitYaw)*Math.cos(orbitPitch)*orbitRadius);camera.lookAt(target)}
   function resize(){const w=Math.max(1,host.clientWidth),h=Math.max(1,host.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();updateCamera()}new ResizeObserver(resize).observe(host);resize();
