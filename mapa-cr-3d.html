@@ -750,7 +750,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    {x:-3.0,z:1.25,a:.16,sx:.48,sz:.68}, // Český les
    {x:.0,z:1.35,a:.13,sx:1.0,sz:.8} // Českomoravská vrchovina
   ];
-  let demGrid=null;const demSize=9;
+  let demGrid=null;const demSize=17;
   function terrainHeightAt(x,z){
    if(demGrid){const gx=Math.max(0,Math.min(demSize-1,(x+3.6)/7.2*(demSize-1))),gz=Math.max(0,Math.min(demSize-1,(z+3.6)/7.2*(demSize-1))),x0=Math.floor(gx),z0=Math.floor(gz),x1=Math.min(demSize-1,x0+1),z1=Math.min(demSize-1,z0+1),tx=gx-x0,tz=gz-z0;
     const a=demGrid[z0*demSize+x0]*(1-tx)+demGrid[z0*demSize+x1]*tx,b=demGrid[z1*demSize+x0]*(1-tx)+demGrid[z1*demSize+x1]*tx;return (a*(1-tz)+b*tz)*.00034}
@@ -772,7 +772,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   async function loadCopernicusTerrain(){
    const badge=document.getElementById('weatherTerrainBadge');
    const coords=[];for(let j=0;j<demSize;j++)for(let i=0;i<demSize;i++)coords.push({lat:50.95-j/(demSize-1)*2.3,lon:12.15+i/(demSize-1)*6.4});
-   const cacheKey='x5-dem-cz-grid-v2',cooldownKey='x5-dem-cz-cooldown-v1',cacheTtl=30*24*60*60*1000;
+   const cacheKey='x5-dem-cz-grid-v3',cooldownKey='x5-dem-cz-cooldown-v1',cacheTtl=30*24*60*60*1000;
    const applyElevations=values=>{
     if(!Array.isArray(values)||values.length!==demSize*demSize||values.some(v=>!Number.isFinite(Number(v))))throw new Error('Neúplná výšková data');
     demGrid=values.map(Number);
@@ -800,23 +800,23 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    let primaryError='neznámá chyba';
    try{
     if(badge)badge.textContent='Terén: dotazuji Open-Meteo…';
-    const lat=coords.map(p=>p.lat.toFixed(4)).join(','),lon=coords.map(p=>p.lon.toFixed(4)).join(',');
-    const response=await timedFetch('https://api.open-meteo.com/v1/elevation?latitude='+lat+'&longitude='+lon);
-    if(!response.ok)throw new Error('Open-Meteo HTTP '+response.status);
-    const data=await response.json();saveAndApply(data.elevation);
-    if(badge)badge.textContent='Terén: výšková data načtena · Open-Meteo · '+demSize+'×'+demSize;
+    const values=[];for(let start=0;start<coords.length;start+=60){const batch=coords.slice(start,start+60),lat=batch.map(p=>p.lat.toFixed(4)).join(','),lon=batch.map(p=>p.lon.toFixed(4)).join(',');
+     const response=await timedFetch('https://api.open-meteo.com/v1/elevation?latitude='+lat+'&longitude='+lon,10000);
+     if(!response.ok)throw new Error('Open-Meteo HTTP '+response.status);
+     const data=await response.json();if(!Array.isArray(data.elevation)||data.elevation.length!==batch.length)throw new Error('Neúplný výškový vzorek');values.push(...data.elevation)}
+    saveAndApply(values);
+    if(badge)badge.textContent='Terén: výšková data načtena · Open-Meteo · '+demSize+'×'+demSize+' bodů';
     return;
    }catch(err){primaryError=String(err&&err.message||err)}
    try{
     if(badge)badge.textContent='Terén: zkouším záložní SRTM…';
-    const locations=coords.map(p=>p.lat.toFixed(4)+','+p.lon.toFixed(4)).join('|');
-    const topoUrl='https://api.opentopodata.org/v1/srtm90m?locations='+encodeURIComponent(locations);
-    const response=await timedFetch('https://api.allorigins.win/raw?url='+encodeURIComponent(topoUrl),12000);
-    if(!response.ok)throw new Error('SRTM proxy HTTP '+response.status);
-    const data=await response.json();
-    if(data.status!=='OK'||!Array.isArray(data.results))throw new Error('SRTM nevrátilo výšky');
-    saveAndApply(data.results.map(p=>p.elevation));
-    if(badge)badge.textContent='Terén: výšková data načtena · SRTM 90 m · '+demSize+'×'+demSize;
+    const values=[];for(let start=0;start<coords.length;start+=80){const batch=coords.slice(start,start+80),locations=batch.map(p=>p.lat.toFixed(4)+','+p.lon.toFixed(4)).join('|');
+     const topoUrl='https://api.opentopodata.org/v1/srtm90m?locations='+encodeURIComponent(locations);
+     const response=await timedFetch('https://api.allorigins.win/raw?url='+encodeURIComponent(topoUrl),12000);
+     if(!response.ok)throw new Error('SRTM proxy HTTP '+response.status);const data=await response.json();
+     if(data.status!=='OK'||!Array.isArray(data.results)||data.results.length!==batch.length)throw new Error('SRTM nevrátilo výšky');values.push(...data.results.map(p=>p.elevation))}
+    saveAndApply(values);
+    if(badge)badge.textContent='Terén: výšková data načtena · SRTM 90 m · '+demSize+'×'+demSize+' bodů';
    }catch(err){
     writeStore(cooldownKey,{until:Date.now()+15*60*1000});
     if(badge)badge.textContent='DEM nedostupný · záložní reliéf (zdroje dočasně nedostupné)';
