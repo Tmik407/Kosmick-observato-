@@ -52,25 +52,6 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
  <div class="map-wrap"><div id="map" aria-label="Interaktivní trojrozměrná mapa počasí České republiky"></div><canvas id="flowCanvas"></canvas></div>
  <div class="attribution">MapLibre GL JS · podklad OpenFreeMap / OpenStreetMap · výšková data Terrarium · předpověď Open-Meteo</div>
 </section>
-<section class="panel" style="margin-top:12px">
- <div class="row" style="justify-content:space-between;flex-wrap:wrap"><div><h2 style="margin:0">🌪️ WEATHER VORTEX 3D X-5</h2><p class="small" style="margin:4px 0 0">Prostorová vizualizace atmosférického proudění nad Českou republikou</p></div><div class="row" style="gap:6px"><button id="weatherVortexReset" type="button">↺ Výchozí pohled</button><button id="weatherVortexToggle" aria-pressed="true">⏸ Pozastavit animaci</button></div></div>
- <div style="margin-top:10px;font-size:13px;font-weight:700;color:#31566d">Ovládání 3D vrstev – zapni nebo vypni jednotlivé jevy:</div>
- <div id="weatherVortexLayerControls" class="controls" style="display:flex!important;visibility:visible!important;flex-wrap:wrap;gap:6px;margin-top:7px">
-  <button type="button" data-vortex-layer="temperature" aria-pressed="true">🌡️ Teplotní povrch</button>
-  <button type="button" data-vortex-layer="clouds" aria-pressed="true">☁️ Oblačnost</button>
-  <button type="button" data-vortex-layer="precipitation" aria-pressed="true">🌧️ Déšť / sníh</button>
-  <button type="button" data-vortex-layer="atmosphere" aria-pressed="true">🌐 Atmosféra</button>
-  <button type="button" data-vortex-layer="wind" aria-pressed="true">💨 Proudnice větru</button>
- </div>
- <div id="weatherVortexStage" style="position:relative;height:470px;min-height:360px;margin-top:10px;border-radius:13px;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#173f61,#071827 72%)">
-  <canvas id="weatherVortex3d" style="display:block;width:100%;height:100%;touch-action:pan-y"></canvas>
-  <div style="position:absolute;left:10px;top:10px;padding:7px 9px;border:1px solid #52738d;border-radius:8px;background:#061526d9;color:#e9f6ff;font-size:11px;pointer-events:none">MODEL 3D · ČESKÁ REPUBLIKA<br><span id="weatherVortexStatus">Čekám na data předpovědi…</span></div>
-  <div style="position:absolute;right:10px;bottom:10px;color:#e6f5ff;font-size:10px;pointer-events:none">Modré proudnice · částice větru · schematický reliéf</div>
-  <div style="position:absolute;left:10px;bottom:10px;display:flex;gap:7px;flex-wrap:wrap;color:#eaf7ff;font-size:10px;pointer-events:none;background:#061526c9;padding:6px 8px;border-radius:8px"><span>🔵 Chlad</span><span>🟢 Mírno</span><span>🟠 Teplo</span><span>💧 Déšť</span><span>❄️ Sníh</span></div>
- </div>
-<p class="small" style="margin:8px 0 0">Ovládání modelu: dvěma prsty otáčej a přibližuj, tažením myší otáčej. Jedním prstem můžeš stránku normálně posouvat.</p>
- <p class="small" style="margin:8px 0 0">Proudění je vizualizováno prostorově podle dostupných meteorologických dat Open-Meteo. Tvar víru a reliéfní plocha jsou schematické, nejde o samostatné měření ani výstražný model.</p>
-</section>
 <div class="below">
  <section class="panel">
   <h2>Vrstvy počasí</h2>
@@ -92,7 +73,27 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
   <div id="stationList" class="city-list"></div>
   <div class="city-list" id="cityList"></div>
  </section>
-</div>
+</div
+<section class="panel" style="margin-top:12px">
+ <div class="row" style="justify-content:space-between;flex-wrap:wrap"><div><h2 style="margin:0">🌪️ WEATHER VORTEX 3D X-5</h2><p class="small" style="margin:4px 0 0">Prostorová vizualizace atmosférického proudění nad Českou republikou</p></div><div class="row" style="gap:6px"><button id="weatherVortexReset" type="button">↺ Výchozí pohled</button><button id="weatherVortexToggle" aria-pressed="true">⏸ Pozastavit animaci</button></div></div>
+ <div style="margin-top:10px;font-size:13px;font-weight:700;color:#31566d">Ovládání 3D vrstev – zapni nebo vypni jednotlivé jevy:</div>
+ <div id="weatherVortexLayerControls" class="controls" style="display:flex!important;visibility:visible!important;flex-wrap:wrap;gap:6px;margin-top:7px">
+  <button type="button" data-vortex-layer="temperature" aria-pressed="true">🌡️ Teplotní povrch</button>
+  <button type="button" data-vortex-layer="clouds" aria-pressed="true">☁️ Oblačnost</button>
+  <button type="button" data-vortex-layer="precipitation" aria-pressed="true">🌧️ Déšť / sníh</button>
+  <button type="button" data-vortex-layer="atmosphere" aria-pressed="true">🌐 Atmosféra</button>
+  <button type="button" data-vortex-layer="wind" aria-pressed="true">💨 Proudnice větru</button>
+ </div>
+ <div id="weatherVortexStage" style="position:relative;height:470px;min-height:360px;margin-top:10px;border-radius:13px;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#173f61,#071827 72%)">
+  <canvas id="weatherVortex3d" style="display:block;width:100%;height:100%;touch-action:pan-y"></canvas>
+  <div style="position:absolute;left:10px;top:10px;padding:7px 9px;border:1px solid #52738d;border-radius:8px;background:#061526d9;color:#e9f6ff;font-size:11px;pointer-events:none">MODEL 3D · ČESKÁ REPUBLIKA<br><span id="weatherVortexStatus">Čekám na data předpovědi…</span></div>
+  <div style="position:absolute;right:10px;bottom:10px;color:#e6f5ff;font-size:10px;pointer-events:none">Modré proudnice · částice větru · schematický reliéf</div>
+  <div style="position:absolute;left:10px;bottom:10px;display:flex;gap:7px;flex-wrap:wrap;color:#eaf7ff;font-size:10px;pointer-events:none;background:#061526c9;padding:6px 8px;border-radius:8px"><span>🔵 Chlad</span><span>🟢 Mírno</span><span>🟠 Teplo</span><span>💧 Déšť</span><span>❄️ Sníh</span></div>
+ </div>
+<p class="small" style="margin:8px 0 0">Ovládání modelu: dvěma prsty otáčej a přibližuj, tažením myší otáčej. Jedním prstem můžeš stránku normálně posouvat.</p>
+ <p class="small" style="margin:8px 0 0">Proudění je vizualizováno prostorově podle dostupných meteorologických dat Open-Meteo. Tvar víru a reliéfní plocha jsou schematické, nejde o samostatné měření ani výstražný model.</p>
+</section>
+>
 </main>
 <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
 <script>
