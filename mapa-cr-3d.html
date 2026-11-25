@@ -174,12 +174,18 @@ function animateFlow(){
    const x=q.x+dx*travel-dy*p.offset,y=q.y+dy*travel+dx*p.offset;
    const tail= p.length*(.45+Math.min(p.speed,35)/55);
    const alpha=.35+.6*Math.sin(p.phase*Math.PI);
-   // Výraznější proudnice: kontrastní tyrkysová stopa a žlutobílá hlavička s tmavým okrajem.
-   ctx.beginPath();ctx.moveTo(x-dx*tail,y-dy*tail);ctx.lineTo(x,y);
-   ctx.strokeStyle="rgba(0,92,150,"+Math.max(.72,alpha).toFixed(2)+")";ctx.lineWidth=3.6;ctx.shadowColor="#00c8ff";ctx.shadowBlur=11;ctx.stroke();
-   ctx.beginPath();ctx.arc(x,y,5.2,0,Math.PI*2);ctx.fillStyle="#ffd84a";ctx.shadowColor="#ffb300";ctx.shadowBlur=13;ctx.fill();
-   ctx.lineWidth=1.7;ctx.strokeStyle="#123d5a";ctx.shadowBlur=0;ctx.stroke();
-   ctx.beginPath();ctx.arc(x,y,2.1,0,Math.PI*2);ctx.fillStyle="#ffffff";ctx.fill();
+   // Dlouhá, silná a kontrastní proudnice místo malé bílé tečky.
+   const headX=x,headY=y,tailX=x-dx*(tail+18),tailY=y-dy*(tail+18);
+   ctx.save();ctx.globalAlpha=Math.max(.88,alpha);
+   ctx.beginPath();ctx.moveTo(tailX,tailY);ctx.lineTo(headX,headY);
+   ctx.strokeStyle="#063d65";ctx.lineWidth=8;ctx.shadowColor="#00bfff";ctx.shadowBlur=16;ctx.stroke();
+   ctx.beginPath();ctx.moveTo(tailX,tailY);ctx.lineTo(headX,headY);
+   ctx.strokeStyle="#00d9ff";ctx.lineWidth=4.5;ctx.shadowBlur=8;ctx.stroke();
+   ctx.beginPath();ctx.moveTo(headX,headY);
+   ctx.lineTo(headX-dx*13-dy*8,headY-dy*13+dx*8);
+   ctx.lineTo(headX-dx*13+dy*8,headY-dy*13-dx*8);
+   ctx.closePath();ctx.fillStyle="#ffcf33";ctx.strokeStyle="#123d5a";ctx.lineWidth=2;ctx.shadowBlur=7;ctx.fill();ctx.stroke();
+   ctx.restore();
   }
  }
  state.raf=requestAnimationFrame(animateFlow);
