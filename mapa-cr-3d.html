@@ -788,8 +788,11 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    const cold=avgTemp<0,warm=avgTemp>=12;const palette=cold?[.08,.32,1]:warm?[1,.28,.06]:[.02,.78,.48];const colors=heatGeo.attributes.color;
    // Interpolace teploty z jednotlivých bodů předpovědi do každého vrcholu 3D plochy (IDW).
    const tempPoints=weatherPoints.map(q=>({x:q.x,z:q.z,t:q.temp}));
-   const coldColor=new THREE.Color(0x174dff),coolColor=new THREE.Color(0x25bde8),mildColor=new THREE.Color(0x32c879),warmColor=new THREE.Color(0xffd447),hotColor=new THREE.Color(0xf07828),cA=new THREE.Color(),cB=new THREE.Color();
-   function colorForTemperature(t){if(t<=0)return cA.copy(coldColor).lerp(coolColor,Math.max(0,Math.min(1,(t+15)/15)));if(t<=12)return cA.copy(coolColor).lerp(mildColor,t/12);if(t<=22)return cA.copy(mildColor).lerp(warmColor,(t-12)/10);return cA.copy(warmColor).lerp(hotColor,Math.max(0,Math.min(1,(t-22)/13)))}
+   const coldColor=new THREE.Color(0x174dff),coolColor=new THREE.Color(0x25bde8),mildColor=new THREE.Color(0x32c879),warmColor=new THREE.Color(0xffd447),hotColor=new THREE.Color(0xf07828),cA=new THREE.Color();
+   // Adaptivní legenda: plný barevný rozsah se přizpůsobí právě zobrazeným teplotám.
+   const observedTemps=weatherPoints.map(q=>q.temp),tempMin=Math.min(...observedTemps),tempMax=Math.max(...observedTemps);
+   const tempSpan=Math.max(2.5,tempMax-tempMin),scaleMin=tempMin-tempSpan*.08,scaleMax=tempMax+tempSpan*.08;
+   function colorForTemperature(t){const u=Math.max(0,Math.min(1,(t-scaleMin)/(scaleMax-scaleMin)));if(u<.25)return cA.copy(coldColor).lerp(coolColor,u*4);if(u<.5)return cA.copy(coolColor).lerp(mildColor,(u-.25)*4);if(u<.75)return cA.copy(mildColor).lerp(warmColor,(u-.5)*4);return cA.copy(warmColor).lerp(hotColor,(u-.75)*4)}
    for(let i=0;i<colors.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);let weighted=0,total=0,nearest=Infinity,nearestTemp=avgTemp;for(const q of tempPoints){const d2=(q.x-x)*(q.x-x)+(q.z-z)*(q.z-z);if(d2<nearest){nearest=d2;nearestTemp=q.t}const w=1/Math.max(.025,d2*d2);weighted+=q.t*w;total+=w}const localTemp=total?weighted/total:nearestTemp;const col=colorForTemperature(localTemp);colors.setXYZ(i,col.r,col.g,col.b)}
    colors.needsUpdate=true;
    patches[0].material.opacity=cold?.78:.4;patches[1].material.opacity=warm?.8:.42;patches[2].material.opacity=.58;
