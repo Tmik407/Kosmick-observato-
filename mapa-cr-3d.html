@@ -130,6 +130,11 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
   </div>
   <div style="position:absolute;left:10px;bottom:10px;display:flex;gap:7px;flex-wrap:wrap;color:#eaf7ff;font-size:10px;pointer-events:none;background:#061526c9;padding:6px 8px;border-radius:8px"><span>🔵 Chlad</span><span>🟢 Mírno</span><span>🟠 Teplo</span><span>💧 Déšť</span><span>❄️ Sníh</span></div>
   <div id="weatherTerrainBadge" style="position:absolute;right:10px;top:58px;padding:5px 8px;border:1px solid #52738d;border-radius:7px;background:#061526d9;color:#dff4ff;font-size:10px;pointer-events:none">Načítám výšková data…</div>
+  <div style="position:absolute;right:10px;bottom:42px;width:150px;padding:7px 9px;border:1px solid #52738d;border-radius:8px;background:#061526df;color:#eaf7ff;font-size:10px;pointer-events:none">
+   <div style="font-weight:700;margin-bottom:5px">Výška terénu · m n. m.</div>
+   <div style="height:9px;border-radius:5px;background:linear-gradient(90deg,#296b38,#579440,#9e9e4d,#7b6445,#7b7d7b,#d1d6d1)"></div>
+   <div style="display:flex;justify-content:space-between;margin-top:4px"><span>0</span><span>500</span><span>1 000</span><span>1 500+</span></div>
+  </div>
  </div>
 <div id="weatherVortexCityForecast" aria-live="polite" style="display:none;margin-top:10px;padding:12px 14px;border:1px solid #b8d5e3;border-radius:12px;background:linear-gradient(135deg,#f5fbff,#eaf5fa);color:#17394d;white-space:pre-line;line-height:1.55;font-size:13px;overflow-wrap:anywhere"></div>
 <p class="small" style="margin:8px 0 0">Ovládání modelu: dvěma prsty otáčej a přibližuj, tažením myší otáčej. Jedním prstem můžeš stránku normálně posouvat.</p>
@@ -745,7 +750,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
     const a=demGrid[z0*demSize+x0]*(1-tx)+demGrid[z0*demSize+x1]*tx,b=demGrid[z1*demSize+x0]*(1-tx)+demGrid[z1*demSize+x1]*tx;return (a*(1-tz)+b*tz)*.00034}
    let h=.018*Math.sin(x*1.7)*Math.cos(z*1.35);for(const p of terrainPeaks){const dx=(x-p.x)/p.sx,dz=(z-p.z)/p.sz;h+=p.a*Math.exp(-.5*(dx*dx+dz*dz))}return h
   }
-  function terrainColorAt(h){const u=Math.max(0,Math.min(1,h/.58));return new THREE.Color().setRGB(.08+.2*u,.25+.36*u,.17+.12*u)}
+  function terrainColorAt(h){const m=Math.max(0,h/.00055);const stops=[{v:0,c:[.16,.42,.22]},{v:250,c:[.34,.58,.25]},{v:500,c:[.62,.62,.30]},{v:900,c:[.48,.39,.27]},{v:1300,c:[.48,.49,.48]},{v:1700,c:[.82,.84,.82]}];let k=0;while(k<stops.length-2&&m>stops[k+1].v)k++;const a=stops[k],b=stops[k+1],t=Math.max(0,Math.min(1,(m-a.v)/(b.v-a.v)));return new THREE.Color().setRGB(a.c[0]+(b.c[0]-a.c[0])*t,a.c[1]+(b.c[1]-a.c[1])*t,a.c[2]+(b.c[2]-a.c[2])*t)}
   for(let i=0;i<terrainPos.count;i++){const x=terrainPos.getX(i),z=terrainPos.getZ(i),h=terrainHeightAt(x,z);terrainPos.setY(i,h);const c=terrainColorAt(h);terrainColors.push(c.r,c.g,c.b)}
   terrainGeo.setAttribute('color',new THREE.Float32BufferAttribute(terrainColors,3));terrainGeo.computeVertexNormals();
   const terrain=new THREE.Mesh(terrainGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.94,metalness:0,side:THREE.DoubleSide}));terrain.position.y=-.085;scene.add(terrain);
@@ -754,7 +759,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   const heatPos=heatGeo.attributes.position,heatColor=[];
   for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,terrainHeightAt(x,z)+.018);heatColor.push(.08,.5,.95)}
   heatGeo.setAttribute('color',new THREE.Float32BufferAttribute(heatColor,3));heatGeo.computeVertexNormals();
-  const heat=new THREE.Mesh(heatGeo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.78,side:THREE.DoubleSide,depthWrite:false}));heat.position.y=-.045;scene.add(heat);
+  const heat=new THREE.Mesh(heatGeo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.42,side:THREE.DoubleSide,depthWrite:false}));heat.position.y=-.045;scene.add(heat);
   // Načtení skutečných výšek Copernicus DEM GLO-90 přes veřejné Open-Meteo Elevation API.
   async function loadCopernicusTerrain(){
    const badge=document.getElementById('weatherTerrainBadge');
