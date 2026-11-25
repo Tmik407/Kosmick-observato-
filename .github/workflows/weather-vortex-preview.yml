@@ -1,0 +1,73 @@
+name: WEATHER VORTEX – bezpečný testovací balíček
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "mapa-cr-3d.html"
+      - ".github/workflows/weather-vortex-preview.yml"
+  push:
+    branches:
+      - development/weather-vortex-3d-x5
+    paths:
+      - "mapa-cr-3d.html"
+      - ".github/workflows/weather-vortex-preview.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-package:
+    name: Kontrola a příprava náhledu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Načíst zdrojový kód
+        uses: actions/checkout@v4
+
+      - name: Ověřit prostorové proudění
+        run: |
+          set -euo pipefail
+          grep -q 'function localWindAt' mapa-cr-3d.html
+          grep -q 'function rebuildWindField(valid)' mapa-cr-3d.html
+          grep -q 'rebuildWindField(valid)' mapa-cr-3d.html
+          ! grep -q 'streamGroup.rotation.y+=' mapa-cr-3d.html
+          echo "OK: lokální interpolace, přepočet proudnic a zachování směru."
+
+      - name: Zkontrolovat syntaxi vloženého JavaScriptu
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          source = Path("mapa-cr-3d.html").read_text(encoding="utf-8")
+          scripts = re.findall(r"<script\\b([^>]*)>(.*?)</script>", source, re.I | re.S)
+          count = 0
+          for i, (attrs, body) in enumerate(scripts):
+              if re.search(r'type=["\\']text/plain["\\']', attrs, re.I) or not body.strip():
+                  continue
+              path = Path(f"/tmp/weather-vortex-{i}.js")
+              path.write_text(body, encoding="utf-8")
+              count += 1
+          if count == 0:
+              raise SystemExit("Nebyl nalezen žádný aktivní vložený JavaScript.")
+          print(f"Připraveno {count} JavaScriptových bloků ke kontrole.")
+          PY
+          for file in /tmp/weather-vortex-*.js; do node --check "$file"; done
+
+      - name: Připravit samostatný náhledový balíček
+        run: |
+          mkdir -p preview
+          cp mapa-cr-3d.html preview/
+          cat > preview/README.txt <<'EOF'
+          WEATHER VORTEX 3D X-5 – testovací náhled
+          Tento balíček je izolovaný artefakt pro kontrolu změn.
+          Není publikován na GitHub Pages a nemění veřejnou stránku.
+          Otevřete mapa-cr-3d.html přes lokální HTTP server nebo GitHub Pages preview.
+          EOF
+
+      - name: Uložit testovací balíček jako artefakt
+        uses: actions/upload-artifact@v4
+        with:
+          name: weather-vortex-3d-x5-preview
+          path: preview/
+          if-no-files-found: error
+          retention-days: 14
