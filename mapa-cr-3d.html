@@ -94,7 +94,7 @@ const grid=[];
 for(let lat=48.65;lat<=50.95;lat+=.38)for(let lon=12.15;lon<=18.55;lon+=.58)grid.push({name:"",lat:+lat.toFixed(3),lon:+lon.toFixed(3)});
 const all=[...grid,...cities],state={hour:0,rows:[],times:[],visible:{temperature:true,precipitation:false,wind:true,cities:true,stations:true},stations:[],map:null,features:[],particles:[],raf:0};
 const status=(s)=>$("status").textContent=s;
-const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/liberty",center:[15.35,49.82],zoom:6.75,pitch:35,bearing:-8,maxPitch:75,attributionControl:true});
+const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/liberty",center:[15.35,49.82],zoom:6.75,pitch:35,bearing:-8,maxPitch:75,cooperativeGestures:true,attributionControl:true});
 state.map=map;
 map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),"top-right");
 map.addControl(new maplibregl.ScaleControl({maxWidth:110,unit:"metric"}),"bottom-left");
