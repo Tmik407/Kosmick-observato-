@@ -422,6 +422,30 @@ async function loadStations(){
   // Stanice mohou být načteny dříve než zdroj MapLibre; v tom případě se znovu načtou po map load.
   if(!map||!map.getSource("chmi-stations")){ $("stationSummary").textContent="Měření ČHMÚ načtena · čekám na zdroj mapy…"; map?.once("idle",()=>loadStations()); return; }
   map.getSource("chmi-stations").setData(stationCollection);
+  // Záložní vykreslení skutečných měření ČHMÚ: mapa a 3D model zůstanou
+  // informačně aktivní i při HTTP 429 od Open-Meteo nebo bez místní cache.
+  if(!state.rows.length&&state.stations.length){
+   const usable=state.stations.filter(st=>Number.isFinite(+st.lat)&&Number.isFinite(+st.lon)&&
+    (Number.isFinite(+st.temperature_c)||Number.isFinite(+st.wind_ms)||Number.isFinite(+st.precipitation_mm)));
+   if(usable.length){
+    const nearest=place=>{let best=null,dist=Infinity;for(const st of usable){const d=(place.lat-st.lat)**2+(place.lon-st.lon)**2;if(d<dist){dist=d;best=st}}return best};
+    const makeFeature=(place)=>{const st=nearest(place);if(!st)return null;const temp=Number.isFinite(+st.temperature_c)?+st.temperature_c:0;
+     const wind=Number.isFinite(+st.wind_kmh)?+st.wind_kmh:(Number.isFinite(+st.wind_ms)?+st.wind_ms*3.6:0);
+     const direction=Number.isFinite(+st.wind_direction_deg)?+st.wind_direction_deg:0;
+     const rain=Number.isFinite(+st.precipitation_mm)?Math.max(0,+st.precipitation_mm):0;
+     const snow=Number.isFinite(+st.snow_depth_cm)?Math.max(0,+st.snow_depth_cm):0;
+     return {type:"Feature",geometry:{type:"Point",coordinates:[place.lon,place.lat]},properties:{temp,rain,snow,precip:rain,kind:snow>0?"snow":"rain",direction:(direction+180)%360,speed:wind,wind,station:st.name||"ČHMÚ",observed:st.observed_utc||""}};
+    };
+    const fallbackGrid=grid.map(makeFeature).filter(Boolean),fallbackCities=cities.map((c)=>{const x=makeFeature(c);if(x)x.properties.name=c.name;return x}).filter(Boolean);
+    state.features=fallbackGrid;
+    map.getSource("weather-grid")?.setData({type:"FeatureCollection",features:fallbackGrid});
+    map.getSource("cities")?.setData({type:"FeatureCollection",features:fallbackCities});
+    window.__weatherVortexSetData?.(fallbackGrid);
+    updateLayers();seedParticles();
+    $("weatherSummary").textContent="Zobrazuji náhradní mapovou vrstvu ze skutečných měření ČHMÚ ("+usable.length+" stanic). Nejde o hodinovou předpověď; čas měření je uveden u stanic.";
+    status("Mapa aktivní · záložní měření ČHMÚ · "+usable.length+" stanic");
+   }
+  }
   const times=state.stations.map(x=>x.observed_utc).filter(Boolean).sort();
   $("stationSummary").textContent="ČHMÚ: "+state.stations.length+" stanic · poslední měření "+(times.at(-1)||"čas neuveden")+" · aktualizace archivu "+(doc.generated_utc||"—");
   $("stationList").innerHTML=state.stations.slice(0,24).map(st=>'<span class="city-chip">📡 '+st.name+(Number.isFinite(st.temperature_c)?' · '+st.temperature_c.toFixed(1)+' °C':'')+'</span>').join("");
