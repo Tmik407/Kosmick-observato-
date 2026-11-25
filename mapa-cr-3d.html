@@ -187,7 +187,7 @@ function updateLayers(){
  ["chmi-station-points","chmi-station-labels","chmi-station-clusters","chmi-station-cluster-count"].forEach(id=>{
   if(map.getLayer(id))map.setLayoutProperty(id,"visibility",v.stations?"visible":"none");
  });
- $("legend").innerHTML=v.precipitation?'<span><i class="key" style="background:#268fe0"></i>Déšť</span><span><i class="key" style="background:#d8f4ff"></i>Sníh</span><span>Intenzita podle modelu (mm / cm za hodinu)</span>':v.temperature?'<span><i class="key" style="background:#286fc4"></i>−15 °C</span><span><i class="key" style="background:#28a9dc"></i>−8 °C</span><span><i class="key" style="background:#39c6b5"></i>0 °C</span><span><i class="key" style="background:#78c96b"></i>8 °C</span><span><i class="key" style="background:#e6d34b"></i>16 °C</span><span><i class="key" style="background:#f39a38"></i>24 °C a více</span>':'<span>Šipky: směr větru · pohyb částic: směr proudění</span>';
+ $("legend").innerHTML=v.precipitation?'<span><i class="key" style="background:#0877dc"></i>Déšť · mm/h</span><span><i class="key" style="background:#75d3f6"></i>Sníh · cm/h</span><span>Velikost značky = intenzita srážek</span>':v.temperature?'<span><i class="key" style="background:#286fc4"></i>−15 °C</span><span><i class="key" style="background:#28a9dc"></i>−8 °C</span><span><i class="key" style="background:#39c6b5"></i>0 °C</span><span><i class="key" style="background:#78c96b"></i>8 °C</span><span><i class="key" style="background:#e6d34b"></i>16 °C</span><span><i class="key" style="background:#f39a38"></i>24 °C a více</span>':'<span>Šipky: směr větru · pohyb částic: směr proudění</span>';
 }
 function seedParticles(){
  // Vektorové pole větru v projekci mapy; směr se mezi body plynule interpoluje.
@@ -255,8 +255,9 @@ function animateFlow(){
    const p=f.properties,q=map.project(f.geometry.coordinates);
    if(q.x<-30||q.x>$("map").clientWidth+30||q.y<-30||q.y>$("map").clientHeight+30)continue;
    if(state.visible.precipitation&&((p.rain||0)>.005||(p.snow||0)>.005||(p.precip||0)>.01)){
-    const rain=Math.max(0,p.rain||0),snow=Math.max(0,p.snow||0),isSnow=snow>rain*.35&&snow>.005;
-    const intensity=isSnow?snow:Math.max(rain,p.precip||0),radius=Math.min(23,10+Math.sqrt(intensity)*4.2);
+    const rain=Math.max(0,p.rain||0),snow=Math.max(0,p.snow||0),isSnow=snow>Math.max(.05,rain*.35)&&snow>.005;
+    // Déšť se vyjadřuje v mm/h, sněžení v cm/h; velikost značky roste s intenzitou.
+    const intensity=isSnow?snow:Math.max(rain,p.precip||0),radius=Math.min(24,8+Math.sqrt(intensity)*5.2);
     ctx.save();ctx.beginPath();ctx.arc(q.x,q.y,radius,0,Math.PI*2);
     ctx.fillStyle=isSnow?"rgba(117,211,246,.96)":"rgba(0,119,220,.94)";
     ctx.shadowColor=isSnow?"#55c9f2":"#087bd2";ctx.shadowBlur=9;ctx.fill();ctx.shadowBlur=0;
@@ -350,7 +351,7 @@ $("findPrecip").addEventListener("click",()=>{
   return;
  }
  state.hour=best.index;select.value=String(best.index);applyHour();
- $("precipTest").textContent="Zobrazen nejsrážkovější termín: "+new Date(state.times[best.index]).toLocaleString("cs-CZ")+". Déšť max. "+best.rain+" mm/h, sníh max. "+best.snow+" cm/h. Modré body = déšť, světle modré = sněžení.";
+ $("precipTest").textContent="Zobrazen nejsrážkovější termín: "+new Date(state.times[best.index]).toLocaleString("cs-CZ")+". Déšť max. "+best.rain+" mm/h, sníh max. "+best.snow+" cm/h. Tmavě modré kapky = déšť (mm/h), světle modré vločky = sněžení (cm/h); větší značka znamená vyšší intenzitu.";
  state.visible.precipitation=true;updateLayers();
  document.querySelector('[data-layer="precipitation"]').setAttribute("aria-pressed","true");
 });
