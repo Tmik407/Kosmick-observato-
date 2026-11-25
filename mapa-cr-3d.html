@@ -113,6 +113,10 @@ map.on("load",()=>{
  map.addLayer({id:"city-points",type:"circle",source:"cities",paint:{"circle-radius":5,"circle-color":"#f5a623","circle-stroke-color":"#fff","circle-stroke-width":2}});
  map.addLayer({id:"city-labels",type:"symbol",source:"cities",layout:{"text-field":["get","name"],"text-font":["Open Sans Semibold"],"text-size":11,"text-offset":[0,1.1],"text-anchor":"top","text-allow-overlap":false},paint:{"text-color":"#17364b","text-halo-color":"#fff","text-halo-width":1.5}});
  map.addSource("chmi-stations",{type:"geojson",data:{type:"FeatureCollection",features:[]},cluster:true,clusterRadius:42,clusterMaxZoom:8});
+ // Samostatná vrstva jednotlivých bodů jako spolehlivé zobrazení při přiblížení.
+ map.addSource("chmi-stations-detail",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+ map.addLayer({id:"chmi-station-detail-points",type:"circle",source:"chmi-stations-detail",minzoom:7.5,paint:{"circle-radius":["interpolate",["linear"],["zoom"],7.5,4,10,7],"circle-color":"#7a3db8","circle-stroke-color":"#fff","circle-stroke-width":1.6}});
+
  map.addLayer({id:"chmi-station-clusters",type:"circle",source:"chmi-stations",filter:["has","point_count"],paint:{"circle-color":["step",["get","point_count"],"#8b5ac2",20,"#7040a5",80,"#4f287f"],"circle-radius":["step",["get","point_count"],15,20,19,80,23],"circle-stroke-color":"#fff","circle-stroke-width":2}});
  map.addLayer({id:"chmi-station-cluster-count",type:"symbol",source:"chmi-stations",filter:["has","point_count"],layout:{"text-field":["get","point_count_abbreviated"],"text-size":12,"text-font":["Open Sans Bold"]},paint:{"text-color":"#fff"}});
  map.addLayer({id:"chmi-station-points",type:"circle",source:"chmi-stations",filter:["!",["has","point_count"]],paint:{"circle-radius":["interpolate",["linear"],["zoom"],5,3.5,9,6,12,8],"circle-color":"#7a3db8","circle-stroke-color":"#fff","circle-stroke-width":1.5}});
@@ -149,7 +153,7 @@ function updateLayers(){
  map.setLayoutProperty("city-points","visibility",v.cities?"visible":"none");
  map.setLayoutProperty("city-labels","visibility",v.cities?"visible":"none");
  // Přepínač stanic ovládá body, popisky i shluky.
- ["chmi-station-points","chmi-station-labels","chmi-station-clusters","chmi-station-cluster-count"].forEach(id=>{
+ ["chmi-station-points","chmi-station-labels","chmi-station-clusters","chmi-station-cluster-count","chmi-station-detail-points"].forEach(id=>{
   if(map.getLayer(id))map.setLayoutProperty(id,"visibility",v.stations?"visible":"none");
  });
  $("legend").innerHTML=v.precipitation?'<span><i class="key" style="background:#268fe0"></i>Déšť</span><span><i class="key" style="background:#d8f4ff"></i>Sníh</span><span>Intenzita podle modelu (mm / cm za hodinu)</span>':v.temperature?'<span><i class="key" style="background:#2856bd"></i>Mráz</span><span><i class="key" style="background:#48bdc2"></i>Chladno</span><span><i class="key" style="background:#f3c15b"></i>Teplo</span>': '<span>Šipky: směr větru · pohyb částic: směr proudění</span>';
@@ -233,7 +237,9 @@ async function loadStations(){
   if(!response.ok)throw Error("CHMI archiv zatím není publikován (HTTP "+response.status+")");
   const doc=await response.json();state.stations=Array.isArray(doc.stations)?doc.stations:[];
   const features=state.stations.map(st=>({type:"Feature",geometry:{type:"Point",coordinates:[st.lon,st.lat]},properties:{...st,measurements_json:JSON.stringify(st.measurements||{}),wind_kmh:Number.isFinite(st.wind_ms)?st.wind_ms*3.6:null}}));
-  map.getSource("chmi-stations").setData({type:"FeatureCollection",features});
+  const stationCollection={type:"FeatureCollection",features};
+  map.getSource("chmi-stations").setData(stationCollection);
+  map.getSource("chmi-stations-detail").setData(stationCollection);
   const times=state.stations.map(x=>x.observed_utc).filter(Boolean).sort();
   $("stationSummary").textContent="ČHMÚ: "+state.stations.length+" stanic · poslední měření "+(times.at(-1)||"čas neuveden")+" · aktualizace archivu "+(doc.generated_utc||"—");
   $("stationList").innerHTML=state.stations.slice(0,24).map(st=>'<span class="city-chip">📡 '+st.name+(Number.isFinite(st.temperature_c)?' · '+st.temperature_c.toFixed(1)+' °C':'')+'</span>').join("");
