@@ -773,10 +773,12 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
     heatPos.needsUpdate=true;heatGeo.computeVertexNormals();
    };
    const timedFetch=async(url,ms=9000)=>{
-    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),ms);
-    try{return await fetch(url,{headers:{Accept:'application/json'},signal:controller.signal})}
-    catch(err){if(err&&err.name==='AbortError')throw new Error('časový limit '+Math.round(ms/1000)+' s');throw err}
-    finally{clearTimeout(timer)}
+    let timer;
+    const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('časový limit '+Math.round(ms/1000)+' s')),ms)});
+    try{
+     // Promise.race zajistí ukončení čekání i v prohlížeči, kde síťový fetch nereaguje spolehlivě na abort.
+     return await Promise.race([fetch(url,{headers:{Accept:'application/json'}}),timeout]);
+    }finally{clearTimeout(timer)}
    };
    let primaryError='neznámá chyba';
    try{
