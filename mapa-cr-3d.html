@@ -905,7 +905,9 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    const weatherPoints=valid.map(f=>{const c=f.geometry?.coordinates||[],p=f.properties||{};return {x:((+c[0]-12.15)/(18.55-12.15))*7.2-3.6,z:((50.95-(+c[1]))/(50.95-48.65))*7.2-3.6,temp:Number.isFinite(+p.temp)?+p.temp:avgTemp,cloud:Math.max(0,Math.min(100,+p.cloudCover||0)),speed:Math.max(0,+p.speed||0),rain:Math.max(0,+p.rain||0,((+p.precip||0)-(+p.snow||0))),snow:Math.max(0,+p.snow||0)}});
    function sampleLocal(x,z,key){let weighted=0,total=0,nearest=Infinity,nearValue=0;for(const q of weatherPoints){const d2=(q.x-x)*(q.x-x)+(q.z-z)*(q.z-z);if(d2<nearest){nearest=d2;nearValue=q[key]}const w=1/Math.max(.025,d2*d2);weighted+=q[key]*w;total+=w}return total?weighted/total:nearValue}
    tempSampler=(x,z)=>({temp:sampleLocal(x,z,'temp'),cloud:sampleLocal(x,z,'cloud'),speed:sampleLocal(x,z,'speed'),rain:sampleLocal(x,z,'rain'),snow:sampleLocal(x,z,'snow')});
-   clouds.forEach(g=>{const cover=sampleLocal(g.position.x,g.position.z,'cloud');const opacity=cover<5?0:.025+(cover/100)*.24;g.children.forEach(puff=>{puff.material.opacity=opacity;puff.visible=cover>=5});g.visible=cover>=5});
+   // Oblaka se rozmístí nad body s nejvyšší předpovězenou oblačností, ne do pevného kruhu.
+   const cloudyPoints=weatherPoints.filter(q=>q.cloud>=5).sort((a,b)=>b.cloud-a.cloud);
+   clouds.forEach((g,i)=>{const q=cloudyPoints.length?cloudyPoints[i%cloudyPoints.length]:null;const cover=q?q.cloud:0;if(q){const spread=cloudyPoints.length>1?((i%3)-1)*.16:0;g.position.x=Math.max(-3.45,Math.min(3.45,q.x+spread));g.position.z=Math.max(-3.45,Math.min(3.45,q.z+((Math.floor(i/3)%3)-1)*.12))}const opacity=cover<5?0:.025+(cover/100)*.24;g.children.forEach(puff=>{puff.material.opacity=opacity;puff.visible=cover>=5});g.visible=cover>=5});
    const cold=avgTemp<0,warm=avgTemp>=12;const palette=cold?[.08,.32,1]:warm?[1,.28,.06]:[.02,.78,.48];const colors=heatGeo.attributes.color;
    // Interpolace teploty z jednotlivých bodů předpovědi do každého vrcholu 3D plochy (IDW).
    const tempPoints=weatherPoints.map(q=>({x:q.x,z:q.z,t:q.temp}));
@@ -921,9 +923,11 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    colors.needsUpdate=true;
    patches[0].material.opacity=cold?.78:.4;patches[1].material.opacity=warm?.8:.42;patches[2].material.opacity=.58;
    // Částice se zobrazují jen v oblastech, kde interpolovaná předpověď hlásí daný jev.
-   const rain=weatherPoints.some(q=>q.rain>.01),snow=weatherPoints.some(q=>q.snow>.01);
-   drops.forEach(d=>{const amount=sampleLocal(d.position.x,d.position.z,'rain');d.visible=amount>.01;d.material.opacity=Math.min(.9,.22+amount*.22)});
-   flakes.forEach(f=>{const amount=sampleLocal(f.position.x,f.position.z,'snow');f.visible=amount>.001;f.material.opacity=Math.min(.95,.3+amount*.35)});
+   const rainPoints=weatherPoints.filter(q=>q.rain>.01).sort((a,b)=>b.rain-a.rain),snowPoints=weatherPoints.filter(q=>q.snow>.001).sort((a,b)=>b.snow-a.snow);
+   const rain=rainPoints.length>0,snow=snowPoints.length>0;
+   // Déšť a sníh se vykreslí přímo v oblastech, kde je předpověď hlásí.
+   drops.forEach((d,i)=>{const q=rainPoints.length?rainPoints[i%rainPoints.length]:null;if(q){const j=i%5;d.position.x=Math.max(-3.5,Math.min(3.5,q.x+(j-2)*.10));d.position.z=Math.max(-3.5,Math.min(3.5,q.z+((Math.floor(i/5)%3)-1)*.10));d.position.y=.35+(i%13)*.12}const amount=q?q.rain:0;d.visible=amount>.01;d.material.opacity=Math.min(.9,.22+amount*.22)});
+   flakes.forEach((f,i)=>{const q=snowPoints.length?snowPoints[i%snowPoints.length]:null;if(q){const j=i%5;f.position.x=Math.max(-3.5,Math.min(3.5,q.x+(j-2)*.12));f.position.z=Math.max(-3.5,Math.min(3.5,q.z+((Math.floor(i/5)%3)-1)*.12));f.position.y=.4+(i%9)*.16}const amount=q?q.snow:0;f.visible=amount>.001;f.material.opacity=Math.min(.95,.3+amount*.35)});
    rainGroup.visible=rain&&vortexLayers.precipitation;snowGroup.visible=snow&&vortexLayers.precipitation;applyVortexLayers();
    status.textContent='Vítr '+windSpeed.toFixed(1)+' km/h · směr '+Math.round(windDir)+'° · teplota '+avgTemp.toFixed(1)+' °C · srážky '+maxPrecip.toFixed(2)+' mm/h · oblačnost '+Math.round(avgCloudCover)+' %'+(validTimeLabel?' · platnost '+validTimeLabel:'');
   }
