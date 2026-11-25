@@ -150,6 +150,7 @@ function applyHour(){
  const cityFeatures=features.slice(grid.length).map(f=>{const c=cities.find(x=>x.lat===f.geometry.coordinates[1]&&x.lon===f.geometry.coordinates[0]);return {...f,properties:{...f.properties,name:c.name}}});
  map.getSource("cities").setData({type:"FeatureCollection",features:cityFeatures});
  state.features=features.slice(0,grid.length);
+  window.__weatherVortexSetData?.(state.features);
  const time=state.times[i];$("validTime").textContent="Platnost: "+new Date(time).toLocaleString("cs-CZ")+" · modelová předpověď";
  const avg=cityFeatures.reduce((a,f)=>a+f.properties.temp,0)/cityFeatures.length;
  const rainCount=cityFeatures.filter(f=>f.properties.rain>.1).length,snowCount=cityFeatures.filter(f=>f.properties.snow>.1).length;
