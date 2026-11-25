@@ -545,7 +545,11 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   }
   function rebuildWindField(valid){
    windFeatures=valid||[];
-   windLines.forEach(x=>streamGroup.remove(x));windLines.length=0;
+   // Při každé aktualizaci předpovědi uvolníme předchozí geometrii a materiály,
+   // aby se na mobilu/tabletu nehromadily neviditelné objekty a GPU paměť.
+   windLines.forEach(x=>{streamGroup.remove(x);x.geometry?.dispose();if(Array.isArray(x.material))x.material.forEach(m=>m.dispose());else x.material?.dispose()});
+   windLines.length=0;
+   particles.forEach(p=>{scene.remove(p.mesh);p.mesh.geometry?.dispose();if(Array.isArray(p.mesh.material))p.mesh.material.forEach(m=>m.dispose());else p.mesh.material?.dispose()});
    particles.length=0;
    for(let n=0;n<26;n++){
     let x=-3.15+(n%6)*1.26,z=-3.05+Math.floor(n/6)*1.48,pts=[];
