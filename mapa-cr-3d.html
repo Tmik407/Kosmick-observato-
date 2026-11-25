@@ -359,10 +359,10 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   scene.add(new THREE.AmbientLight(0xb8e7ff,1.5));
   // Schematické výškové hladiny atmosféry.
   const atmosphere=new THREE.Group();scene.add(atmosphere);
-  for(let k=0;k<4;k++){const shell=new THREE.Mesh(new THREE.CylinderGeometry(3.5+k*.48,4.0+k*.48,.16,96,1,true),new THREE.MeshBasicMaterial({color:[0x35bfff,0x4ed6e8,0x91cfff,0x6d9cff][k],transparent:true,opacity:.12,side:THREE.DoubleSide,depthWrite:false}));shell.position.y=.45+k*.52;shell.scale.y=1.5;atmosphere.add(shell)}
+  for(let k=0;k<4;k++){const shell=new THREE.Mesh(new THREE.CylinderGeometry(3.5+k*.48,4.0+k*.48,.16,96,1,true),new THREE.MeshBasicMaterial({color:[0x35bfff,0x4ed6e8,0x91cfff,0x6d9cff][k],transparent:true,opacity:.19,side:THREE.DoubleSide,depthWrite:false}));shell.position.y=.45+k*.52;shell.scale.y=1.5;atmosphere.add(shell)}
   // Oblaka ve třech výškových hladinách.
   const cloudGroup=new THREE.Group();scene.add(cloudGroup);const clouds=[];
-  for(let n=0;n<24;n++){const g=new THREE.Group(),a=n*2.399,r=1.45+(n%6)*.48,y=.9+(n%3)*.62;for(let q=0;q<4;q++){const puff=new THREE.Mesh(new THREE.SphereGeometry(.15+(q%2)*.055,10,8),new THREE.MeshBasicMaterial({color:0xc7eaff,transparent:true,opacity:.20,depthWrite:false}));puff.position.set((q-1.5)*.18,(q%2)*.1,0);g.add(puff)}g.position.set(Math.cos(a)*r,y,Math.sin(a)*r);cloudGroup.add(g);clouds.push(g)}
+  for(let n=0;n<24;n++){const g=new THREE.Group(),a=n*2.399,r=1.45+(n%6)*.48,y=.9+(n%3)*.62;for(let q=0;q<4;q++){const puff=new THREE.Mesh(new THREE.SphereGeometry(.12+(q%2)*.04,10,8),new THREE.MeshBasicMaterial({color:0xc7eaff,transparent:true,opacity:.11,depthWrite:false}));puff.position.set((q-1.5)*.18,(q%2)*.1,0);g.add(puff)}g.position.set(Math.cos(a)*r,y,Math.sin(a)*r);cloudGroup.add(g);clouds.push(g)}
   const light=new THREE.DirectionalLight(0xffffff,2);light.position.set(3,8,5);scene.add(light);
   const base=new THREE.Mesh(new THREE.CylinderGeometry(4.8,5,.25,96),new THREE.MeshStandardMaterial({color:0x123b55,roughness:.8}));base.position.y=-.38;scene.add(base);
   const grid=new THREE.GridHelper(9.2,26,0x58b7d5,0x28617d);grid.position.y=-.12;scene.add(grid);
