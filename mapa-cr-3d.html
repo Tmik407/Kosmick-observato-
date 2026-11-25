@@ -163,7 +163,7 @@ map.on("load",()=>{
 let weatherApiCooldownUntil=0,weatherApiQueue=Promise.resolve();
 const weatherApiInflight=new Map();
 async function fetchWeatherApi(url,options={}){
- if(weatherApiInflight.has(url))return weatherApiInflight.get(url);
+ if(weatherApiInflight.has(url))return (await weatherApiInflight.get(url)).clone();
  const request=(async()=>{
   const wait=Math.max(0,weatherApiCooldownUntil-Date.now());
   if(wait>0)throw Error("Open-Meteo má aktivní ochrannou pauzu ještě "+Math.ceil(wait/1000)+" s. Počkej prosím.");
@@ -215,9 +215,14 @@ async function searchAnalyticsPlace(){
   if(!matches.length)throw Error("Město nebo obec nebyly v České republice nalezeny. Zkus upřesnit název.");
   const place=matches.find(x=>x.name.toLocaleLowerCase("cs-CZ")===query.toLocaleLowerCase("cs-CZ"))||matches[0];
   const label=[place.name,place.admin1].filter(Boolean).join(", ");
-  const forecastUrl="https://api.open-meteo.com/v1/forecast?latitude="+encodeURIComponent(place.latitude)+"&longitude="+encodeURIComponent(place.longitude)+"&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m&forecast_days=4&timezone=Europe%2FPrague";
-  const forecastResponse=await fetchWeatherApi(forecastUrl,{cache:"default"});if(!forecastResponse.ok)throw Error("Předpověď Open-Meteo HTTP "+forecastResponse.status);
-  const forecast=await forecastResponse.json();if(!forecast.hourly?.time?.length)throw Error("Pro vybrané místo nejsou dostupná hodinová data.");
+  const knownIndex=cities.findIndex(c=>Math.abs(c.lat-place.latitude)<0.015&&Math.abs(c.lon-place.longitude)<0.015);
+  let forecast=knownIndex>=0&&state.rows.length===all.length?state.rows[grid.length+knownIndex]:null;
+  if(!forecast){
+   const forecastUrl="https://api.open-meteo.com/v1/forecast?latitude="+encodeURIComponent(place.latitude)+"&longitude="+encodeURIComponent(place.longitude)+"&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m&forecast_days=4&timezone=Europe%2FPrague";
+   const forecastResponse=await fetchWeatherApi(forecastUrl,{cache:"default"});if(!forecastResponse.ok)throw Error("Předpověď Open-Meteo HTTP "+forecastResponse.status);
+   forecast=await forecastResponse.json();
+  }
+  if(!forecast?.hourly?.time?.length)throw Error("Pro vybrané místo nejsou dostupná hodinová data.");
   state.analyticsCustom={name:label,row:forecast,times:forecast.hourly.time};
   renderAnalytics();
   $("analyticsTime").textContent=label+" · "+$("analyticsTime").textContent.split(" · ").slice(1).join(" · ")+" · zdroj: Open-Meteo";
@@ -236,9 +241,14 @@ async function searchAnalyticsCompare(){
   const geo=await geoResponse.json(),matches=(geo.results||[]).filter(x=>x.country_code==="CZ");
   if(!matches.length)throw Error("Druhé město nebo obec nebyly v ČR nalezeny.");
   const place=matches.find(x=>x.name.toLocaleLowerCase("cs-CZ")===query.toLocaleLowerCase("cs-CZ"))||matches[0];
-  const forecastResponse=await fetchWeatherApi("https://api.open-meteo.com/v1/forecast?latitude="+encodeURIComponent(place.latitude)+"&longitude="+encodeURIComponent(place.longitude)+"&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m&forecast_days=4&timezone=Europe%2FPrague",{cache:"default"});
-  if(!forecastResponse.ok)throw Error("Předpověď Open-Meteo HTTP "+forecastResponse.status);
-  const forecast=await forecastResponse.json();if(!forecast.hourly?.time?.length)throw Error("Pro druhé místo nejsou dostupná hodinová data.");
+  const knownIndex=cities.findIndex(c=>Math.abs(c.lat-place.latitude)<0.015&&Math.abs(c.lon-place.longitude)<0.015);
+  let forecast=knownIndex>=0&&state.rows.length===all.length?state.rows[grid.length+knownIndex]:null;
+  if(!forecast){
+   const forecastResponse=await fetchWeatherApi("https://api.open-meteo.com/v1/forecast?latitude="+encodeURIComponent(place.latitude)+"&longitude="+encodeURIComponent(place.longitude)+"&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m&forecast_days=4&timezone=Europe%2FPrague",{cache:"default"});
+   if(!forecastResponse.ok)throw Error("Předpověď Open-Meteo HTTP "+forecastResponse.status);
+   forecast=await forecastResponse.json();
+  }
+  if(!forecast?.hourly?.time?.length)throw Error("Pro druhé místo nejsou dostupná hodinová data.");
   state.analyticsCompare={name:[place.name,place.admin1].filter(Boolean).join(", "),row:forecast,times:forecast.hourly.time};
   renderAnalytics();
  }catch(error){$("analyticsTime").textContent="Porovnání se nepodařilo načíst: "+error.message}
