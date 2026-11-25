@@ -763,21 +763,36 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   // Načtení skutečných výšek Copernicus DEM GLO-90 přes veřejné Open-Meteo Elevation API.
   async function loadCopernicusTerrain(){
    const badge=document.getElementById('weatherTerrainBadge');
-   try{
-    const coords=[];for(let j=0;j<demSize;j++)for(let i=0;i<demSize;i++)coords.push({lat:50.95-j/(demSize-1)*2.3,lon:12.15+i/(demSize-1)*6.4});
-    // Jediný požadavek s 81 body: vyhneme se opakovaným voláním, která u tohoto API vracela HTTP 429.
-    const lat=coords.map(p=>p.lat.toFixed(4)).join(','),lon=coords.map(p=>p.lon.toFixed(4)).join(',');
-    const response=await fetch('https://api.open-meteo.com/v1/elevation?latitude='+lat+'&longitude='+lon,{headers:{Accept:'application/json'}});
-    if(!response.ok)throw new Error('HTTP '+response.status);
-    const data=await response.json();
-    if(!Array.isArray(data.elevation)||data.elevation.length!==demSize*demSize||data.elevation.some(v=>!Number.isFinite(Number(v))))throw new Error('Neúplná výšková data');
-    demGrid=data.elevation.map(Number);
+   const coords=[];for(let j=0;j<demSize;j++)for(let i=0;i<demSize;i++)coords.push({lat:50.95-j/(demSize-1)*2.3,lon:12.15+i/(demSize-1)*6.4});
+   const applyElevations=values=>{
+    if(!Array.isArray(values)||values.length!==demSize*demSize||values.some(v=>!Number.isFinite(Number(v))))throw new Error('Neúplná výšková data');
+    demGrid=values.map(Number);
     for(let i=0;i<terrainPos.count;i++){const x=terrainPos.getX(i),z=terrainPos.getZ(i),h=terrainHeightAt(x,z);terrainPos.setY(i,h);const c=terrainColorAt(h);terrainGeo.attributes.color.setXYZ(i,c.r,c.g,c.b)}
     terrainPos.needsUpdate=true;terrainGeo.attributes.color.needsUpdate=true;terrainGeo.computeVertexNormals();
     for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,terrainHeightAt(x,z)+.018)}
     heatPos.needsUpdate=true;heatGeo.computeVertexNormals();
-    if(badge)badge.textContent='Terén: výšková data načtena · síť 9×9';
-   }catch(err){if(badge)badge.textContent='DEM nedostupný · záložní reliéf ('+String(err&&err.message||'chyba').slice(0,38)+')'}
+   };
+   let primaryError='neznámá chyba';
+   try{
+    const lat=coords.map(p=>p.lat.toFixed(4)).join(','),lon=coords.map(p=>p.lon.toFixed(4)).join(',');
+    const response=await fetch('https://api.open-meteo.com/v1/elevation?latitude='+lat+'&longitude='+lon,{headers:{Accept:'application/json'}});
+    if(!response.ok)throw new Error('Open-Meteo HTTP '+response.status);
+    const data=await response.json();applyElevations(data.elevation);
+    if(badge)badge.textContent='Terén: výšková data načtena · Open-Meteo · 9×9';
+    return;
+   }catch(err){primaryError=String(err&&err.message||err)}
+   try{
+    // Nezávislý záložní zdroj SRTM 90 m; API přijímá až 100 souřadnic v jednom dotazu.
+    const locations=coords.map(p=>p.lat.toFixed(4)+','+p.lon.toFixed(4)).join('|');
+    const response=await fetch('https://api.opentopodata.org/v1/srtm90m?locations='+encodeURIComponent(locations),{headers:{Accept:'application/json'}});
+    if(!response.ok)throw new Error('OpenTopoData HTTP '+response.status);
+    const data=await response.json();
+    if(data.status!=='OK'||!Array.isArray(data.results))throw new Error('OpenTopoData nevrátilo výšky');
+    applyElevations(data.results.map(p=>p.elevation));
+    if(badge)badge.textContent='Terén: výšková data načtena · SRTM 90 m · 9×9';
+   }catch(err){
+    if(badge)badge.textContent='DEM nedostupný · záložní reliéf ('+(primaryError+' / '+String(err&&err.message||err)).slice(0,54)+')';
+   }
   }
   loadCopernicusTerrain();
   const patches=[];for(const p of [{x:-1.8,z:.8,c:0x167dff},{x:1.6,z:-.9,c:0xff7838},{x:.1,z:1.9,c:0x12c9a7}]){const m=new THREE.Mesh(new THREE.CircleGeometry(1.45,48),new THREE.MeshBasicMaterial({color:p.c,transparent:true,opacity:.72,depthWrite:false,side:THREE.DoubleSide}));m.rotation.x=-Math.PI/2;m.position.set(p.x,-.045,p.z);scene.add(m);patches.push(m)}
