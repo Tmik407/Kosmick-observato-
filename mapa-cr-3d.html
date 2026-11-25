@@ -738,8 +738,13 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    {x:-3.0,z:1.25,a:.16,sx:.48,sz:.68}, // Český les
    {x:.0,z:1.35,a:.13,sx:1.0,sz:.8} // Českomoravská vrchovina
   ];
-  function terrainHeightAt(x,z){let h=.018*Math.sin(x*1.7)*Math.cos(z*1.35);for(const p of terrainPeaks){const dx=(x-p.x)/p.sx,dz=(z-p.z)/p.sz;h+=p.a*Math.exp(-.5*(dx*dx+dz*dz))}return h}
-  function terrainColorAt(h){const u=Math.max(0,Math.min(1,h/.48));return new THREE.Color().setRGB(.08+.2*u,.25+.36*u,.17+.12*u)}
+  let demGrid=null;const demSize=25;
+  function terrainHeightAt(x,z){
+   if(demGrid){const gx=Math.max(0,Math.min(demSize-1,(x+3.6)/7.2*(demSize-1))),gz=Math.max(0,Math.min(demSize-1,(z+3.6)/7.2*(demSize-1))),x0=Math.floor(gx),z0=Math.floor(gz),x1=Math.min(demSize-1,x0+1),z1=Math.min(demSize-1,z0+1),tx=gx-x0,tz=gz-z0;
+    const a=demGrid[z0*demSize+x0]*(1-tx)+demGrid[z0*demSize+x1]*tx,b=demGrid[z1*demSize+x0]*(1-tx)+demGrid[z1*demSize+x1]*tx;return (a*(1-tz)+b*tz)*.00034}
+   let h=.018*Math.sin(x*1.7)*Math.cos(z*1.35);for(const p of terrainPeaks){const dx=(x-p.x)/p.sx,dz=(z-p.z)/p.sz;h+=p.a*Math.exp(-.5*(dx*dx+dz*dz))}return h
+  }
+  function terrainColorAt(h){const u=Math.max(0,Math.min(1,h/.58));return new THREE.Color().setRGB(.08+.2*u,.25+.36*u,.17+.12*u)}
   for(let i=0;i<terrainPos.count;i++){const x=terrainPos.getX(i),z=terrainPos.getZ(i),h=terrainHeightAt(x,z);terrainPos.setY(i,h);const c=terrainColorAt(h);terrainColors.push(c.r,c.g,c.b)}
   terrainGeo.setAttribute('color',new THREE.Float32BufferAttribute(terrainColors,3));terrainGeo.computeVertexNormals();
   const terrain=new THREE.Mesh(terrainGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.94,metalness:0,side:THREE.DoubleSide}));terrain.position.y=-.085;scene.add(terrain);
@@ -749,6 +754,19 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,terrainHeightAt(x,z)+.018);heatColor.push(.08,.5,.95)}
   heatGeo.setAttribute('color',new THREE.Float32BufferAttribute(heatColor,3));heatGeo.computeVertexNormals();
   const heat=new THREE.Mesh(heatGeo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.78,side:THREE.DoubleSide,depthWrite:false}));heat.position.y=-.045;scene.add(heat);
+  // Načtení skutečných výšek Copernicus DEM GLO-90 přes veřejné Open-Meteo Elevation API.
+  async function loadCopernicusTerrain(){
+   try{const coords=[];for(let j=0;j<demSize;j++)for(let i=0;i<demSize;i++){coords.push({lat:50.95-j/(demSize-1)*2.3,lon:12.15+i/(demSize-1)*6.4})}
+    const values=[];for(let start=0;start<coords.length;start+=100){const batch=coords.slice(start,start+100),lat=batch.map(p=>p.lat.toFixed(4)).join(','),lon=batch.map(p=>p.lon.toFixed(4)).join(','),url='https://api.open-meteo.com/v1/elevation?latitude='+lat+'&longitude='+lon;const response=await fetch(url);if(!response.ok)throw new Error('DEM HTTP '+response.status);const data=await response.json();if(!Array.isArray(data.elevation)||data.elevation.length!==batch.length)throw new Error('Neúplná DEM data');values.push(...data.elevation)}
+    if(values.length!==demSize*demSize||values.some(v=>!Number.isFinite(+v)))throw new Error('Neplatná DEM data');demGrid=values.map(Number);
+    for(let i=0;i<terrainPos.count;i++){const x=terrainPos.getX(i),z=terrainPos.getZ(i),h=terrainHeightAt(x,z);terrainPos.setY(i,h);const c=terrainColorAt(h);terrainGeo.attributes.color.setXYZ(i,c.r,c.g,c.b)}
+    terrainPos.needsUpdate=true;terrainGeo.attributes.color.needsUpdate=true;terrainGeo.computeVertexNormals();
+    for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,terrainHeightAt(x,z)+.018)}
+    heatPos.needsUpdate=true;heatGeo.computeVertexNormals();
+    const note=document.getElementById('weatherTerrainSource');if(note)note.textContent='Terén: Copernicus DEM GLO-90 · Open-Meteo · rozlišení zdrojového modelu 90 m';
+   }catch(err){const note=document.getElementById('weatherTerrainSource');if(note)note.textContent='Terén: schematická záložní vrstva (DEM se nepodařilo načíst)'}
+  }
+  loadCopernicusTerrain();
   const patches=[];for(const p of [{x:-1.8,z:.8,c:0x167dff},{x:1.6,z:-.9,c:0xff7838},{x:.1,z:1.9,c:0x12c9a7}]){const m=new THREE.Mesh(new THREE.CircleGeometry(1.45,48),new THREE.MeshBasicMaterial({color:p.c,transparent:true,opacity:.72,depthWrite:false,side:THREE.DoubleSide}));m.rotation.x=-Math.PI/2;m.position.set(p.x,-.045,p.z);scene.add(m);patches.push(m)}
   const rainGroup=new THREE.Group();scene.add(rainGroup);const drops=[];
   for(let n=0;n<54;n++){const a=n*2.399,r=.65+(n%9)*.39;const d=new THREE.Mesh(new THREE.CylinderGeometry(.014,.014,.25,6),new THREE.MeshBasicMaterial({color:0x48cfff,transparent:true,opacity:.95}));d.position.set(Math.cos(a)*r,.2+(n%13)*.16,Math.sin(a)*r);rainGroup.add(d);drops.push(d)}
