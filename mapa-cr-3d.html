@@ -772,7 +772,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   async function loadCopernicusTerrain(){
    const badge=document.getElementById('weatherTerrainBadge');
    const coords=[];for(let j=0;j<demSize;j++)for(let i=0;i<demSize;i++)coords.push({lat:50.95-j/(demSize-1)*2.3,lon:12.15+i/(demSize-1)*6.4});
-   const cacheKey='x5-dem-cz-grid-v3',cooldownKey='x5-dem-cz-cooldown-v1',cacheTtl=30*24*60*60*1000;
+   const cacheKey='x5-dem-cz-grid-v4',cooldownKey='x5-dem-cz-cooldown-v1',cacheTtl=30*24*60*60*1000;
    const applyElevations=values=>{
     if(!Array.isArray(values)||values.length!==demSize*demSize||values.some(v=>!Number.isFinite(Number(v))))throw new Error('Neúplná výšková data');
     demGrid=values.map(Number);
@@ -788,10 +788,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
     try{applyElevations(cached.values);if(badge)badge.textContent='Terén: načten z uložené výškové cache · Copernicus GLO-90';return}catch(_){}
    }
    const cooldown=Number(readStore(cooldownKey)?.until||0);
-   if(cooldown>Date.now()){
-    if(badge)badge.textContent='Terén: dočasně omezené veřejné zdroje · používám záložní reliéf';
-    return;
-   }
+   // I při cooldownu starších zdrojů zkusíme nejprve oficiální ČÚZK DMR 5G.
    const timedFetch=async(url,ms=9000)=>{
     let timer;const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('časový limit '+Math.round(ms/1000)+' s')),ms)});
     try{return await Promise.race([fetch(url,{headers:{Accept:'application/json'}}),timeout])}finally{clearTimeout(timer)}
