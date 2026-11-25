@@ -149,48 +149,58 @@ function updateLayers(){
  $("legend").innerHTML=v.precipitation?'<span><i class="key" style="background:#268fe0"></i>Déšť</span><span><i class="key" style="background:#d8f4ff"></i>Sníh</span><span>Intenzita podle modelu (mm / cm za hodinu)</span>':v.temperature?'<span><i class="key" style="background:#2856bd"></i>Mráz</span><span><i class="key" style="background:#48bdc2"></i>Chladno</span><span><i class="key" style="background:#f3c15b"></i>Teplo</span>': '<span>Šipky: směr větru · pohyb částic: směr proudění</span>';
 }
 function seedParticles(){
- state.particles=[];
+ // Předpočítané proudnice: každý krok sleduje nejbližší vektor větru.
+ const w=$("map").clientWidth,h=$("map").clientHeight,vectors=[];
  for(const f of state.features){
-  const p=f.properties;if(p.speed<1.2)continue;
-  const count=Math.min(4,Math.max(2,Math.round(p.speed/3)));
-  for(let n=0;n<count;n++)state.particles.push({
-   lon:f.geometry.coordinates[0],lat:f.geometry.coordinates[1],
-   phase:Math.random(),speed:p.speed,direction:p.direction,
-   offset:(Math.random()-.5)*18,length:16+Math.min(p.speed,35)*1.1
-  });
+  const p=f.properties;if(p.speed<.6)continue;
+  const q=map.project(f.geometry.coordinates),a=p.direction*Math.PI/180;
+  if(q.x<-80||q.x>w+80||q.y<-80||q.y>h+80)continue;
+  vectors.push({x:q.x,y:q.y,dx:Math.sin(a),dy:-Math.cos(a),speed:p.speed});
  }
+ const paths=[];
+ for(let s=0;s<vectors.length;s+=2){
+  const start=vectors[s],path=[{x:start.x,y:start.y}],seen=new Set();
+  let x=start.x,y=start.y;
+  for(let step=0;step<24;step++){
+   let best=null,bestD=Infinity;
+   for(const v of vectors){const d=(v.x-x)**2+(v.y-y)**2;if(d<bestD){bestD=d;best=v}}
+   if(!best||bestD>95*95)break;
+   const key=Math.round(best.x/18)+":"+Math.round(best.y/18);
+   if(seen.has(key)&&step>3)break;seen.add(key);
+   const advance=7+Math.min(best.speed,30)*.22;
+   x+=best.dx*advance;y+=best.dy*advance;
+   if(x<2||x>w-2||y<2||y>h-2)break;
+   path.push({x,y});
+  }
+  if(path.length>=5)paths.push({points:path,phase:Math.random()*34,speed:start.speed});
+ }
+ state.particles=paths;
+}
+function drawArrow(x,y,dx,dy,size){
+ ctx.beginPath();ctx.moveTo(x+dx*size,y+dy*size);
+ ctx.lineTo(x-dx*size*.65-dy*size*.72,y-dy*size*.65+dx*size*.72);
+ ctx.lineTo(x-dx*size*.65+dy*size*.72,y-dy*size*.65-dx*size*.72);
+ ctx.closePath();ctx.fill();
 }
 function animateFlow(){
  const w=$("map").clientWidth,h=$("map").clientHeight;
  ctx.clearRect(0,0,w,h);
  if(state.visible.wind&&state.particles.length){
-  ctx.lineCap="round";
-  for(const p of state.particles){
-   const q=map.project([p.lon,p.lat]);
-   if(q.x<-100||q.x>w+100||q.y<-100||q.y>h+100)continue;
-   p.phase=(p.phase+.0035+Math.min(p.speed,40)*.00022)%1;
-   const a=p.direction*Math.PI/180,dx=Math.sin(a),dy=-Math.cos(a);
-   const travel=(p.phase-.5)*92;
-   const x=q.x+dx*travel-dy*p.offset,y=q.y+dy*travel+dx*p.offset;
-   const tail= p.length*(.45+Math.min(p.speed,35)/55);
-   const alpha=.35+.6*Math.sin(p.phase*Math.PI);
-   // Dlouhá, silná a kontrastní proudnice místo malé bílé tečky.
-   const headX=x,headY=y,tailX=x-dx*(tail+18),tailY=y-dy*(tail+18);
-   ctx.save();ctx.globalAlpha=Math.max(.88,alpha);
-   ctx.beginPath();ctx.moveTo(tailX,tailY);ctx.lineTo(headX,headY);
-   ctx.strokeStyle="#063d65";ctx.lineWidth=8;ctx.shadowColor="#00bfff";ctx.shadowBlur=16;ctx.stroke();
-   ctx.beginPath();ctx.moveTo(tailX,tailY);ctx.lineTo(headX,headY);
-   ctx.strokeStyle="#00d9ff";ctx.lineWidth=4.5;ctx.shadowBlur=8;ctx.stroke();
-   ctx.beginPath();ctx.moveTo(headX,headY);
-   ctx.lineTo(headX-dx*13-dy*8,headY-dy*13+dx*8);
-   ctx.lineTo(headX-dx*13+dy*8,headY-dy*13-dx*8);
-   ctx.closePath();ctx.fillStyle="#ffcf33";ctx.strokeStyle="#123d5a";ctx.lineWidth=2;ctx.shadowBlur=7;ctx.fill();ctx.stroke();
+  for(const line of state.particles){
+   const pts=line.points;ctx.save();ctx.lineCap="round";ctx.lineJoin="round";
+   ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);
+   ctx.strokeStyle="rgba(3,48,83,.78)";ctx.lineWidth=5.5;ctx.shadowColor="#00bfff";ctx.shadowBlur=9;ctx.stroke();
+   ctx.setLineDash([13,15]);ctx.lineDashOffset=-(line.phase+=.55+Math.min(line.speed,35)*.025);
+   ctx.strokeStyle="#00cfff";ctx.lineWidth=3.2;ctx.shadowBlur=5;ctx.stroke();ctx.setLineDash([]);
+   ctx.fillStyle="#ffe16a";ctx.strokeStyle="#06466c";ctx.lineWidth=1.2;ctx.shadowBlur=0;
+   for(let i=7;i<pts.length;i+=9){const a=pts[i-1],b=pts[i],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;drawArrow(b.x,b.y,dx/len,dy/len,6)}
    ctx.restore();
   }
  }
  state.raf=requestAnimationFrame(animateFlow);
 }
 map.on("move",()=>{if(ctx)ctx.clearRect(0,0,$("map").clientWidth,$("map").clientHeight)});
+map.on("moveend",()=>{if(state.features.length)seedParticles()});
 async function loadStations(){
  $("stationSummary").textContent="Načítám poslední publikovaná měření ČHMÚ…";
  try{
