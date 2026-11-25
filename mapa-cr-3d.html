@@ -86,7 +86,7 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
   <strong id="forecastTimelineLabel" class="small">Čekám na data…</strong>
  </div>
  <input id="forecastTimeline" type="range" min="0" max="0" value="0" step="1" aria-label="Posun času předpovědi">
- <div class="timeline-actions"><button id="refresh">↻ Aktualizovat data</button><button id="findPrecip">☔ Najít déšť / sníh</button></div>
+ <div class="timeline-actions"><button id="refresh">↻ Aktualizovat data</button><button id="findPrecip">☔ Najít déšť / sníh</button><button id="forecastPlay" type="button" aria-pressed="false">▶ Automaticky přehrávat</button></div>
  <p class="small" id="validTime">Čas platnosti bude uveden po načtení dat.</p>
  <p class="small" id="precipTest" aria-live="polite">Posuň časovou osu a sleduj změny počasí na mapě a v navazujícím 3D modelu.</p>
 </section>
@@ -160,6 +160,9 @@ const grid=[];
 for(let lat=48.65;lat<=50.95;lat+=.48)for(let lon=12.15;lon<=18.55;lon+=.72)grid.push({name:"",lat:+lat.toFixed(3),lon:+lon.toFixed(3)});
 const all=[...grid,...cities],state={hour:0,rows:[],times:[],forecastSource:"Open-Meteo",lastWeatherLoad:0,weatherLoading:false,visible:{temperature:true,precipitation:false,wind:true,cities:true,stations:true},stations:[],map:null,features:[],particles:[],raf:0,analyticsCustom:null,analyticsCompare:null,analyticsSearchBusy:false,analyticsCompareBusy:false,weatherRetryCount:0,weatherRetryTimer:0,lastWeatherAttempt:0};
 const status=(s)=>$("status").textContent=s;
+let forecastPlaybackTimer=0;
+function stopForecastPlayback(){if(forecastPlaybackTimer){clearInterval(forecastPlaybackTimer);forecastPlaybackTimer=0;}const b=$("forecastPlay");if(b){b.textContent="▶ Automaticky přehrávat";b.setAttribute("aria-pressed","false");}}
+function startForecastPlayback(){if(!state.times.length)return;stopForecastPlayback();const b=$("forecastPlay");if(b){b.textContent="Ⅱ Pozastavit přehrávání";b.setAttribute("aria-pressed","true");}forecastPlaybackTimer=setInterval(()=>{if(document.hidden){stopForecastPlayback();return;}if(state.hour>=state.times.length-1){stopForecastPlayback();return;}state.hour++;$("forecastHour").value=String(state.hour);$("forecastTimeline").value=String(state.hour);applyHour();},1400);}
 const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/liberty",center:[15.35,49.82],zoom:6.75,pitch:35,bearing:-8,maxPitch:75,cooperativeGestures:true,attributionControl:true});
 state.map=map;
 // Na dotykových zařízeních vypnout tažení mapy jedním prstem, aby gesto patřilo rolování stránky.
@@ -643,8 +646,9 @@ function loadWeather(force=false,retry=false){
   }finally{state.weatherLoading=false;$("refresh").disabled=false}
  })();
 }
-$("forecastHour").addEventListener("change",e=>{state.hour=+e.target.value;applyHour()});
-$("forecastTimeline").addEventListener("input",e=>{state.hour=+e.target.value;$("forecastHour").value=String(state.hour);applyHour()});
+$("forecastHour").addEventListener("change",e=>{stopForecastPlayback();state.hour=+e.target.value;applyHour()});
+$("forecastTimeline").addEventListener("input",e=>{stopForecastPlayback();state.hour=+e.target.value;$("forecastHour").value=String(state.hour);applyHour()});
+$("forecastPlay").addEventListener("click",()=>{if(forecastPlaybackTimer)stopForecastPlayback();else startForecastPlayback();});
 $("refresh").addEventListener("click",()=>loadWeather(true));
 $("findPrecip").addEventListener("click",()=>{
  if(!state.rows.length||!state.times.length)return;
