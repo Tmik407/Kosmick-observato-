@@ -129,6 +129,7 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
    <div style="display:flex;justify-content:space-between;gap:4px;margin-top:4px;font-variant-numeric:tabular-nums"><span id="weatherTempScaleMin">—</span><span id="weatherTempScaleMid">—</span><span id="weatherTempScaleMax">—</span></div>
   </div>
   <div style="position:absolute;left:10px;bottom:10px;display:flex;gap:7px;flex-wrap:wrap;color:#eaf7ff;font-size:10px;pointer-events:none;background:#061526c9;padding:6px 8px;border-radius:8px"><span>🔵 Chlad</span><span>🟢 Mírno</span><span>🟠 Teplo</span><span>💧 Déšť</span><span>❄️ Sníh</span></div>
+  <div id="weatherTerrainBadge" style="position:absolute;right:10px;top:58px;padding:5px 8px;border:1px solid #52738d;border-radius:7px;background:#061526d9;color:#dff4ff;font-size:10px;pointer-events:none">Načítám výšková data…</div>
  </div>
 <div id="weatherVortexCityForecast" aria-live="polite" style="display:none;margin-top:10px;padding:12px 14px;border:1px solid #b8d5e3;border-radius:12px;background:linear-gradient(135deg,#f5fbff,#eaf5fa);color:#17394d;white-space:pre-line;line-height:1.55;font-size:13px;overflow-wrap:anywhere"></div>
 <p class="small" style="margin:8px 0 0">Ovládání modelu: dvěma prsty otáčej a přibližuj, tažením myší otáčej. Jedním prstem můžeš stránku normálně posouvat.</p>
@@ -765,6 +766,18 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
     heatPos.needsUpdate=true;heatGeo.computeVertexNormals();
     const note=document.getElementById('weatherTerrainSource');if(note)note.textContent='Terén: Copernicus DEM GLO-90 · Open-Meteo · rozlišení zdrojového modelu 90 m';
    }catch(err){const note=document.getElementById('weatherTerrainSource');if(note)note.textContent='Terén: schematická záložní vrstva (DEM se nepodařilo načíst)'}
+  }
+  async function loadCopernicusTerrain(){
+   const badge=document.getElementById('weatherTerrainBadge');
+   try{const coords=[];for(let j=0;j<demSize;j++)for(let i=0;i<demSize;i++)coords.push({lat:50.95-j/(demSize-1)*2.3,lon:12.15+i/(demSize-1)*6.4});
+    const values=[];for(let start=0;start<coords.length;start+=100){const batch=coords.slice(start,start+100),lat=batch.map(p=>p.lat.toFixed(4)).join(','),lon=batch.map(p=>p.lon.toFixed(4)).join(','),response=await fetch('https://api.open-meteo.com/v1/elevation?latitude='+lat+'&longitude='+lon);if(!response.ok)throw new Error('DEM HTTP '+response.status);const data=await response.json();if(!Array.isArray(data.elevation)||data.elevation.length!==batch.length)throw new Error('Neúplná DEM data');values.push(...data.elevation)}
+    if(values.length!==demSize*demSize||values.some(v=>!Number.isFinite(+v)))throw new Error('Neplatná DEM data');demGrid=values.map(Number);
+    for(let i=0;i<terrainPos.count;i++){const x=terrainPos.getX(i),z=terrainPos.getZ(i),h=terrainHeightAt(x,z);terrainPos.setY(i,h);const c=terrainColorAt(h);terrainGeo.attributes.color.setXYZ(i,c.r,c.g,c.b)}
+    terrainPos.needsUpdate=true;terrainGeo.attributes.color.needsUpdate=true;terrainGeo.computeVertexNormals();
+    for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,terrainHeightAt(x,z)+.018)}
+    heatPos.needsUpdate=true;heatGeo.computeVertexNormals();
+    if(badge)badge.textContent='Terén: Copernicus DEM GLO-90';
+   }catch(err){if(badge)badge.textContent='Terén: záložní reliéf (DEM nedostupný)'}
   }
   loadCopernicusTerrain();
   const patches=[];for(const p of [{x:-1.8,z:.8,c:0x167dff},{x:1.6,z:-.9,c:0xff7838},{x:.1,z:1.9,c:0x12c9a7}]){const m=new THREE.Mesh(new THREE.CircleGeometry(1.45,48),new THREE.MeshBasicMaterial({color:p.c,transparent:true,opacity:.72,depthWrite:false,side:THREE.DoubleSide}));m.rotation.x=-Math.PI/2;m.position.set(p.x,-.045,p.z);scene.add(m);patches.push(m)}
