@@ -46,6 +46,15 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
 #liveClock .clock-meta{font-size:12px;color:#47677c;text-align:right}
 #liveClock .clock-live{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:#16805d}
 #liveClock .clock-dot{width:8px;height:8px;border-radius:50%;background:#20a879;box-shadow:0 0 0 3px #20a87922}
+#liveClock .source-status-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+#liveClock .source-status{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700;border:1px solid transparent}
+#liveClock .source-status:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:5px}
+#liveClock .source-status.pending{color:#64748b;background:#f1f5f9;border-color:#dbe3ea}
+#liveClock .source-status.loading{color:#986515;background:#fff7e6;border-color:#f4dfb3}
+#liveClock .source-status.ok{color:#16734f;background:#eaf8f1;border-color:#bde7d0}
+#liveClock .source-status.bad{color:#a83232;background:#fff0f0;border-color:#f0c4c4}
+#liveClock .source-status.cached{color:#8a5b16;background:#fff7e6;border-color:#f4dfb3}
+
 @media(max-width:480px){#liveClock{padding:10px 12px}#liveClock .clock-meta{text-align:left}}
 
 
@@ -60,7 +69,7 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
 </header>
 <section id="liveClock" aria-label="Aktuální český čas">
  <div><div class="clock-live"><span class="clock-dot"></span>ŽIVÝ ČAS · ČESKO</div><div id="liveClockTime" class="clock-time" aria-live="off">--:--:--</div><div id="liveClockDate" class="clock-date">Načítám datum…</div></div>
- <div class="clock-meta"><div><b>Časové pásmo</b> · Europe/Prague</div><div>Hodiny se obnovují každou sekundu</div><div id="liveClockSync">Čas zařízení · čekám na synchronizaci</div><div id="weatherDataUpdated" style="margin-top:5px;font-weight:700">Meteorologická data · čekám na načtení</div><div id="weatherDataAge" style="margin-top:2px">Stav dat se zobrazí po načtení</div></div>
+ <div class="clock-meta"><div><b>Časové pásmo</b> · Europe/Prague</div><div>Hodiny se obnovují každou sekundu</div><div id="liveClockSync">Čas zařízení · čekám na synchronizaci</div><div id="weatherDataUpdated" style="margin-top:5px;font-weight:700">Meteorologická data · čekám na načtení</div><div id="weatherDataAge" style="margin-top:2px">Stav dat se zobrazí po načtení</div><div class="source-status-row"><span id="openMeteoStatus" class="source-status pending">Open-Meteo · čeká</span><span id="metNorwayStatus" class="source-status pending">MET Norway · čeká</span></div></div>
 </section>
 <section class="map-card">
  <div class="map-wrap"><div id="map" aria-label="Interaktivní trojrozměrná mapa počasí České republiky"></div><canvas id="flowCanvas"></canvas></div>
@@ -548,7 +557,7 @@ function loadWeather(force=false){
  if(state.weatherLoading)return;
  if(!force&&state.lastWeatherLoad&&Date.now()-state.lastWeatherLoad<10*60*1000){status("Používám aktuální předpověď · poslední načtení před méně než 10 minutami");return;}
  if(Date.now()<weatherApiCooldownUntil){status("Open-Meteo má ochrannou pauzu · používám uložená data, pokud jsou dostupná");return;}
- state.weatherLoading=true;status("Načítám předpověď pro 15 měst jedním požadavkem…");$("refresh").disabled=true;
+ state.weatherLoading=true;window.__weatherVortexSetSourceStatus?.("openmeteo","loading","načítám");status("Načítám předpověď pro 15 měst jedním požadavkem…");$("refresh").disabled=true;
  const makeUrl=places=>"https://api.open-meteo.com/v1/forecast?latitude="+places.map(p=>p.lat).join(",")+"&longitude="+places.map(p=>p.lon).join(",")+"&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m&forecast_days=4&timezone=Europe%2FPrague";
  const nearestCityRow=p=>{let best=0,distance=Infinity;for(let i=0;i<cities.length;i++){const d=(p.lat-cities[i].lat)**2+(p.lon-cities[i].lon)**2;if(d<distance){distance=d;best=i}}return best};
  const useRows=(rows,source="Open-Meteo")=>{
@@ -565,19 +574,20 @@ function loadWeather(force=false){
    const data=await response.json(),cityRows=Array.isArray(data)?data:[data];
    if(cityRows.length!==cities.length)throw Error("Nesouhlasí počet měst");
    const gridRows=grid.map(p=>cityRows[nearestCityRow(p)]);
-   useRows([...gridRows,...cityRows],"Open-Meteo");
+   useRows([...gridRows,...cityRows],"Open-Meteo");window.__weatherVortexSetSourceStatus?.("openmeteo","ok","dostupné");window.__weatherVortexSetSourceStatus?.("metnorway","pending","záloha připravena");
    state.weatherRetryCount=0;
    if(state.weatherRetryTimer){clearTimeout(state.weatherRetryTimer);state.weatherRetryTimer=0;}
    status("Počasí načteno · 15 měst · jedna žádost Open-Meteo");
   }catch(error){
-   let fallbackLoaded=false;
+   let fallbackLoaded=false;window.__weatherVortexSetSourceStatus?.("openmeteo","bad","nedostupné");window.__weatherVortexSetSourceStatus?.("metnorway","loading","načítám zálohu");
    try{
     const fallbackRows=await loadMetNoFallback();
-    useRows(fallbackRows,"MET Norway (záložní globální model)");
+    useRows(fallbackRows,"MET Norway (záložní globální model)");window.__weatherVortexSetSourceStatus?.("metnorway","ok","dostupné · aktivní záloha");
     fallbackLoaded=true;
     $("weatherSummary").textContent="Hodinová služba Open-Meteo je dočasně nedostupná. Zobrazuji záložní předpověď MET Norway; její časové kroky se po prvních 48 hodinách mohou prodlužovat. Samostatná výška nového sněhu není v tomto záložním výstupu dostupná.";
     status("Záložní předpověď načtena · MET Norway · 15 měst");
    }catch(fallbackError){
+    window.__weatherVortexSetSourceStatus?.("metnorway","bad","nedostupné");
     $("weatherSummary").textContent="Open-Meteo: "+error.message+" · Záložní MET Norway: "+fallbackError.message+" · Zůstává dostupná náhradní mapa měření ČHMÚ.";
    }
    if(fallbackLoaded){
@@ -585,12 +595,13 @@ function loadWeather(force=false){
    }else{
     let cached=null;try{cached=JSON.parse(localStorage.getItem("weatherVortexForecastCache")||"null")}catch(_){}
     if(cached?.rows?.length===all.length&&cached?.times?.length&&Date.now()-(cached.savedAt||0)<72*60*60*1000){
-    state.rows=cached.rows;state.times=cached.times;state.forecastSource=cached.source||"uložená předpověď";state.lastWeatherLoad=cached.savedAt||Date.now();window.__weatherVortexUpdateDataClock?.(state.lastWeatherLoad,state.forecastSource,"cached");
+    state.rows=cached.rows;state.times=cached.times;state.forecastSource=cached.source||"uložená předpověď";state.lastWeatherLoad=cached.savedAt||Date.now();window.__weatherVortexUpdateDataClock?.(state.lastWeatherLoad,state.forecastSource,"cached");window.__weatherVortexSetSourceStatus?.(cached.source?.includes("MET Norway")?"metnorway":"openmeteo","cached","používá se uložená kopie");
     const select=$("forecastHour");select.innerHTML=state.times.map((t,i)=>'<option value="'+i+'">'+new Date(t).toLocaleString("cs-CZ",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit"})+'</option>').join("");
     const now=Date.now(),idx=state.times.findIndex(t=>new Date(t).getTime()>=now-30*60*1000);state.hour=idx>=0?idx:0;select.value=String(state.hour);applyHour();
     status("Záložní předpověď z mezipaměti · živá data Open-Meteo jsou dočasně omezená");
     $("weatherSummary").textContent="Zobrazuji poslední uloženou předpověď. Open-Meteo dočasně omezilo požadavky (HTTP 429); data se automaticky zkusí obnovit.";
    }else{
+    window.__weatherVortexSetSourceStatus?.("openmeteo","bad","nedostupné");window.__weatherVortexSetSourceStatus?.("metnorway","bad","nedostupné");
     status("Předpověď je dočasně nedostupná");
     $("weatherSummary").textContent=error.message+" · Mapa a stanice ČHMÚ zůstávají dostupné.";
    }
@@ -757,6 +768,12 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
  const zone='Europe/Prague';
  let dataTimestamp=0,dataSource='',dataMode='none';
  const dataTimeFmt=new Intl.DateTimeFormat('cs-CZ',{timeZone:zone,hour:'2-digit',minute:'2-digit',second:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'});
+ window.__weatherVortexSetSourceStatus=(source,state,label)=>{
+  const el=document.getElementById(source==='openmeteo'?'openMeteoStatus':'metNorwayStatus');
+  if(!el)return;
+  el.className='source-status '+(state==='ok'?'ok':state==='bad'?'bad':state==='loading'?'loading':state==='cached'?'cached':'pending');
+  el.textContent=(source==='openmeteo'?'Open-Meteo':'MET Norway')+' · '+label;
+ };
  window.__weatherVortexUpdateDataClock=(timestamp,source,mode)=>{
   dataTimestamp=Number(timestamp)||0;dataSource=String(source||'meteorologický model');dataMode=mode||'fresh';renderDataAge();
  };
