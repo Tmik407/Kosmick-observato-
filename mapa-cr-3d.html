@@ -86,7 +86,7 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
    <button data-layer="stations" aria-pressed="true">📡 Stanice ČHMÚ</button>
   </div>
   <div class="legend" id="legend"><span><i class="key" style="background:#2878c8"></i>mráz</span><span><i class="key" style="background:#42b8bd"></i>chladno</span><span><i class="key" style="background:#f3b44e"></i>teplo</span><span>Šipky ukazují směr proudění</span></div>
-  <div class="row" style="margin-top:12px"><label for="forecastHour"><b>Čas předpovědi</b></label><select id="forecastHour"><option value="0">Načítám…</option></select><button id="refresh">↻ Aktualizovat</button><button id="findPrecip">☔ Najít déšť / sníh</button></div><p class="small" id="precipTest" aria-live="polite">Tlačítkem lze vyhledat nejsilnější srážky v celé dostupné předpovědi.</p>
+  <div class="row" style="margin-top:12px;align-items:center;flex-wrap:wrap"><label for="forecastHour"><b>Čas předpovědi</b></label><select id="forecastHour"><option value="0">Načítám…</option></select><label for="forecastTimeline" class="small"><b>Časová osa</b></label><input id="forecastTimeline" type="range" min="0" max="0" value="0" step="1" aria-label="Posun času předpovědi" style="flex:1 1 180px;min-width:150px;accent-color:#1684b6"><strong id="forecastTimelineLabel" class="small" style="min-width:125px">Čekám na data…</strong><button id="refresh">↻ Aktualizovat</button><button id="findPrecip">☔ Najít déšť / sníh</button></div><p class="small" id="precipTest" aria-live="polite">Tlačítkem lze vyhledat nejsilnější srážky v celé dostupné předpovědi.</p>
   <p class="small" id="validTime">Čas platnosti bude uveden po načtení dat.</p>
  </section>
  <section class="panel">
@@ -298,6 +298,12 @@ $("analyticsCompareClear")?.addEventListener("click",()=>{state.analyticsCompare
 $("analyticsSearch")?.addEventListener("click",searchAnalyticsPlace);
 $("analyticsPlace")?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchAnalyticsPlace()}});
 
+function syncForecastTimeline(){
+ const slider=$("forecastTimeline"),label=$("forecastTimelineLabel");
+ if(!slider||!state.times.length)return;
+ slider.max=String(Math.max(0,state.times.length-1));slider.value=String(Math.max(0,Math.min(state.hour,state.times.length-1)));
+ const t=state.times[+slider.value];label.textContent=t?new Date(t).toLocaleString("cs-CZ",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"Čekám na data…";
+}
 function applyHour(){
  const i=state.hour;if(!state.rows.length)return;
  // Odpověď Open-Meteo může dorazit dříve než se dokončí načtení stylu MapLibre.
@@ -309,7 +315,7 @@ function applyHour(){
  map.getSource("cities").setData({type:"FeatureCollection",features:cityFeatures});
  state.features=features.slice(0,grid.length);
   window.__weatherVortexSetData?.(state.features);
- const time=state.times[i];$("validTime").textContent="Platnost: "+new Date(time).toLocaleString("cs-CZ")+" · modelová předpověď";
+ const time=state.times[i];syncForecastTimeline();$("validTime").textContent="Platnost: "+new Date(time).toLocaleString("cs-CZ")+" · modelová předpověď";
  const avg=cityFeatures.reduce((a,f)=>a+f.properties.temp,0)/cityFeatures.length;
  const rainCount=cityFeatures.filter(f=>f.properties.rain>.1).length,snowCount=cityFeatures.filter(f=>f.properties.snow>.1).length;
  $("weatherSummary").textContent="Průměrná teplota ve sledovaných městech: "+avg.toFixed(1)+" °C. Déšť očekáván v "+rainCount+" městech, sněžení v "+snowCount+" městech. Klepnutím na bod města zobrazíš podrobnosti.";
@@ -620,6 +626,7 @@ function loadWeather(force=false,retry=false){
  })();
 }
 $("forecastHour").addEventListener("change",e=>{state.hour=+e.target.value;applyHour()});
+$("forecastTimeline").addEventListener("input",e=>{state.hour=+e.target.value;$("forecastHour").value=String(state.hour);applyHour()});
 $("refresh").addEventListener("click",()=>loadWeather(true));
 $("findPrecip").addEventListener("click",()=>{
  if(!state.rows.length||!state.times.length)return;
