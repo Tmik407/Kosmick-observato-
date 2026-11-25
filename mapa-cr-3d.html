@@ -432,9 +432,10 @@ async function loadStations(){
     const makeFeature=(place)=>{const st=nearest(place);if(!st)return null;const temp=Number.isFinite(+st.temperature_c)?+st.temperature_c:0;
      const wind=Number.isFinite(+st.wind_kmh)?+st.wind_kmh:(Number.isFinite(+st.wind_ms)?+st.wind_ms*3.6:0);
      const direction=Number.isFinite(+st.wind_direction_deg)?+st.wind_direction_deg:0;
-     const rain=Number.isFinite(+st.precipitation_mm)?Math.max(0,+st.precipitation_mm):0;
-     const snow=Number.isFinite(+st.snow_depth_cm)?Math.max(0,+st.snow_depth_cm):0;
-     return {type:"Feature",geometry:{type:"Point",coordinates:[place.lon,place.lat]},properties:{temp,rain,snow,precip:rain,kind:snow>0?"snow":"rain",direction:(direction+180)%360,speed:wind,wind,station:st.name||"ČHMÚ",observed:st.observed_utc||""}};
+     // ČHMÚ archiv obsahuje okamžitá měření, nikoli hodinovou intenzitu
+     // srážek ani hodinové sněžení; tyto veličiny zde proto nevykreslujeme.
+     const rain=0,snow=0;
+     return {type:"Feature",geometry:{type:"Point",coordinates:[place.lon,place.lat]},properties:{temp,rain,snow,precip:0,kind:"rain",direction:(direction+180)%360,speed:wind,wind,station:st.name||"ČHMÚ",observed:st.observed_utc||""}};
     };
     const fallbackGrid=grid.map(makeFeature).filter(Boolean),fallbackCities=cities.map((c)=>{const x=makeFeature(c);if(x)x.properties.name=c.name;return x}).filter(Boolean);
     state.features=fallbackGrid;
