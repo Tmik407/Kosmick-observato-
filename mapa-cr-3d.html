@@ -54,7 +54,7 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
 </section>
 <section class="panel" style="margin-top:12px">
  <div class="row" style="justify-content:space-between"><div><h2 style="margin:0">🌪️ WEATHER VORTEX 3D X-5</h2><p class="small" style="margin:4px 0 0">Prostorová vizualizace atmosférického proudění nad Českou republikou</p></div><button id="weatherVortexToggle" aria-pressed="true">⏸ Pozastavit animaci</button></div>
- <div id="weatherVortexStage" style="position:relative;height:360px;min-height:280px;margin-top:10px;border-radius:13px;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#173f61,#071827 72%)">
+ <div id="weatherVortexStage" style="position:relative;height:430px;min-height:340px;margin-top:10px;border-radius:13px;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#173f61,#071827 72%)">
   <canvas id="weatherVortex3d" style="display:block;width:100%;height:100%;touch-action:pan-y"></canvas>
   <div style="position:absolute;left:10px;top:10px;padding:7px 9px;border:1px solid #52738d;border-radius:8px;background:#061526d9;color:#e9f6ff;font-size:11px;pointer-events:none">MODEL 3D · ČESKÁ REPUBLIKA<br><span id="weatherVortexStatus">Čekám na data předpovědi…</span></div>
   <div style="position:absolute;right:10px;bottom:10px;color:#e6f5ff;font-size:10px;pointer-events:none">Modré proudnice · částice větru · schematický reliéf</div>
@@ -354,12 +354,19 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
  let renderer,scene,camera,raf=0,paused=false,last=0,windSpeed=8,windDir=250;
  try{
   renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));
-  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(42,1,.1,100);camera.position.set(0,5.8,10.5);camera.lookAt(0,.4,0);
+  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(42,1,.1,100);camera.position.set(0,4.8,8.2);camera.lookAt(0,.45,0);
   scene.add(new THREE.AmbientLight(0x9acfff,1.2));const light=new THREE.DirectionalLight(0xffffff,1.8);light.position.set(4,8,5);scene.add(light);
   const terrain=new THREE.Mesh(new THREE.CylinderGeometry(4.7,4.9,.22,96,1),new THREE.MeshStandardMaterial({color:0x174b63,roughness:.82,metalness:.12}));terrain.position.y=-.35;scene.add(terrain);
   const grid=new THREE.GridHelper(9,24,0x58b7d5,0x28617d);grid.position.y=-.22;scene.add(grid);
   const glow=new THREE.Mesh(new THREE.CylinderGeometry(3.5,4.2,.08,96,1,true),new THREE.MeshBasicMaterial({color:0x13a9df,transparent:true,opacity:.12,side:THREE.DoubleSide}));glow.position.y=-.08;scene.add(glow);
   const streamGroup=new THREE.Group();scene.add(streamGroup);const particles=[];
+  // Barevná schematická teplotní vrstva pod proudnicemi.
+  const tempLayer=new THREE.Mesh(new THREE.CircleGeometry(3.55,96),new THREE.MeshBasicMaterial({color:0x36a9e8,transparent:true,opacity:.22,depthWrite:false,side:THREE.DoubleSide}));tempLayer.rotation.x=-Math.PI/2;tempLayer.position.y=-.205;scene.add(tempLayer);
+  const warmPatch=new THREE.Mesh(new THREE.CircleGeometry(1.35,64),new THREE.MeshBasicMaterial({color:0xff9c45,transparent:true,opacity:.24,depthWrite:false,side:THREE.DoubleSide}));warmPatch.rotation.x=-Math.PI/2;warmPatch.position.set(-1.15,-.19,.35);scene.add(warmPatch);
+  const coldPatch=new THREE.Mesh(new THREE.CircleGeometry(1.45,64),new THREE.MeshBasicMaterial({color:0x39bfff,transparent:true,opacity:.26,depthWrite:false,side:THREE.DoubleSide}));coldPatch.rotation.x=-Math.PI/2;coldPatch.position.set(1.2,-.185,-.25);scene.add(coldPatch);
+  const rainGroup=new THREE.Group();scene.add(rainGroup);const rainDrops=[];
+  for(let n=0;n<42;n++){const drop=new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,.28,6),new THREE.MeshBasicMaterial({color:0x55cfff,transparent:true,opacity:.72}));const a=n*2.399,r=.8+(n%7)*.38;drop.position.set(Math.cos(a)*r,.35+(n%9)*.16,Math.sin(a)*r);rainGroup.add(drop);rainDrops.push(drop)}
+  let avgTemp=5,precipLevel=0;
   const colors=[0x39d9ff,0x77cfff,0xb4f4ff,0xffd16a];
   for(let n=0;n<22;n++){
    const pts=[],turns=2.1+n%5*.22,phase=n/22*Math.PI*2;
@@ -372,7 +379,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   const ring=new THREE.Mesh(new THREE.TorusGeometry(.48,.018,8,64),new THREE.MeshBasicMaterial({color:0x8deaff,transparent:true,opacity:.8}));ring.rotation.x=Math.PI/2;ring.position.y=.3;scene.add(ring);
   function resize(){const w=Math.max(1,host.clientWidth),h=Math.max(1,host.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
   new ResizeObserver(resize).observe(host);resize();
-  function readWeather(){try{const feats=window.__weatherVortexFeatures||[];if(!feats.length)return;const valid=feats.filter(f=>Number.isFinite(+f.properties?.speed)&&Number.isFinite(+f.properties?.direction));if(!valid.length)return;windSpeed=valid.reduce((s,f)=>s+(+f.properties.speed),0)/valid.length;const rad=valid.reduce((s,f)=>s+Math.sin((+f.properties.direction)*Math.PI/180),0)/valid.length,cos=valid.reduce((s,f)=>s+Math.cos((+f.properties.direction)*Math.PI/180),0)/valid.length;windDir=(Math.atan2(rad,cos)*180/Math.PI+360)%360;status.textContent='Průměrná rychlost větru '+windSpeed.toFixed(1)+' km/h · směr '+Math.round(windDir)+'°'}catch(e){}}
+  function readWeather(){try{const feats=window.__weatherVortexFeatures||[];if(!feats.length)return;const valid=feats.filter(f=>Number.isFinite(+f.properties?.speed)&&Number.isFinite(+f.properties?.direction));if(!valid.length)return;windSpeed=valid.reduce((s,f)=>s+(+f.properties.speed),0)/valid.length;const rad=valid.reduce((s,f)=>s+Math.sin((+f.properties.direction)*Math.PI/180),0)/valid.length,cos=valid.reduce((s,f)=>s+Math.cos((+f.properties.direction)*Math.PI/180),0)/valid.length;windDir=(Math.atan2(rad,cos)*180/Math.PI+360)%360;avgTemp=valid.reduce((s,f)=>s+(+f.properties.temp||0),0)/valid.length;precipLevel=valid.reduce((s,f)=>s+Math.max(+f.properties.rain||0,+f.properties.snow||0,+f.properties.precip||0),0)/valid.length;const cold=avgTemp<0;tempLayer.material.color.set(cold?0x398bff:avgTemp>15?0xff8b38:0x39b9b0);warmPatch.material.opacity=Math.max(.08,Math.min(.38,(avgTemp+5)/55));coldPatch.material.opacity=Math.max(.08,Math.min(.4,(5-avgTemp)/25));rainGroup.visible=precipLevel>.03;rainGroup.children.forEach(d=>{d.material.color.set(cold?0xc9f3ff:0x55cfff);d.material.opacity=Math.min(.95,.35+precipLevel*.22)});status.textContent='Vítr '+windSpeed.toFixed(1)+' km/h · směr '+Math.round(windDir)+'° · teplota '+avgTemp.toFixed(1)+' °C · srážky '+precipLevel.toFixed(2)+' mm/h'}catch(e){}}
   function animate(t){raf=requestAnimationFrame(animate);if(paused||document.hidden)return;if(t-last<33)return;last=t;readWeather();const speed=.25+Math.min(windSpeed,70)/70*.8;streamGroup.rotation.y+=.0015*speed;core.scale.setScalar(1+Math.sin(t*.0015)*.06);ring.rotation.z=t*.00018*speed;particles.forEach(p=>{const u=((t*.000025*speed+p.phase)%1);p.mesh.position.copy(p.curve.getPointAt(u))});renderer.render(scene,camera)}
   toggle.addEventListener('click',()=>{paused=!paused;toggle.textContent=paused?'▶ Spustit animaci':'⏸ Pozastavit animaci';toggle.setAttribute('aria-pressed',String(!paused));if(!paused&&!raf)raf=requestAnimationFrame(animate)});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!paused&&!raf)raf=requestAnimationFrame(animate)});
