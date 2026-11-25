@@ -1,11 +1,11 @@
 {
-  "retrieved_utc": "2026-11-24T18:51:36.833344+00:00",
+  "retrieved_utc": "2026-11-25T17:56:22.547115+00:00",
   "source": "ERA5-derived daily diagnostics distributed by polarvortex.earth",
   "classification": "REANALYSIS_DERIVED",
   "attribution": "Contains modified Copernicus Climate Change Service information. ERA5: Hersbach et al. (2020).",
   "files": {
     "u60_daily.csv": {
-      "rows": 24793,
+      "rows": 24794,
       "columns": [
         "date",
         "u60_10hpa_60n_ms",
@@ -14,11 +14,11 @@
         "capT_10hpa_s_k"
       ],
       "first_date": "1959-01-01",
-      "last_date": "2026-11-17",
-      "bytes": 909173
+      "last_date": "2026-11-18",
+      "bytes": 909210
     },
     "wave_forcing_daily.csv": {
-      "rows": 24793,
+      "rows": 24794,
       "columns": [
         "date",
         "vt100_n_kms",
@@ -27,8 +27,8 @@
         "z10_wave2_60n_m"
       ],
       "first_date": "1959-01-01",
-      "last_date": "2026-11-17",
-      "bytes": 855172
+      "last_date": "2026-11-18",
+      "bytes": 855207
     }
   }
 }\n
