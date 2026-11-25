@@ -63,7 +63,7 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
    <button data-layer="stations" aria-pressed="true">📡 Stanice ČHMÚ</button>
   </div>
   <div class="legend" id="legend"><span><i class="key" style="background:#2878c8"></i>mráz</span><span><i class="key" style="background:#42b8bd"></i>chladno</span><span><i class="key" style="background:#f3b44e"></i>teplo</span><span>Šipky ukazují směr proudění</span></div>
-  <div class="row" style="margin-top:12px"><label for="forecastHour"><b>Čas předpovědi</b></label><select id="forecastHour"><option value="0">Načítám…</option></select><button id="refresh">↻ Aktualizovat</button></div>
+  <div class="row" style="margin-top:12px"><label for="forecastHour"><b>Čas předpovědi</b></label><select id="forecastHour"><option value="0">Načítám…</option></select><button id="refresh">↻ Aktualizovat</button><button id="findPrecip">☔ Najít déšť / sníh</button></div><p class="small" id="precipTest" aria-live="polite">Tlačítkem lze vyhledat nejsilnější srážky v celé dostupné předpovědi.</p>
   <p class="small" id="validTime">Čas platnosti bude uveden po načtení dat.</p>
  </section>
  <section class="panel">
@@ -282,6 +282,29 @@ function loadWeather(){
 }
 $("forecastHour").addEventListener("change",e=>{state.hour=+e.target.value;applyHour()});
 $("refresh").addEventListener("click",loadWeather);
+$("findPrecip").addEventListener("click",()=>{
+ if(!state.rows.length||!state.times.length)return;
+ let best={amount:0,index:0,rain:0,snow:0};
+ for(let i=0;i<state.times.length;i++){
+  let rain=0,snow=0,amount=0;
+  for(let n=0;n<all.length;n++){
+   const h=state.rows[n].hourly;
+   const r=Number(h.rain?.[i]??0),s=Number(h.snowfall?.[i]??0),p=Number(h.precipitation?.[i]??0);
+   rain=Math.max(rain,r);snow=Math.max(snow,s);amount=Math.max(amount,p,r,s);
+  }
+  if(amount>best.amount)best={amount,index:i,rain,snow};
+ }
+ const select=$("forecastHour");
+ if(best.amount<=0.05){
+  $("precipTest").textContent="V dostupné třídenní předpovědi není podle Open-Meteo očekáván déšť ani sněžení. Vrstvu proto nelze ověřit na skutečných srážkách.";
+  return;
+ }
+ state.hour=best.index;select.value=String(best.index);applyHour();
+ $("precipTest").textContent="Vybrán termín s nejsilnějšími srážkami: "+new Date(state.times[best.index]).toLocaleString("cs-CZ")+". Déšť max. "+best.rain+" mm/h, sníh max. "+best.snow+" cm/h. Zapni vrstvu Déšť / sníh.";
+ state.visible.precipitation=true;updateLayers();
+ document.querySelector('[data-layer="precipitation"]').setAttribute("aria-pressed","true");
+});
+
 $("layerControls").addEventListener("click",e=>{const b=e.target.closest("button[data-layer]");if(!b)return;const k=b.dataset.layer;state.visible[k]=!state.visible[k];b.setAttribute("aria-pressed",String(state.visible[k]));updateLayers()});
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){if(state.rows.length)loadWeather();loadStations()}});
 window.setInterval(loadStations,15*60*1000);
