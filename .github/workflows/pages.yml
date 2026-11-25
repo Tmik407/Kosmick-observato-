@@ -40,7 +40,7 @@ jobs:
           python - <<'PY'
           import re
           from pathlib import Path
-          files = [Path("_site/index.html"), Path("_site/polarni-vir.html"), Path("_site/polar-vortex-3d.html")]
+          files = [Path("_site/index.html"), Path("_site/polarni-vir.html"), Path("_site/polar-vortex-3d.html"), Path("_site/mapa-cr-3d.html")]
           count = 0
           for page in files:
               source = page.read_text(encoding="utf-8")
@@ -85,7 +85,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$SITE_URL"
-          for path in index.html polarni-vir.html polar-vortex-3d.html data/polar-vortex-10hpa-timeline.json gfs-polarni-3d.js ch1411-impact.json space-weather-history.json space-weather-status.json coronal-hole-history.json giro-status.json irtam-density.json aurora-history.json bfo-bdv-quality-2026-11-01.json manifest.webmanifest sw.js offline.html icon.svg; do
+          for path in index.html polarni-vir.html polar-vortex-3d.html mapa-cr-3d.html data/chmi-stations-latest.json data/polar-vortex-10hpa-timeline.json gfs-polarni-3d.js ch1411-impact.json space-weather-history.json space-weather-status.json coronal-hole-history.json giro-status.json irtam-density.json aurora-history.json bfo-bdv-quality-2026-11-01.json manifest.webmanifest sw.js offline.html icon.svg; do
             ok=0
             for attempt in $(seq 1 12); do
               code=$(curl --silent --show-error --location --output "/tmp/x5-check" --write-out "%{http_code}" "$SITE_URL$path" || true)
@@ -136,4 +136,12 @@ jobs:
           grep -q 'id="sswForecastSignal"' /tmp/x5-vortex.html
           grep -q 'id="ecmwfPolarMap"' /tmp/x5-vortex.html
           echo "ECMWF animace a diagnostika SSW předpovědního signálu ověřeny."
+          curl --fail --silent --show-error --location "${SITE_URL}mapa-cr-3d.html" -o /tmp/x5-weather-map.html
+          grep -q 'temperature-circles' /tmp/x5-weather-map.html
+          grep -q 'precip-circles' /tmp/x5-weather-map.html
+          grep -q 'findPrecip' /tmp/x5-weather-map.html
+          grep -q 'for(let arm=0;arm<3;arm++)' /tmp/x5-weather-map.html
+          curl --fail --silent --show-error --location "${SITE_URL}data/chmi-stations-latest.json" -o /tmp/x5-chmi.json
+          python -c 'import json,sys; d=json.load(open(sys.argv[1],encoding="utf-8")); assert len(d.get("stations",[]))>0; print("ČHMÚ stations OK:",len(d["stations"]))' /tmp/x5-chmi.json
+          echo "Mapa počasí: teplota, déšť/sníh, test srážek a archiv ČHMÚ ověřeny."
           echo "Smoke test X-5 dokončen."
