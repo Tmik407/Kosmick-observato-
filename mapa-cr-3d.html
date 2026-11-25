@@ -60,6 +60,7 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
    <button data-layer="precipitation" aria-pressed="false">🌧️ Déšť / sníh</button>
    <button data-layer="wind" aria-pressed="true">💨 Proudění</button>
    <button data-layer="cities" aria-pressed="true">📍 Města</button>
+   <button data-layer="stations" aria-pressed="true">📡 Stanice ČHMÚ</button>
   </div>
   <div class="legend" id="legend"><span><i class="key" style="background:#2878c8"></i>mráz</span><span><i class="key" style="background:#42b8bd"></i>chladno</span><span><i class="key" style="background:#f3b44e"></i>teplo</span><span>Šipky ukazují směr proudění</span></div>
   <div class="row" style="margin-top:12px"><label for="forecastHour"><b>Čas předpovědi</b></label><select id="forecastHour"><option value="0">Načítám…</option></select><button id="refresh">↻ Aktualizovat</button></div>
@@ -68,6 +69,8 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
  <section class="panel">
   <h2>Počasí ve vybraných městech</h2>
   <div id="weatherSummary">Čekám na meteorologická data…</div>
+  <div id="stationSummary" class="small" style="margin-top:10px">Načítám měřicí stanice ČHMÚ…</div>
+  <div id="stationList" class="city-list"></div>
   <div class="city-list" id="cityList"></div>
  </section>
 </div>
@@ -89,7 +92,7 @@ const cities=[
 ];
 const grid=[];
 for(let lat=48.65;lat<=50.95;lat+=.46)for(let lon=12.15;lon<=18.55;lon+=.64)grid.push({name:"",lat:+lat.toFixed(3),lon:+lon.toFixed(3)});
-const all=[...grid,...cities],state={hour:0,rows:[],times:[],visible:{temperature:true,precipitation:false,wind:true,cities:true},map:null,features:[],particles:[],raf:0};
+const all=[...grid,...cities],state={hour:0,rows:[],times:[],visible:{temperature:true,precipitation:false,wind:true,cities:true,stations:true},stations:[],map:null,features:[],particles:[],raf:0};
 const status=(s)=>$("status").textContent=s;
 const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/liberty",center:[15.35,49.82],zoom:6.35,pitch:55,bearing:-8,maxPitch:75,attributionControl:true});
 state.map=map;
@@ -109,9 +112,14 @@ map.on("load",()=>{
  map.addSource("cities",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
  map.addLayer({id:"city-points",type:"circle",source:"cities",paint:{"circle-radius":5,"circle-color":"#f5a623","circle-stroke-color":"#fff","circle-stroke-width":2}});
  map.addLayer({id:"city-labels",type:"symbol",source:"cities",layout:{"text-field":["get","name"],"text-font":["Open Sans Semibold"],"text-size":11,"text-offset":[0,1.1],"text-anchor":"top","text-allow-overlap":false},paint:{"text-color":"#17364b","text-halo-color":"#fff","text-halo-width":1.5}});
+ map.addSource("chmi-stations",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+ map.addLayer({id:"chmi-station-points",type:"circle",source:"chmi-stations",paint:{"circle-radius":["interpolate",["linear"],["zoom"],5,4,9,7],"circle-color":"#7a3db8","circle-stroke-color":"#fff","circle-stroke-width":1.5}});
+ map.addLayer({id:"chmi-station-labels",type:"symbol",source:"chmi-stations",layout:{"text-field":["get","name"],"text-size":10,"text-offset":[0,1.1],"text-anchor":"top","text-allow-overlap":false},paint:{"text-color":"#55277d","text-halo-color":"#fff","text-halo-width":1.5}});
+ map.on("click","chmi-station-points",(e)=>{const p=e.features[0].properties;const f=(v,d)=>v===null||v===undefined?"—":Number(v).toFixed(d);const html="<b>"+p.name+"</b><br>ČHMÚ · přímé měření<br>Teplota: "+f(p.temperature_c,1)+" °C<br>Vlhkost: "+f(p.humidity_pct,0)+" %<br>Vítr: "+f(p.wind_ms,1)+" m/s ("+f(p.wind_kmh,1)+" km/h)<br>Směr větru: "+f(p.wind_direction_deg,0)+"°<br>Náraz: "+f(p.wind_gust_ms,1)+" m/s<br>Tlak: "+f(p.pressure_hpa,1)+" hPa<br>Výška sněhu: "+f(p.snow_depth_cm,0)+" cm<br>Čas měření: "+(p.observed_utc||"—")+"<br><small>Údaje se liší podle vybavení stanice.</small>";new maplibregl.Popup().setLngLat(e.lngLat).setHTML(html).addTo(map)});
+ map.on("mouseenter","chmi-station-points",()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave","chmi-station-points",()=>map.getCanvas().style.cursor="");
  map.on("click","city-points",(e)=>{const p=e.features[0].properties;new maplibregl.Popup().setLngLat(e.lngLat).setHTML("<b>"+p.name+"</b><br>"+p.temp.toFixed(1)+" °C<br>Vítr "+p.wind.toFixed(0)+" km/h<br>Srážky "+p.precip.toFixed(1)+" mm<br>"+(p.snow>0?"Sníh "+p.snow.toFixed(1)+" cm":"Déšť "+p.rain.toFixed(1)+" mm")).addTo(map)});
  map.on("mouseenter","city-points",()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave","city-points",()=>map.getCanvas().style.cursor="");
- status("3D mapa připravena · načítám počasí…");loadWeather();
+ status("3D mapa připravena · načítám počasí a stanice ČHMÚ…");loadWeather();loadStations();
 });
 function val(row,key,i){const a=row.hourly&&row.hourly[key];return Array.isArray(a)&&Number.isFinite(+a[i])?+a[i]:0}
 function weatherFeature(p,row,i){const temp=val(row,"temperature_2m",i),rain=val(row,"rain",i),snow=val(row,"snowfall",i),precip=val(row,"precipitation",i),direction=val(row,"wind_direction_10m",i),speed=val(row,"wind_speed_10m",i);return {type:"Feature",geometry:{type:"Point",coordinates:[p.lon,p.lat]},properties:{temp,rain,snow,precip,kind:snow>0.05?"snow":"rain",direction:(direction+180)%360,speed,wind:speed}}}
@@ -136,6 +144,8 @@ function updateLayers(){
  map.setLayoutProperty("wind-arrows","visibility",v.wind?"visible":"none");
  map.setLayoutProperty("city-points","visibility",v.cities?"visible":"none");
  map.setLayoutProperty("city-labels","visibility",v.cities?"visible":"none");
+ map.setLayoutProperty("chmi-station-points","visibility",v.stations?"visible":"none");
+ map.setLayoutProperty("chmi-station-labels","visibility",v.stations?"visible":"none");
  $("legend").innerHTML=v.precipitation?'<span><i class="key" style="background:#268fe0"></i>Déšť</span><span><i class="key" style="background:#d8f4ff"></i>Sníh</span><span>Intenzita podle modelu (mm / cm za hodinu)</span>':v.temperature?'<span><i class="key" style="background:#2856bd"></i>Mráz</span><span><i class="key" style="background:#48bdc2"></i>Chladno</span><span><i class="key" style="background:#f3c15b"></i>Teplo</span>': '<span>Šipky: směr větru · pohyb částic: směr proudění</span>';
 }
 function seedParticles(){state.particles=state.features.filter(f=>f.properties.speed>2).map(f=>({lon:f.geometry.coordinates[0],lat:f.geometry.coordinates[1],phase:Math.random(),speed:f.properties.speed,direction:f.properties.direction}))}
@@ -151,6 +161,20 @@ function animateFlow(){
  state.raf=requestAnimationFrame(animateFlow);
 }
 map.on("move",()=>{if(ctx)ctx.clearRect(0,0,$("map").clientWidth,$("map").clientHeight)});
+async function loadStations(){
+ $("stationSummary").textContent="Načítám poslední publikovaná měření ČHMÚ…";
+ try{
+  const response=await fetch("./data/chmi-stations-latest.json?ts="+Date.now(),{cache:"no-store"});
+  if(!response.ok)throw Error("CHMI archiv zatím není publikován (HTTP "+response.status+")");
+  const doc=await response.json();state.stations=Array.isArray(doc.stations)?doc.stations:[];
+  const features=state.stations.map(st=>({type:"Feature",geometry:{type:"Point",coordinates:[st.lon,st.lat]},properties:{...st,wind_kmh:Number.isFinite(st.wind_ms)?st.wind_ms*3.6:null}}));
+  map.getSource("chmi-stations").setData({type:"FeatureCollection",features});
+  const times=state.stations.map(x=>x.observed_utc).filter(Boolean).sort();
+  $("stationSummary").textContent="ČHMÚ: "+state.stations.length+" stanic · poslední měření "+(times.at(-1)||"čas neuveden")+" · aktualizace archivu "+(doc.generated_utc||"—");
+  $("stationList").innerHTML=state.stations.slice(0,24).map(st=>'<span class="city-chip">📡 '+st.name+(Number.isFinite(st.temperature_c)?' · '+st.temperature_c.toFixed(1)+' °C':'')+'</span>').join("");
+  status("Počasí + "+state.stations.length+" stanic ČHMÚ");
+ }catch(e){$("stationSummary").textContent="Stanice ČHMÚ zatím nedostupné: "+e.message+". Předpovědní vrstva Open-Meteo zůstává funkční."}
+}
 function loadWeather(){
  status("Načítám předpověď Open-Meteo…");$("refresh").disabled=true;
  const lats=all.map(p=>p.lat).join(","),lons=all.map(p=>p.lon).join(",");
@@ -166,7 +190,8 @@ function loadWeather(){
 $("forecastHour").addEventListener("change",e=>{state.hour=+e.target.value;applyHour()});
 $("refresh").addEventListener("click",loadWeather);
 $("layerControls").addEventListener("click",e=>{const b=e.target.closest("button[data-layer]");if(!b)return;const k=b.dataset.layer;state.visible[k]=!state.visible[k];b.setAttribute("aria-pressed",String(state.visible[k]));updateLayers()});
-document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.rows.length)loadWeather()});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){if(state.rows.length)loadWeather();loadStations()}});
+window.setInterval(loadStations,15*60*1000);
 map.on("load",()=>{if(!state.raf)animateFlow()});
 })();
 </script>
