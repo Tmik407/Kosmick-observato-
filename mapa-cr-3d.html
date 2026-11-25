@@ -723,12 +723,32 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   const light=new THREE.DirectionalLight(0xffffff,2);light.position.set(3,8,5);scene.add(light);
   const base=new THREE.Mesh(new THREE.CylinderGeometry(4.8,5,.25,96),new THREE.MeshStandardMaterial({color:0x123b55,roughness:.8}));base.position.y=-.38;scene.add(base);
   const grid=new THREE.GridHelper(9.2,26,0x58b7d5,0x28617d);grid.position.y=-.12;scene.add(grid);
-  // Viditelná barevná teplotní plocha s gradientem a jemným zvlněním.
-  const heatGeo=new THREE.PlaneGeometry(7.4,7.4,40,40);heatGeo.rotateX(-Math.PI/2);
+  // 3D reliéf ČR: schematická výšková mapa s polohou hlavních pohoří.
+  // Výšky jsou vizualizační aproximace, nikoli naměřený DEM model.
+  const terrainGeo=new THREE.PlaneGeometry(7.4,7.4,72,72);terrainGeo.rotateX(-Math.PI/2);
+  const terrainPos=terrainGeo.attributes.position,terrainColors=[];
+  const terrainPeaks=[
+   {x:-2.45,z:-1.75,a:.28,sx:.72,sz:.42}, // Krušné hory
+   {x:.05,z:-2.65,a:.34,sx:.62,sz:.34}, // Krkonoše
+   {x:-.35,z:-2.25,a:.22,sx:.48,sz:.3}, // Jizerské hory
+   {x:1.15,z:-1.05,a:.23,sx:.5,sz:.55}, // Orlické hory
+   {x:2.55,z:-.95,a:.32,sx:.62,sz:.72}, // Jeseníky
+   {x:3.0,z:1.55,a:.28,sx:.62,sz:.55}, // Beskydy
+   {x:-2.0,z:2.25,a:.3,sx:.85,sz:.78}, // Šumava
+   {x:-3.0,z:1.25,a:.16,sx:.48,sz:.68}, // Český les
+   {x:.0,z:1.35,a:.13,sx:1.0,sz:.8} // Českomoravská vrchovina
+  ];
+  function terrainHeightAt(x,z){let h=.018*Math.sin(x*1.7)*Math.cos(z*1.35);for(const p of terrainPeaks){const dx=(x-p.x)/p.sx,dz=(z-p.z)/p.sz;h+=p.a*Math.exp(-.5*(dx*dx+dz*dz))}return h}
+  function terrainColorAt(h){const u=Math.max(0,Math.min(1,h/.48));return new THREE.Color().setRGB(.08+.2*u,.25+.36*u,.17+.12*u)}
+  for(let i=0;i<terrainPos.count;i++){const x=terrainPos.getX(i),z=terrainPos.getZ(i),h=terrainHeightAt(x,z);terrainPos.setY(i,h);const c=terrainColorAt(h);terrainColors.push(c.r,c.g,c.b)}
+  terrainGeo.setAttribute('color',new THREE.Float32BufferAttribute(terrainColors,3));terrainGeo.computeVertexNormals();
+  const terrain=new THREE.Mesh(terrainGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.94,metalness:0,side:THREE.DoubleSide}));terrain.position.y=-.085;scene.add(terrain);
+  // Teplotní vrstva kopíruje výškový reliéf, aby se terén a počasí prostorově překrývaly.
+  const heatGeo=new THREE.PlaneGeometry(7.4,7.4,72,72);heatGeo.rotateX(-Math.PI/2);
   const heatPos=heatGeo.attributes.position,heatColor=[];
-  for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,.018*Math.sin(x*1.7)*Math.cos(z*1.5));heatColor.push(.08,.5,.95)}
+  for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,terrainHeightAt(x,z)+.018);heatColor.push(.08,.5,.95)}
   heatGeo.setAttribute('color',new THREE.Float32BufferAttribute(heatColor,3));heatGeo.computeVertexNormals();
-  const heat=new THREE.Mesh(heatGeo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.92,side:THREE.DoubleSide,depthWrite:false}));heat.position.y=-.075;scene.add(heat);
+  const heat=new THREE.Mesh(heatGeo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.78,side:THREE.DoubleSide,depthWrite:false}));heat.position.y=-.045;scene.add(heat);
   const patches=[];for(const p of [{x:-1.8,z:.8,c:0x167dff},{x:1.6,z:-.9,c:0xff7838},{x:.1,z:1.9,c:0x12c9a7}]){const m=new THREE.Mesh(new THREE.CircleGeometry(1.45,48),new THREE.MeshBasicMaterial({color:p.c,transparent:true,opacity:.72,depthWrite:false,side:THREE.DoubleSide}));m.rotation.x=-Math.PI/2;m.position.set(p.x,-.045,p.z);scene.add(m);patches.push(m)}
   const rainGroup=new THREE.Group();scene.add(rainGroup);const drops=[];
   for(let n=0;n<54;n++){const a=n*2.399,r=.65+(n%9)*.39;const d=new THREE.Mesh(new THREE.CylinderGeometry(.014,.014,.25,6),new THREE.MeshBasicMaterial({color:0x48cfff,transparent:true,opacity:.95}));d.position.set(Math.cos(a)*r,.2+(n%13)*.16,Math.sin(a)*r);rainGroup.add(d);drops.push(d)}
