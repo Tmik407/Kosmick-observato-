@@ -119,7 +119,7 @@ const cities=[
 ];
 const grid=[];
 for(let lat=48.65;lat<=50.95;lat+=.48)for(let lon=12.15;lon<=18.55;lon+=.72)grid.push({name:"",lat:+lat.toFixed(3),lon:+lon.toFixed(3)});
-const all=[...grid,...cities],state={hour:0,rows:[],times:[],lastWeatherLoad:0,weatherLoading:false,visible:{temperature:true,precipitation:false,wind:true,cities:true,stations:true},stations:[],map:null,features:[],particles:[],raf:0,analyticsCustom:null,analyticsCompare:null,analyticsSearchBusy:false,analyticsCompareBusy:false,weatherRetryCount:0,weatherRetryTimer:0};
+const all=[...grid,...cities],state={hour:0,rows:[],times:[],forecastSource:"Open-Meteo",lastWeatherLoad:0,weatherLoading:false,visible:{temperature:true,precipitation:false,wind:true,cities:true,stations:true},stations:[],map:null,features:[],particles:[],raf:0,analyticsCustom:null,analyticsCompare:null,analyticsSearchBusy:false,analyticsCompareBusy:false,weatherRetryCount:0,weatherRetryTimer:0};
 const status=(s)=>$("status").textContent=s;
 const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/liberty",center:[15.35,49.82],zoom:6.75,pitch:35,bearing:-8,maxPitch:75,cooperativeGestures:true,attributionControl:true});
 state.map=map;
@@ -199,7 +199,7 @@ function renderAnalytics(){
  const rain=times.map((_,i)=>Number(h.rain?.[start+i]??0)),snow=times.map((_,i)=>Number(h.snowfall?.[start+i]??0));
  const compareRain=compareH?times.map((_,i)=>Number(compareH.rain?.[i]??0)):[],compareSnow=compareH?times.map((_,i)=>Number(compareH.snowfall?.[i]??0)):[],maxP=Math.max(.2,...rain,...snow,...compareRain,...compareSnow),W=340,H=142,L=29,R=8,T=9,B=25,slot=(W-L-R)/Math.max(1,times.length),ticks=[0,Math.floor((times.length-1)/2),times.length-1].filter((v,i,a)=>a.indexOf(v)===i);
  $("precipitationChart").innerHTML='<svg viewBox="0 0 '+W+' '+H+'" aria-hidden="true"><path d="M'+L+' '+T+'V'+(H-B)+'H'+(W-R)+'" fill="none" stroke="#cbd9e2"/>'+rain.map((v,i)=>{const bw=Math.max(1,slot*(compareH?.32:.72)),x=L+i*slot+(compareH?slot*.08:slot*.12),rh=v/maxP*(H-T-B),sh=snow[i]/maxP*(H-T-B),cr=compareRain[i]||0,cs=compareSnow[i]||0,cx=L+i*slot+slot*.52,crh=cr/maxP*(H-T-B),csh=cs/maxP*(H-T-B);return '<rect x="'+x.toFixed(1)+'" y="'+(H-B-rh).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+rh.toFixed(1)+'" rx="1" fill="#1684b6"/><rect x="'+x.toFixed(1)+'" y="'+(H-B-rh-sh).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+sh.toFixed(1)+'" rx="1" fill="#8bdcf5"/>'+(compareH?'<rect x="'+cx.toFixed(1)+'" y="'+(H-B-crh).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+crh.toFixed(1)+'" rx="1" fill="#16845b"/><rect x="'+cx.toFixed(1)+'" y="'+(H-B-crh-csh).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+csh.toFixed(1)+'" rx="1" fill="#9bd8b9"/>':"")}).join("")+ticks.map(i=>'<text x="'+(L+i*slot)+'" y="'+(H-7)+'" text-anchor="middle" font-size="9" fill="#60798b">'+esc(new Date(times[i]).toLocaleString("cs-CZ",{day:"2-digit",hour:"2-digit"}))+'</text>').join("")+'<text x="3" y="12" font-size="9" fill="#60798b">'+maxP.toFixed(1)+'</text></svg><div class="chart-note">Modrá = déšť (mm/h), světle modrá = sněžení (cm/h)</div>';
- $("analyticsTime").textContent=cityName+(compareName?" ↔ "+compareName:"")+" · "+new Date(times[0]).toLocaleString("cs-CZ")+" až "+new Date(times[times.length-1]).toLocaleString("cs-CZ")+" · "+times.length+" hodinových hodnot"+(compareName?" · plná čára = první místo, přerušovaná = druhé místo":"");
+ $("analyticsTime").textContent=cityName+(compareName?" ↔ "+compareName:"")+" · "+new Date(times[0]).toLocaleString("cs-CZ")+" až "+new Date(times[times.length-1]).toLocaleString("cs-CZ")+" · "+times.length+" časových hodnot · zdroj: "+(state.forecastSource||"Open-Meteo")+(compareName?" · plná čára = první místo, přerušovaná = druhé místo":"");
  $("analyticsCompareClear").hidden=!compareName;
 }
 
@@ -453,6 +453,66 @@ async function loadStations(){
   status("Počasí + "+state.stations.length+" stanic ČHMÚ");
  }catch(e){$("stationSummary").textContent="Stanice ČHMÚ zatím nedostupné: "+e.message+". Předpovědní vrstva Open-Meteo zůstává funkční."}
 }
+// Záložní globální model MET Norway. Odpovědi ukládáme do cache alespoň na 3 hodiny;
+ // jejich model pro ČR se aktualizuje přibližně po 6 hodinách. Provoz z prohlížeče
+ // používá automatický Origin hlavičku webu; vlastní User-Agent nelze v browseru nastavit.
+async function fetchMetNoCity(place){
+ const lat=Number(place.lat.toFixed(4)),lon=Number(place.lon.toFixed(4));
+ const key=lat+","+lon,cacheKey="weatherVortexMetNo:"+key;
+ let cached=null;try{cached=JSON.parse(localStorage.getItem(cacheKey)||"null")}catch(_){}
+ if(cached?.savedAt&&Date.now()-cached.savedAt<3*60*60*1000&&cached.row?.hourly?.time?.length)return cached.row;
+ const url="https://api.met.no/weatherapi/locationforecast/2.0/compact?lat="+lat+"&lon="+lon;
+ const response=await fetch(url,{mode:"cors",cache:"no-store"});
+ if(!response.ok)throw Error("MET Norway HTTP "+response.status+" pro "+(place.name||key));
+ const doc=await response.json(),series=doc?.properties?.timeseries||[];
+ if(!series.length)throw Error("MET Norway nevrátilo časovou řadu pro "+(place.name||key));
+ const time=[],temperature_2m=[],rain=[],snowfall=[],precipitation=[],wind_speed_10m=[],wind_direction_10m=[],wind_gusts_10m=[];
+ for(let i=0;i<series.length;i++){
+  const item=series[i],d=item.data?.instant?.details||{},next=item.data?.next_1_hours||item.data?.next_6_hours||item.data?.next_12_hours;
+  const amount=Number(next?.details?.precipitation_amount||0),period= item.data?.next_1_hours?1:item.data?.next_6_hours?6:item.data?.next_12_hours?12:1;
+  time.push(item.time);
+  temperature_2m.push(Number(d.air_temperature??0));
+  rain.push(amount/period);
+  precipitation.push(amount/period);
+  // MET Norway tento endpoint neposkytuje samostatnou výšku nového sněhu v cm/h.
+  // Nulu zde používáme jako "bez samostatného údaje", nikoli jako potvrzení bez sněžení.
+  snowfall.push(0);
+  wind_speed_10m.push(Number(d.wind_speed??0)*3.6);
+  wind_direction_10m.push(Number(d.wind_from_direction??0));
+  wind_gusts_10m.push(Number(d.wind_speed_of_gust??d.wind_speed??0)*3.6);
+ }
+ const row={hourly:{time,temperature_2m,rain,snowfall,precipitation,wind_speed_10m,wind_direction_10m,wind_gusts_10m}};
+ try{localStorage.setItem(cacheKey,JSON.stringify({savedAt:Date.now(),row}))}catch(_){}
+ return row;
+}
+async function loadMetNoFallback(){
+ status("Open-Meteo je nedostupné · načítám záložní globální model MET Norway…");
+ const rows=new Array(cities.length);let cursor=0,errors=[];
+ const workers=Array.from({length:3},async()=>{
+  while(cursor<cities.length){
+   const i=cursor++;
+   try{rows[i]=await fetchMetNoCity(cities[i])}catch(e){errors.push(e.message)}
+  }
+ });
+ await Promise.all(workers);
+ const valid=rows.filter(Boolean);
+ if(valid.length!==cities.length)throw Error("Záložní předpověď načetla "+valid.length+" z "+cities.length+" měst. "+errors.slice(0,2).join("; "));
+ const nearestCityRow=p=>{let best=0,distance=Infinity;for(let i=0;i<cities.length;i++){const d=(p.lat-cities[i].lat)**2+(p.lon-cities[i].lon)**2;if(d<distance){distance=d;best=i}}return best};
+ const gridRows=grid.map(p=>rows[nearestCityRow(p)]);
+ const commonTimes=rows[0].hourly.time;
+ // Časové body globálního modelu nejsou vždy hodinové (po prvních 48 h bývají po 6 h).
+ // Použijeme společné časové značky první lokality a grafy označíme podle skutečného zdroje.
+ const aligned=rows.map(row=>{
+  const h=row.hourly,idx=commonTimes.map(t=>h.time.indexOf(t));
+  const out={hourly:{time:commonTimes}};
+  ["temperature_2m","rain","snowfall","precipitation","wind_speed_10m","wind_direction_10m","wind_gusts_10m"].forEach(k=>{
+   out.hourly[k]=idx.map((j,n)=>j>=0?(h[k][j]??0):0);
+  });
+  return out;
+ });
+ const alignedGrid=grid.map(p=>aligned[nearestCityRow(p)]);
+ return [...alignedGrid,...aligned];
+}
 function loadWeather(force=false){
  if(state.weatherLoading)return;
  if(!force&&state.lastWeatherLoad&&Date.now()-state.lastWeatherLoad<10*60*1000){status("Používám aktuální předpověď · poslední načtení před méně než 10 minutami");return;}
@@ -460,9 +520,9 @@ function loadWeather(force=false){
  state.weatherLoading=true;status("Načítám předpověď pro 15 měst jedním požadavkem…");$("refresh").disabled=true;
  const makeUrl=places=>"https://api.open-meteo.com/v1/forecast?latitude="+places.map(p=>p.lat).join(",")+"&longitude="+places.map(p=>p.lon).join(",")+"&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m&forecast_days=4&timezone=Europe%2FPrague";
  const nearestCityRow=p=>{let best=0,distance=Infinity;for(let i=0;i<cities.length;i++){const d=(p.lat-cities[i].lat)**2+(p.lon-cities[i].lon)**2;if(d<distance){distance=d;best=i}}return best};
- const useRows=rows=>{
-  state.rows=rows;state.times=rows[0].hourly.time;state.lastWeatherLoad=Date.now();
-  try{localStorage.setItem("weatherVortexForecastCache",JSON.stringify({savedAt:Date.now(),rows,times:state.times}))}catch(_){}
+ const useRows=(rows,source="Open-Meteo")=>{
+  state.rows=rows;state.times=rows[0].hourly.time;state.forecastSource=source;state.lastWeatherLoad=Date.now();
+  try{localStorage.setItem("weatherVortexForecastCache",JSON.stringify({savedAt:Date.now(),rows,times:state.times,source}))}catch(_){}
   const select=$("forecastHour");select.innerHTML=state.times.map((t,i)=>'<option value="'+i+'">'+new Date(t).toLocaleString("cs-CZ",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit"})+'</option>').join("");
   const now=Date.now(),idx=state.times.findIndex(t=>new Date(t).getTime()>=now-30*60*1000);state.hour=idx>=0?idx:0;select.value=String(state.hour);applyHour();
  };
@@ -474,11 +534,22 @@ function loadWeather(force=false){
    const data=await response.json(),cityRows=Array.isArray(data)?data:[data];
    if(cityRows.length!==cities.length)throw Error("Nesouhlasí počet měst");
    const gridRows=grid.map(p=>cityRows[nearestCityRow(p)]);
-   useRows([...gridRows,...cityRows]);
+   useRows([...gridRows,...cityRows],"Open-Meteo");
    state.weatherRetryCount=0;
    if(state.weatherRetryTimer){clearTimeout(state.weatherRetryTimer);state.weatherRetryTimer=0;}
    status("Počasí načteno · 15 měst · jedna žádost Open-Meteo");
   }catch(error){
+   let fallbackLoaded=false;
+   try{
+    const fallbackRows=await loadMetNoFallback();
+    useRows(fallbackRows,"MET Norway (záložní globální model)");
+    fallbackLoaded=true;
+    $("weatherSummary").textContent="Hodinová služba Open-Meteo je dočasně nedostupná. Zobrazuji záložní předpověď MET Norway; její časové kroky se po prvních 48 hodinách mohou prodlužovat. Samostatná výška nového sněhu není v tomto záložním výstupu dostupná.";
+    status("Záložní předpověď načtena · MET Norway · 15 měst");
+   }catch(fallbackError){
+    $("weatherSummary").textContent="Open-Meteo: "+error.message+" · Záložní MET Norway: "+fallbackError.message+" · Zůstává dostupná náhradní mapa měření ČHMÚ.";
+   }
+   if(fallbackLoaded){state.weatherRetryCount=0;}
    let cached=null;try{cached=JSON.parse(localStorage.getItem("weatherVortexForecastCache")||"null")}catch(_){}
    if(cached?.rows?.length===all.length&&cached?.times?.length&&Date.now()-(cached.savedAt||0)<72*60*60*1000){
     state.rows=cached.rows;state.times=cached.times;state.lastWeatherLoad=cached.savedAt||Date.now();
