@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#edf5fb">
+<title>Předpověď počasí ČR – 3D mapa</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css">
+<style>
+:root{color-scheme:light;--ink:#17344a;--muted:#60798b;--line:#d5e2eb;--blue:#087da9;--panel:#fff}
+*{box-sizing:border-box}body{margin:0;background:#edf4f9;color:var(--ink);font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1440px;margin:auto;padding:14px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+h1{font-size:clamp(23px,4vw,34px);margin:0;color:#15344b}header p{margin:3px 0 0;color:var(--muted)}
+.kicker{font-size:11px;letter-spacing:.08em;color:#47718a;font-weight:700}
+.status{padding:8px 11px;border:1px solid var(--line);border-radius:10px;background:#fff;color:#36566c;font-size:12px}
+.map-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:10px;box-shadow:0 8px 24px #12344a0c}
+#map{height:min(72vh,820px);min-height:440px;border-radius:13px;overflow:hidden;background:#b8d4e4}
+#flowCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3}
+.map-wrap{position:relative}
+.below{display:grid;grid-template-columns:1.2fr 1fr;gap:10px;margin-top:10px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px;min-width:0}
+.panel h2{font-size:16px;margin:0 0 9px}
+.controls{display:flex;gap:7px;flex-wrap:wrap}
+button,select,input{font:inherit}
+button{border:1px solid #b9d2e1;background:#edf7fc;color:#17445e;border-radius:9px;padding:8px 11px;font-weight:700;cursor:pointer}
+button[aria-pressed=true]{background:#cdeeff;border-color:#1684b6;box-shadow:inset 0 0 0 1px #1684b6}
+button:disabled{opacity:.5;cursor:wait}
+select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;color:#17344a}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.small{font-size:12px;color:var(--muted)}
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:#3f5e72}
+.key{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px}
+.city-list{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.city-chip{font-size:11px;background:#f0f6fa;border:1px solid #d9e5ed;padding:4px 7px;border-radius:7px}
+#weatherSummary{font-size:13px;color:#35576e;line-height:1.55}
+.attribution{margin:9px 2px 0;font-size:10px;color:#6d8291}
+#map .maplibregl-ctrl-group{border-radius:9px;overflow:hidden}
+#map .maplibregl-ctrl-attrib{font-size:10px}
+.maplibregl-popup-content{font:13px/1.5 system-ui;padding:11px 13px;border-radius:10px}
+@media(max-width:760px){main{padding:8px}.below{grid-template-columns:1fr}#map{height:62vh;min-height:400px}.map-card{padding:7px;border-radius:14px}.panel{padding:10px}header{margin-bottom:8px}}
+@media(max-width:390px){#map{height:58vh;min-height:360px}.controls button{font-size:12px;padding:7px 8px}}
+</style>
+</head>
+<body>
+<main>
+<header>
+ <div><div class="kicker">PŘEDPOVĚĎ POČASÍ ČR</div><h1>🌦️ PŘEDPOVĚĎ POČASÍ ČR</h1><p>Reliéf, vítr, déšť, sněžení a teploty v České republice</p></div>
+ <div id="status" class="status">Načítám mapové podklady…</div>
+</header>
+<section class="map-card">
+ <div class="map-wrap"><div id="map" aria-label="Interaktivní trojrozměrná mapa počasí České republiky"></div><canvas id="flowCanvas"></canvas></div>
+ <div class="attribution">MapLibre GL JS · podklad OpenFreeMap / OpenStreetMap · výšková data Terrarium · předpověď Open-Meteo</div>
+</section>
+<section class="panel" style="margin-top:12px">
+ <div class="row" style="justify-content:space-between;flex-wrap:wrap"><div><h2 style="margin:0">🌪️ WEATHER VORTEX 3D X-5</h2><p class="small" style="margin:4px 0 0">Prostorová vizualizace atmosférického proudění nad Českou republikou</p></div><div class="row" style="gap:6px"><button id="weatherVortexReset" type="button">↺ Výchozí pohled</button><button id="weatherVortexToggle" aria-pressed="true">⏸ Pozastavit animaci</button></div></div>
+ <div style="margin-top:10px;font-size:13px;font-weight:700;color:#31566d">Ovládání 3D vrstev – zapni nebo vypni jednotlivé jevy:</div>
+ <div id="weatherVortexLayerControls" class="controls" style="display:flex!important;visibility:visible!important;flex-wrap:wrap;gap:6px;margin-top:7px">
+  <button type="button" data-vortex-layer="temperature" aria-pressed="true">🌡️ Teplotní povrch</button>
+  <button type="button" data-vortex-layer="clouds" aria-pressed="true">☁️ Oblačnost</button>
+  <button type="button" data-vortex-layer="precipitation" aria-pressed="true">🌧️ Déšť / sníh</button>
+  <button type="button" data-vortex-layer="atmosphere" aria-pressed="true">🌐 Atmosféra</button>
+  <button type="button" data-vortex-layer="wind" aria-pressed="true">💨 Proudnice větru</button>
+ </div>
+ <div id="weatherVortexStage" style="position:relative;height:470px;min-height:360px;margin-top:10px;border-radius:13px;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#173f61,#071827 72%)">
+  <canvas id="weatherVortex3d" style="display:block;width:100%;height:100%;touch-action:pan-y"></canvas>
+  <div style="position:absolute;left:10px;top:10px;padding:7px 9px;border:1px solid #52738d;border-radius:8px;background:#061526d9;color:#e9f6ff;font-size:11px;pointer-events:none">MODEL 3D · ČESKÁ REPUBLIKA<br><span id="weatherVortexStatus">Čekám na data předpovědi…</span></div>
+  <div style="position:absolute;right:10px;bottom:10px;color:#e6f5ff;font-size:10px;pointer-events:none">Modré proudnice · částice větru · schematický reliéf</div>
+  <div style="position:absolute;left:10px;bottom:10px;display:flex;gap:7px;flex-wrap:wrap;color:#eaf7ff;font-size:10px;pointer-events:none;background:#061526c9;padding:6px 8px;border-radius:8px"><span>🔵 Chlad</span><span>🟢 Mírno</span><span>🟠 Teplo</span><span>💧 Déšť</span><span>❄️ Sníh</span></div>
+ </div>
+<p class="small" style="margin:8px 0 0">Ovládání modelu: dvěma prsty otáčej a přibližuj, tažením myší otáčej. Jedním prstem můžeš stránku normálně posouvat.</p>
+ <p class="small" style="margin:8px 0 0">Proudění je vizualizováno prostorově podle dostupných meteorologických dat Open-Meteo. Tvar víru a reliéfní plocha jsou schematické, nejde o samostatné měření ani výstražný model.</p>
+</section>
+<div class="below">
+ <section class="panel">
+  <h2>Vrstvy počasí</h2>
+  <div class="controls" id="layerControls">
+   <button data-layer="temperature" aria-pressed="true">🌡️ Teplota</button>
+   <button data-layer="precipitation" aria-pressed="false">🌧️ Déšť / sníh</button>
+   <button data-layer="wind" aria-pressed="true">💨 Proudění</button>
+   <button data-layer="cities" aria-pressed="true">📍 Města</button>
+   <button data-layer="stations" aria-pressed="true">📡 Stanice ČHMÚ</button>
+  </div>
+  <div class="legend" id="legend"><span><i class="key" style="background:#2878c8"></i>mráz</span><span><i class="key" style="background:#42b8bd"></i>chladno</span><span><i class="key" style="background:#f3b44e"></i>teplo</span><span>Šipky ukazují směr proudění</span></div>
+  <div class="row" style="margin-top:12px"><label for="forecastHour"><b>Čas předpovědi</b></label><select id="forecastHour"><option value="0">Načítám…</option></select><button id="refresh">↻ Aktualizovat</button><button id="findPrecip">☔ Najít déšť / sníh</button></div><p class="small" id="precipTest" aria-live="polite">Tlačítkem lze vyhledat nejsilnější srážky v celé dostupné předpovědi.</p>
+  <p class="small" id="validTime">Čas platnosti bude uveden po načtení dat.</p>
+ </section>
+ <section class="panel">
+  <h2>Počasí ve vybraných městech</h2>
+  <div id="weatherSummary">Čekám na meteorologická data…</div>
+  <div id="stationSummary" class="small" style="margin-top:10px">Načítám měřicí stanice ČHMÚ…</div>
+  <div id="stationList" class="city-list"></div>
+  <div class="city-list" id="cityList"></div>
+ </section>
+</div>
+</main>
+<script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
+<script>
+(()=>{
+"use strict";
+const $=id=>document.getElementById(id);
+const cities=[
+{name:"Praha",lat:50.0755,lon:14.4378},{name:"Most",lat:50.503,lon:13.636},
+{name:"Ústí nad Labem",lat:50.661,lon:14.032},{name:"Chomutov",lat:50.46,lon:13.417},
+{name:"Liberec",lat:50.767,lon:15.056},{name:"Karlovy Vary",lat:50.231,lon:12.871},
+{name:"Plzeň",lat:49.738,lon:13.373},{name:"České Budějovice",lat:48.975,lon:14.48},
+{name:"Jihlava",lat:49.396,lon:15.591},{name:"Hradec Králové",lat:50.21,lon:15.832},
+{name:"Pardubice",lat:50.034,lon:15.781},{name:"Brno",lat:49.195,lon:16.608},
+{name:"Olomouc",lat:49.593,lon:17.25},{name:"Ostrava",lat:49.82,lon:18.262},
+{name:"Zlín",lat:49.224,lon:17.662}
+];
+const grid=[];
+for(let lat=48.65;lat<=50.95;lat+=.38)for(let lon=12.15;lon<=18.55;lon+=.58)grid.push({name:"",lat:+lat.toFixed(3),lon:+lon.toFixed(3)});
+const all=[...grid,...cities],state={hour:0,rows:[],times:[],visible:{temperature:true,precipitation:false,wind:true,cities:true,stations:true},stations:[],map:null,features:[],particles:[],raf:0};
+const status=(s)=>$("status").textContent=s;
+const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/liberty",center:[15.35,49.82],zoom:6.75,pitch:35,bearing:-8,maxPitch:75,cooperativeGestures:true,attributionControl:true});
+state.map=map;
+// Na dotykových zařízeních vypnout tažení mapy jedním prstem, aby gesto patřilo rolování stránky.
+if(window.matchMedia("(pointer: coarse)").matches){map.dragPan.disable();}
+map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),"top-right");
+map.addControl(new maplibregl.ScaleControl({maxWidth:110,unit:"metric"}),"bottom-left");
+const flowCanvas=$("flowCanvas"),ctx=flowCanvas.getContext("2d");
+function sizeCanvas(){const r=$("map").getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);flowCanvas.width=Math.round(r.width*d);flowCanvas.height=Math.round(r.height*d);flowCanvas.style.width=r.width+"px";flowCanvas.style.height=r.height+"px";ctx.setTransform(d,0,0,d,0,0)}
+new ResizeObserver(sizeCanvas).observe($("map"));sizeCanvas();
+map.on("load",()=>{
+ map.addSource("x5-dem",{type:"raster-dem",url:"https://demotiles.maplibre.org/terrain-tiles/tiles.json",tileSize:256});
+ map.setTerrain({source:"x5-dem",exaggeration:1.25});
+ map.addLayer({id:"x5-hillshade",source:"x5-dem",type:"hillshade",paint:{"hillshade-exaggeration":.35,"hillshade-shadow-color":"#526b7c","hillshade-highlight-color":"#f5f8fa"}});
+ map.addSource("weather-grid",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+ map.addLayer({id:"temperature-circles",type:"circle",source:"weather-grid",paint:{"circle-radius":["interpolate",["linear"],["zoom"],5,19,6.5,27,8,34],"circle-color":["interpolate",["linear"],["get","temp"],-15,"#2856bd",-5,"#398fd0",0,"#48bdc2",8,"#8dcf83",18,"#f3c15b",28,"#e56b45"],"circle-opacity":.72,"circle-stroke-color":"#ffffff","circle-stroke-width":1.2}});
+ map.addLayer({id:"temperature-labels",type:"symbol",source:"weather-grid",layout:{"text-field":["concat",["to-string",["round",["get","temp"]]],"°"],"text-size":11,"text-font":["Open Sans Bold"],"text-allow-overlap":true,"text-ignore-placement":true},paint:{"text-color":"#17364b","text-halo-color":"#ffffff","text-halo-width":1.5}});
+  map.addLayer({id:"precip-circles",type:"circle",source:"weather-grid",filter:[">",["max",["coalesce",["get","precip"],0],["coalesce",["get","rain"],0],["coalesce",["get","snow"],0]],0.01],layout:{visibility:"none"},paint:{"circle-radius":["interpolate",["linear"],["zoom"],5,7,7,11,9,15],"circle-color":["case",[">",["coalesce",["get","snow"],0],["coalesce",["get","rain"],0]],"#39bff5","#0878d1"],"circle-opacity":.96,"circle-stroke-color":"#ffffff","circle-stroke-width":2}});
+ map.addLayer({id:"wind-arrows",type:"symbol",source:"weather-grid",layout:{"text-field":"➤","text-size":["interpolate",["linear"],["zoom"],5,13,8,20],"text-rotate":["get","direction"],"text-rotation-alignment":"map","text-allow-overlap":true,"text-ignore-placement":true},paint:{"text-color":"#075f91","text-halo-color":"#ffffff","text-halo-width":1.2}});
+ map.addSource("cities",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+ map.addLayer({id:"city-points",type:"circle",source:"cities",paint:{"circle-radius":["interpolate",["linear"],["zoom"],5,6,9,9],"circle-color":"#f5a623","circle-stroke-color":"#17364b","circle-stroke-width":2.2,"circle-opacity":1}});
+ map.addLayer({id:"city-labels",type:"symbol",source:"cities",layout:{"text-field":["get","name"],"text-font":["Open Sans Semibold"],"text-size":11,"text-offset":[0,1.1],"text-anchor":"top","text-allow-overlap":false},paint:{"text-color":"#17364b","text-halo-color":"#fff","text-halo-width":1.5}});
+ map.addSource("chmi-stations",{type:"geojson",data:{type:"FeatureCollection",features:[]},cluster:true,clusterRadius:52,clusterMaxZoom:10});
+ // Samostatná vrstva jednotlivých bodů jako spolehlivé zobrazení při přiblížení.
+
+ map.addLayer({id:"chmi-station-clusters",type:"circle",source:"chmi-stations",filter:["has","point_count"],paint:{"circle-color":["step",["get","point_count"],"#d51c8b",20,"#a81778",80,"#74105f"],"circle-radius":["step",["get","point_count"],17,20,21,80,26],"circle-stroke-color":"#fff","circle-stroke-width":2}});
+ map.addLayer({id:"chmi-station-cluster-count",type:"symbol",source:"chmi-stations",filter:["has","point_count"],layout:{"text-field":["get","point_count_abbreviated"],"text-size":12,"text-font":["Open Sans Bold"]},paint:{"text-color":"#fff"}});
+ map.addLayer({id:"chmi-station-points",type:"circle",source:"chmi-stations",minzoom:8.5,filter:["!",["has","point_count"]],paint:{"circle-radius":["interpolate",["linear"],["zoom"],8.5,4,10,6,12,8],"circle-color":"#7a3db8","circle-stroke-color":"#fff","circle-stroke-width":1.5}});
+ map.addLayer({id:"chmi-station-labels",type:"symbol",source:"chmi-stations",minzoom:9,filter:["!",["has","point_count"]],layout:{"text-field":["get","name"],"text-size":10,"text-offset":[0,1.1],"text-anchor":"top","text-allow-overlap":false},paint:{"text-color":"#55277d","text-halo-color":"#fff","text-halo-width":1.5}});
+ // Meteorologické značky vyneseme nad podkladové vrstvy, aby byly na tabletu jasně viditelné.
+ ["chmi-station-clusters","chmi-station-cluster-count","chmi-station-points","chmi-station-labels"].forEach(id=>{if(map.getLayer(id))map.moveLayer(id)});
+ map.on("click","chmi-station-clusters",(e)=>{const features=map.queryRenderedFeatures(e.point,{layers:["chmi-station-clusters"]});if(!features.length)return;const clusterId=features[0].properties.cluster_id;map.getSource("chmi-stations").getClusterExpansionZoom(clusterId,(err,zoom)=>{if(!err)map.easeTo({center:features[0].geometry.coordinates,zoom})})});
+ map.on("mouseenter","chmi-station-clusters",()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave","chmi-station-clusters",()=>map.getCanvas().style.cursor="");
+ map.on("click","chmi-station-points",(e)=>{const p=e.features[0].properties;const f=(v,d)=>v===null||v===undefined?"—":Number(v).toFixed(d);const labels={T:"Teplota (°C)",H:"Relativní vlhkost (%)",F:"Rychlost větru (m/s)",D:"Směr větru (°)",Fmax:"Nárazy větru (m/s)",P:"Tlak (hPa)",RR:"Srážky (mm)",SCE:"Sněhová pokrývka (cm)",TMA:"Maximum teploty (°C)",TMI:"Minimum teploty (°C)",Fprum:"Průměrný vítr (m/s)",Dprum:"Průměrný směr větru (°)",Dmax:"Maximální směr větru (°)"};let extra="";try{const m=JSON.parse(p.measurements_json||"{}");const rows=Object.entries(m).filter(([k])=>!["T","H","F","D","Fmax","P","RR","SCE"].includes(k));if(rows.length)extra="<hr><b>Další dostupná měření ČHMÚ</b><br>"+rows.map(([k,v])=>(labels[k]||k)+": "+f(v.value,1)+(v.time?" · "+v.time:"")).join("<br>")}catch(_){}const html="<b>"+p.name+"</b><br>ČHMÚ · přímé měření<br>Teplota: "+f(p.temperature_c,1)+" °C<br>Vlhkost: "+f(p.humidity_pct,0)+" %<br>Vítr: "+f(p.wind_ms,1)+" m/s ("+f(p.wind_kmh,1)+" km/h)<br>Směr větru: "+f(p.wind_direction_deg,0)+"°<br>Náraz: "+f(p.wind_gust_ms,1)+" m/s<br>Tlak: "+f(p.pressure_hpa,1)+" hPa<br>Srážky: "+f(p.precipitation_mm,1)+" mm<br>Výška sněhu: "+f(p.snow_depth_cm,0)+" cm"+extra+"<br>Čas měření: "+(p.observed_utc||"—")+"<br><small>Údaje se liší podle vybavení stanice.</small>";new maplibregl.Popup().setLngLat(e.lngLat).setHTML(html).addTo(map)});
+ map.on("mouseenter","chmi-station-points",()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave","chmi-station-points",()=>map.getCanvas().style.cursor="");
+ map.on("click","city-points",(e)=>{const p=e.features[0].properties;new maplibregl.Popup().setLngLat(e.lngLat).setHTML("<b>"+p.name+"</b><br>"+p.temp.toFixed(1)+" °C<br>Vítr "+p.wind.toFixed(0)+" km/h<br>Srážky "+p.precip.toFixed(1)+" mm<br>"+(p.snow>0?"Sníh "+p.snow.toFixed(1)+" cm":"Déšť "+p.rain.toFixed(1)+" mm")).addTo(map)});
+ map.on("mouseenter","city-points",()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave","city-points",()=>map.getCanvas().style.cursor="");
+ status("3D mapa připravena · načítám počasí a stanice ČHMÚ…");loadWeather();loadStations();
+});
+function val(row,key,i){const a=row.hourly&&row.hourly[key];return Array.isArray(a)&&Number.isFinite(+a[i])?+a[i]:0}
+function weatherFeature(p,row,i){const temp=val(row,"temperature_2m",i),rain=val(row,"rain",i),snow=val(row,"snowfall",i),precip=val(row,"precipitation",i),direction=val(row,"wind_direction_10m",i),speed=val(row,"wind_speed_10m",i);return {type:"Feature",geometry:{type:"Point",coordinates:[p.lon,p.lat]},properties:{temp,rain,snow,precip,kind:snow>0.05?"snow":"rain",direction:(direction+180)%360,speed,wind:speed}}}
+function applyHour(){
+ const i=state.hour;if(!state.rows.length)return;
+ // Odpověď Open-Meteo může dorazit dříve než se dokončí načtení stylu MapLibre.
+ // V takovém případě počkáme na zdroje mapy; map load následně znovu spustí načtení.
+ if(!map||!map.isStyleLoaded()||!map.getSource("weather-grid")||!map.getSource("cities")){status("Předpověď načtena · čekám na dokončení mapy…");return;}
+ const features=all.map((p,n)=>weatherFeature(p,state.rows[n],i));
+ map.getSource("weather-grid").setData({type:"FeatureCollection",features:features.slice(0,grid.length)});
+ const cityFeatures=features.slice(grid.length).map(f=>{const c=cities.find(x=>x.lat===f.geometry.coordinates[1]&&x.lon===f.geometry.coordinates[0]);return {...f,properties:{...f.properties,name:c.name}}});
+ map.getSource("cities").setData({type:"FeatureCollection",features:cityFeatures});
+ state.features=features.slice(0,grid.length);
+  window.__weatherVortexSetData?.(state.features);
+ const time=state.times[i];$("validTime").textContent="Platnost: "+new Date(time).toLocaleString("cs-CZ")+" · modelová předpověď";
+ const avg=cityFeatures.reduce((a,f)=>a+f.properties.temp,0)/cityFeatures.length;
+ const rainCount=cityFeatures.filter(f=>f.properties.rain>.1).length,snowCount=cityFeatures.filter(f=>f.properties.snow>.1).length;
+ $("weatherSummary").textContent="Průměrná teplota ve sledovaných městech: "+avg.toFixed(1)+" °C. Déšť očekáván v "+rainCount+" městech, sněžení v "+snowCount+" městech. Klepnutím na bod města zobrazíš podrobnosti.";
+ $("cityList").innerHTML=cities.map((c,n)=>{const p=cityFeatures[n].properties;return '<span class="city-chip">'+c.name+': '+p.temp.toFixed(1)+' °C</span>'}).join("");
+ updateLayers();seedParticles();
+}
+function updateLayers(){
+ const v=state.visible;
+ map.setLayoutProperty("temperature-circles","visibility",v.temperature?"visible":"none");
+ map.setLayoutProperty("temperature-labels","visibility",v.temperature?"visible":"none");
+ map.setLayoutProperty("precip-circles","visibility",v.precipitation?"visible":"none");
+ map.setLayoutProperty("wind-arrows","visibility",v.wind?"visible":"none");
+ map.setLayoutProperty("city-points","visibility",v.cities?"visible":"none");
+ map.setLayoutProperty("city-labels","visibility",v.cities?"visible":"none");
+ // Počasí a města musí ležet nad podkladovou mapou i ostatními vrstvami.
+ ["temperature-circles","temperature-labels","precip-circles","wind-arrows","city-points","city-labels"].forEach(id=>{
+  if(map.getLayer(id))map.moveLayer(id);
+ });
+ // Přepínač stanic ovládá body, popisky i shluky.
+ ["chmi-station-points","chmi-station-labels","chmi-station-clusters","chmi-station-cluster-count"].forEach(id=>{
+  if(map.getLayer(id))map.setLayoutProperty(id,"visibility",v.stations?"visible":"none");
+ });
+ $("legend").innerHTML=v.precipitation?'<span><i class="key" style="background:#268fe0"></i>Déšť</span><span><i class="key" style="background:#d8f4ff"></i>Sníh</span><span>Intenzita podle modelu (mm / cm za hodinu)</span>':v.temperature?'<span><i class="key" style="background:#2856bd"></i>Mráz</span><span><i class="key" style="background:#48bdc2"></i>Chladno</span><span><i class="key" style="background:#f3c15b"></i>Teplo</span>': '<span>Šipky: směr větru · pohyb částic: směr proudění</span>';
+}
+function seedParticles(){
+ // Vektorové pole větru v projekci mapy; směr se mezi body plynule interpoluje.
+ const w=$("map").clientWidth,h=$("map").clientHeight,vectors=[];
+ for(const f of state.features){
+  const p=f.properties;if(p.speed<.45)continue;
+  const q=map.project(f.geometry.coordinates),a=p.direction*Math.PI/180;
+  if(q.x<-100||q.x>w+100||q.y<-100||q.y>h+100)continue;
+  vectors.push({x:q.x,y:q.y,dx:Math.sin(a),dy:-Math.cos(a),speed:p.speed});
+ }
+ function sampleWind(x,y){
+  let sx=0,sy=0,ss=0,sw=0;
+  for(const v of vectors){
+   const d2=(v.x-x)**2+(v.y-y)**2;
+   if(d2>165*165)continue;
+   const weight=1/Math.max(180,d2);
+   sx+=v.dx*weight;sy+=v.dy*weight;ss+=v.speed*weight;sw+=weight;
+  }
+  if(!sw)return null;
+  const mag=Math.hypot(sx,sy)||1;
+  return {dx:sx/mag,dy:sy/mag,speed:ss/sw};
+ }
+ const paths=[];
+ for(let s=0;s<vectors.length;s+=2){
+  const start=vectors[s],path=[{x:start.x,y:start.y}],seen=new Set();
+  let x=start.x,y=start.y;
+  for(let step=0;step<46;step++){
+   const v1=sampleWind(x,y);if(!v1)break;
+   const advance=5.5+Math.min(v1.speed,32)*.22;
+   const midX=x+v1.dx*advance*.5,midY=y+v1.dy*advance*.5;
+   const v2=sampleWind(midX,midY);if(!v2)break;
+   x+=v2.dx*advance;y+=v2.dy*advance;
+   if(x<-8||x>w+8||y<-8||y>h+8)break;
+   const key=Math.round(x/12)+":"+Math.round(y/12);
+   if(seen.has(key)&&step>7)break;seen.add(key);
+   path.push({x,y});
+  }
+  if(path.length>=7)paths.push({points:path,phase:Math.random()*path.length,speed:start.speed});
+ }
+ state.particles=paths;
+}
+function traceFlowPath(points){
+ ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);
+ for(let i=1;i<points.length-1;i++){const mx=(points[i].x+points[i+1].x)/2,my=(points[i].y+points[i+1].y)/2;ctx.quadraticCurveTo(points[i].x,points[i].y,mx,my)}
+ const last=points[points.length-1];ctx.lineTo(last.x,last.y);
+}
+function drawArrow(x,y,dx,dy,size){
+ ctx.beginPath();ctx.moveTo(x+dx*size,y+dy*size);
+ ctx.lineTo(x-dx*size*.8-dy*size*.65,y-dy*size*.8+dx*size*.65);
+ ctx.lineTo(x-dx*size*.8+dy*size*.65,y-dy*size*.8-dx*size*.65);
+ ctx.closePath();ctx.fill();
+}
+let pageTouchActive=false;
+function pauseFlowForScroll(){pageTouchActive=true;if(state.raf){cancelAnimationFrame(state.raf);state.raf=0}}
+function resumeFlowAfterScroll(){pageTouchActive=false;if(!state.raf)state.raf=requestAnimationFrame(animateFlow)}
+document.addEventListener("touchstart",pauseFlowForScroll,{passive:true,capture:true});
+document.addEventListener("touchend",resumeFlowAfterScroll,{passive:true,capture:true});
+document.addEventListener("touchcancel",resumeFlowAfterScroll,{passive:true,capture:true});
+function animateFlow(){
+ if(pageTouchActive){state.raf=0;return}
+ const w=$("map").clientWidth,h=$("map").clientHeight;ctx.clearRect(0,0,w,h);
+ // Meteorologické překryvy kreslíme přímo do canvasu; jsou tak čitelné i na mobilu a nezávisí na vykreslení symbolových vrstev MapLibre.
+ if(state.visible.temperature||state.visible.precipitation){
+  for(const f of state.features){
+   const p=f.properties,q=map.project(f.geometry.coordinates);
+   if(q.x<-30||q.x>$("map").clientWidth+30||q.y<-30||q.y>$("map").clientHeight+30)continue;
+   if(state.visible.precipitation&&((p.rain||0)>.005||(p.snow||0)>.005||(p.precip||0)>.01)){
+    const rain=Math.max(0,p.rain||0),snow=Math.max(0,p.snow||0),isSnow=snow>rain*.35&&snow>.005;
+    const intensity=isSnow?snow:Math.max(rain,p.precip||0),radius=Math.min(23,10+Math.sqrt(intensity)*4.2);
+    ctx.save();ctx.beginPath();ctx.arc(q.x,q.y,radius,0,Math.PI*2);
+    ctx.fillStyle=isSnow?"rgba(117,211,246,.96)":"rgba(0,119,220,.94)";
+    ctx.shadowColor=isSnow?"#55c9f2":"#087bd2";ctx.shadowBlur=9;ctx.fill();ctx.shadowBlur=0;
+    ctx.lineWidth=2.6;ctx.strokeStyle="#ffffff";ctx.stroke();
+    ctx.strokeStyle="#ffffff";ctx.fillStyle="#ffffff";ctx.lineWidth=2;
+    if(isSnow){
+      for(let arm=0;arm<3;arm++){const a=arm*Math.PI/3,dx=Math.cos(a)*radius*.58,dy=Math.sin(a)*radius*.58;
+        ctx.beginPath();ctx.moveTo(q.x-dx,q.y-dy);ctx.lineTo(q.x+dx,q.y+dy);ctx.stroke();
+        for(const side of [-1,1]){const ex=q.x+side*dx,ey=q.y+side*dy;
+          for(const sign of [-1,1]){ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(ex-side*Math.cos(a+sign*.72)*4,ey-side*Math.sin(a+sign*.72)*4);ctx.stroke()}
+        }
+      }
+    }else{
+      ctx.beginPath();ctx.moveTo(q.x,q.y-radius*.62);ctx.bezierCurveTo(q.x-radius*.08,q.y-radius*.2,q.x-radius*.48,q.y+radius*.08,q.x-radius*.32,q.y+radius*.35);
+      ctx.arc(q.x,q.y+radius*.18,radius*.32,Math.PI*.9,Math.PI*.1,true);ctx.bezierCurveTo(q.x+radius*.48,q.y+radius*.08,q.x+radius*.08,q.y-radius*.2,q.x,q.y-radius*.62);ctx.closePath();ctx.fill();
+    }
+    ctx.restore();
+   }else if(state.visible.temperature){
+    const t=p.temp,color=t<=-5?"#2856bd":t<1?"#35a4c9":t<10?"#43b9a0":t<20?"#e5b64a":"#e66b45";
+    ctx.save();ctx.beginPath();ctx.arc(q.x,q.y,11,0,Math.PI*2);ctx.fillStyle=color;ctx.globalAlpha=.88;ctx.fill();
+    ctx.globalAlpha=1;ctx.lineWidth=1.8;ctx.strokeStyle="#fff";ctx.stroke();
+    ctx.font="bold 10px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle="#fff";ctx.shadowColor="#17344a";ctx.shadowBlur=2;ctx.fillText(Math.round(t)+"°",q.x,q.y);ctx.restore();
+   }
+  }
+ }
+ if(state.visible.wind&&state.particles.length){
+  for(const line of state.particles){
+   const pts=line.points;if(pts.length<3)continue;ctx.save();ctx.lineCap="round";ctx.lineJoin="round";
+   traceFlowPath(pts);ctx.strokeStyle="rgba(4,54,82,.62)";ctx.lineWidth=4.2;ctx.shadowColor="#00cfff";ctx.shadowBlur=8;ctx.stroke();
+   traceFlowPath(pts);ctx.strokeStyle="#18c9ed";ctx.lineWidth=2.1;ctx.shadowBlur=4;ctx.stroke();
+   const ai=Math.max(2,Math.floor(pts.length*.72)),a=pts[ai-1],b=pts[ai],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;
+   ctx.fillStyle="#ffcf36";ctx.strokeStyle="#123d5a";ctx.lineWidth=1.4;ctx.shadowBlur=3;
+   drawArrow(b.x,b.y,dx/len,dy/len,7);ctx.fill();ctx.stroke();
+   line.phase=(line.phase+.075+Math.min(line.speed,35)*.002)%pts.length;
+   const pi=Math.floor(line.phase),t=line.phase-pi,p1=pts[pi],p2=pts[Math.min(pi+1,pts.length-1)];
+   const px=p1.x+(p2.x-p1.x)*t,py=p1.y+(p2.y-p1.y)*t;
+   ctx.beginPath();ctx.arc(px,py,3.1,0,Math.PI*2);ctx.fillStyle="#fff";ctx.shadowColor="#00dfff";ctx.shadowBlur=12;ctx.fill();
+   ctx.restore();
+  }
+ }
+ state.raf=requestAnimationFrame(animateFlow);
+}
+map.on("move",()=>{if(ctx)ctx.clearRect(0,0,$("map").clientWidth,$("map").clientHeight)});
+map.on("moveend",()=>{if(state.features.length)seedParticles()});
+async function loadStations(){
+ $("stationSummary").textContent="Načítám poslední publikovaná měření ČHMÚ…";
+ try{
+  const response=await fetch("./data/chmi-stations-latest.json?ts="+Date.now(),{cache:"no-store"});
+  if(!response.ok)throw Error("CHMI archiv zatím není publikován (HTTP "+response.status+")");
+  const doc=await response.json();state.stations=Array.isArray(doc.stations)?doc.stations:[];
+  const features=state.stations.map(st=>({type:"Feature",geometry:{type:"Point",coordinates:[st.lon,st.lat]},properties:{...st,measurements_json:JSON.stringify(st.measurements||{}),wind_kmh:Number.isFinite(st.wind_ms)?st.wind_ms*3.6:null}}));
+  const stationCollection={type:"FeatureCollection",features};
+  // Stanice mohou být načteny dříve než zdroj MapLibre; v tom případě se znovu načtou po map load.
+  if(!map||!map.isStyleLoaded()||!map.getSource("chmi-stations")){ $("stationSummary").textContent="Měření ČHMÚ načtena · čekám na dokončení mapy…"; return; }
+  map.getSource("chmi-stations").setData(stationCollection);
+  const times=state.stations.map(x=>x.observed_utc).filter(Boolean).sort();
+  $("stationSummary").textContent="ČHMÚ: "+state.stations.length+" stanic · poslední měření "+(times.at(-1)||"čas neuveden")+" · aktualizace archivu "+(doc.generated_utc||"—");
+  $("stationList").innerHTML=state.stations.slice(0,24).map(st=>'<span class="city-chip">📡 '+st.name+(Number.isFinite(st.temperature_c)?' · '+st.temperature_c.toFixed(1)+' °C':'')+'</span>').join("");
+  status("Počasí + "+state.stations.length+" stanic ČHMÚ");
+ }catch(e){$("stationSummary").textContent="Stanice ČHMÚ zatím nedostupné: "+e.message+". Předpovědní vrstva Open-Meteo zůstává funkční."}
+}
+function loadWeather(){
+ status("Načítám předpověď Open-Meteo…");$("refresh").disabled=true;
+ const lats=all.map(p=>p.lat).join(","),lons=all.map(p=>p.lon).join(",");
+ const url="https://api.open-meteo.com/v1/forecast?latitude="+lats+"&longitude="+lons+"&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m&forecast_days=3&timezone=Europe%2FPrague";
+ fetch(url,{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("Open-Meteo HTTP "+r.status);return r.json()}).then(data=>{
+  const rows=Array.isArray(data)?data:[data];if(rows.length!==all.length)throw Error("Nesouhlasí počet meteorologických bodů");
+  state.rows=rows;state.times=rows[0].hourly.time;
+  const select=$("forecastHour");select.innerHTML=state.times.map((t,i)=>'<option value="'+i+'">'+new Date(t).toLocaleString("cs-CZ",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit"})+'</option>').join("");
+  const now=Date.now();const currentIndex=state.times.findIndex(t=>new Date(t).getTime()>=now-30*60*1000);
+  state.hour=currentIndex>=0?currentIndex:0;select.value=String(state.hour);applyHour();status("Počasí načteno · "+new Date().toLocaleTimeString("cs-CZ",{hour:"2-digit",minute:"2-digit"}));
+ }).catch(e=>{status("Počasí se nepodařilo načíst");$("weatherSummary").textContent="Chyba načítání dat: "+e.message+". Zkus aktualizaci.";}).finally(()=>{$("refresh").disabled=false});
+}
+$("forecastHour").addEventListener("change",e=>{state.hour=+e.target.value;applyHour()});
+$("refresh").addEventListener("click",loadWeather);
+$("findPrecip").addEventListener("click",()=>{
+ if(!state.rows.length||!state.times.length)return;
+ let best={amount:0,index:0,rain:0,snow:0};
+ for(let i=0;i<state.times.length;i++){
+  let rain=0,snow=0,amount=0;
+  for(let n=0;n<all.length;n++){
+   const h=state.rows[n].hourly;
+   const r=Number(h.rain?.[i]??0),s=Number(h.snowfall?.[i]??0),p=Number(h.precipitation?.[i]??0);
+   rain=Math.max(rain,r);snow=Math.max(snow,s);amount=Math.max(amount,p,r,s);
+  }
+  if(amount>best.amount)best={amount,index:i,rain,snow};
+ }
+ const select=$("forecastHour");
+ if(best.amount<=0.05){
+  $("precipTest").textContent="V dostupné třídenní předpovědi není podle Open-Meteo očekáván déšť ani sněžení. Vrstvu proto nelze ověřit na skutečných srážkách.";
+  return;
+ }
+ state.hour=best.index;select.value=String(best.index);applyHour();
+ $("precipTest").textContent="Zobrazen nejsrážkovější termín: "+new Date(state.times[best.index]).toLocaleString("cs-CZ")+". Déšť max. "+best.rain+" mm/h, sníh max. "+best.snow+" cm/h. Modré body = déšť, světle modré = sněžení.";
+ state.visible.precipitation=true;updateLayers();
+ document.querySelector('[data-layer="precipitation"]').setAttribute("aria-pressed","true");
+});
+
+$("layerControls").addEventListener("click",e=>{const b=e.target.closest("button[data-layer]");if(!b)return;const k=b.dataset.layer;state.visible[k]=!state.visible[k];b.setAttribute("aria-pressed",String(state.visible[k]));updateLayers()});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){if(state.rows.length)loadWeather();loadStations()}});
+window.setInterval(loadStations,15*60*1000);
+map.on("load",()=>{if(!state.raf)animateFlow()});
+})();
+</script>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+(()=>{
+ const canvas=document.getElementById('weatherVortex3d'),host=document.getElementById('weatherVortexStage'),toggle=document.getElementById('weatherVortexToggle'),status=document.getElementById('weatherVortexStatus');
+ const reset=document.getElementById('weatherVortexReset');
+ const layerControls=document.getElementById('weatherVortexLayerControls');
+ if(!canvas||!host)return;
+ let renderer,scene,camera,raf=0,paused=false,last=0,windSpeed=8,windDir=250,avgTemp=5,maxPrecip=0,orbitYaw=0,orbitPitch=.48,orbitRadius=7.2;
+ try{
+  renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));
+  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(38,1,.1,100);camera.position.set(0,3.8,6.9);camera.lookAt(0,.25,0);
+  scene.add(new THREE.AmbientLight(0xb8e7ff,1.5));
+  // Schematické výškové hladiny atmosféry.
+  const atmosphere=new THREE.Group();scene.add(atmosphere);
+  for(let k=0;k<4;k++){const shell=new THREE.Mesh(new THREE.CylinderGeometry(3.5+k*.48,4.0+k*.48,.16,96,1,true),new THREE.MeshBasicMaterial({color:[0x35bfff,0x4ed6e8,0x91cfff,0x6d9cff][k],transparent:true,opacity:.19,side:THREE.DoubleSide,depthWrite:false}));shell.position.y=.45+k*.52;shell.scale.y=1.5;atmosphere.add(shell)}
+  // Oblaka ve třech výškových hladinách.
+  const cloudGroup=new THREE.Group();scene.add(cloudGroup);const clouds=[];
+  for(let n=0;n<24;n++){const g=new THREE.Group(),a=n*2.399,r=1.45+(n%6)*.48,y=.9+(n%3)*.62;for(let q=0;q<4;q++){const puff=new THREE.Mesh(new THREE.SphereGeometry(.12+(q%2)*.04,10,8),new THREE.MeshBasicMaterial({color:0xc7eaff,transparent:true,opacity:.11,depthWrite:false}));puff.position.set((q-1.5)*.18,(q%2)*.1,0);g.add(puff)}g.position.set(Math.cos(a)*r,y,Math.sin(a)*r);cloudGroup.add(g);clouds.push(g)}
+  const light=new THREE.DirectionalLight(0xffffff,2);light.position.set(3,8,5);scene.add(light);
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(4.8,5,.25,96),new THREE.MeshStandardMaterial({color:0x123b55,roughness:.8}));base.position.y=-.38;scene.add(base);
+  const grid=new THREE.GridHelper(9.2,26,0x58b7d5,0x28617d);grid.position.y=-.12;scene.add(grid);
+  // Viditelná barevná teplotní plocha s gradientem a jemným zvlněním.
+  const heatGeo=new THREE.PlaneGeometry(7.4,7.4,40,40);heatGeo.rotateX(-Math.PI/2);
+  const heatPos=heatGeo.attributes.position,heatColor=[];
+  for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,.018*Math.sin(x*1.7)*Math.cos(z*1.5));heatColor.push(.08,.5,.95)}
+  heatGeo.setAttribute('color',new THREE.Float32BufferAttribute(heatColor,3));heatGeo.computeVertexNormals();
+  const heat=new THREE.Mesh(heatGeo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.92,side:THREE.DoubleSide,depthWrite:false}));heat.position.y=-.075;scene.add(heat);
+  const patches=[];for(const p of [{x:-1.8,z:.8,c:0x167dff},{x:1.6,z:-.9,c:0xff7838},{x:.1,z:1.9,c:0x12c9a7}]){const m=new THREE.Mesh(new THREE.CircleGeometry(1.45,48),new THREE.MeshBasicMaterial({color:p.c,transparent:true,opacity:.72,depthWrite:false,side:THREE.DoubleSide}));m.rotation.x=-Math.PI/2;m.position.set(p.x,-.045,p.z);scene.add(m);patches.push(m)}
+  const rainGroup=new THREE.Group();scene.add(rainGroup);const drops=[];
+  for(let n=0;n<54;n++){const a=n*2.399,r=.65+(n%9)*.39;const d=new THREE.Mesh(new THREE.CylinderGeometry(.014,.014,.25,6),new THREE.MeshBasicMaterial({color:0x48cfff,transparent:true,opacity:.95}));d.position.set(Math.cos(a)*r,.2+(n%13)*.16,Math.sin(a)*r);rainGroup.add(d);drops.push(d)}
+  const snowGroup=new THREE.Group();scene.add(snowGroup);const flakes=[];
+  for(let n=0;n<30;n++){const a=n*2.399,r=.7+(n%7)*.43;const f=new THREE.Mesh(new THREE.SphereGeometry(.03,7,7),new THREE.MeshBasicMaterial({color:0xe4f8ff}));f.position.set(Math.cos(a)*r,.25+(n%9)*.18,Math.sin(a)*r);snowGroup.add(f);flakes.push(f)}
+  const streamGroup=new THREE.Group();scene.add(streamGroup);const particles=[],windLines=[],cols=[0x39d9ff,0x77cfff,0xb4f4ff,0xffd16a];
+  let windFeatures=[];
+  function localWindAt(x,z){
+   if(!windFeatures.length)return {dx:Math.sin(windDir*Math.PI/180),dz:-Math.cos(windDir*Math.PI/180),speed:windSpeed};
+   let sx=0,sz=0,sw=0,ss=0;
+   for(const f of windFeatures){const p=f.properties||{},coord=f.geometry?.coordinates;if(!coord)continue;
+    const px=((coord[0]-12.15)/(18.55-12.15))*7.2-3.6,pz=((50.95-coord[1])/(50.95-48.65))*7.2-3.6;
+    const d2=(px-x)*(px-x)+(pz-z)*(pz-z),w=1/Math.max(.035,d2);
+    const a=(+p.direction||0)*Math.PI/180,v=Math.max(0,+p.speed||0);
+    sx+=Math.sin(a)*v*w;sz+=-Math.cos(a)*v*w;ss+=v*w;sw+=w;
+   }
+   if(!sw)return {dx:0,dz:-1,speed:windSpeed};
+   const mag=Math.hypot(sx,sz)||1;return {dx:sx/mag,dz:sz/mag,speed:ss/sw};
+  }
+  function rebuildWindField(valid){
+   windFeatures=valid||[];
+   windLines.forEach(x=>streamGroup.remove(x));windLines.length=0;
+   particles.length=0;
+   for(let n=0;n<26;n++){
+    let x=-3.15+(n%6)*1.26,z=-3.05+Math.floor(n/6)*1.48,pts=[];
+    for(let j=0;j<76;j++){
+     const v=localWindAt(x,z),bend=Math.sin((x+z+n)*.8)*.018;
+     pts.push(new THREE.Vector3(x,.18+Math.min(1.35,v.speed/65),z));
+     x+=v.dx*.075+bend;z+=v.dz*.075-bend;
+     if(Math.abs(x)>3.7||Math.abs(z)>3.7){x=Math.max(-3.5,Math.min(3.5,x));z=Math.max(-3.5,Math.min(3.5,z))}
+    }
+    const curve=new THREE.CatmullRomCurve3(pts),line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(130)),new THREE.LineBasicMaterial({color:cols[n%4],transparent:true,opacity:.78}));
+    streamGroup.add(line);windLines.push(line);
+    const dot=new THREE.Mesh(new THREE.SphereGeometry(.052,8,8),new THREE.MeshBasicMaterial({color:cols[n%4]}));scene.add(dot);particles.push({mesh:dot,curve,phase:n/26});
+   }
+  }
+  const core=new THREE.Mesh(new THREE.SphereGeometry(.34,24,18),new THREE.MeshBasicMaterial({color:0x4ccfff,transparent:true,opacity:.55}));core.position.y=.32;scene.add(core);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.58,.025,8,64),new THREE.MeshBasicMaterial({color:0x8deaff,transparent:true,opacity:.95}));ring.rotation.x=Math.PI/2;ring.position.y=.32;scene.add(ring);
+  const vortexLayers={temperature:true,clouds:true,precipitation:true,atmosphere:true,wind:true};
+  function applyVortexLayers(){
+   heat.visible=vortexLayers.temperature;patches.forEach(p=>p.visible=vortexLayers.temperature);
+   cloudGroup.visible=vortexLayers.clouds;atmosphere.visible=vortexLayers.atmosphere;
+   rainGroup.visible=vortexLayers.precipitation&&rainGroup.children.some(x=>x.visible);
+   snowGroup.visible=vortexLayers.precipitation&&snowGroup.children.some(x=>x.visible);
+   streamGroup.visible=vortexLayers.wind;particles.forEach(p=>p.mesh.visible=vortexLayers.wind);core.visible=vortexLayers.wind;ring.visible=vortexLayers.wind;
+  }
+  layerControls?.querySelectorAll('[data-vortex-layer]').forEach(btn=>btn.addEventListener('click',()=>{
+   const key=btn.dataset.vortexLayer;vortexLayers[key]=!vortexLayers[key];btn.setAttribute('aria-pressed',String(vortexLayers[key]));applyVortexLayers();
+  }));
+
+  function updateCamera(){const target=new THREE.Vector3(0,.35,0);camera.position.set(Math.sin(orbitYaw)*Math.cos(orbitPitch)*orbitRadius,target.y+Math.sin(orbitPitch)*orbitRadius,Math.cos(orbitYaw)*Math.cos(orbitPitch)*orbitRadius);camera.lookAt(target)}
+  function resize(){const w=Math.max(1,host.clientWidth),h=Math.max(1,host.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();updateCamera()}new ResizeObserver(resize).observe(host);resize();
+  reset?.addEventListener('click',()=>{orbitYaw=0;orbitPitch=.48;orbitRadius=7.2;updateCamera()});
+  // Myš nebo dva prsty otáčejí modelem; jeden prst dál roluje stránku.
+  let drag=null,pinch=0;
+  canvas.addEventListener('pointerdown',ev=>{if(ev.pointerType==='mouse'){drag={x:ev.clientX,y:ev.clientY};canvas.setPointerCapture(ev.pointerId)}});
+  canvas.addEventListener('pointermove',ev=>{if(!drag)return;orbitYaw-=(ev.clientX-drag.x)*.006;orbitPitch=Math.max(.12,Math.min(1.05,orbitPitch+(ev.clientY-drag.y)*.004));drag={x:ev.clientX,y:ev.clientY};updateCamera()});
+  canvas.addEventListener('pointerup',()=>drag=null);canvas.addEventListener('pointercancel',()=>drag=null);
+  canvas.addEventListener('touchstart',ev=>{if(ev.touches.length===2){ev.preventDefault();pinch=Math.hypot(ev.touches[0].clientX-ev.touches[1].clientX,ev.touches[0].clientY-ev.touches[1].clientY);drag={x:(ev.touches[0].clientX+ev.touches[1].clientX)/2,y:(ev.touches[0].clientY+ev.touches[1].clientY)/2} }},{passive:false});
+  canvas.addEventListener('touchmove',ev=>{if(ev.touches.length!==2||!drag)return;ev.preventDefault();const mid={x:(ev.touches[0].clientX+ev.touches[1].clientX)/2,y:(ev.touches[0].clientY+ev.touches[1].clientY)/2},dist=Math.hypot(ev.touches[0].clientX-ev.touches[1].clientX,ev.touches[0].clientY-ev.touches[1].clientY);orbitYaw-=(mid.x-drag.x)*.006;orbitPitch=Math.max(.12,Math.min(1.05,orbitPitch+(mid.y-drag.y)*.004));if(pinch)orbitRadius=Math.max(5.4,Math.min(10,orbitRadius-(dist-pinch)*.012));pinch=dist;drag=mid;updateCamera()},{passive:false});
+  canvas.addEventListener('touchend',ev=>{if(ev.touches.length<2){drag=null;pinch=0}},{passive:true});
+  function readWeather(features){const fs=features||window.__weatherVortexFeatures||[];if(!fs.length)return;const valid=fs.filter(f=>f&&f.properties);if(!valid.length)return;
+   rebuildWindField(valid);windSpeed=valid.reduce((s,f)=>s+(+f.properties.speed||0),0)/valid.length;const rad=valid.reduce((s,f)=>s+Math.sin((+f.properties.direction||0)*Math.PI/180),0)/valid.length,cos=valid.reduce((s,f)=>s+Math.cos((+f.properties.direction||0)*Math.PI/180),0)/valid.length;windDir=(Math.atan2(rad,cos)*180/Math.PI+360)%360;avgTemp=valid.reduce((s,f)=>s+(+f.properties.temp||0),0)/valid.length;maxPrecip=Math.max(0,...valid.map(f=>Math.max(+f.properties.rain||0,+f.properties.snow||0,+f.properties.precip||0)));
+   const cold=avgTemp<0,warm=avgTemp>=12;const palette=cold?[.08,.32,1]:warm?[1,.28,.06]:[.02,.78,.48];const colors=heatGeo.attributes.color;for(let i=0;i<colors.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i),wave=Math.sin(x*.75+z*.35)*.12;const mix=Math.max(0,Math.min(1,(x+3.7)/7.4));colors.setXYZ(i,Math.max(0,Math.min(1,palette[0]+mix*.22+wave)),Math.max(0,Math.min(1,palette[1]-mix*.18)),Math.max(0,Math.min(1,palette[2]-mix*.35)))}colors.needsUpdate=true;
+   patches[0].material.opacity=cold?.78:.4;patches[1].material.opacity=warm?.8:.42;patches[2].material.opacity=.58;
+   const rain=valid.some(f=>(+f.properties.rain||0)>.01),snow=valid.some(f=>(+f.properties.snow||0)>.01);rainGroup.visible=rain&&vortexLayers.precipitation;snowGroup.visible=snow&&vortexLayers.precipitation;applyVortexLayers();
+   drops.forEach((d,i)=>{d.material.opacity=rain?Math.min(.72,.38+maxPrecip*.12):0;d.visible=rain});flakes.forEach((f,i)=>{f.visible=snow;f.material.opacity=.72});
+   status.textContent='Vítr '+windSpeed.toFixed(1)+' km/h · směr '+Math.round(windDir)+'° · teplota '+avgTemp.toFixed(1)+' °C · srážky '+maxPrecip.toFixed(2)+' mm/h';
+  }
+  function animate(t){raf=requestAnimationFrame(animate);if(paused||document.hidden)return;if(t-last<33)return;last=t;const speed=.35+Math.min(windSpeed,70)/70;atmosphere.rotation.y+=.00035*speed;cloudGroup.rotation.y+=.00022*speed;clouds.forEach((g,i)=>{g.position.y=.75+(i%3)*.55+Math.sin(t*.00045+i)*.045});core.scale.setScalar(1+Math.sin(t*.0015)*.08);ring.rotation.z=t*.0002*speed;particles.forEach(p=>{p.mesh.position.copy(p.curve.getPointAt((t*.00003*speed+p.phase)%1))});drops.forEach(d=>{if(d.visible){d.position.y-=.025+maxPrecip*.006;if(d.position.y<-.02)d.position.y=1.9}});flakes.forEach(f=>{if(f.visible){f.position.y-=.008;if(f.position.y<-.02)f.position.y=1.8}});renderer.render(scene,camera)}
+  toggle.addEventListener('click',()=>{paused=!paused;toggle.textContent=paused?'▶ Spustit animaci':'⏸ Pozastavit animaci';toggle.setAttribute('aria-pressed',String(!paused));if(!paused&&!raf)raf=requestAnimationFrame(animate)});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!paused&&!raf)raf=requestAnimationFrame(animate)});
+  window.addEventListener('pagehide',()=>{if(raf)cancelAnimationFrame(raf);renderer.dispose()},{once:true});
+  window.__weatherVortexSetData=features=>{window.__weatherVortexFeatures=features||[];readWeather(window.__weatherVortexFeatures)};
+  if(window.__weatherVortexFeatures)readWeather(window.__weatherVortexFeatures);
+  raf=requestAnimationFrame(animate);
+ }catch(e){status.textContent='Chyba 3D modelu: '+e.message;toggle.disabled=true}
+})();
+</script>
+</body>
+</html>
