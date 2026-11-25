@@ -149,37 +149,37 @@ function updateLayers(){
  $("legend").innerHTML=v.precipitation?'<span><i class="key" style="background:#268fe0"></i>Déšť</span><span><i class="key" style="background:#d8f4ff"></i>Sníh</span><span>Intenzita podle modelu (mm / cm za hodinu)</span>':v.temperature?'<span><i class="key" style="background:#2856bd"></i>Mráz</span><span><i class="key" style="background:#48bdc2"></i>Chladno</span><span><i class="key" style="background:#f3c15b"></i>Teplo</span>': '<span>Šipky: směr větru · pohyb částic: směr proudění</span>';
 }
 function seedParticles(){
- // Předpočítané proudnice: každý krok sleduje nejbližší vektor větru.
+ // Hustší síť delších proudnic, vedených podle skutečných vektorů předpovědi.
  const w=$("map").clientWidth,h=$("map").clientHeight,vectors=[];
  for(const f of state.features){
-  const p=f.properties;if(p.speed<.6)continue;
+  const p=f.properties;if(p.speed<.35)continue;
   const q=map.project(f.geometry.coordinates),a=p.direction*Math.PI/180;
-  if(q.x<-80||q.x>w+80||q.y<-80||q.y>h+80)continue;
+  if(q.x<-100||q.x>w+100||q.y<-100||q.y>h+100)continue;
   vectors.push({x:q.x,y:q.y,dx:Math.sin(a),dy:-Math.cos(a),speed:p.speed});
  }
  const paths=[];
- for(let s=0;s<vectors.length;s+=2){
+ for(let s=0;s<vectors.length;s++){
   const start=vectors[s],path=[{x:start.x,y:start.y}],seen=new Set();
   let x=start.x,y=start.y;
-  for(let step=0;step<24;step++){
+  for(let step=0;step<38;step++){
    let best=null,bestD=Infinity;
    for(const v of vectors){const d=(v.x-x)**2+(v.y-y)**2;if(d<bestD){bestD=d;best=v}}
-   if(!best||bestD>95*95)break;
-   const key=Math.round(best.x/18)+":"+Math.round(best.y/18);
-   if(seen.has(key)&&step>3)break;seen.add(key);
-   const advance=7+Math.min(best.speed,30)*.22;
+   if(!best||bestD>125*125)break;
+   const key=Math.round(best.x/14)+":"+Math.round(best.y/14);
+   if(seen.has(key)&&step>5)break;seen.add(key);
+   const advance=8+Math.min(best.speed,35)*.28;
    x+=best.dx*advance;y+=best.dy*advance;
-   if(x<2||x>w-2||y<2||y>h-2)break;
+   if(x<-8||x>w+8||y<-8||y>h+8)break;
    path.push({x,y});
   }
-  if(path.length>=5)paths.push({points:path,phase:Math.random()*34,speed:start.speed});
+  if(path.length>=6)paths.push({points:path,phase:Math.random()*48,speed:start.speed});
  }
  state.particles=paths;
 }
 function drawArrow(x,y,dx,dy,size){
  ctx.beginPath();ctx.moveTo(x+dx*size,y+dy*size);
- ctx.lineTo(x-dx*size*.65-dy*size*.72,y-dy*size*.65+dx*size*.72);
- ctx.lineTo(x-dx*size*.65+dy*size*.72,y-dy*size*.65-dx*size*.72);
+ ctx.lineTo(x-dx*size*.72-dy*size*.82,y-dy*size*.72+dx*size*.82);
+ ctx.lineTo(x-dx*size*.72+dy*size*.82,y-dy*size*.72-dx*size*.82);
  ctx.closePath();ctx.fill();
 }
 function animateFlow(){
@@ -189,11 +189,11 @@ function animateFlow(){
   for(const line of state.particles){
    const pts=line.points;ctx.save();ctx.lineCap="round";ctx.lineJoin="round";
    ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);
-   ctx.strokeStyle="rgba(3,48,83,.78)";ctx.lineWidth=5.5;ctx.shadowColor="#00bfff";ctx.shadowBlur=9;ctx.stroke();
-   ctx.setLineDash([13,15]);ctx.lineDashOffset=-(line.phase+=.55+Math.min(line.speed,35)*.025);
-   ctx.strokeStyle="#00cfff";ctx.lineWidth=3.2;ctx.shadowBlur=5;ctx.stroke();ctx.setLineDash([]);
-   ctx.fillStyle="#ffe16a";ctx.strokeStyle="#06466c";ctx.lineWidth=1.2;ctx.shadowBlur=0;
-   for(let i=7;i<pts.length;i+=9){const a=pts[i-1],b=pts[i],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;drawArrow(b.x,b.y,dx/len,dy/len,6)}
+   ctx.strokeStyle="rgba(3,48,83,.88)";ctx.lineWidth=8;ctx.shadowColor="#00bfff";ctx.shadowBlur=13;ctx.stroke();
+   ctx.setLineDash([19,13]);ctx.lineDashOffset=-(line.phase+=.8+Math.min(line.speed,35)*.035);
+   ctx.strokeStyle="#00dfff";ctx.lineWidth=4.6;ctx.shadowBlur=8;ctx.stroke();ctx.setLineDash([]);
+   ctx.fillStyle="#ffdc45";ctx.strokeStyle="#063b5b";ctx.lineWidth=2;ctx.shadowBlur=5;
+   for(let i=8;i<pts.length;i+=8){const a=pts[i-1],b=pts[i],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;drawArrow(b.x,b.y,dx/len,dy/len,10);ctx.fill();ctx.stroke()}
    ctx.restore();
   }
  }
