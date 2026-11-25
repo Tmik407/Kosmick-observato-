@@ -149,51 +149,55 @@ function updateLayers(){
  $("legend").innerHTML=v.precipitation?'<span><i class="key" style="background:#268fe0"></i>Déšť</span><span><i class="key" style="background:#d8f4ff"></i>Sníh</span><span>Intenzita podle modelu (mm / cm za hodinu)</span>':v.temperature?'<span><i class="key" style="background:#2856bd"></i>Mráz</span><span><i class="key" style="background:#48bdc2"></i>Chladno</span><span><i class="key" style="background:#f3c15b"></i>Teplo</span>': '<span>Šipky: směr větru · pohyb částic: směr proudění</span>';
 }
 function seedParticles(){
- // Hustší síť delších proudnic, vedených podle skutečných vektorů předpovědi.
  const w=$("map").clientWidth,h=$("map").clientHeight,vectors=[];
  for(const f of state.features){
-  const p=f.properties;if(p.speed<.35)continue;
+  const p=f.properties;if(p.speed<.45)continue;
   const q=map.project(f.geometry.coordinates),a=p.direction*Math.PI/180;
-  if(q.x<-100||q.x>w+100||q.y<-100||q.y>h+100)continue;
+  if(q.x<-80||q.x>w+80||q.y<-80||q.y>h+80)continue;
   vectors.push({x:q.x,y:q.y,dx:Math.sin(a),dy:-Math.cos(a),speed:p.speed});
  }
  const paths=[];
- for(let s=0;s<vectors.length;s++){
-  const start=vectors[s],path=[{x:start.x,y:start.y}],seen=new Set();
-  let x=start.x,y=start.y;
-  for(let step=0;step<38;step++){
+ for(let s=0;s<vectors.length;s+=2){
+  const start=vectors[s],path=[{x:start.x,y:start.y}],seen=new Set();let x=start.x,y=start.y;
+  for(let step=0;step<34;step++){
    let best=null,bestD=Infinity;
    for(const v of vectors){const d=(v.x-x)**2+(v.y-y)**2;if(d<bestD){bestD=d;best=v}}
-   if(!best||bestD>125*125)break;
-   const key=Math.round(best.x/14)+":"+Math.round(best.y/14);
+   if(!best||bestD>120*120)break;
+   const key=Math.round(best.x/16)+":"+Math.round(best.y/16);
    if(seen.has(key)&&step>5)break;seen.add(key);
-   const advance=8+Math.min(best.speed,35)*.28;
-   x+=best.dx*advance;y+=best.dy*advance;
-   if(x<-8||x>w+8||y<-8||y>h+8)break;
+   const advance=7+Math.min(best.speed,32)*.24;x+=best.dx*advance;y+=best.dy*advance;
+   if(x<-5||x>w+5||y<-5||y>h+5)break;
    path.push({x,y});
   }
-  if(path.length>=6)paths.push({points:path,phase:Math.random()*48,speed:start.speed});
+  if(path.length>=6)paths.push({points:path,phase:Math.random()*path.length,speed:start.speed});
  }
  state.particles=paths;
 }
+function traceFlowPath(points){
+ ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);
+ for(let i=1;i<points.length-1;i++){const mx=(points[i].x+points[i+1].x)/2,my=(points[i].y+points[i+1].y)/2;ctx.quadraticCurveTo(points[i].x,points[i].y,mx,my)}
+ const last=points[points.length-1];ctx.lineTo(last.x,last.y);
+}
 function drawArrow(x,y,dx,dy,size){
  ctx.beginPath();ctx.moveTo(x+dx*size,y+dy*size);
- ctx.lineTo(x-dx*size*.72-dy*size*.82,y-dy*size*.72+dx*size*.82);
- ctx.lineTo(x-dx*size*.72+dy*size*.82,y-dy*size*.72-dx*size*.82);
+ ctx.lineTo(x-dx*size*.8-dy*size*.65,y-dy*size*.8+dx*size*.65);
+ ctx.lineTo(x-dx*size*.8+dy*size*.65,y-dy*size*.8-dx*size*.65);
  ctx.closePath();ctx.fill();
 }
 function animateFlow(){
- const w=$("map").clientWidth,h=$("map").clientHeight;
- ctx.clearRect(0,0,w,h);
+ const w=$("map").clientWidth,h=$("map").clientHeight;ctx.clearRect(0,0,w,h);
  if(state.visible.wind&&state.particles.length){
   for(const line of state.particles){
-   const pts=line.points;ctx.save();ctx.lineCap="round";ctx.lineJoin="round";
-   ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);
-   ctx.strokeStyle="rgba(3,48,83,.88)";ctx.lineWidth=8;ctx.shadowColor="#00bfff";ctx.shadowBlur=13;ctx.stroke();
-   ctx.setLineDash([19,13]);ctx.lineDashOffset=-(line.phase+=.8+Math.min(line.speed,35)*.035);
-   ctx.strokeStyle="#00dfff";ctx.lineWidth=4.6;ctx.shadowBlur=8;ctx.stroke();ctx.setLineDash([]);
-   ctx.fillStyle="#ffdc45";ctx.strokeStyle="#063b5b";ctx.lineWidth=2;ctx.shadowBlur=5;
-   for(let i=8;i<pts.length;i+=8){const a=pts[i-1],b=pts[i],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;drawArrow(b.x,b.y,dx/len,dy/len,10);ctx.fill();ctx.stroke()}
+   const pts=line.points;if(pts.length<3)continue;ctx.save();ctx.lineCap="round";ctx.lineJoin="round";
+   traceFlowPath(pts);ctx.strokeStyle="rgba(4,54,82,.62)";ctx.lineWidth=4.2;ctx.shadowColor="#00cfff";ctx.shadowBlur=8;ctx.stroke();
+   traceFlowPath(pts);ctx.strokeStyle="#18c9ed";ctx.lineWidth=2.1;ctx.shadowBlur=4;ctx.stroke();
+   const ai=Math.max(2,Math.floor(pts.length*.72)),a=pts[ai-1],b=pts[ai],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;
+   ctx.fillStyle="#ffcf36";ctx.strokeStyle="#123d5a";ctx.lineWidth=1.4;ctx.shadowBlur=3;
+   drawArrow(b.x,b.y,dx/len,dy/len,7);ctx.fill();ctx.stroke();
+   line.phase=(line.phase+.075+Math.min(line.speed,35)*.002)%pts.length;
+   const pi=Math.floor(line.phase),t=line.phase-pi,p1=pts[pi],p2=pts[Math.min(pi+1,pts.length-1)];
+   const px=p1.x+(p2.x-p1.x)*t,py=p1.y+(p2.y-p1.y)*t;
+   ctx.beginPath();ctx.arc(px,py,3.1,0,Math.PI*2);ctx.fillStyle="#fff";ctx.shadowColor="#00dfff";ctx.shadowBlur=12;ctx.fill();
    ctx.restore();
   }
  }
