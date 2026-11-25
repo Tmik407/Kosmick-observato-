@@ -797,6 +797,24 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
     try{return await Promise.race([fetch(url,{headers:{Accept:'application/json'}}),timeout])}finally{clearTimeout(timer)}
    };
    const saveAndApply=values=>{applyElevations(values);writeStore(cacheKey,{savedAt:Date.now(),values:values.map(Number)});try{localStorage.removeItem(cooldownKey)}catch(_){}};
+   // Přednostně vzorkujeme oficiální DMR 5G ČÚZK. Pokrývá jen část území,
+   // proto případná chybějící místa doplní celoplošný model Open-Meteo.
+   let cuzkValues=null,cuzkCount=0;
+   try{
+    if(badge)badge.textContent='Terén: načítám oficiální DMR 5G ČÚZK…';
+    const samples=new Array(coords.length).fill(null),insideIndexes=[];
+    coords.forEach((p,i)=>{const x=((p.lon-12.15)/(18.55-12.15))*7.2-3.6,z=((50.95-p.lat)/(50.95-48.65))*7.2-3.6;if(insideCzech(x,z))insideIndexes.push(i)});
+    for(let start=0;start<insideIndexes.length;start+=90){
+     const indexes=insideIndexes.slice(start,start+90),points=indexes.map(i=>[coords[i].lon,coords[i].lat]);
+     const geometry=encodeURIComponent(JSON.stringify({points,spatialReference:{wkid:4326}}));
+     const url='https://ags.cuzk.gov.cz/arcgis2/rest/services/dmr5g/ImageServer/getSamples?geometryType=esriGeometryMultipoint&geometry='+geometry+'&returnFirstValueOnly=true&interpolation=RSP_BilinearInterpolation&f=json';
+     const response=await timedFetch(url,14000);if(!response.ok)throw new Error('ČÚZK HTTP '+response.status);
+     const data=await response.json();if(data.error)throw new Error(data.error.message||'ČÚZK služba vrátila chybu');
+     const rows=data.samples||data.sampleInfo||data.results;if(!Array.isArray(rows)||!rows.length)throw new Error('ČÚZK nevrátil výškové vzorky');
+     rows.forEach((row,j)=>{const raw=row.value??row.attributes?.value??row.attributes?.Band_1??row.values?.[0];const value=Number(raw);if(Number.isFinite(value)&&value>-100&&value<5000){samples[indexes[j]]=value;cuzkCount++}});
+    }
+    if(cuzkCount>=Math.floor(insideIndexes.length*.25))cuzkValues=samples;
+   }catch(err){if(badge)badge.textContent='ČÚZK DMR 5G nedostupný · zkouším celoplošná data…'}
    let primaryError='neznámá chyba';
    try{
     if(badge)badge.textContent='Terén: dotazuji Open-Meteo…';
@@ -804,8 +822,9 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
      const response=await timedFetch('https://api.open-meteo.com/v1/elevation?latitude='+lat+'&longitude='+lon,10000);
      if(!response.ok)throw new Error('Open-Meteo HTTP '+response.status);
      const data=await response.json();if(!Array.isArray(data.elevation)||data.elevation.length!==batch.length)throw new Error('Neúplný výškový vzorek');values.push(...data.elevation)}
+    if(cuzkValues){for(let i=0;i<values.length;i++)if(Number.isFinite(cuzkValues[i]))values[i]=cuzkValues[i];}
     saveAndApply(values);
-    if(badge)badge.textContent='Terén: výšková data načtena · Open-Meteo · '+demSize+'×'+demSize+' bodů';
+    if(badge)badge.textContent=cuzkValues?'Terén: DMR 5G ČÚZK ('+cuzkCount+' vzorků) + Open-Meteo · '+demSize+'×'+demSize:'Terén: výšková data načtena · Open-Meteo · '+demSize+'×'+demSize+' bodů';
     return;
    }catch(err){primaryError=String(err&&err.message||err)}
    try{
