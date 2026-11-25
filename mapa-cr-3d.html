@@ -772,7 +772,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   async function loadCopernicusTerrain(){
    const badge=document.getElementById('weatherTerrainBadge');
    const coords=[];for(let j=0;j<demSize;j++)for(let i=0;i<demSize;i++)coords.push({lat:50.95-j/(demSize-1)*2.3,lon:12.15+i/(demSize-1)*6.4});
-   const cacheKey='x5-dem-cz-grid-v4',cooldownKey='x5-dem-cz-cooldown-v1',cacheTtl=30*24*60*60*1000;
+   const cacheKey='x5-dem-cz-grid-v5',cooldownKey='x5-dem-cz-cooldown-v1',cacheTtl=30*24*60*60*1000;
    const applyElevations=values=>{
     if(!Array.isArray(values)||values.length!==demSize*demSize||values.some(v=>!Number.isFinite(Number(v))))throw new Error('Neúplná výšková data');
     demGrid=values.map(Number);
@@ -824,6 +824,24 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
     if(badge)badge.textContent=cuzkValues?'Terén: DMR 5G ČÚZK ('+cuzkCount+' vzorků) + Open-Meteo · '+demSize+'×'+demSize:'Terén: výšková data načtena · Open-Meteo · '+demSize+'×'+demSize+' bodů';
     return;
    }catch(err){primaryError=String(err&&err.message||err)}
+   // Druhá nezávislá výšková služba: globální ArcGIS WorldElevation3D.
+   // Použije se, pokud ČÚZK ani Open-Meteo nevrátí úplnou mřížku.
+   try{
+    if(badge)badge.textContent='Terén: zkouším globální ArcGIS WorldElevation3D…';
+    const values=[];
+    for(let start=0;start<coords.length;start+=70){
+     const batch=coords.slice(start,start+70),points=batch.map(p=>[p.lon,p.lat]);
+     const geometry=encodeURIComponent(JSON.stringify({points,spatialReference:{wkid:4326}}));
+     const url='https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer/getSamples?geometryType=esriGeometryMultipoint&geometry='+geometry+'&returnFirstValueOnly=true&interpolation=RSP_BilinearInterpolation&f=json';
+     const response=await timedFetch(url,14000);if(!response.ok)throw new Error('ArcGIS HTTP '+response.status);
+     const data=await response.json();if(data.error)throw new Error(data.error.message||'ArcGIS chyba');
+     const rows=data.samples||data.results;if(!Array.isArray(rows)||rows.length!==batch.length)throw new Error('ArcGIS vrátil neúplnou mřížku');
+     for(const row of rows){const raw=row.value??row.values?.[0]??row.attributes?.value;const value=Number(raw);if(!Number.isFinite(value)||value<-500||value>9000)throw new Error('Neplatná výška ArcGIS');values.push(value)}
+    }
+    saveAndApply(values);
+    if(badge)badge.textContent='Terén: globální výšková data ArcGIS WorldElevation3D · '+demSize+'×'+demSize+' bodů';
+    return;
+   }catch(arcErr){primaryError+=' · ArcGIS: '+String(arcErr&&arcErr.message||arcErr)}
    try{
     if(badge)badge.textContent='Terén: zkouším záložní SRTM…';
     const values=[];for(let start=0;start<coords.length;start+=80){const batch=coords.slice(start,start+80),locations=batch.map(p=>p.lat.toFixed(4)+','+p.lon.toFixed(4)).join('|');
@@ -835,7 +853,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
     if(badge)badge.textContent='Terén: výšková data načtena · SRTM 90 m · '+demSize+'×'+demSize+' bodů';
    }catch(err){
     writeStore(cooldownKey,{until:Date.now()+15*60*1000});
-    if(badge)badge.textContent='DEM nedostupný · záložní reliéf (zdroje dočasně nedostupné)';
+    if(badge)badge.textContent='DEM nedostupný · záložní reliéf (Open-Meteo / ArcGIS / SRTM); ČÚZK: '+primaryError.slice(0,90);
    }
   }
   loadCopernicusTerrain();
