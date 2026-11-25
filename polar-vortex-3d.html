@@ -49,6 +49,35 @@
  .stage{height:56vh;min-height:340px}
  .stage-action-row #globeViewPresets button{font-size:10px!important;padding:6px 7px!important}
 }
+/* Mobile compact controls: preserve globe size, reduce only the panel footprint. */
+@media(max-width:700px){
+ .stage-controls{gap:7px;padding:8px;margin-top:7px}
+ .stage-info-grid{gap:6px}
+ .stage-info-grid .overlay,#vortexCenterInfo{padding:7px 8px!important;font-size:10px!important;line-height:1.35!important}
+ .stage-action-row{flex-direction:row;align-items:center;gap:7px}
+ #stageMotionToggle{padding:7px 9px!important;font-size:11px!important}
+ .stage-action-row #globeViewPresets{gap:4px!important}
+ .stage-action-row #globeViewPresets button{font-size:10px!important;padding:6px 7px!important}
+ .stage-controls .legend{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 8px;font-size:9px;line-height:1.25}
+ .stage-controls .legend span{min-width:0}
+ .stage-data-row{flex-direction:row;align-items:center;gap:7px}
+ #temperatureLegend{width:min(62%,270px)!important;padding:7px 8px!important;font-size:9px!important}
+ #coastSource{max-width:36%;font-size:9px!important;line-height:1.25}
+}
+@media(max-width:430px){
+ .stage-info-grid{grid-template-columns:1fr}
+ .stage-action-row{align-items:flex-start;flex-direction:column}
+ .stage-controls .legend{grid-template-columns:1fr 1fr}
+ .stage-data-row{align-items:flex-start}
+ #temperatureLegend{width:64%!important}
+ #coastSource{max-width:34%}
+}
+@media(max-width:380px){
+ .stage-controls{padding:7px;gap:6px}
+ .stage-info-grid .overlay,#vortexCenterInfo{font-size:9px!important}
+ .stage-controls .legend{font-size:8px;gap:4px 6px}
+ #temperatureLegend{width:66%!important}
+}
 </style></head><body><main>
 <div class="top"><div><div class="tag">KOSMICKÁ OBSERVATOŘ X-5 · ATMOSFÉRA · VERZE 1.7</div><h1>🌐 POLAR VORTEX 3D</h1><div class="sub">Interaktivní prostorový model severního polárního víru</div></div><button id="installPolarApp" type="button" style="background:#0b78a8;color:#fff;border:1px solid #5bcdf1;border-radius:10px;padding:11px 15px;font-weight:800;cursor:pointer">＋ Instalovat aplikaci</button></div>
 <div class="layout"><section class="panel"><div class="stage"><canvas id="scene"></canvas></div>
