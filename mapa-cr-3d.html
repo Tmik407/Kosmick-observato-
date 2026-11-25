@@ -56,6 +56,13 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
 #liveClock .source-status.cached{color:#8a5b16;background:#fff7e6;border-color:#f4dfb3}
 
 @media(max-width:480px){#liveClock{padding:10px 12px}#liveClock .clock-meta{text-align:left}}
+#forecastTimelinePanel{margin:12px 0;background:linear-gradient(135deg,#fff,#eef8fc);border:1px solid #c9e0eb}
+#forecastTimelinePanel .timeline-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#forecastTimelinePanel select{min-width:150px;max-width:100%;padding:9px;border:1px solid #b9cfdb;border-radius:9px;background:#fff;color:#23465a}
+#forecastTimelinePanel #forecastTimeline{display:block!important;visibility:visible!important;appearance:auto;-webkit-appearance:slider-horizontal;width:100%;height:34px;min-height:34px;margin:12px 0 5px;padding:0;accent-color:#1684b6;cursor:pointer;touch-action:pan-y}
+#forecastTimelinePanel .timeline-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+#forecastTimelinePanel #forecastTimelineLabel{color:#126b91;font-weight:700}
+
 
 
 #analyticsPanel{margin-top:12px}#analyticsPanel .chart-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}#analyticsPanel .chart-card{border:1px solid #dce8ef;border-radius:11px;padding:10px;min-width:0;background:#fbfdff}#analyticsPanel .chart-card h3{font-size:13px;margin:0 0 5px;color:#31566d}#analyticsPanel svg{display:block;width:100%;height:auto;overflow:visible}#analyticsPanel .chart-note{font-size:11px;color:#60798b;margin-top:4px}@media(max-width:760px){#analyticsPanel .chart-grid{grid-template-columns:1fr}}
@@ -70,6 +77,18 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
 <section id="liveClock" aria-label="Aktuální český čas">
  <div><div class="clock-live"><span class="clock-dot"></span>ŽIVÝ ČAS · ČESKO</div><div id="liveClockTime" class="clock-time" aria-live="off">--:--:--</div><div id="liveClockDate" class="clock-date">Načítám datum…</div></div>
  <div class="clock-meta"><div><b>Časové pásmo</b> · Europe/Prague</div><div>Hodiny se obnovují každou sekundu</div><div id="liveClockSync">Čas zařízení · čekám na synchronizaci</div><div id="weatherDataUpdated" style="margin-top:5px;font-weight:700">Meteorologická data · čekám na načtení</div><div id="weatherDataAge" style="margin-top:2px">Stav dat se zobrazí po načtení</div><div class="source-status-row"><span id="openMeteoStatus" class="source-status pending">Open-Meteo · čeká</span><span id="metNorwayStatus" class="source-status pending">MET Norway · čeká</span></div></div>
+</section>
+<section class="panel" id="forecastTimelinePanel" aria-label="Časová osa meteorologické předpovědi">
+ <h2 style="margin:0 0 8px">⏱️ Časová osa předpovědi</h2>
+ <div class="timeline-controls">
+  <label for="forecastHour"><b>Vybraný čas</b></label>
+  <select id="forecastHour"><option value="0">Načítám…</option></select>
+  <strong id="forecastTimelineLabel" class="small">Čekám na data…</strong>
+ </div>
+ <input id="forecastTimeline" type="range" min="0" max="0" value="0" step="1" aria-label="Posun času předpovědi">
+ <div class="timeline-actions"><button id="refresh">↻ Aktualizovat data</button><button id="findPrecip">☔ Najít déšť / sníh</button></div>
+ <p class="small" id="validTime">Čas platnosti bude uveden po načtení dat.</p>
+ <p class="small" id="precipTest" aria-live="polite">Posuň časovou osu a sleduj změny počasí na mapě a v navazujícím 3D modelu.</p>
 </section>
 <section class="map-card">
  <div class="map-wrap"><div id="map" aria-label="Interaktivní trojrozměrná mapa počasí České republiky"></div><canvas id="flowCanvas"></canvas></div>
@@ -86,8 +105,7 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
    <button data-layer="stations" aria-pressed="true">📡 Stanice ČHMÚ</button>
   </div>
   <div class="legend" id="legend"><span><i class="key" style="background:#2878c8"></i>mráz</span><span><i class="key" style="background:#42b8bd"></i>chladno</span><span><i class="key" style="background:#f3b44e"></i>teplo</span><span>Šipky ukazují směr proudění</span></div>
-  <div class="row" style="margin-top:12px;align-items:center;flex-wrap:wrap"><label for="forecastHour"><b>Čas předpovědi</b></label><select id="forecastHour"><option value="0">Načítám…</option></select><label for="forecastTimeline" class="small"><b>Časová osa</b></label><input id="forecastTimeline" type="range" min="0" max="0" value="0" step="1" aria-label="Posun času předpovědi" style="flex:1 1 180px;min-width:150px;accent-color:#1684b6"><strong id="forecastTimelineLabel" class="small" style="min-width:125px">Čekám na data…</strong><button id="refresh">↻ Aktualizovat</button><button id="findPrecip">☔ Najít déšť / sníh</button></div><p class="small" id="precipTest" aria-live="polite">Tlačítkem lze vyhledat nejsilnější srážky v celé dostupné předpovědi.</p>
-  <p class="small" id="validTime">Čas platnosti bude uveden po načtení dat.</p>
+
  </section>
  <section class="panel">
   <h2>Počasí ve vybraných městech</h2>
