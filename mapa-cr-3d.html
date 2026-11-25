@@ -159,7 +159,8 @@ function loadWeather(){
   const rows=Array.isArray(data)?data:[data];if(rows.length!==all.length)throw Error("Nesouhlasí počet meteorologických bodů");
   state.rows=rows;state.times=rows[0].hourly.time;
   const select=$("forecastHour");select.innerHTML=state.times.map((t,i)=>'<option value="'+i+'">'+new Date(t).toLocaleString("cs-CZ",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit"})+'</option>').join("");
-  state.hour=0;applyHour();status("Počasí načteno · "+new Date().toLocaleTimeString("cs-CZ",{hour:"2-digit",minute:"2-digit"}));
+  const now=Date.now();const currentIndex=state.times.findIndex(t=>new Date(t).getTime()>=now-30*60*1000);
+  state.hour=currentIndex>=0?currentIndex:0;select.value=String(state.hour);applyHour();status("Počasí načteno · "+new Date().toLocaleTimeString("cs-CZ",{hour:"2-digit",minute:"2-digit"}));
  }).catch(e=>{status("Počasí se nepodařilo načíst");$("weatherSummary").textContent="Chyba načítání dat: "+e.message+". Zkus aktualizaci.";}).finally(()=>{$("refresh").disabled=false});
 }
 $("forecastHour").addEventListener("change",e=>{state.hour=+e.target.value;applyHour()});
