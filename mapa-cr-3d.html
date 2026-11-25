@@ -148,14 +148,36 @@ function updateLayers(){
  map.setLayoutProperty("chmi-station-labels","visibility",v.stations?"visible":"none");
  $("legend").innerHTML=v.precipitation?'<span><i class="key" style="background:#268fe0"></i>Déšť</span><span><i class="key" style="background:#d8f4ff"></i>Sníh</span><span>Intenzita podle modelu (mm / cm za hodinu)</span>':v.temperature?'<span><i class="key" style="background:#2856bd"></i>Mráz</span><span><i class="key" style="background:#48bdc2"></i>Chladno</span><span><i class="key" style="background:#f3c15b"></i>Teplo</span>': '<span>Šipky: směr větru · pohyb částic: směr proudění</span>';
 }
-function seedParticles(){state.particles=state.features.filter(f=>f.properties.speed>2).map(f=>({lon:f.geometry.coordinates[0],lat:f.geometry.coordinates[1],phase:Math.random(),speed:f.properties.speed,direction:f.properties.direction}))}
+function seedParticles(){
+ state.particles=[];
+ for(const f of state.features){
+  const p=f.properties;if(p.speed<1.2)continue;
+  const count=Math.min(4,Math.max(2,Math.round(p.speed/3)));
+  for(let n=0;n<count;n++)state.particles.push({
+   lon:f.geometry.coordinates[0],lat:f.geometry.coordinates[1],
+   phase:Math.random(),speed:p.speed,direction:p.direction,
+   offset:(Math.random()-.5)*18,length:16+Math.min(p.speed,35)*1.1
+  });
+ }
+}
 function animateFlow(){
- const w=$("map").clientWidth,h=$("map").clientHeight;ctx.clearRect(0,0,w,h);
+ const w=$("map").clientWidth,h=$("map").clientHeight;
+ ctx.clearRect(0,0,w,h);
  if(state.visible.wind&&state.particles.length){
-  for(const p of state.particles){const q=map.project([p.lon,p.lat]);if(q.x<0||q.x>w||q.y<0||q.y>h)continue;
-   p.phase=(p.phase+.006+p.speed*.000025)%1;
-   const angle=p.direction*Math.PI/180,dx=Math.sin(angle),dy=-Math.cos(angle),x=q.x+dx*(p.phase-.5)*34,y=q.y+dy*(p.phase-.5)*34;
-   ctx.beginPath();ctx.arc(x,y,1.6,0,Math.PI*2);ctx.fillStyle="rgba(255,255,255,.9)";ctx.shadowColor="#34c9ff";ctx.shadowBlur=7;ctx.fill();ctx.shadowBlur=0;
+  ctx.lineCap="round";
+  for(const p of state.particles){
+   const q=map.project([p.lon,p.lat]);
+   if(q.x<-100||q.x>w+100||q.y<-100||q.y>h+100)continue;
+   p.phase=(p.phase+.0035+Math.min(p.speed,40)*.00022)%1;
+   const a=p.direction*Math.PI/180,dx=Math.sin(a),dy=-Math.cos(a);
+   const travel=(p.phase-.5)*92;
+   const x=q.x+dx*travel-dy*p.offset,y=q.y+dy*travel+dx*p.offset;
+   const tail= p.length*(.45+Math.min(p.speed,35)/55);
+   const alpha=.35+.6*Math.sin(p.phase*Math.PI);
+   ctx.beginPath();ctx.moveTo(x-dx*tail,y-dy*tail);ctx.lineTo(x,y);
+   ctx.strokeStyle="rgba(0,132,190,"+alpha.toFixed(2)+")";ctx.lineWidth=2.1;ctx.shadowColor="#63dfff";ctx.shadowBlur=7;ctx.stroke();
+   ctx.beginPath();ctx.arc(x,y,2.1,0,Math.PI*2);ctx.fillStyle="rgba(255,255,255,.96)";ctx.fill();
+   ctx.shadowBlur=0;
   }
  }
  state.raf=requestAnimationFrame(animateFlow);
