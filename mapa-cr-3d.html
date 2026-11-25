@@ -499,9 +499,11 @@ async function loadMetNoFallback(){
  if(valid.length!==cities.length)throw Error("Záložní předpověď načetla "+valid.length+" z "+cities.length+" měst. "+errors.slice(0,2).join("; "));
  const nearestCityRow=p=>{let best=0,distance=Infinity;for(let i=0;i<cities.length;i++){const d=(p.lat-cities[i].lat)**2+(p.lon-cities[i].lon)**2;if(d<distance){distance=d;best=i}}return best};
  const gridRows=grid.map(p=>rows[nearestCityRow(p)]);
- const commonTimes=rows[0].hourly.time;
- // Časové body globálního modelu nejsou vždy hodinové (po prvních 48 h bývají po 6 h).
- // Použijeme společné časové značky první lokality a grafy označíme podle skutečného zdroje.
+ const forecastStart=Date.parse(rows[0].hourly.time[0]);
+ // MET Norway po prvních 48 hodinách vrací řidší časové kroky. Omezíme výhled
+ // skutečně na 72 hodin od začátku předpovědi, ne na 72 položek časové řady.
+ const commonTimes=rows[0].hourly.time.filter(t=>Date.parse(t)<=forecastStart+72*60*60*1000);
+ // Časové značky mohou být po prvních 48 h po 6 hodinách; zachováme jejich skutečné časy.
  const aligned=rows.map(row=>{
   const h=row.hourly,idx=commonTimes.map(t=>h.time.indexOf(t));
   const out={hourly:{time:commonTimes}};
