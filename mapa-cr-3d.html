@@ -78,18 +78,7 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
  <div><div class="clock-live"><span class="clock-dot"></span>ŽIVÝ ČAS · ČESKO</div><div id="liveClockTime" class="clock-time" aria-live="off">--:--:--</div><div id="liveClockDate" class="clock-date">Načítám datum…</div></div>
  <div class="clock-meta"><div><b>Časové pásmo</b> · Europe/Prague</div><div>Hodiny se obnovují každou sekundu</div><div id="liveClockSync">Čas zařízení · čekám na synchronizaci</div><div id="weatherDataUpdated" style="margin-top:5px;font-weight:700">Meteorologická data · čekám na načtení</div><div id="weatherDataAge" style="margin-top:2px">Stav dat se zobrazí po načtení</div><div class="source-status-row"><span id="openMeteoStatus" class="source-status pending">Open-Meteo · čeká</span><span id="metNorwayStatus" class="source-status pending">MET Norway · čeká</span></div></div>
 </section>
-<section class="panel" id="forecastTimelinePanel" aria-label="Časová osa meteorologické předpovědi">
- <h2 style="margin:0 0 8px">⏱️ Časová osa předpovědi</h2>
- <div class="timeline-controls">
-  <label for="forecastHour"><b>Vybraný čas</b></label>
-  <select id="forecastHour"><option value="0">Načítám…</option></select>
-  <strong id="forecastTimelineLabel" class="small">Čekám na data…</strong>
- </div>
- <input id="forecastTimeline" type="range" min="0" max="0" value="0" step="1" aria-label="Posun času předpovědi">
- <div class="timeline-actions"><button id="refresh">↻ Aktualizovat data</button><button id="findPrecip">☔ Najít déšť / sníh</button><button id="forecastPlay" type="button" aria-pressed="false">▶ Automaticky přehrávat</button></div>
- <p class="small" id="validTime">Čas platnosti bude uveden po načtení dat.</p>
- <p class="small" id="precipTest" aria-live="polite">Posuň časovou osu a sleduj změny počasí na mapě a v navazujícím 3D modelu.</p>
-</section>
+
 <section class="map-card">
  <div class="map-wrap"><div id="map" aria-label="Interaktivní trojrozměrná mapa počasí České republiky"></div><canvas id="flowCanvas"></canvas></div>
  <div class="attribution">MapLibre GL JS · podklad OpenFreeMap / OpenStreetMap · výšková data Terrarium · meteorologická data podle dostupnosti</div>
@@ -138,6 +127,18 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
  </div>
 <p class="small" style="margin:8px 0 0">Ovládání modelu: dvěma prsty otáčej a přibližuj, tažením myší otáčej. Jedním prstem můžeš stránku normálně posouvat.</p>
  <p class="small" style="margin:8px 0 0">Proudění je schematicky vizualizováno podle aktuálně načtených meteorologických dat. Tvar víru a reliéfní plocha nejsou samostatným měřením ani výstražným modelem.</p>
+</section>
+<section class="panel" id="forecastTimelinePanel" aria-label="Časová osa meteorologické předpovědi">
+ <h2 style="margin:0 0 8px">⏱️ Časová osa předpovědi</h2>
+ <div class="timeline-controls">
+  <label for="forecastHour"><b>Vybraný čas</b></label>
+  <select id="forecastHour"><option value="0">Načítám…</option></select>
+  <strong id="forecastTimelineLabel" class="small">Čekám na data…</strong>
+ </div>
+ <input id="forecastTimeline" type="range" min="0" max="0" value="0" step="1" aria-label="Posun času předpovědi">
+ <div class="timeline-actions"><button id="refresh">↻ Aktualizovat data</button><button id="findPrecip">☔ Najít déšť / sníh</button><button id="forecastPlay" type="button" aria-pressed="false">▶ Automaticky přehrávat</button></div>
+ <p class="small" id="validTime">Čas platnosti bude uveden po načtení dat.</p>
+ <p class="small" id="precipTest" aria-live="polite">Posuň časovou osu a sleduj změny počasí na mapě a v navazujícím 3D modelu.</p>
 </section>
 >
 </main>
