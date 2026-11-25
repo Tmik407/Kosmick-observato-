@@ -763,15 +763,29 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   // Načtení skutečných výšek Copernicus DEM GLO-90 přes veřejné Open-Meteo Elevation API.
   async function loadCopernicusTerrain(){
    const badge=document.getElementById('weatherTerrainBadge');
-   try{const coords=[];for(let j=0;j<demSize;j++)for(let i=0;i<demSize;i++)coords.push({lat:50.95-j/(demSize-1)*2.3,lon:12.15+i/(demSize-1)*6.4});
-    const values=[];for(let start=0;start<coords.length;start+=100){const batch=coords.slice(start,start+100),lat=batch.map(p=>p.lat.toFixed(4)).join(','),lon=batch.map(p=>p.lon.toFixed(4)).join(','),response=await fetch('https://api.open-meteo.com/v1/elevation?latitude='+lat+'&longitude='+lon);if(!response.ok)throw new Error('DEM HTTP '+response.status);const data=await response.json();if(!Array.isArray(data.elevation)||data.elevation.length!==batch.length)throw new Error('Neúplná DEM data');values.push(...data.elevation)}
-    if(values.length!==demSize*demSize||values.some(v=>!Number.isFinite(+v)))throw new Error('Neplatná DEM data');demGrid=values.map(Number);
+   try{
+    const coords=[];for(let j=0;j<demSize;j++)for(let i=0;i<demSize;i++)coords.push({lat:50.95-j/(demSize-1)*2.3,lon:12.15+i/(demSize-1)*6.4});
+    const values=[];
+    // Menší dávky s opakováním požadavku omezí riziko selhání dlouhých URL nebo dočasného přetížení API.
+    for(let start=0;start<coords.length;start+=25){
+     const batch=coords.slice(start,start+25),lat=batch.map(p=>p.lat.toFixed(4)).join(','),lon=batch.map(p=>p.lon.toFixed(4)).join(',');
+     const url='https://api.open-meteo.com/v1/elevation?latitude='+lat+'&longitude='+lon;
+     let data=null,lastError=null;
+     for(let attempt=0;attempt<3;attempt++){
+      try{const response=await fetch(url,{headers:{Accept:'application/json'}});if(!response.ok)throw new Error('HTTP '+response.status);data=await response.json();if(!Array.isArray(data.elevation)||data.elevation.length!==batch.length)throw new Error(data.reason||'Neúplná DEM data');lastError=null;break}
+      catch(err){lastError=err;if(attempt<2)await new Promise(resolve=>setTimeout(resolve,350*(attempt+1)))}
+     }
+     if(lastError)throw lastError;
+     values.push(...data.elevation);
+    }
+    if(values.length!==demSize*demSize||values.some(v=>!Number.isFinite(Number(v))))throw new Error('Neplatná DEM data');
+    demGrid=values.map(Number);
     for(let i=0;i<terrainPos.count;i++){const x=terrainPos.getX(i),z=terrainPos.getZ(i),h=terrainHeightAt(x,z);terrainPos.setY(i,h);const c=terrainColorAt(h);terrainGeo.attributes.color.setXYZ(i,c.r,c.g,c.b)}
     terrainPos.needsUpdate=true;terrainGeo.attributes.color.needsUpdate=true;terrainGeo.computeVertexNormals();
     for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,terrainHeightAt(x,z)+.018)}
     heatPos.needsUpdate=true;heatGeo.computeVertexNormals();
-    if(badge)badge.textContent='Terén: Copernicus DEM GLO-90';
-   }catch(err){if(badge)badge.textContent='Terén: záložní reliéf (DEM nedostupný)'}
+    if(badge)badge.textContent='Terén: Copernicus DEM GLO-90 · načteno 625 bodů';
+   }catch(err){if(badge)badge.textContent='DEM nedostupný · záložní reliéf ('+String(err&&err.message||'chyba').slice(0,38)+')'}
   }
   loadCopernicusTerrain();
   const patches=[];for(const p of [{x:-1.8,z:.8,c:0x167dff},{x:1.6,z:-.9,c:0xff7838},{x:.1,z:1.9,c:0x12c9a7}]){const m=new THREE.Mesh(new THREE.CircleGeometry(1.45,48),new THREE.MeshBasicMaterial({color:p.c,transparent:true,opacity:.72,depthWrite:false,side:THREE.DoubleSide}));m.rotation.x=-Math.PI/2;m.position.set(p.x,-.045,p.z);scene.add(m);patches.push(m)}
