@@ -5,6 +5,9 @@
 
 /* X-5 tablet: separate the information overlays so they never cover each other. */
 @media (min-width:561px) and (max-width:1100px){
+ #globeViewPresets{top:164px!important;gap:5px!important}
+ #globeViewPresets button{font-size:11px!important;padding:7px 8px!important}
+
  .stage .overlay{right:250px;max-width:calc(100% - 274px);padding:7px 9px;font-size:11px;line-height:1.45}
  #vortexCenterInfo{top:12px!important;right:12px!important;left:auto!important;width:226px;max-width:226px!important;font-size:10px!important;line-height:1.35!important;padding:7px 8px!important}
  #stageMotionToggle{top:108px!important;left:12px!important;padding:8px 10px!important;font-size:13px}
@@ -12,13 +15,16 @@
  .stage .legend{gap:8px;font-size:11px}
 }
 @media (max-width:560px){
+ #globeViewPresets{top:164px!important;left:10px!important;gap:4px!important}
+ #globeViewPresets button{font-size:10px!important;padding:6px 7px!important}
+
  .stage .overlay{max-width:calc(100% - 24px);right:12px;padding:7px 9px;font-size:10px}
  #vortexCenterInfo{top:104px!important;right:10px!important;max-width:190px!important;font-size:10px!important}
  #stageMotionToggle{top:108px!important;left:10px!important;padding:7px 9px!important;font-size:12px}
 }
 </style></head><body><main>
 <div class="top"><div><div class="tag">KOSMICKÁ OBSERVATOŘ X-5 · ATMOSFÉRA · VERZE 1.7</div><h1>🌐 POLAR VORTEX 3D</h1><div class="sub">Interaktivní prostorový model severního polárního víru</div></div><button id="installPolarApp" type="button" style="background:#0b78a8;color:#fff;border:1px solid #5bcdf1;border-radius:10px;padding:11px 15px;font-weight:800;cursor:pointer">＋ Instalovat aplikaci</button></div>
-<div class="layout"><section class="panel"><div class="stage"><canvas id="scene"></canvas><button id="stageMotionToggle" type="button" aria-pressed="false" style="position:absolute;left:12px;top:60px;z-index:30;background:#e5f2fa;border:2px solid #5b9fbd;color:#123c55;border-radius:9px;padding:10px 13px;font-weight:800;box-shadow:0 2px 10px #00182799">⏸ Zastavit vše</button><div class="overlay">X-5 / 3D MODEL<br><span id="sceneState">Inicializuji 3D scénu…</span><br>Severní pól · ECMWF teplota, geopotenciál a proudnice větru U/V</div><div id="vortexCenterInfo" style="position:absolute;right:12px;top:12px;max-width:245px;padding:8px 10px;background:#061526df;border:1px solid #b69b55;border-radius:9px;color:#ffe6a3;font-size:11px;line-height:1.45;pointer-events:none">Centrum víru · výpočet z ECMWF…</div><div class="legend"><span><i class="dot" style="background:linear-gradient(90deg,#371b70,#2770aa,#39aebe,#f2b05b,#de5b42)"></i>Teplotní pole ECMWF</span><span><i class="dot" style="background:#eaf4ff"></i>Geopotenciální izolinie</span><span><i class="dot" style="background:#55d9ff"></i>Vektory větru U/V</span><span><i class="dot" style="background:#8cecff;box-shadow:0 0 7px #28bfff"></i>Proudnice · integrace U/V</span></div><div id="temperatureLegend" style="position:absolute;right:12px;bottom:48px;width:min(250px,58%);padding:9px 10px;background:#061526d9;border:1px solid #456984;border-radius:9px;font-size:11px;color:#eaf4ff"><div style="display:flex;justify-content:space-between;gap:8px"><b>ECMWF · teplota 10 hPa</b><span id="tempUnit">K / °C</span></div><div style="height:10px;margin:7px 0 4px;border-radius:8px;background:linear-gradient(90deg,#371b70 0%,#2770aa 25%,#39aebe 50%,#f2b05b 75%,#de5b42 100%)"></div><div style="display:flex;justify-content:space-between"><span id="tempMin">—</span><span id="tempMax">—</span></div></div><div id="coastSource" style="position:absolute;left:12px;bottom:48px;padding:4px 7px;background:#061526bd;border-radius:6px;color:#d5e7f3;font-size:10px">Načítám geografické pobřeží…</div></div>
+<div class="layout"><section class="panel"><div class="stage"><canvas id="scene"></canvas><button id="stageMotionToggle" type="button" aria-pressed="false" style="position:absolute;left:12px;top:60px;z-index:30;background:#e5f2fa;border:2px solid #5b9fbd;color:#123c55;border-radius:9px;padding:10px 13px;font-weight:800;box-shadow:0 2px 10px #00182799">⏸ Zastavit vše</button><div id="globeViewPresets" role="group" aria-label="Pohled 3D globusu" style="position:absolute;left:12px;top:164px;z-index:30;display:flex;gap:6px;flex-wrap:wrap;max-width:calc(100% - 24px)"><button type="button" data-globe-view="pole" aria-pressed="true" style="padding:7px 9px;font-size:12px;background:#e5f2fa;border:1px solid #69a9c8;border-radius:8px;color:#123c55;font-weight:800">◎ Severní pól</button><button type="button" data-globe-view="globe" aria-pressed="false" style="padding:7px 9px;font-size:12px;background:#e5f2fa;border:1px solid #9dbed3;border-radius:8px;color:#174b6a;font-weight:800">🌐 Celý globus</button><button type="button" data-globe-view="detail" aria-pressed="false" style="padding:7px 9px;font-size:12px;background:#e5f2fa;border:1px solid #9dbed3;border-radius:8px;color:#174b6a;font-weight:800">🔎 Detail víru</button></div><div class="overlay">X-5 / 3D MODEL<br><span id="sceneState">Inicializuji 3D scénu…</span><br>Severní pól · ECMWF teplota, geopotenciál a proudnice větru U/V</div><div id="vortexCenterInfo" style="position:absolute;right:12px;top:12px;max-width:245px;padding:8px 10px;background:#061526df;border:1px solid #b69b55;border-radius:9px;color:#ffe6a3;font-size:11px;line-height:1.45;pointer-events:none">Centrum víru · výpočet z ECMWF…</div><div class="legend"><span><i class="dot" style="background:linear-gradient(90deg,#371b70,#2770aa,#39aebe,#f2b05b,#de5b42)"></i>Teplotní pole ECMWF</span><span><i class="dot" style="background:#eaf4ff"></i>Geopotenciální izolinie</span><span><i class="dot" style="background:#55d9ff"></i>Vektory větru U/V</span><span><i class="dot" style="background:#8cecff;box-shadow:0 0 7px #28bfff"></i>Proudnice · integrace U/V</span></div><div id="temperatureLegend" style="position:absolute;right:12px;bottom:48px;width:min(250px,58%);padding:9px 10px;background:#061526d9;border:1px solid #456984;border-radius:9px;font-size:11px;color:#eaf4ff"><div style="display:flex;justify-content:space-between;gap:8px"><b>ECMWF · teplota 10 hPa</b><span id="tempUnit">K / °C</span></div><div style="height:10px;margin:7px 0 4px;border-radius:8px;background:linear-gradient(90deg,#371b70 0%,#2770aa 25%,#39aebe 50%,#f2b05b 75%,#de5b42 100%)"></div><div style="display:flex;justify-content:space-between"><span id="tempMin">—</span><span id="tempMax">—</span></div></div><div id="coastSource" style="position:absolute;left:12px;bottom:48px;padding:4px 7px;background:#061526bd;border-radius:6px;color:#d5e7f3;font-size:10px">Načítám geografické pobřeží…</div></div>
 <section class="panel wide layer-panel" aria-label="Vrstvy globusu" style="margin-top:12px">
 <h2 style="margin:0 0 8px">Zobrazené vrstvy globusu</h2>
 <p class="small">Zapínejte a vypínejte jednotlivé datové vrstvy. Geografické popisky a pobřeží lze skrýt samostatně.</p>
@@ -417,6 +423,29 @@ const flowParticles=[];let flowAuto=true,flowClock=0,lastRenderTime=0;let motion
 try{
  renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(canvas.clientWidth,canvas.clientHeight,false);
  scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(42,canvas.clientWidth/canvas.clientHeight,.1,100);const fitGlobeDistance=()=>1.72/(Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*Math.max(.35,Math.min(1,camera.aspect)))*(camera.aspect>1.25?1.03:1.08);zoom=Math.max(zoom,fitGlobeDistance());camera.position.set(0,0,zoom);
+ const viewPresets={
+  pole:{label:'Severní pól',x:1.52,y:0,z:4.55},
+  globe:{label:'Celý globus',x:.48,y:.55,z:Math.max(4.9,fitGlobeDistance()*1.18)},
+  detail:{label:'Detail víru',x:1.12,y:0,z:3.85}
+ };
+ function setGlobeView(name){
+  const preset=viewPresets[name];if(!preset)return;
+  rotX=preset.x;rotY=preset.y;zoom=preset.z;
+  document.querySelectorAll('#globeViewPresets [data-globe-view]').forEach(button=>{
+   const active=button.dataset.globeView===name;
+   button.setAttribute('aria-pressed',String(active));
+   button.style.background=active?'#ccecff':'#e5f2fa';
+   button.style.borderColor=active?'#2387bd':'#9dbed3';
+  });
+  if(globe&&globe.parent)globe.parent.rotation.set(rotX,rotY,0);
+  camera.position.z=zoom;
+  if(renderer&&scene&&camera)renderer.render(scene,camera);
+ }
+ document.querySelectorAll('#globeViewPresets [data-globe-view]').forEach(button=>{
+  button.addEventListener('click',()=>setGlobeView(button.dataset.globeView));
+ });
+ window.X5SetGlobeView=setGlobeView;
+
  scene.add(new THREE.AmbientLight(0x9ecfff,1.05));const light=new THREE.DirectionalLight(0xffffff,2.0);light.position.set(4,3,5);scene.add(light);const rimLight=new THREE.DirectionalLight(0x4ebeff,.55);rimLight.position.set(-4,1,-3);scene.add(rimLight);
  const group=new THREE.Group();scene.add(group);
  // Vrstvy vytváříme před geografickými značkami a asynchronním načtením pobřeží.
