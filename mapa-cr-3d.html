@@ -119,7 +119,7 @@ const cities=[
 ];
 const grid=[];
 for(let lat=48.65;lat<=50.95;lat+=.48)for(let lon=12.15;lon<=18.55;lon+=.72)grid.push({name:"",lat:+lat.toFixed(3),lon:+lon.toFixed(3)});
-const all=[...grid,...cities],state={hour:0,rows:[],times:[],lastWeatherLoad:0,weatherLoading:false,visible:{temperature:true,precipitation:false,wind:true,cities:true,stations:true},stations:[],map:null,features:[],particles:[],raf:0,analyticsCustom:null,analyticsCompare:null,analyticsSearchBusy:false,analyticsCompareBusy:false};
+const all=[...grid,...cities],state={hour:0,rows:[],times:[],lastWeatherLoad:0,weatherLoading:false,visible:{temperature:true,precipitation:false,wind:true,cities:true,stations:true},stations:[],map:null,features:[],particles:[],raf:0,analyticsCustom:null,analyticsCompare:null,analyticsSearchBusy:false,analyticsCompareBusy:false,weatherRetryCount:0,weatherRetryTimer:0};
 const status=(s)=>$("status").textContent=s;
 const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/liberty",center:[15.35,49.82],zoom:6.75,pitch:35,bearing:-8,maxPitch:75,cooperativeGestures:true,attributionControl:true});
 state.map=map;
@@ -450,17 +450,26 @@ function loadWeather(force=false){
    if(cityRows.length!==cities.length)throw Error("Nesouhlasí počet měst");
    const gridRows=grid.map(p=>cityRows[nearestCityRow(p)]);
    useRows([...gridRows,...cityRows]);
+   state.weatherRetryCount=0;
+   if(state.weatherRetryTimer){clearTimeout(state.weatherRetryTimer);state.weatherRetryTimer=0;}
    status("Počasí načteno · 15 měst · jedna žádost Open-Meteo");
   }catch(error){
    let cached=null;try{cached=JSON.parse(localStorage.getItem("weatherVortexForecastCache")||"null")}catch(_){}
-   if(cached?.rows?.length===all.length&&cached?.times?.length&&Date.now()-(cached.savedAt||0)<24*60*60*1000){
+   if(cached?.rows?.length===all.length&&cached?.times?.length&&Date.now()-(cached.savedAt||0)<72*60*60*1000){
     state.rows=cached.rows;state.times=cached.times;state.lastWeatherLoad=cached.savedAt||Date.now();
     const select=$("forecastHour");select.innerHTML=state.times.map((t,i)=>'<option value="'+i+'">'+new Date(t).toLocaleString("cs-CZ",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit"})+'</option>').join("");
     const now=Date.now(),idx=state.times.findIndex(t=>new Date(t).getTime()>=now-30*60*1000);state.hour=idx>=0?idx:0;select.value=String(state.hour);applyHour();
-    status("Používám uloženou předpověď · živá data jsou dočasně nedostupná");
+    status("Záložní předpověď z mezipaměti · živá data Open-Meteo jsou dočasně omezená");
+    $("weatherSummary").textContent="Zobrazuji poslední uloženou předpověď. Open-Meteo dočasně omezilo požadavky (HTTP 429); data se automaticky zkusí obnovit.";
    }else{
     status("Předpověď je dočasně nedostupná");
-    $("weatherSummary").textContent=error.message;
+    $("weatherSummary").textContent=error.message+" · Mapa a stanice ČHMÚ zůstávají dostupné.";
+   }
+   // Po limitu HTTP 429 provedeme pouze jeden automatický opakovaný pokus.
+   if(/429|ochrannou pauzu|aktivní ochrannou pauzu/i.test(String(error.message))&&state.weatherRetryCount<1&&!state.weatherRetryTimer){
+    const delay=Math.max(65000,weatherApiCooldownUntil-Date.now()+2500);
+    status("Open-Meteo dočasně omezuje požadavky · automatický nový pokus za "+Math.ceil(delay/1000)+" s");
+    state.weatherRetryTimer=setTimeout(()=>{state.weatherRetryTimer=0;state.weatherRetryCount++;loadWeather(true)},delay);
    }
   }finally{state.weatherLoading=false;$("refresh").disabled=false}
  })();
