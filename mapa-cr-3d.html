@@ -96,6 +96,8 @@ const all=[...grid,...cities],state={hour:0,rows:[],times:[],visible:{temperatur
 const status=(s)=>$("status").textContent=s;
 const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/liberty",center:[15.35,49.82],zoom:6.75,pitch:35,bearing:-8,maxPitch:75,cooperativeGestures:true,attributionControl:true});
 state.map=map;
+// Na dotykových zařízeních vypnout tažení mapy jedním prstem, aby gesto patřilo rolování stránky.
+if(window.matchMedia("(pointer: coarse)").matches){map.dragPan.disable();}
 map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),"top-right");
 map.addControl(new maplibregl.ScaleControl({maxWidth:110,unit:"metric"}),"bottom-left");
 const flowCanvas=$("flowCanvas"),ctx=flowCanvas.getContext("2d");
