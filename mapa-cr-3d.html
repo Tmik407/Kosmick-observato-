@@ -40,6 +40,14 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
 .maplibregl-popup-content{font:13px/1.5 system-ui;padding:11px 13px;border-radius:10px}
 @media(max-width:760px){main{padding:8px}.below{grid-template-columns:1fr}#map{height:62vh;min-height:400px}.map-card{padding:7px;border-radius:14px}.panel{padding:10px}header{margin-bottom:8px}}
 @media(max-width:390px){#map{height:58vh;min-height:360px}.controls button{font-size:12px;padding:7px 8px}}
+#liveClock{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 12px;padding:12px 16px;background:linear-gradient(110deg,#fff,#eef8fd);border:1px solid #cfe1ec;border-radius:14px;box-shadow:0 5px 18px #12344a0a}
+#liveClock .clock-time{font-size:clamp(25px,4vw,34px);font-weight:800;letter-spacing:.04em;line-height:1.1;font-variant-numeric:tabular-nums;color:#087da9}
+#liveClock .clock-date{font-size:13px;color:#60798b;margin-top:3px}
+#liveClock .clock-meta{font-size:12px;color:#47677c;text-align:right}
+#liveClock .clock-live{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:#16805d}
+#liveClock .clock-dot{width:8px;height:8px;border-radius:50%;background:#20a879;box-shadow:0 0 0 3px #20a87922}
+@media(max-width:480px){#liveClock{padding:10px 12px}#liveClock .clock-meta{text-align:left}}
+
 
 #analyticsPanel{margin-top:12px}#analyticsPanel .chart-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}#analyticsPanel .chart-card{border:1px solid #dce8ef;border-radius:11px;padding:10px;min-width:0;background:#fbfdff}#analyticsPanel .chart-card h3{font-size:13px;margin:0 0 5px;color:#31566d}#analyticsPanel svg{display:block;width:100%;height:auto;overflow:visible}#analyticsPanel .chart-note{font-size:11px;color:#60798b;margin-top:4px}@media(max-width:760px){#analyticsPanel .chart-grid{grid-template-columns:1fr}}
 </style>
@@ -50,6 +58,10 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
  <div><div class="kicker">PŘEDPOVĚĎ POČASÍ ČR</div><h1>🌦️ PŘEDPOVĚĎ POČASÍ ČR</h1><p>Reliéf, vítr, déšť, sněžení a teploty v České republice</p></div>
  <div id="status" class="status">Načítám mapové podklady…</div>
 </header>
+<section id="liveClock" aria-label="Aktuální český čas">
+ <div><div class="clock-live"><span class="clock-dot"></span>ŽIVÝ ČAS · ČESKO</div><div id="liveClockTime" class="clock-time" aria-live="off">--:--:--</div><div id="liveClockDate" class="clock-date">Načítám datum…</div></div>
+ <div class="clock-meta"><div><b>Časové pásmo</b> · Europe/Prague</div><div>Hodiny se obnovují každou sekundu</div><div id="liveClockSync">Čas zařízení · čekám na synchronizaci</div></div>
+</section>
 <section class="map-card">
  <div class="map-wrap"><div id="map" aria-label="Interaktivní trojrozměrná mapa počasí České republiky"></div><canvas id="flowCanvas"></canvas></div>
  <div class="attribution">MapLibre GL JS · podklad OpenFreeMap / OpenStreetMap · výšková data Terrarium · meteorologická data podle dostupnosti</div>
@@ -735,6 +747,24 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   if(window.__weatherVortexFeatures)readWeather(window.__weatherVortexFeatures);
   raf=requestAnimationFrame(animate);
  }catch(e){status.textContent='Chyba 3D modelu: '+e.message;toggle.disabled=true}
+})();
+</script>
+<script>
+(function(){
+ const timeEl=document.getElementById('liveClockTime'),dateEl=document.getElementById('liveClockDate'),syncEl=document.getElementById('liveClockSync');
+ if(!timeEl||!dateEl)return;
+ const zone='Europe/Prague';
+ const timeFmt=new Intl.DateTimeFormat('cs-CZ',{timeZone:zone,hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
+ const dateFmt=new Intl.DateTimeFormat('cs-CZ',{timeZone:zone,weekday:'long',day:'numeric',month:'long',year:'numeric'});
+ function tick(){
+  const now=new Date();
+  timeEl.textContent=timeFmt.format(now);
+  dateEl.textContent=dateFmt.format(now);
+  if(syncEl)syncEl.textContent='Čas zařízení · '+new Intl.DateTimeFormat('cs-CZ',{timeZone:zone,timeZoneName:'short'}).format(now).split(' ').slice(-1)[0];
+ }
+ tick();
+ setInterval(tick,1000);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()});
 })();
 </script>
 </body>
