@@ -106,11 +106,11 @@ map.on("load",()=>{
  map.setTerrain({source:"x5-dem",exaggeration:1.25});
  map.addLayer({id:"x5-hillshade",source:"x5-dem",type:"hillshade",paint:{"hillshade-exaggeration":.35,"hillshade-shadow-color":"#526b7c","hillshade-highlight-color":"#f5f8fa"}});
  map.addSource("weather-grid",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
- map.addLayer({id:"temperature-circles",type:"circle",source:"weather-grid",paint:{"circle-radius":["interpolate",["linear"],["zoom"],5,9,8,18],"circle-color":["interpolate",["linear"],["get","temp"],-15,"#2856bd",-5,"#398fd0",0,"#48bdc2",8,"#8dcf83",18,"#f3c15b",28,"#e56b45"],"circle-opacity":.58,"circle-stroke-color":"#ffffff","circle-stroke-width":.7}});
+ map.addLayer({id:"temperature-circles",type:"circle",source:"weather-grid",paint:{"circle-radius":["interpolate",["linear"],["zoom"],5,13,8,22],"circle-color":["interpolate",["linear"],["get","temp"],-15,"#2856bd",-5,"#398fd0",0,"#48bdc2",8,"#8dcf83",18,"#f3c15b",28,"#e56b45"],"circle-opacity":.82,"circle-stroke-color":"#ffffff","circle-stroke-width":.7}});
  map.addLayer({id:"precip-circles",type:"circle",source:"weather-grid",layout:{visibility:"none"},paint:{"circle-radius":["interpolate",["linear"],["zoom"],5,7,8,15],"circle-color":["case",["==",["get","kind"],"snow"],"#d8f4ff","#268fe0"],"circle-opacity":["interpolate",["linear"],["get","precip"],0,0,.1,.28,1,.78,5,.9],"circle-stroke-color":"#fff","circle-stroke-width":.8}});
  map.addLayer({id:"wind-arrows",type:"symbol",source:"weather-grid",layout:{"text-field":"➤","text-size":["interpolate",["linear"],["zoom"],5,13,8,20],"text-rotate":["get","direction"],"text-rotation-alignment":"map","text-allow-overlap":true,"text-ignore-placement":true},paint:{"text-color":"#075f91","text-halo-color":"#ffffff","text-halo-width":1.2}});
  map.addSource("cities",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
- map.addLayer({id:"city-points",type:"circle",source:"cities",paint:{"circle-radius":5,"circle-color":"#f5a623","circle-stroke-color":"#fff","circle-stroke-width":2}});
+ map.addLayer({id:"city-points",type:"circle",source:"cities",paint:{"circle-radius":["interpolate",["linear"],["zoom"],5,6,9,9],"circle-color":"#f5a623","circle-stroke-color":"#17364b","circle-stroke-width":2.2,"circle-opacity":1}});
  map.addLayer({id:"city-labels",type:"symbol",source:"cities",layout:{"text-field":["get","name"],"text-font":["Open Sans Semibold"],"text-size":11,"text-offset":[0,1.1],"text-anchor":"top","text-allow-overlap":false},paint:{"text-color":"#17364b","text-halo-color":"#fff","text-halo-width":1.5}});
  map.addSource("chmi-stations",{type:"geojson",data:{type:"FeatureCollection",features:[]},cluster:true,clusterRadius:42,clusterMaxZoom:8});
  // Samostatná vrstva jednotlivých bodů jako spolehlivé zobrazení při přiblížení.
@@ -154,6 +154,10 @@ function updateLayers(){
  map.setLayoutProperty("wind-arrows","visibility",v.wind?"visible":"none");
  map.setLayoutProperty("city-points","visibility",v.cities?"visible":"none");
  map.setLayoutProperty("city-labels","visibility",v.cities?"visible":"none");
+ // Počasí a města musí ležet nad podkladovou mapou i ostatními vrstvami.
+ ["temperature-circles","precip-circles","wind-arrows","city-points","city-labels"].forEach(id=>{
+  if(map.getLayer(id))map.moveLayer(id);
+ });
  // Přepínač stanic ovládá body, popisky i shluky.
  ["chmi-station-points","chmi-station-labels","chmi-station-clusters","chmi-station-cluster-count","chmi-station-detail-points"].forEach(id=>{
   if(map.getLayer(id))map.setLayoutProperty(id,"visibility",v.stations?"visible":"none");
