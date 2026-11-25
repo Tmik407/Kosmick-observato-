@@ -77,7 +77,7 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
  </section>
 </div>
 <section class="panel" id="analyticsPanel">
- <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap"><div><h2 style="margin:0">📈 Meteorologická analytika · 72 hodin</h2><p class="small" style="margin:4px 0 0">Hodinová předpověď Open-Meteo pro vybrané město</p></div><div class="row small" style="gap:6px;flex-wrap:wrap"><label class="row small" for="analyticsCity"><b>Rychlá volba</b><select id="analyticsCity"><option>Most</option><option>Chomutov</option><option>Ústí nad Labem</option></select></label><label class="row small" for="analyticsPlace"><b>Libovolné město / obec</b><input id="analyticsPlace" type="search" placeholder="Např. Teplice, Kadaň, Brno…" autocomplete="off" style="max-width:190px"></label><button type="button" id="analyticsSearch">🔎 Zobrazit grafy</button></div></div>
+ <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap"><div><h2 style="margin:0">📈 Meteorologická analytika · 72 hodin</h2><p class="small" style="margin:4px 0 0">Hodinová předpověď Open-Meteo pro vybrané město</p></div><div class="row small" style="gap:6px;flex-wrap:wrap"><label class="row small" for="analyticsPlace"><b>Město nebo obec v ČR</b><input id="analyticsPlace" type="search" placeholder="Zadej název, např. Teplice nebo Kadaň…" autocomplete="off" style="max-width:280px"></label><button type="button" id="analyticsSearch">🔎 Zobrazit grafy</button></div></div>
  <div class="chart-grid"><div class="chart-card"><h3>🌡️ Teplota · °C</h3><div id="temperatureChart" role="img" aria-label="Graf teploty na 72 hodin">Čekám na data…</div></div><div class="chart-card"><h3>🌧️ Srážky · mm/h a cm/h</h3><div id="precipitationChart" role="img" aria-label="Graf deště a sněžení na 72 hodin">Čekám na data…</div></div><div class="chart-card"><h3>💨 Vítr · km/h</h3><div id="windChart" role="img" aria-label="Graf rychlosti větru na 72 hodin">Čekám na data…</div></div></div>
  <p class="chart-note" id="analyticsTime">Grafy se aktualizují podle dostupné hodinové předpovědi a zvoleného času.</p>
 </section>
@@ -162,7 +162,7 @@ map.on("load",()=>{
 function val(row,key,i){const a=row.hourly&&row.hourly[key];return Array.isArray(a)&&Number.isFinite(+a[i])?+a[i]:0}
 function weatherFeature(p,row,i){const temp=val(row,"temperature_2m",i),rain=val(row,"rain",i),snow=val(row,"snowfall",i),precip=val(row,"precipitation",i),direction=val(row,"wind_direction_10m",i),speed=val(row,"wind_speed_10m",i);return {type:"Feature",geometry:{type:"Point",coordinates:[p.lon,p.lat]},properties:{temp,rain,snow,precip,kind:snow>0.05?"snow":"rain",direction:(direction+180)%360,speed,wind:speed}}}
 function renderAnalytics(){
- const cityName=state.analyticsCustom?.name||$("analyticsCity")?.value||"Most",cityIndex=cities.findIndex(c=>c.name===cityName),row=state.analyticsCustom?.row||state.rows[grid.length+cityIndex],sourceTimes=state.analyticsCustom?.times||state.times;
+ const cityName=state.analyticsCustom?.name||"Most",cityIndex=cities.findIndex(c=>c.name===cityName),row=state.analyticsCustom?.row||state.rows[grid.length+cityIndex],sourceTimes=state.analyticsCustom?.times||state.times;
  if(!row||!sourceTimes.length)return;
  const start=state.analyticsCustom?0:Math.max(0,Math.min(state.hour,Math.max(0,sourceTimes.length-1))),end=Math.min(sourceTimes.length,start+72),times=sourceTimes.slice(start,end),h=row.hourly;
  const series=[{id:"temperatureChart",key:"temperature_2m",label:"Teplota",unit:"°C",color:"#d97732",kind:"line"},{id:"windChart",key:"wind_speed_10m",label:"Vítr",unit:"km/h",color:"#1684b6",kind:"line",factor:1},{id:"precipitationChart",key:"precipitation",label:"Srážky",unit:"mm/h",color:"#1684b6",kind:"bar",extra:"snowfall"}];
@@ -175,7 +175,7 @@ function renderAnalytics(){
  $("precipitationChart").innerHTML='<svg viewBox="0 0 '+W+' '+H+'" aria-hidden="true"><path d="M'+L+' '+T+'V'+(H-B)+'H'+(W-R)+'" fill="none" stroke="#cbd9e2"/>'+rain.map((v,i)=>{const x=L+i*slot+slot*.12,bw=Math.max(1,slot*.72),rh=v/maxP*(H-T-B);const sh=snow[i]/maxP*(H-T-B);return '<rect x="'+x.toFixed(1)+'" y="'+(H-B-rh).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+rh.toFixed(1)+'" rx="1" fill="#1684b6"/><rect x="'+x.toFixed(1)+'" y="'+(H-B-rh-sh).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+sh.toFixed(1)+'" rx="1" fill="#8bdcf5"/>'}).join("")+ticks.map(i=>'<text x="'+(L+i*slot)+'" y="'+(H-7)+'" text-anchor="middle" font-size="9" fill="#60798b">'+esc(new Date(times[i]).toLocaleString("cs-CZ",{day:"2-digit",hour:"2-digit"}))+'</text>').join("")+'<text x="3" y="12" font-size="9" fill="#60798b">'+maxP.toFixed(1)+'</text></svg><div class="chart-note">Modrá = déšť (mm/h), světle modrá = sněžení (cm/h)</div>';
  $("analyticsTime").textContent=cityName+" · "+new Date(times[0]).toLocaleString("cs-CZ")+" až "+new Date(times[times.length-1]).toLocaleString("cs-CZ")+" · "+times.length+" hodinových hodnot";
 }
-$("analyticsCity")?.addEventListener("change",()=>{state.analyticsCustom=null;$("analyticsPlace").value="";renderAnalytics()});
+
 async function searchAnalyticsPlace(){
  const query=$("analyticsPlace").value.trim(),button=$("analyticsSearch");
  if(!query){$("analyticsTime").textContent="Zadej název města nebo obce v České republice.";return}
