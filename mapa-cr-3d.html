@@ -54,7 +54,8 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
 </section>
 <section class="panel" style="margin-top:12px">
  <div class="row" style="justify-content:space-between;flex-wrap:wrap"><div><h2 style="margin:0">🌪️ WEATHER VORTEX 3D X-5</h2><p class="small" style="margin:4px 0 0">Prostorová vizualizace atmosférického proudění nad Českou republikou</p></div><div class="row" style="gap:6px"><button id="weatherVortexReset" type="button">↺ Výchozí pohled</button><button id="weatherVortexToggle" aria-pressed="true">⏸ Pozastavit animaci</button></div></div>
- <div id="weatherVortexLayerControls" class="controls" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
+ <div style="margin-top:10px;font-size:13px;font-weight:700;color:#31566d">Ovládání 3D vrstev – zapni nebo vypni jednotlivé jevy:</div>
+ <div id="weatherVortexLayerControls" class="controls" style="display:flex!important;visibility:visible!important;flex-wrap:wrap;gap:6px;margin-top:7px">
   <button type="button" data-vortex-layer="temperature" aria-pressed="true">🌡️ Teplotní povrch</button>
   <button type="button" data-vortex-layer="clouds" aria-pressed="true">☁️ Oblačnost</button>
   <button type="button" data-vortex-layer="precipitation" aria-pressed="true">🌧️ Déšť / sníh</button>
