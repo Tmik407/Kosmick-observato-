@@ -217,7 +217,14 @@ function drawArrow(x,y,dx,dy,size){
  ctx.lineTo(x-dx*size*.8+dy*size*.65,y-dy*size*.8-dx*size*.65);
  ctx.closePath();ctx.fill();
 }
+let pageTouchActive=false;
+function pauseFlowForScroll(){pageTouchActive=true;if(state.raf){cancelAnimationFrame(state.raf);state.raf=0}}
+function resumeFlowAfterScroll(){pageTouchActive=false;if(!state.raf)state.raf=requestAnimationFrame(animateFlow)}
+document.addEventListener("touchstart",pauseFlowForScroll,{passive:true,capture:true});
+document.addEventListener("touchend",resumeFlowAfterScroll,{passive:true,capture:true});
+document.addEventListener("touchcancel",resumeFlowAfterScroll,{passive:true,capture:true});
 function animateFlow(){
+ if(pageTouchActive){state.raf=0;return}
  const w=$("map").clientWidth,h=$("map").clientHeight;ctx.clearRect(0,0,w,h);
  // Meteorologické překryvy kreslíme přímo do canvasu; jsou tak čitelné i na mobilu a nezávisí na vykreslení symbolových vrstev MapLibre.
  if(state.visible.temperature||state.visible.precipitation){
