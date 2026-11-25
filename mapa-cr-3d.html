@@ -148,8 +148,10 @@ function updateLayers(){
  map.setLayoutProperty("wind-arrows","visibility",v.wind?"visible":"none");
  map.setLayoutProperty("city-points","visibility",v.cities?"visible":"none");
  map.setLayoutProperty("city-labels","visibility",v.cities?"visible":"none");
- map.setLayoutProperty("chmi-station-points","visibility",v.stations?"visible":"none");
- map.setLayoutProperty("chmi-station-labels","visibility",v.stations?"visible":"none");
+ // Přepínač stanic ovládá body, popisky i shluky.
+ ["chmi-station-points","chmi-station-labels","chmi-station-clusters","chmi-station-cluster-count"].forEach(id=>{
+  if(map.getLayer(id))map.setLayoutProperty(id,"visibility",v.stations?"visible":"none");
+ });
  $("legend").innerHTML=v.precipitation?'<span><i class="key" style="background:#268fe0"></i>Déšť</span><span><i class="key" style="background:#d8f4ff"></i>Sníh</span><span>Intenzita podle modelu (mm / cm za hodinu)</span>':v.temperature?'<span><i class="key" style="background:#2856bd"></i>Mráz</span><span><i class="key" style="background:#48bdc2"></i>Chladno</span><span><i class="key" style="background:#f3c15b"></i>Teplo</span>': '<span>Šipky: směr větru · pohyb částic: směr proudění</span>';
 }
 function seedParticles(){
