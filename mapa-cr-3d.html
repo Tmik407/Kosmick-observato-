@@ -54,6 +54,13 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
 </section>
 <section class="panel" style="margin-top:12px">
  <div class="row" style="justify-content:space-between;flex-wrap:wrap"><div><h2 style="margin:0">🌪️ WEATHER VORTEX 3D X-5</h2><p class="small" style="margin:4px 0 0">Prostorová vizualizace atmosférického proudění nad Českou republikou</p></div><div class="row" style="gap:6px"><button id="weatherVortexReset" type="button">↺ Výchozí pohled</button><button id="weatherVortexToggle" aria-pressed="true">⏸ Pozastavit animaci</button></div></div>
+ <div id="weatherVortexLayerControls" class="controls" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
+  <button type="button" data-vortex-layer="temperature" aria-pressed="true">🌡️ Teplotní povrch</button>
+  <button type="button" data-vortex-layer="clouds" aria-pressed="true">☁️ Oblačnost</button>
+  <button type="button" data-vortex-layer="precipitation" aria-pressed="true">🌧️ Déšť / sníh</button>
+  <button type="button" data-vortex-layer="atmosphere" aria-pressed="true">🌐 Atmosféra</button>
+  <button type="button" data-vortex-layer="wind" aria-pressed="true">💨 Proudnice větru</button>
+ </div>
  <div id="weatherVortexStage" style="position:relative;height:470px;min-height:360px;margin-top:10px;border-radius:13px;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#173f61,#071827 72%)">
   <canvas id="weatherVortex3d" style="display:block;width:100%;height:100%;touch-action:pan-y"></canvas>
   <div style="position:absolute;left:10px;top:10px;padding:7px 9px;border:1px solid #52738d;border-radius:8px;background:#061526d9;color:#e9f6ff;font-size:11px;pointer-events:none">MODEL 3D · ČESKÁ REPUBLIKA<br><span id="weatherVortexStatus">Čekám na data předpovědi…</span></div>
@@ -353,6 +360,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
 (()=>{
  const canvas=document.getElementById('weatherVortex3d'),host=document.getElementById('weatherVortexStage'),toggle=document.getElementById('weatherVortexToggle'),status=document.getElementById('weatherVortexStatus');
  const reset=document.getElementById('weatherVortexReset');
+ const layerControls=document.getElementById('weatherVortexLayerControls');
  if(!canvas||!host)return;
  let renderer,scene,camera,raf=0,paused=false,last=0,windSpeed=8,windDir=250,avgTemp=5,maxPrecip=0,orbitYaw=0,orbitPitch=.48,orbitRadius=7.2;
  try{
@@ -383,6 +391,18 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   for(let n=0;n<30;n++){const pts=[],turns=2.4+n%5*.2,phase=n/30*Math.PI*2;for(let j=0;j<=120;j++){const t=j/120,a=phase+t*Math.PI*2*turns,r=.5+t*3.05;pts.push(new THREE.Vector3(Math.cos(a)*r,.12+t*1.65+Math.sin(a*2+n)*.09,Math.sin(a)*r))}const curve=new THREE.CatmullRomCurve3(pts);streamGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(210)),new THREE.LineBasicMaterial({color:cols[n%4],transparent:true,opacity:.82})));const dot=new THREE.Mesh(new THREE.SphereGeometry(.052,8,8),new THREE.MeshBasicMaterial({color:cols[n%4]}));scene.add(dot);particles.push({mesh:dot,curve,phase:n/30})}
   const core=new THREE.Mesh(new THREE.SphereGeometry(.34,24,18),new THREE.MeshBasicMaterial({color:0x4ccfff,transparent:true,opacity:.55}));core.position.y=.32;scene.add(core);
   const ring=new THREE.Mesh(new THREE.TorusGeometry(.58,.025,8,64),new THREE.MeshBasicMaterial({color:0x8deaff,transparent:true,opacity:.95}));ring.rotation.x=Math.PI/2;ring.position.y=.32;scene.add(ring);
+  const vortexLayers={temperature:true,clouds:true,precipitation:true,atmosphere:true,wind:true};
+  function applyVortexLayers(){
+   heat.visible=vortexLayers.temperature;patches.forEach(p=>p.visible=vortexLayers.temperature);
+   cloudGroup.visible=vortexLayers.clouds;atmosphere.visible=vortexLayers.atmosphere;
+   rainGroup.visible=vortexLayers.precipitation&&rainGroup.children.some(x=>x.visible);
+   snowGroup.visible=vortexLayers.precipitation&&snowGroup.children.some(x=>x.visible);
+   streamGroup.visible=vortexLayers.wind;particles.forEach(p=>p.mesh.visible=vortexLayers.wind);core.visible=vortexLayers.wind;ring.visible=vortexLayers.wind;
+  }
+  layerControls?.querySelectorAll('[data-vortex-layer]').forEach(btn=>btn.addEventListener('click',()=>{
+   const key=btn.dataset.vortexLayer;vortexLayers[key]=!vortexLayers[key];btn.setAttribute('aria-pressed',String(vortexLayers[key]));applyVortexLayers();
+  }));
+
   function updateCamera(){const target=new THREE.Vector3(0,.35,0);camera.position.set(Math.sin(orbitYaw)*Math.cos(orbitPitch)*orbitRadius,target.y+Math.sin(orbitPitch)*orbitRadius,Math.cos(orbitYaw)*Math.cos(orbitPitch)*orbitRadius);camera.lookAt(target)}
   function resize(){const w=Math.max(1,host.clientWidth),h=Math.max(1,host.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();updateCamera()}new ResizeObserver(resize).observe(host);resize();
   reset?.addEventListener('click',()=>{orbitYaw=0;orbitPitch=.48;orbitRadius=7.2;updateCamera()});
@@ -397,7 +417,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   function readWeather(features){const fs=features||window.__weatherVortexFeatures||[];if(!fs.length)return;const valid=fs.filter(f=>f&&f.properties);if(!valid.length)return;windSpeed=valid.reduce((s,f)=>s+(+f.properties.speed||0),0)/valid.length;const rad=valid.reduce((s,f)=>s+Math.sin((+f.properties.direction||0)*Math.PI/180),0)/valid.length,cos=valid.reduce((s,f)=>s+Math.cos((+f.properties.direction||0)*Math.PI/180),0)/valid.length;windDir=(Math.atan2(rad,cos)*180/Math.PI+360)%360;avgTemp=valid.reduce((s,f)=>s+(+f.properties.temp||0),0)/valid.length;maxPrecip=Math.max(0,...valid.map(f=>Math.max(+f.properties.rain||0,+f.properties.snow||0,+f.properties.precip||0)));
    const cold=avgTemp<0,warm=avgTemp>=12;const palette=cold?[.08,.32,1]:warm?[1,.28,.06]:[.02,.78,.48];const colors=heatGeo.attributes.color;for(let i=0;i<colors.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i),wave=Math.sin(x*.75+z*.35)*.12;const mix=Math.max(0,Math.min(1,(x+3.7)/7.4));colors.setXYZ(i,Math.max(0,Math.min(1,palette[0]+mix*.22+wave)),Math.max(0,Math.min(1,palette[1]-mix*.18)),Math.max(0,Math.min(1,palette[2]-mix*.35)))}colors.needsUpdate=true;
    patches[0].material.opacity=cold?.78:.4;patches[1].material.opacity=warm?.8:.42;patches[2].material.opacity=.58;
-   const rain=valid.some(f=>(+f.properties.rain||0)>.01),snow=valid.some(f=>(+f.properties.snow||0)>.01);rainGroup.visible=rain;snowGroup.visible=snow;
+   const rain=valid.some(f=>(+f.properties.rain||0)>.01),snow=valid.some(f=>(+f.properties.snow||0)>.01);rainGroup.visible=rain&&vortexLayers.precipitation;snowGroup.visible=snow&&vortexLayers.precipitation;applyVortexLayers();
    drops.forEach((d,i)=>{d.material.opacity=rain?Math.min(.72,.38+maxPrecip*.12):0;d.visible=rain});flakes.forEach((f,i)=>{f.visible=snow;f.material.opacity=.72});
    status.textContent='Vítr '+windSpeed.toFixed(1)+' km/h · směr '+Math.round(windDir)+'° · teplota '+avgTemp.toFixed(1)+' °C · srážky '+maxPrecip.toFixed(2)+' mm/h';
   }
