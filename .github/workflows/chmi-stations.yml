@@ -1,0 +1,45 @@
+name: CHMI live meteorological stations
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/chmi-stations.yml'
+      - 'scripts/update_chmi_stations.py'
+permissions:
+  contents: write
+concurrency:
+  group: chmi-stations
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download and process CHMI observations
+        run: python -m pip install --upgrade requests && python scripts/update_chmi_stations.py
+      - name: Publish station snapshot
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/chmi-stations-latest.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update live CHMI station observations"
+            for attempt in 1 2 3 4 5; do
+              git fetch origin main
+              git rebase origin/main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 3))
+            done
+            exit 1
+          fi
