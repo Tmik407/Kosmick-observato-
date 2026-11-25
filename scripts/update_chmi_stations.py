@@ -11,7 +11,9 @@ import requests
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "chmi-stations-latest.json"
 BASE = "https://opendata.chmi.cz/meteorology/climate/recent"
-HEADERS = {"User-Agent": "KosmickaObservator-X5/1.1 (CHMI open data)"}
+HEADERS = {"User-Agent": "PredpovedPocasiCR/1.2 (CHMI open data)"}
+# Standard CHMI WIGOS network plus additional 0-203 partner/automatic sites.
+SUPPORTED_WSI_PREFIXES = ("0-20000-0-", "0-203-0-")
 TODAY = dt.datetime.now(dt.timezone.utc).date()
 ALIASES = {
     "T": "temperature_c", "H": "humidity_pct", "F": "wind_ms",
@@ -88,8 +90,8 @@ def main():
         if len(row) < 6:
             continue
         wsi, ghid, name, lon, lat, elevation = row[:6]
-        # The 10-minute live feed currently publishes this WSI station network.
-        if not str(wsi).startswith("0-20000-0-") or lon is None or lat is None:
+        # Keep station identifiers for networks that publish recent 10-minute files.
+        if not str(wsi).startswith(SUPPORTED_WSI_PREFIXES) or lon is None or lat is None:
             continue
         lon, lat = float(lon), float(lat)
         if not (12.0 <= lon <= 19.0 and 48.4 <= lat <= 51.2):
@@ -105,14 +107,14 @@ def main():
         stamp = day.strftime("%Y%m%d")
         attempted_dates.append(stamp)
         batch = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
             futures = [pool.submit(fetch_station, station, stamp)
                        for station in stations.values()]
             for future in concurrent.futures.as_completed(futures):
                 item, error = future.result()
                 if item:
                     batch.append(item)
-                elif error:
+                elif error and "HTTP 404" not in error:
                     print(error, flush=True)
         if batch:
             result = sorted(batch, key=lambda item: item["name"])
@@ -129,10 +131,11 @@ def main():
         "metadata_date": meta_date,
         "observation_date": attempted_dates[-1],
         "station_count": len(result),
+        "station_networks": {prefix: sum(1 for s in result if s["id"].startswith(prefix)) for prefix in SUPPORTED_WSI_PREFIXES},
         "stations": result,
         "latest_observation_utc": newest,
         "available_elements": sorted({e for s in result for e in s.get("elements", [])}),
-        "note": "Přímá měření stanic; dostupné prvky se liší podle pozorovacího programu. Prázdné hodnoty jsou vynechány, kvalita je převzata ze zdroje ČHMÚ."
+        "note": "Přímá měření z dostupných sítí ČHMÚ a spolupracujících pozorovacích míst. Dostupné prvky se liší podle pozorovacího programu; zařazeny jsou pouze stanice s dostupným 10min souborem. Prázdné hodnoty jsou vynechány, kvalita je převzata ze zdroje ČHMÚ."
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     tmp = OUT.with_suffix(".tmp")
