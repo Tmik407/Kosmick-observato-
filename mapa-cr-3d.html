@@ -122,6 +122,7 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
  <div id="weatherVortexStage" style="position:relative;height:470px;min-height:360px;margin-top:10px;border-radius:13px;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#173f61,#071827 72%)">
   <canvas id="weatherVortex3d" style="display:block;width:100%;height:100%;touch-action:pan-y"></canvas>
   <div style="position:absolute;left:10px;top:10px;padding:7px 9px;border:1px solid #52738d;border-radius:8px;background:#061526d9;color:#e9f6ff;font-size:11px;pointer-events:none">MODEL 3D · ČESKÁ REPUBLIKA<br><span id="weatherVortexStatus">Čekám na data předpovědi…</span></div>
+  <div id="weatherVortexProbe" role="status" aria-live="polite" style="display:none;position:absolute;z-index:3;left:50%;top:55%;transform:translate(-50%,-50%);padding:8px 11px;border:1px solid #8bdcff;border-radius:9px;background:#061526ed;color:#fff;font-size:12px;font-weight:700;pointer-events:none;box-shadow:0 2px 12px #0008">Teplota: — °C</div>
   <div aria-label="Teplotní stupnice ve stupních Celsia" style="position:absolute;right:10px;bottom:10px;width:clamp(150px,27%,220px);box-sizing:border-box;padding:7px 9px;border:1px solid #52738d;border-radius:8px;background:#061526dc;color:#eaf7ff;font-size:10px;pointer-events:none">
    <div style="font-weight:700;margin-bottom:5px">🌡️ Teplota · °C</div>
    <div style="height:9px;border-radius:6px;background:linear-gradient(90deg,#174dff 0%,#25bde8 25%,#32c879 50%,#ffd447 75%,#f07828 100%)"></div>
@@ -694,7 +695,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
  const layerControls=document.getElementById('weatherVortexLayerControls');
  if(!canvas||!host)return;
  let renderer,scene,camera,raf=0,paused=false,last=0,windSpeed=8,windDir=250,avgTemp=5,maxPrecip=0,orbitYaw=0,orbitPitch=.48,orbitRadius=7.2;
-  let validTimeLabel='',avgCloudCover=0;
+  let validTimeLabel='',avgCloudCover=0,tempSampler=null;
  try{
   const lowPower=window.matchMedia('(pointer: coarse)').matches;renderer=new THREE.WebGLRenderer({canvas,antialias:!lowPower,alpha:true,powerPreference:'low-power'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,lowPower?1.1:1.5));
   scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(38,1,.1,100);camera.position.set(0,3.8,6.9);camera.lookAt(0,.25,0);
@@ -774,9 +775,15 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   function resize(){const w=Math.max(1,host.clientWidth),h=Math.max(1,host.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();updateCamera()}new ResizeObserver(resize).observe(host);resize();
   let stageVisible=true;const stageObserver=new IntersectionObserver(entries=>{stageVisible=entries.some(e=>e.isIntersecting);if(stageVisible&&!paused&&!document.hidden&&!raf)raf=requestAnimationFrame(animate);});stageObserver.observe(host);
   reset?.addEventListener('click',()=>{orbitYaw=0;orbitPitch=.48;orbitRadius=7.2;updateCamera()});
+  // Klepnutí na barevnou plochu zobrazí interpolovanou místní teplotu.
+  const probe=document.getElementById('weatherVortexProbe'),raycaster=new THREE.Raycaster(),pointerNdc=new THREE.Vector2();
+  let tapCandidate=null;
+  function probeTemperature(ev){if(!tempSampler)return;const rect=canvas.getBoundingClientRect();pointerNdc.x=((ev.clientX-rect.left)/rect.width)*2-1;pointerNdc.y=-((ev.clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(pointerNdc,camera);const hit=raycaster.intersectObject(heat,false)[0];if(!hit)return;const value=tempSampler(hit.point.x,hit.point.z);if(!Number.isFinite(value))return;const stageRect=host.getBoundingClientRect();probe.textContent='🌡️ Odhad místní teploty: '+(value>0?'+':'')+value.toFixed(1)+' °C';probe.style.left=Math.max(90,Math.min(stageRect.width-90,ev.clientX-stageRect.left))+'px';probe.style.top=Math.max(42,Math.min(stageRect.height-35,ev.clientY-stageRect.top-28))+'px';probe.style.transform='translate(-50%,-50%)';probe.style.display='block'}
   // Myš nebo dva prsty otáčejí modelem; jeden prst dál roluje stránku.
   let drag=null,pinch=0;
-  canvas.addEventListener('pointerdown',ev=>{if(ev.pointerType==='mouse'){drag={x:ev.clientX,y:ev.clientY};canvas.setPointerCapture(ev.pointerId)}});
+  canvas.addEventListener('pointerdown',ev=>{tapCandidate={x:ev.clientX,y:ev.clientY,id:ev.pointerId};if(ev.pointerType==='mouse'){drag={x:ev.clientX,y:ev.clientY};canvas.setPointerCapture(ev.pointerId)}});
+  canvas.addEventListener('pointerup',ev=>{if(tapCandidate&&tapCandidate.id===ev.pointerId&&Math.hypot(ev.clientX-tapCandidate.x,ev.clientY-tapCandidate.y)<9)probeTemperature(ev);tapCandidate=null;drag=null});
+  canvas.addEventListener('pointercancel',()=>{tapCandidate=null;drag=null});
   canvas.addEventListener('pointermove',ev=>{if(!drag)return;orbitYaw-=(ev.clientX-drag.x)*.006;orbitPitch=Math.max(.12,Math.min(1.05,orbitPitch+(ev.clientY-drag.y)*.004));drag={x:ev.clientX,y:ev.clientY};updateCamera()});
   canvas.addEventListener('pointerup',()=>drag=null);canvas.addEventListener('pointercancel',()=>drag=null);
   canvas.addEventListener('touchstart',ev=>{if(ev.touches.length===2){ev.preventDefault();pinch=Math.hypot(ev.touches[0].clientX-ev.touches[1].clientX,ev.touches[0].clientY-ev.touches[1].clientY);drag={x:(ev.touches[0].clientX+ev.touches[1].clientX)/2,y:(ev.touches[0].clientY+ev.touches[1].clientY)/2} }},{passive:false});
@@ -788,6 +795,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    // Společná prostorová interpolace (IDW) pro teplotu, oblačnost i srážky.
    const weatherPoints=valid.map(f=>{const c=f.geometry?.coordinates||[],p=f.properties||{};return {x:((+c[0]-12.15)/(18.55-12.15))*7.2-3.6,z:((50.95-(+c[1]))/(50.95-48.65))*7.2-3.6,temp:Number.isFinite(+p.temp)?+p.temp:avgTemp,cloud:Math.max(0,Math.min(100,+p.cloudCover||0)),rain:Math.max(0,+p.rain||0,((+p.precip||0)-(+p.snow||0))),snow:Math.max(0,+p.snow||0)}});
    function sampleLocal(x,z,key){let weighted=0,total=0,nearest=Infinity,nearValue=0;for(const q of weatherPoints){const d2=(q.x-x)*(q.x-x)+(q.z-z)*(q.z-z);if(d2<nearest){nearest=d2;nearValue=q[key]}const w=1/Math.max(.025,d2*d2);weighted+=q[key]*w;total+=w}return total?weighted/total:nearValue}
+   tempSampler=(x,z)=>sampleLocal(x,z,'temp');
    clouds.forEach(g=>{const cover=sampleLocal(g.position.x,g.position.z,'cloud');const opacity=cover<5?0:.025+(cover/100)*.24;g.children.forEach(puff=>{puff.material.opacity=opacity;puff.visible=cover>=5});g.visible=cover>=5});
    const cold=avgTemp<0,warm=avgTemp>=12;const palette=cold?[.08,.32,1]:warm?[1,.28,.06]:[.02,.78,.48];const colors=heatGeo.attributes.color;
    // Interpolace teploty z jednotlivých bodů předpovědi do každého vrcholu 3D plochy (IDW).
