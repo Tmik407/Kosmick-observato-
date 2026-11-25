@@ -159,23 +159,31 @@ map.on("load",()=>{
  map.on("mouseenter","city-points",()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave","city-points",()=>map.getCanvas().style.cursor="");
  status("3D mapa připravena · načítám počasí a stanice ČHMÚ…");loadWeather();loadStations();
 });
-// Omezení opakovaných požadavků při dočasném limitu Open-Meteo (HTTP 429).
+// Centrální fronta a ochrana proti opakovaným požadavkům Open-Meteo.
+let weatherApiCooldownUntil=0,weatherApiQueue=Promise.resolve();
+const weatherApiInflight=new Map();
 async function fetchWeatherApi(url,options={}){
- let lastResponse=null,lastError=null;
- for(let attempt=0;attempt<4;attempt++){
-  try{
+ if(weatherApiInflight.has(url))return weatherApiInflight.get(url);
+ const request=(async()=>{
+  const wait=Math.max(0,weatherApiCooldownUntil-Date.now());
+  if(wait>0)throw Error("Open-Meteo má aktivní ochrannou pauzu ještě "+Math.ceil(wait/1000)+" s. Počkej prosím.");
+  const run=weatherApiQueue.then(async()=>{
+   const remaining=Math.max(0,weatherApiCooldownUntil-Date.now());
+   if(remaining>0)throw Error("Open-Meteo má aktivní ochrannou pauzu ještě "+Math.ceil(remaining/1000)+" s.");
    const response=await fetch(url,{...options,cache:options.cache||"default"});
-   if(response.status!==429)return response;
-   lastResponse=response;
-   if(attempt===3)break;
-   const retryHeader=Number(response.headers.get("Retry-After"));
-   const waitMs=Number.isFinite(retryHeader)&&retryHeader>0?Math.min(30000,retryHeader*1000):4000*Math.pow(2,attempt);
-   status("Open-Meteo dočasně omezuje požadavky · další pokus za "+Math.ceil(waitMs/1000)+" s…");
-   await new Promise(resolve=>setTimeout(resolve,waitMs));
-  }catch(error){lastError=error;if(attempt===3)throw error;await new Promise(resolve=>setTimeout(resolve,1500*Math.pow(2,attempt)));}
- }
- if(lastResponse)return lastResponse;
- throw lastError||new Error("Open-Meteo dočasně neodpovídá");
+   if(response.status===429){
+    const header=Number(response.headers.get("Retry-After"));
+    const pause=Number.isFinite(header)&&header>0?Math.min(120000,header*1000):60000;
+    weatherApiCooldownUntil=Date.now()+pause;
+    throw Error("Open-Meteo vrátilo HTTP 429. Další požadavky pozastaveny na "+Math.ceil(pause/1000)+" s, aby se limit dále nezvyšoval.");
+   }
+   return response;
+  });
+  weatherApiQueue=run.catch(()=>{});
+  return run;
+ })();
+ weatherApiInflight.set(url,request);
+ try{return await request}finally{weatherApiInflight.delete(url)}
 }
 function val(row,key,i){const a=row.hourly&&row.hourly[key];return Array.isArray(a)&&Number.isFinite(+a[i])?+a[i]:0}
 function weatherFeature(p,row,i){const temp=val(row,"temperature_2m",i),rain=val(row,"rain",i),snow=val(row,"snowfall",i),precip=val(row,"precipitation",i),direction=val(row,"wind_direction_10m",i),speed=val(row,"wind_speed_10m",i);return {type:"Feature",geometry:{type:"Point",coordinates:[p.lon,p.lat]},properties:{temp,rain,snow,precip,kind:snow>0.05?"snow":"rain",direction:(direction+180)%360,speed,wind:speed}}}
@@ -413,7 +421,8 @@ async function loadStations(){
 function loadWeather(force=false){
  if(state.weatherLoading)return;
  if(!force&&state.lastWeatherLoad&&Date.now()-state.lastWeatherLoad<10*60*1000){status("Používám aktuální předpověď · poslední načtení před méně než 10 minutami");return;}
- state.weatherLoading=true;status("Načítám předpověď po menších dávkách…");$("refresh").disabled=true;
+ if(Date.now()<weatherApiCooldownUntil){status("Open-Meteo má ochrannou pauzu · používám uložená data, pokud jsou dostupná");return;}
+ state.weatherLoading=true;status("Načítám předpověď pro 15 měst jedním požadavkem…");$("refresh").disabled=true;
  const makeUrl=places=>"https://api.open-meteo.com/v1/forecast?latitude="+places.map(p=>p.lat).join(",")+"&longitude="+places.map(p=>p.lon).join(",")+"&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m&forecast_days=4&timezone=Europe%2FPrague";
  const nearestCityRow=p=>{let best=0,distance=Infinity;for(let i=0;i<cities.length;i++){const d=(p.lat-cities[i].lat)**2+(p.lon-cities[i].lon)**2;if(d<distance){distance=d;best=i}}return best};
  const useRows=rows=>{
@@ -424,23 +433,14 @@ function loadWeather(force=false){
  };
  (async()=>{
   try{
-   // Open-Meteo omezuje počet souřadnic v jednom požadavku. Načítáme proto
-   // 15 referenčních měst ve třech dávkách po pěti a síť mapy dopočítáme z nich.
-   const cityRows=[];
-   for(let start=0;start<cities.length;start+=5){
-    if(start>0)await new Promise(resolve=>setTimeout(resolve,1200));
-    const batch=cities.slice(start,start+5);
-    const response=await fetchWeatherApi(makeUrl(batch),{cache:"default"});
-    if(!response.ok)throw Error("Open-Meteo HTTP "+response.status);
-    const data=await response.json(),rows=Array.isArray(data)?data:[data];
-    if(rows.length!==batch.length)throw Error("Nesouhlasí počet míst v dávce");
-    cityRows.push(...rows);
-    status("Načítám předpověď · "+Math.min(start+batch.length,cities.length)+"/"+cities.length+" míst…");
-   }
-   if(cityRows.length!==cities.length)throw Error("Některá města se nepodařilo načíst");
+   // Jediný požadavek pro 15 měst; gridové body přebírají nejbližší město.
+   const response=await fetchWeatherApi(makeUrl(cities),{cache:"default"});
+   if(!response.ok)throw Error("Open-Meteo HTTP "+response.status);
+   const data=await response.json(),cityRows=Array.isArray(data)?data:[data];
+   if(cityRows.length!==cities.length)throw Error("Nesouhlasí počet měst");
    const gridRows=grid.map(p=>cityRows[nearestCityRow(p)]);
    useRows([...gridRows,...cityRows]);
-   status("Počasí načteno · 15 referenčních měst · síť mapy interpolována");
+   status("Počasí načteno · 15 měst · jedna žádost Open-Meteo");
   }catch(error){
    let cached=null;try{cached=JSON.parse(localStorage.getItem("weatherVortexForecastCache")||"null")}catch(_){}
    if(cached?.rows?.length===all.length&&cached?.times?.length&&Date.now()-(cached.savedAt||0)<24*60*60*1000){
@@ -450,7 +450,7 @@ function loadWeather(force=false){
     status("Používám uloženou předpověď · živá data jsou dočasně nedostupná");
    }else{
     status("Předpověď je dočasně nedostupná");
-    $("weatherSummary").textContent="Open-Meteo dočasně omezuje požadavky ("+error.message+"). Zkus aktualizaci později.";
+    $("weatherSummary").textContent=error.message;
    }
   }finally{state.weatherLoading=false;$("refresh").disabled=false}
  })();
