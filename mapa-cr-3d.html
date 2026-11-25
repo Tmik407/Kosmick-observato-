@@ -122,7 +122,11 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
  <div id="weatherVortexStage" style="position:relative;height:470px;min-height:360px;margin-top:10px;border-radius:13px;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#173f61,#071827 72%)">
   <canvas id="weatherVortex3d" style="display:block;width:100%;height:100%;touch-action:pan-y"></canvas>
   <div style="position:absolute;left:10px;top:10px;padding:7px 9px;border:1px solid #52738d;border-radius:8px;background:#061526d9;color:#e9f6ff;font-size:11px;pointer-events:none">MODEL 3D · ČESKÁ REPUBLIKA<br><span id="weatherVortexStatus">Čekám na data předpovědi…</span></div>
-  <div style="position:absolute;right:10px;bottom:10px;color:#e6f5ff;font-size:10px;pointer-events:none">Modré proudnice · částice větru · schematický reliéf</div>
+  <div aria-label="Teplotní stupnice ve stupních Celsia" style="position:absolute;right:10px;bottom:10px;width:clamp(150px,27%,220px);box-sizing:border-box;padding:7px 9px;border:1px solid #52738d;border-radius:8px;background:#061526dc;color:#eaf7ff;font-size:10px;pointer-events:none">
+   <div style="font-weight:700;margin-bottom:5px">🌡️ Teplota · °C</div>
+   <div style="height:9px;border-radius:6px;background:linear-gradient(90deg,#174dff 0%,#25bde8 25%,#32c879 50%,#ffd447 75%,#f07828 100%)"></div>
+   <div style="display:flex;justify-content:space-between;gap:4px;margin-top:4px;font-variant-numeric:tabular-nums"><span id="weatherTempScaleMin">—</span><span id="weatherTempScaleMid">—</span><span id="weatherTempScaleMax">—</span></div>
+  </div>
   <div style="position:absolute;left:10px;bottom:10px;display:flex;gap:7px;flex-wrap:wrap;color:#eaf7ff;font-size:10px;pointer-events:none;background:#061526c9;padding:6px 8px;border-radius:8px"><span>🔵 Chlad</span><span>🟢 Mírno</span><span>🟠 Teplo</span><span>💧 Déšť</span><span>❄️ Sníh</span></div>
  </div>
 <p class="small" style="margin:8px 0 0">Ovládání modelu: dvěma prsty otáčej a přibližuj, tažením myší otáčej. Jedním prstem můžeš stránku normálně posouvat.</p>
@@ -792,6 +796,9 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    // Adaptivní legenda: plný barevný rozsah se přizpůsobí právě zobrazeným teplotám.
    const observedTemps=weatherPoints.map(q=>q.temp),tempMin=Math.min(...observedTemps),tempMax=Math.max(...observedTemps);
    const tempSpan=Math.max(2.5,tempMax-tempMin),scaleMin=tempMin-tempSpan*.08,scaleMax=tempMax+tempSpan*.08;
+   const fmtTemp=v=>(v>0?'+':'')+v.toFixed(1)+' °C',scaleMid=(scaleMin+scaleMax)/2;
+   const scaleMinEl=document.getElementById('weatherTempScaleMin'),scaleMidEl=document.getElementById('weatherTempScaleMid'),scaleMaxEl=document.getElementById('weatherTempScaleMax');
+   if(scaleMinEl)scaleMinEl.textContent=fmtTemp(scaleMin);if(scaleMidEl)scaleMidEl.textContent=fmtTemp(scaleMid);if(scaleMaxEl)scaleMaxEl.textContent=fmtTemp(scaleMax);
    function colorForTemperature(t){const u=Math.max(0,Math.min(1,(t-scaleMin)/(scaleMax-scaleMin)));if(u<.25)return cA.copy(coldColor).lerp(coolColor,u*4);if(u<.5)return cA.copy(coolColor).lerp(mildColor,(u-.25)*4);if(u<.75)return cA.copy(mildColor).lerp(warmColor,(u-.5)*4);return cA.copy(warmColor).lerp(hotColor,(u-.75)*4)}
    for(let i=0;i<colors.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);let weighted=0,total=0,nearest=Infinity,nearestTemp=avgTemp;for(const q of tempPoints){const d2=(q.x-x)*(q.x-x)+(q.z-z)*(q.z-z);if(d2<nearest){nearest=d2;nearestTemp=q.t}const w=1/Math.max(.025,d2*d2);weighted+=q.t*w;total+=w}const localTemp=total?weighted/total:nearestTemp;const col=colorForTemperature(localTemp);colors.setXYZ(i,col.r,col.g,col.b)}
    colors.needsUpdate=true;
