@@ -149,27 +149,42 @@ function updateLayers(){
  $("legend").innerHTML=v.precipitation?'<span><i class="key" style="background:#268fe0"></i>Déšť</span><span><i class="key" style="background:#d8f4ff"></i>Sníh</span><span>Intenzita podle modelu (mm / cm za hodinu)</span>':v.temperature?'<span><i class="key" style="background:#2856bd"></i>Mráz</span><span><i class="key" style="background:#48bdc2"></i>Chladno</span><span><i class="key" style="background:#f3c15b"></i>Teplo</span>': '<span>Šipky: směr větru · pohyb částic: směr proudění</span>';
 }
 function seedParticles(){
+ // Vektorové pole větru v projekci mapy; směr se mezi body plynule interpoluje.
  const w=$("map").clientWidth,h=$("map").clientHeight,vectors=[];
  for(const f of state.features){
   const p=f.properties;if(p.speed<.45)continue;
   const q=map.project(f.geometry.coordinates),a=p.direction*Math.PI/180;
-  if(q.x<-80||q.x>w+80||q.y<-80||q.y>h+80)continue;
+  if(q.x<-100||q.x>w+100||q.y<-100||q.y>h+100)continue;
   vectors.push({x:q.x,y:q.y,dx:Math.sin(a),dy:-Math.cos(a),speed:p.speed});
+ }
+ function sampleWind(x,y){
+  let sx=0,sy=0,ss=0,sw=0;
+  for(const v of vectors){
+   const d2=(v.x-x)**2+(v.y-y)**2;
+   if(d2>165*165)continue;
+   const weight=1/Math.max(180,d2);
+   sx+=v.dx*weight;sy+=v.dy*weight;ss+=v.speed*weight;sw+=weight;
+  }
+  if(!sw)return null;
+  const mag=Math.hypot(sx,sy)||1;
+  return {dx:sx/mag,dy:sy/mag,speed:ss/sw};
  }
  const paths=[];
  for(let s=0;s<vectors.length;s+=2){
-  const start=vectors[s],path=[{x:start.x,y:start.y}],seen=new Set();let x=start.x,y=start.y;
-  for(let step=0;step<34;step++){
-   let best=null,bestD=Infinity;
-   for(const v of vectors){const d=(v.x-x)**2+(v.y-y)**2;if(d<bestD){bestD=d;best=v}}
-   if(!best||bestD>120*120)break;
-   const key=Math.round(best.x/16)+":"+Math.round(best.y/16);
-   if(seen.has(key)&&step>5)break;seen.add(key);
-   const advance=7+Math.min(best.speed,32)*.24;x+=best.dx*advance;y+=best.dy*advance;
-   if(x<-5||x>w+5||y<-5||y>h+5)break;
+  const start=vectors[s],path=[{x:start.x,y:start.y}],seen=new Set();
+  let x=start.x,y=start.y;
+  for(let step=0;step<46;step++){
+   const v1=sampleWind(x,y);if(!v1)break;
+   const advance=5.5+Math.min(v1.speed,32)*.22;
+   const midX=x+v1.dx*advance*.5,midY=y+v1.dy*advance*.5;
+   const v2=sampleWind(midX,midY);if(!v2)break;
+   x+=v2.dx*advance;y+=v2.dy*advance;
+   if(x<-8||x>w+8||y<-8||y>h+8)break;
+   const key=Math.round(x/12)+":"+Math.round(y/12);
+   if(seen.has(key)&&step>7)break;seen.add(key);
    path.push({x,y});
   }
-  if(path.length>=6)paths.push({points:path,phase:Math.random()*path.length,speed:start.speed});
+  if(path.length>=7)paths.push({points:path,phase:Math.random()*path.length,speed:start.speed});
  }
  state.particles=paths;
 }
