@@ -155,6 +155,9 @@ function val(row,key,i){const a=row.hourly&&row.hourly[key];return Array.isArray
 function weatherFeature(p,row,i){const temp=val(row,"temperature_2m",i),rain=val(row,"rain",i),snow=val(row,"snowfall",i),precip=val(row,"precipitation",i),direction=val(row,"wind_direction_10m",i),speed=val(row,"wind_speed_10m",i);return {type:"Feature",geometry:{type:"Point",coordinates:[p.lon,p.lat]},properties:{temp,rain,snow,precip,kind:snow>0.05?"snow":"rain",direction:(direction+180)%360,speed,wind:speed}}}
 function applyHour(){
  const i=state.hour;if(!state.rows.length)return;
+ // Odpověď Open-Meteo může dorazit dříve než se dokončí načtení stylu MapLibre.
+ // V takovém případě počkáme na zdroje mapy; map load následně znovu spustí načtení.
+ if(!map||!map.getSource("weather-grid")||!map.getSource("cities")){status("Předpověď načtena · čekám na zdroje mapy…");map?.once("idle",()=>{if(state.rows.length)applyHour()});return;}
  const features=all.map((p,n)=>weatherFeature(p,state.rows[n],i));
  map.getSource("weather-grid").setData({type:"FeatureCollection",features:features.slice(0,grid.length)});
  const cityFeatures=features.slice(grid.length).map(f=>{const c=cities.find(x=>x.lat===f.geometry.coordinates[1]&&x.lon===f.geometry.coordinates[0]);return {...f,properties:{...f.properties,name:c.name}}});
@@ -306,6 +309,8 @@ async function loadStations(){
   const doc=await response.json();state.stations=Array.isArray(doc.stations)?doc.stations:[];
   const features=state.stations.map(st=>({type:"Feature",geometry:{type:"Point",coordinates:[st.lon,st.lat]},properties:{...st,measurements_json:JSON.stringify(st.measurements||{}),wind_kmh:Number.isFinite(st.wind_ms)?st.wind_ms*3.6:null}}));
   const stationCollection={type:"FeatureCollection",features};
+  // Stanice mohou být načteny dříve než zdroj MapLibre; v tom případě se znovu načtou po map load.
+  if(!map||!map.getSource("chmi-stations")){ $("stationSummary").textContent="Měření ČHMÚ načtena · čekám na zdroj mapy…"; map?.once("idle",()=>loadStations()); return; }
   map.getSource("chmi-stations").setData(stationCollection);
   const times=state.stations.map(x=>x.observed_utc).filter(Boolean).sort();
   $("stationSummary").textContent="ČHMÚ: "+state.stations.length+" stanic · poslední měření "+(times.at(-1)||"čas neuveden")+" · aktualizace archivu "+(doc.generated_utc||"—");
@@ -388,8 +393,37 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   for(let n=0;n<54;n++){const a=n*2.399,r=.65+(n%9)*.39;const d=new THREE.Mesh(new THREE.CylinderGeometry(.014,.014,.25,6),new THREE.MeshBasicMaterial({color:0x48cfff,transparent:true,opacity:.95}));d.position.set(Math.cos(a)*r,.2+(n%13)*.16,Math.sin(a)*r);rainGroup.add(d);drops.push(d)}
   const snowGroup=new THREE.Group();scene.add(snowGroup);const flakes=[];
   for(let n=0;n<30;n++){const a=n*2.399,r=.7+(n%7)*.43;const f=new THREE.Mesh(new THREE.SphereGeometry(.03,7,7),new THREE.MeshBasicMaterial({color:0xe4f8ff}));f.position.set(Math.cos(a)*r,.25+(n%9)*.18,Math.sin(a)*r);snowGroup.add(f);flakes.push(f)}
-  const streamGroup=new THREE.Group();scene.add(streamGroup);const particles=[],cols=[0x39d9ff,0x77cfff,0xb4f4ff,0xffd16a];
-  for(let n=0;n<30;n++){const pts=[],turns=2.4+n%5*.2,phase=n/30*Math.PI*2;for(let j=0;j<=120;j++){const t=j/120,a=phase+t*Math.PI*2*turns,r=.5+t*3.05;pts.push(new THREE.Vector3(Math.cos(a)*r,.12+t*1.65+Math.sin(a*2+n)*.09,Math.sin(a)*r))}const curve=new THREE.CatmullRomCurve3(pts);streamGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(210)),new THREE.LineBasicMaterial({color:cols[n%4],transparent:true,opacity:.82})));const dot=new THREE.Mesh(new THREE.SphereGeometry(.052,8,8),new THREE.MeshBasicMaterial({color:cols[n%4]}));scene.add(dot);particles.push({mesh:dot,curve,phase:n/30})}
+  const streamGroup=new THREE.Group();scene.add(streamGroup);const particles=[],windLines=[],cols=[0x39d9ff,0x77cfff,0xb4f4ff,0xffd16a];
+  let windFeatures=[];
+  function localWindAt(x,z){
+   if(!windFeatures.length)return {dx:Math.sin(windDir*Math.PI/180),dz:-Math.cos(windDir*Math.PI/180),speed:windSpeed};
+   let sx=0,sz=0,sw=0,ss=0;
+   for(const f of windFeatures){const p=f.properties||{},coord=f.geometry?.coordinates;if(!coord)continue;
+    const px=((coord[0]-12.15)/(18.55-12.15))*7.2-3.6,pz=((50.95-coord[1])/(50.95-48.65))*7.2-3.6;
+    const d2=(px-x)*(px-x)+(pz-z)*(pz-z),w=1/Math.max(.035,d2);
+    const a=(+p.direction||0)*Math.PI/180,v=Math.max(0,+p.speed||0);
+    sx+=Math.sin(a)*v*w;sz+=-Math.cos(a)*v*w;ss+=v*w;sw+=w;
+   }
+   if(!sw)return {dx:0,dz:-1,speed:windSpeed};
+   const mag=Math.hypot(sx,sz)||1;return {dx:sx/mag,dz:sz/mag,speed:ss/sw};
+  }
+  function rebuildWindField(valid){
+   windFeatures=valid||[];
+   windLines.forEach(x=>streamGroup.remove(x));windLines.length=0;
+   particles.length=0;
+   for(let n=0;n<26;n++){
+    let x=-3.15+(n%6)*1.26,z=-3.05+Math.floor(n/6)*1.48,pts=[];
+    for(let j=0;j<76;j++){
+     const v=localWindAt(x,z),bend=Math.sin((x+z+n)*.8)*.018;
+     pts.push(new THREE.Vector3(x,.18+Math.min(1.35,v.speed/65),z));
+     x+=v.dx*.075+bend;z+=v.dz*.075-bend;
+     if(Math.abs(x)>3.7||Math.abs(z)>3.7){x=Math.max(-3.5,Math.min(3.5,x));z=Math.max(-3.5,Math.min(3.5,z))}
+    }
+    const curve=new THREE.CatmullRomCurve3(pts),line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(130)),new THREE.LineBasicMaterial({color:cols[n%4],transparent:true,opacity:.78}));
+    streamGroup.add(line);windLines.push(line);
+    const dot=new THREE.Mesh(new THREE.SphereGeometry(.052,8,8),new THREE.MeshBasicMaterial({color:cols[n%4]}));scene.add(dot);particles.push({mesh:dot,curve,phase:n/26});
+   }
+  }
   const core=new THREE.Mesh(new THREE.SphereGeometry(.34,24,18),new THREE.MeshBasicMaterial({color:0x4ccfff,transparent:true,opacity:.55}));core.position.y=.32;scene.add(core);
   const ring=new THREE.Mesh(new THREE.TorusGeometry(.58,.025,8,64),new THREE.MeshBasicMaterial({color:0x8deaff,transparent:true,opacity:.95}));ring.rotation.x=Math.PI/2;ring.position.y=.32;scene.add(ring);
   const vortexLayers={temperature:true,clouds:true,precipitation:true,atmosphere:true,wind:true};
@@ -415,14 +449,15 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   canvas.addEventListener('touchstart',ev=>{if(ev.touches.length===2){ev.preventDefault();pinch=Math.hypot(ev.touches[0].clientX-ev.touches[1].clientX,ev.touches[0].clientY-ev.touches[1].clientY);drag={x:(ev.touches[0].clientX+ev.touches[1].clientX)/2,y:(ev.touches[0].clientY+ev.touches[1].clientY)/2} }},{passive:false});
   canvas.addEventListener('touchmove',ev=>{if(ev.touches.length!==2||!drag)return;ev.preventDefault();const mid={x:(ev.touches[0].clientX+ev.touches[1].clientX)/2,y:(ev.touches[0].clientY+ev.touches[1].clientY)/2},dist=Math.hypot(ev.touches[0].clientX-ev.touches[1].clientX,ev.touches[0].clientY-ev.touches[1].clientY);orbitYaw-=(mid.x-drag.x)*.006;orbitPitch=Math.max(.12,Math.min(1.05,orbitPitch+(mid.y-drag.y)*.004));if(pinch)orbitRadius=Math.max(5.4,Math.min(10,orbitRadius-(dist-pinch)*.012));pinch=dist;drag=mid;updateCamera()},{passive:false});
   canvas.addEventListener('touchend',ev=>{if(ev.touches.length<2){drag=null;pinch=0}},{passive:true});
-  function readWeather(features){const fs=features||window.__weatherVortexFeatures||[];if(!fs.length)return;const valid=fs.filter(f=>f&&f.properties);if(!valid.length)return;windSpeed=valid.reduce((s,f)=>s+(+f.properties.speed||0),0)/valid.length;const rad=valid.reduce((s,f)=>s+Math.sin((+f.properties.direction||0)*Math.PI/180),0)/valid.length,cos=valid.reduce((s,f)=>s+Math.cos((+f.properties.direction||0)*Math.PI/180),0)/valid.length;windDir=(Math.atan2(rad,cos)*180/Math.PI+360)%360;avgTemp=valid.reduce((s,f)=>s+(+f.properties.temp||0),0)/valid.length;maxPrecip=Math.max(0,...valid.map(f=>Math.max(+f.properties.rain||0,+f.properties.snow||0,+f.properties.precip||0)));
+  function readWeather(features){const fs=features||window.__weatherVortexFeatures||[];if(!fs.length)return;const valid=fs.filter(f=>f&&f.properties);if(!valid.length)return;
+   rebuildWindField(valid);windSpeed=valid.reduce((s,f)=>s+(+f.properties.speed||0),0)/valid.length;const rad=valid.reduce((s,f)=>s+Math.sin((+f.properties.direction||0)*Math.PI/180),0)/valid.length,cos=valid.reduce((s,f)=>s+Math.cos((+f.properties.direction||0)*Math.PI/180),0)/valid.length;windDir=(Math.atan2(rad,cos)*180/Math.PI+360)%360;avgTemp=valid.reduce((s,f)=>s+(+f.properties.temp||0),0)/valid.length;maxPrecip=Math.max(0,...valid.map(f=>Math.max(+f.properties.rain||0,+f.properties.snow||0,+f.properties.precip||0)));
    const cold=avgTemp<0,warm=avgTemp>=12;const palette=cold?[.08,.32,1]:warm?[1,.28,.06]:[.02,.78,.48];const colors=heatGeo.attributes.color;for(let i=0;i<colors.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i),wave=Math.sin(x*.75+z*.35)*.12;const mix=Math.max(0,Math.min(1,(x+3.7)/7.4));colors.setXYZ(i,Math.max(0,Math.min(1,palette[0]+mix*.22+wave)),Math.max(0,Math.min(1,palette[1]-mix*.18)),Math.max(0,Math.min(1,palette[2]-mix*.35)))}colors.needsUpdate=true;
    patches[0].material.opacity=cold?.78:.4;patches[1].material.opacity=warm?.8:.42;patches[2].material.opacity=.58;
    const rain=valid.some(f=>(+f.properties.rain||0)>.01),snow=valid.some(f=>(+f.properties.snow||0)>.01);rainGroup.visible=rain&&vortexLayers.precipitation;snowGroup.visible=snow&&vortexLayers.precipitation;applyVortexLayers();
    drops.forEach((d,i)=>{d.material.opacity=rain?Math.min(.72,.38+maxPrecip*.12):0;d.visible=rain});flakes.forEach((f,i)=>{f.visible=snow;f.material.opacity=.72});
    status.textContent='Vítr '+windSpeed.toFixed(1)+' km/h · směr '+Math.round(windDir)+'° · teplota '+avgTemp.toFixed(1)+' °C · srážky '+maxPrecip.toFixed(2)+' mm/h';
   }
-  function animate(t){raf=requestAnimationFrame(animate);if(paused||document.hidden)return;if(t-last<33)return;last=t;const speed=.35+Math.min(windSpeed,70)/70;streamGroup.rotation.y+=.0018*speed;atmosphere.rotation.y+=.00035*speed;cloudGroup.rotation.y+=.00022*speed;clouds.forEach((g,i)=>{g.position.y=.75+(i%3)*.55+Math.sin(t*.00045+i)*.045});core.scale.setScalar(1+Math.sin(t*.0015)*.08);ring.rotation.z=t*.0002*speed;particles.forEach(p=>{p.mesh.position.copy(p.curve.getPointAt((t*.00003*speed+p.phase)%1))});drops.forEach(d=>{if(d.visible){d.position.y-=.025+maxPrecip*.006;if(d.position.y<-.02)d.position.y=1.9}});flakes.forEach(f=>{if(f.visible){f.position.y-=.008;if(f.position.y<-.02)f.position.y=1.8}});renderer.render(scene,camera)}
+  function animate(t){raf=requestAnimationFrame(animate);if(paused||document.hidden)return;if(t-last<33)return;last=t;const speed=.35+Math.min(windSpeed,70)/70;atmosphere.rotation.y+=.00035*speed;cloudGroup.rotation.y+=.00022*speed;clouds.forEach((g,i)=>{g.position.y=.75+(i%3)*.55+Math.sin(t*.00045+i)*.045});core.scale.setScalar(1+Math.sin(t*.0015)*.08);ring.rotation.z=t*.0002*speed;particles.forEach(p=>{p.mesh.position.copy(p.curve.getPointAt((t*.00003*speed+p.phase)%1))});drops.forEach(d=>{if(d.visible){d.position.y-=.025+maxPrecip*.006;if(d.position.y<-.02)d.position.y=1.9}});flakes.forEach(f=>{if(f.visible){f.position.y-=.008;if(f.position.y<-.02)f.position.y=1.8}});renderer.render(scene,camera)}
   toggle.addEventListener('click',()=>{paused=!paused;toggle.textContent=paused?'▶ Spustit animaci':'⏸ Pozastavit animaci';toggle.setAttribute('aria-pressed',String(!paused));if(!paused&&!raf)raf=requestAnimationFrame(animate)});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!paused&&!raf)raf=requestAnimationFrame(animate)});
   window.addEventListener('pagehide',()=>{if(raf)cancelAnimationFrame(raf);renderer.dispose()},{once:true});
