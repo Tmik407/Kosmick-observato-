@@ -549,9 +549,11 @@ function loadWeather(force=false){
    }catch(fallbackError){
     $("weatherSummary").textContent="Open-Meteo: "+error.message+" · Záložní MET Norway: "+fallbackError.message+" · Zůstává dostupná náhradní mapa měření ČHMÚ.";
    }
-   if(fallbackLoaded){state.weatherRetryCount=0;}
-   let cached=null;try{cached=JSON.parse(localStorage.getItem("weatherVortexForecastCache")||"null")}catch(_){}
-   if(cached?.rows?.length===all.length&&cached?.times?.length&&Date.now()-(cached.savedAt||0)<72*60*60*1000){
+   if(fallbackLoaded){
+    state.weatherRetryCount=0;
+   }else{
+    let cached=null;try{cached=JSON.parse(localStorage.getItem("weatherVortexForecastCache")||"null")}catch(_){}
+    if(cached?.rows?.length===all.length&&cached?.times?.length&&Date.now()-(cached.savedAt||0)<72*60*60*1000){
     state.rows=cached.rows;state.times=cached.times;state.lastWeatherLoad=cached.savedAt||Date.now();
     const select=$("forecastHour");select.innerHTML=state.times.map((t,i)=>'<option value="'+i+'">'+new Date(t).toLocaleString("cs-CZ",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit"})+'</option>').join("");
     const now=Date.now(),idx=state.times.findIndex(t=>new Date(t).getTime()>=now-30*60*1000);state.hour=idx>=0?idx:0;select.value=String(state.hour);applyHour();
@@ -561,11 +563,12 @@ function loadWeather(force=false){
     status("Předpověď je dočasně nedostupná");
     $("weatherSummary").textContent=error.message+" · Mapa a stanice ČHMÚ zůstávají dostupné.";
    }
-   // Po limitu HTTP 429 provedeme pouze jeden automatický opakovaný pokus.
-   if(/429|ochrannou pauzu|aktivní ochrannou pauzu/i.test(String(error.message))&&state.weatherRetryCount<1&&!state.weatherRetryTimer){
-    const delay=Math.max(65000,weatherApiCooldownUntil-Date.now()+2500);
-    status("Open-Meteo dočasně omezuje požadavky · automatický nový pokus za "+Math.ceil(delay/1000)+" s");
-    state.weatherRetryTimer=setTimeout(()=>{state.weatherRetryTimer=0;state.weatherRetryCount++;loadWeather(true)},delay);
+    // Po limitu HTTP 429 provedeme pouze jeden automatický opakovaný pokus.
+    if(/429|ochrannou pauzu|aktivní ochrannou pauzu/i.test(String(error.message))&&state.weatherRetryCount<1&&!state.weatherRetryTimer){
+     const delay=Math.max(65000,weatherApiCooldownUntil-Date.now()+2500);
+     status("Open-Meteo dočasně omezuje požadavky · automatický nový pokus za "+Math.ceil(delay/1000)+" s");
+     state.weatherRetryTimer=setTimeout(()=>{state.weatherRetryTimer=0;state.weatherRetryCount++;loadWeather(true)},delay);
+    }
    }
   }finally{state.weatherLoading=false;$("refresh").disabled=false}
  })();
