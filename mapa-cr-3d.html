@@ -217,6 +217,23 @@ function drawArrow(x,y,dx,dy,size){
 }
 function animateFlow(){
  const w=$("map").clientWidth,h=$("map").clientHeight;ctx.clearRect(0,0,w,h);
+ // Meteorologické překryvy kreslíme přímo do canvasu; jsou tak čitelné i na mobilu a nezávisí na vykreslení symbolových vrstev MapLibre.
+ if(state.visible.temperature||state.visible.precipitation){
+  for(const f of state.features){
+   const p=f.properties,q=map.project(f.geometry.coordinates);
+   if(q.x<-30||q.x>$("map").clientWidth+30||q.y<-30||q.y>$("map").clientHeight+30)continue;
+   if(state.visible.precipitation&&p.precip>.05){
+    ctx.save();ctx.beginPath();ctx.arc(q.x,q.y,Math.min(13,5+Math.sqrt(p.precip)*2),0,Math.PI*2);
+    ctx.fillStyle=p.kind==="snow"?"rgba(48,190,245,.9)":"rgba(0,112,210,.9)";ctx.fill();
+    ctx.lineWidth=2;ctx.strokeStyle="#fff";ctx.stroke();ctx.restore();
+   }else if(state.visible.temperature){
+    const t=p.temp,color=t<=-5?"#2856bd":t<1?"#35a4c9":t<10?"#43b9a0":t<20?"#e5b64a":"#e66b45";
+    ctx.save();ctx.beginPath();ctx.arc(q.x,q.y,11,0,Math.PI*2);ctx.fillStyle=color;ctx.globalAlpha=.88;ctx.fill();
+    ctx.globalAlpha=1;ctx.lineWidth=1.8;ctx.strokeStyle="#fff";ctx.stroke();
+    ctx.font="bold 10px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle="#fff";ctx.shadowColor="#17344a";ctx.shadowBlur=2;ctx.fillText(Math.round(t)+"°",q.x,q.y);ctx.restore();
+   }
+  }
+ }
  if(state.visible.wind&&state.particles.length){
   for(const line of state.particles){
    const pts=line.points;if(pts.length<3)continue;ctx.save();ctx.lineCap="round";ctx.lineJoin="round";
