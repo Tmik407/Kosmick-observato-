@@ -52,7 +52,7 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
 </header>
 <section class="map-card">
  <div class="map-wrap"><div id="map" aria-label="Interaktivní trojrozměrná mapa počasí České republiky"></div><canvas id="flowCanvas"></canvas></div>
- <div class="attribution">MapLibre GL JS · podklad OpenFreeMap / OpenStreetMap · výšková data Terrarium · předpověď Open-Meteo</div>
+ <div class="attribution">MapLibre GL JS · podklad OpenFreeMap / OpenStreetMap · výšková data Terrarium · předpověď Open-Meteo / MET Norway podle dostupnosti</div>
 </section>
 <div class="below">
  <section class="panel">
@@ -77,7 +77,7 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
  </section>
 </div>
 <section class="panel" id="analyticsPanel">
- <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap"><div><h2 style="margin:0">📈 Meteorologická analytika · 72 hodin</h2><p class="small" style="margin:4px 0 0">Hodinová předpověď Open-Meteo pro vybrané město</p></div><div class="row small" style="gap:6px;flex-wrap:wrap"><label class="row small" for="analyticsPlace"><b>Město nebo obec v ČR</b><input id="analyticsPlace" type="search" placeholder="Zadej název, např. Teplice nebo Kadaň…" autocomplete="off" style="max-width:280px"></label><button type="button" id="analyticsSearch">🔎 Zobrazit grafy</button><label class="row small" for="analyticsComparePlace"><b>Porovnat s</b><input id="analyticsComparePlace" type="search" placeholder="Druhé město…" autocomplete="off" style="max-width:190px"></label><button type="button" id="analyticsCompareSearch">⚖️ Porovnat</button><button type="button" id="analyticsCompareClear" hidden>✕ Zrušit porovnání</button></div></div>
+ <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap"><div><h2 style="margin:0">📈 Meteorologická analytika · 72 hodin</h2><p class="small" style="margin:4px 0 0">Hodinová předpověď pro vybrané město</p></div><div class="row small" style="gap:6px;flex-wrap:wrap"><label class="row small" for="analyticsPlace"><b>Město nebo obec v ČR</b><input id="analyticsPlace" type="search" placeholder="Zadej název, např. Teplice nebo Kadaň…" autocomplete="off" style="max-width:280px"></label><button type="button" id="analyticsSearch">🔎 Zobrazit grafy</button><label class="row small" for="analyticsComparePlace"><b>Porovnat s</b><input id="analyticsComparePlace" type="search" placeholder="Druhé město…" autocomplete="off" style="max-width:190px"></label><button type="button" id="analyticsCompareSearch">⚖️ Porovnat</button><button type="button" id="analyticsCompareClear" hidden>✕ Zrušit porovnání</button></div></div>
  <div class="chart-grid"><div class="chart-card"><h3>🌡️ Teplota · °C</h3><div id="temperatureChart" role="img" aria-label="Graf teploty na 72 hodin">Čekám na data…</div></div><div class="chart-card"><h3>🌧️ Srážky · mm/h a cm/h</h3><div id="precipitationChart" role="img" aria-label="Graf deště a sněžení na 72 hodin">Čekám na data…</div></div><div class="chart-card"><h3>💨 Vítr · km/h</h3><div id="windChart" role="img" aria-label="Graf rychlosti větru na 72 hodin">Čekám na data…</div></div></div>
  <p class="chart-note" id="analyticsTime">Grafy se aktualizují podle dostupné hodinové předpovědi a zvoleného času.</p>
 </section>
@@ -589,11 +589,11 @@ $("findPrecip").addEventListener("click",()=>{
  }
  const select=$("forecastHour");
  if(best.amount<=0.05){
-  $("precipTest").textContent="V dostupné třídenní předpovědi není podle Open-Meteo očekáván déšť ani sněžení. Vrstvu proto nelze ověřit na skutečných srážkách.";
+  $("precipTest").textContent="V dostupné 72hodinové předpovědi nejsou očekávány měřitelné srážky. Vrstvu proto nyní nelze ověřit na skutečném dešti ani sněžení.";
   return;
  }
  state.hour=best.index;select.value=String(best.index);applyHour();
- $("precipTest").textContent="Zobrazen nejsrážkovější termín: "+new Date(state.times[best.index]).toLocaleString("cs-CZ")+". Déšť max. "+best.rain+" mm/h, sníh max. "+best.snow+" cm/h. Tmavě modré kapky = déšť (mm/h), světle modré vločky = sněžení (cm/h); větší značka znamená vyšší intenzitu.";
+ $("precipTest").textContent="Zobrazen nejsrážkovější termín: "+new Date(state.times[best.index]).toLocaleString("cs-CZ")+". Déšť max. "+best.rain+" mm/h, sníh max. "+best.snow+" cm/h. Tmavě modré značky = déšť (mm/h), světle modré značky = sněžení (cm/h); větší značka znamená vyšší intenzitu.";
  state.visible.precipitation=true;updateLayers();
  document.querySelector('[data-layer="precipitation"]').setAttribute("aria-pressed","true");
 });
