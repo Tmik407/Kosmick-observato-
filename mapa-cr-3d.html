@@ -744,7 +744,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    {x:-3.0,z:1.25,a:.16,sx:.48,sz:.68}, // Český les
    {x:.0,z:1.35,a:.13,sx:1.0,sz:.8} // Českomoravská vrchovina
   ];
-  let demGrid=null;const demSize=25;
+  let demGrid=null;const demSize=9;
   function terrainHeightAt(x,z){
    if(demGrid){const gx=Math.max(0,Math.min(demSize-1,(x+3.6)/7.2*(demSize-1))),gz=Math.max(0,Math.min(demSize-1,(z+3.6)/7.2*(demSize-1))),x0=Math.floor(gx),z0=Math.floor(gz),x1=Math.min(demSize-1,x0+1),z1=Math.min(demSize-1,z0+1),tx=gx-x0,tz=gz-z0;
     const a=demGrid[z0*demSize+x0]*(1-tx)+demGrid[z0*demSize+x1]*tx,b=demGrid[z1*demSize+x0]*(1-tx)+demGrid[z1*demSize+x1]*tx;return (a*(1-tz)+b*tz)*.00034}
@@ -765,26 +765,18 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    const badge=document.getElementById('weatherTerrainBadge');
    try{
     const coords=[];for(let j=0;j<demSize;j++)for(let i=0;i<demSize;i++)coords.push({lat:50.95-j/(demSize-1)*2.3,lon:12.15+i/(demSize-1)*6.4});
-    const values=[];
-    // Menší dávky s opakováním požadavku omezí riziko selhání dlouhých URL nebo dočasného přetížení API.
-    for(let start=0;start<coords.length;start+=25){
-     const batch=coords.slice(start,start+25),lat=batch.map(p=>p.lat.toFixed(4)).join(','),lon=batch.map(p=>p.lon.toFixed(4)).join(',');
-     const url='https://api.open-meteo.com/v1/elevation?latitude='+lat+'&longitude='+lon;
-     let data=null,lastError=null;
-     for(let attempt=0;attempt<3;attempt++){
-      try{const response=await fetch(url,{headers:{Accept:'application/json'}});if(!response.ok)throw new Error('HTTP '+response.status);data=await response.json();if(!Array.isArray(data.elevation)||data.elevation.length!==batch.length)throw new Error(data.reason||'Neúplná DEM data');lastError=null;break}
-      catch(err){lastError=err;if(attempt<2)await new Promise(resolve=>setTimeout(resolve,350*(attempt+1)))}
-     }
-     if(lastError)throw lastError;
-     values.push(...data.elevation);
-    }
-    if(values.length!==demSize*demSize||values.some(v=>!Number.isFinite(Number(v))))throw new Error('Neplatná DEM data');
-    demGrid=values.map(Number);
+    // Jediný požadavek s 81 body: vyhneme se opakovaným voláním, která u tohoto API vracela HTTP 429.
+    const lat=coords.map(p=>p.lat.toFixed(4)).join(','),lon=coords.map(p=>p.lon.toFixed(4)).join(',');
+    const response=await fetch('https://api.open-meteo.com/v1/elevation?latitude='+lat+'&longitude='+lon,{headers:{Accept:'application/json'}});
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    const data=await response.json();
+    if(!Array.isArray(data.elevation)||data.elevation.length!==demSize*demSize||data.elevation.some(v=>!Number.isFinite(Number(v))))throw new Error('Neúplná výšková data');
+    demGrid=data.elevation.map(Number);
     for(let i=0;i<terrainPos.count;i++){const x=terrainPos.getX(i),z=terrainPos.getZ(i),h=terrainHeightAt(x,z);terrainPos.setY(i,h);const c=terrainColorAt(h);terrainGeo.attributes.color.setXYZ(i,c.r,c.g,c.b)}
     terrainPos.needsUpdate=true;terrainGeo.attributes.color.needsUpdate=true;terrainGeo.computeVertexNormals();
     for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,terrainHeightAt(x,z)+.018)}
     heatPos.needsUpdate=true;heatGeo.computeVertexNormals();
-    if(badge)badge.textContent='Terén: Copernicus DEM GLO-90 · načteno 625 bodů';
+    if(badge)badge.textContent='Terén: výšková data načtena · síť 9×9';
    }catch(err){if(badge)badge.textContent='DEM nedostupný · záložní reliéf ('+String(err&&err.message||'chyba').slice(0,38)+')'}
   }
   loadCopernicusTerrain();
