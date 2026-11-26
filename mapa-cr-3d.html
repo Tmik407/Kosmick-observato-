@@ -757,7 +757,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   let demGrid=null;const demSize=81;
   function terrainHeightAt(x,z){
    if(demGrid){const gx=Math.max(0,Math.min(demSize-1,(x+3.6)/7.2*(demSize-1))),gz=Math.max(0,Math.min(demSize-1,(z+3.6)/7.2*(demSize-1))),x0=Math.floor(gx),z0=Math.floor(gz),x1=Math.min(demSize-1,x0+1),z1=Math.min(demSize-1,z0+1),tx=gx-x0,tz=gz-z0;
-    const a=demGrid[z0*demSize+x0]*(1-tx)+demGrid[z0*demSize+x1]*tx,b=demGrid[z1*demSize+x0]*(1-tx)+demGrid[z1*demSize+x1]*tx;return (a*(1-tz)+b*tz)*.00040}
+    const a=demGrid[z0*demSize+x0]*(1-tx)+demGrid[z0*demSize+x1]*tx,b=demGrid[z1*demSize+x0]*(1-tx)+demGrid[z1*demSize+x1]*tx;return (a*(1-tz)+b*tz)*.00052}
    let h=.018*Math.sin(x*1.7)*Math.cos(z*1.35);for(const p of terrainPeaks){const dx=(x-p.x)/p.sx,dz=(z-p.z)/p.sz;h+=p.a*Math.exp(-.5*(dx*dx+dz*dz))}return h
   }
   function terrainColorAt(h){const m=Math.max(0,h/.00055);const stops=[{v:0,c:[.16,.42,.22]},{v:250,c:[.34,.58,.25]},{v:500,c:[.62,.62,.30]},{v:900,c:[.48,.39,.27]},{v:1300,c:[.48,.49,.48]},{v:1700,c:[.82,.84,.82]}];let k=0;while(k<stops.length-2&&m>stops[k+1].v)k++;const a=stops[k],b=stops[k+1],t=Math.max(0,Math.min(1,(m-a.v)/(b.v-a.v)));return new THREE.Color().setRGB(a.c[0]+(b.c[0]-a.c[0])*t,a.c[1]+(b.c[1]-a.c[1])*t,a.c[2]+(b.c[2]-a.c[2])*t)}
@@ -773,12 +773,12 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   function addGeoLabel(name,lon,lat,kind='mountain'){
    const p=geoPoint(lon,lat),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
    canvas.width=512;canvas.height=128;ctx.clearRect(0,0,512,128);
-   ctx.font=kind==='river'?'bold 43px Arial':'bold 40px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+   ctx.font=kind==='river'?'bold 46px Arial':'bold 43px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
    ctx.lineWidth=10;ctx.strokeStyle='rgba(3,18,32,.88)';ctx.strokeText(name,256,64);
    ctx.fillStyle=kind==='river'?'#9beaff':'#fff2c7';ctx.fillText(name,256,64);
    const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
    const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,transparent:true,depthTest:false,depthWrite:false}));
-   sprite.userData.geoPoint=p;sprite.position.set(p.x,terrainHeightAt(p.x,p.z)+.13,p.z);sprite.scale.set(kind==='river'?1.12:.92,.23,1);sprite.renderOrder=30;geoOverlay.add(sprite);
+   sprite.userData.geoPoint=p;sprite.position.set(p.x,terrainHeightAt(p.x,p.z)+.13,p.z);sprite.scale.set(kind==='river'?1.18:1.02,.255,1);sprite.renderOrder=30;geoOverlay.add(sprite);
   }
   function addGeoRiver(name,coords){
    const pts=coords.map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.075,p.z)});
@@ -948,7 +948,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   const heatPos=heatGeo.attributes.position,heatColor=[];
   for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,terrainHeightAt(x,z)+.018);heatColor.push(.08,.5,.95)}
   heatGeo.setAttribute('color',new THREE.Float32BufferAttribute(heatColor,3));heatGeo.computeVertexNormals();
-  const heat=new THREE.Mesh(heatGeo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.42,side:THREE.DoubleSide,depthWrite:false}));heat.position.y=-.045;scene.add(heat);
+  const heat=new THREE.Mesh(heatGeo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.20,side:THREE.DoubleSide,depthWrite:false}));heat.position.y=-.045;scene.add(heat);
   // Načtení výšek s lokální cache: omezuje opakované dotazy při HTTP 429.
   async function loadCopernicusTerrain(){
    const badge=document.getElementById('weatherTerrainBadge');
