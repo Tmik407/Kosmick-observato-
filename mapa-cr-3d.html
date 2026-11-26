@@ -761,7 +761,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   terrainGeo.setAttribute('color',new THREE.Float32BufferAttribute(terrainColors,3));terrainGeo.computeVertexNormals();
   const terrain=new THREE.Mesh(terrainGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.94,metalness:0,side:THREE.DoubleSide}));terrain.position.y=-.085;scene.add(terrain);
   // Jasná hranice mapy ČR a jemný okraj reliéfu.
-  const borderPts=czBorder.map(p=>new THREE.Vector3(p.x,0,p.z));const borderCurve=new THREE.CatmullRomCurve3(borderPts,true,'centripetal');const borderLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints(borderCurve.getPoints(240)),new THREE.LineBasicMaterial({color:0x9beaff,transparent:true,opacity:1}));borderLine.position.y=.04;scene.add(borderLine);
+  const borderPts=czBorder.map(p=>new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.075,p.z));const borderCurve=new THREE.CatmullRomCurve3(borderPts,true,'centripetal');const borderOuter=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,320,.042,8,true),new THREE.MeshBasicMaterial({color:0x08283c,transparent:true,opacity:.96,depthTest:true}));const borderLine=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,320,.019,8,true),new THREE.MeshBasicMaterial({color:0x9beaff,transparent:true,opacity:.92,depthTest:true}));borderOuter.renderOrder=34;borderLine.renderOrder=35;scene.add(borderOuter,borderLine);
   // Geografická orientace 3D mapy: hlavní pohoří a řeky ČR.
   const geoPoint=(lon,lat)=>({x:((lon-12.15)/(18.55-12.15))*7.2-3.6,z:((50.95-lat)/(50.95-48.65))*7.2-3.6});
   const geoOverlay=new THREE.Group();scene.add(geoOverlay);
@@ -862,7 +862,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    ctx.font='bold 34px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=8;ctx.strokeStyle='rgba(2,16,29,.94)';ctx.strokeText(name,320,56);ctx.fillStyle='#fff4d4';ctx.fillText(name,320,56);
    const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false,depthWrite:false}));
-   sp.userData.geoPoint=p;sp.position.set(p.x,terrainHeightAt(p.x,p.z)+.22,p.z);sp.scale.set(.58,.105,1);sp.renderOrder=42;districtGroup.add(sp);
+   sp.userData.geoPoint=p;sp.position.set(p.x,terrainHeightAt(p.x,p.z)+.22,p.z);sp.scale.set(.48,.085,1);sp.userData.isDistrictLabel=true;sp.renderOrder=42;districtGroup.add(sp);
   }
   async function loadCzechDistricts(){
    try{
@@ -880,7 +880,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
      polygons.forEach(poly=>poly.forEach(ring=>{
       const pts=ring.filter(([lon,lat])=>lon>=12&&lon<=18.7&&lat>=48.5&&lat<=51.1).map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.145,p.z)});
       if(pts.length<3)return;
-      const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x77b9d2,transparent:true,opacity:.52,depthTest:false}));
+      const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x8fb6c7,transparent:true,opacity:.30,depthTest:true}));
       line.renderOrder=38;districtGroup.add(line);drawn++;
      }));
      if(name)addDistrictLabel(name,polygons[0]?.[0]);
@@ -1110,7 +1110,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   }
   window.__weatherVortexSetValidTime=iso=>{validTimeLabel=iso?new Date(iso).toLocaleString('cs-CZ',{weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';if(windFeatures.length)status.textContent='Vítr '+windSpeed.toFixed(1)+' km/h · směr '+Math.round(windDir)+'° · teplota '+avgTemp.toFixed(1)+' °C · srážky '+maxPrecip.toFixed(2)+' mm/h · oblačnost '+Math.round(avgCloudCover)+' %'+(validTimeLabel?' · platnost '+validTimeLabel:'');};
   if(window.__weatherVortexCurrentValidTime)window.__weatherVortexSetValidTime(window.__weatherVortexCurrentValidTime);
-  function animate(t){if(paused||document.hidden||!stageVisible){raf=0;return;}raf=requestAnimationFrame(animate);if(t-last<33)return;last=t;const speed=.35+Math.min(windSpeed,70)/70;atmosphere.rotation.y+=.00035*speed;cloudGroup.rotation.y+=.00022*speed;clouds.forEach((g,i)=>{g.position.y=.75+(i%3)*.55+Math.sin(t*.00045+i)*.045});core.scale.setScalar(1+Math.sin(t*.0015)*.08);ring.rotation.z=t*.0002*speed;particles.forEach(p=>{p.mesh.position.copy(p.curve.getPointAt((t*.00003*speed+p.phase)%1))});drops.forEach(d=>{if(d.visible){d.position.y-=.025+maxPrecip*.006;if(d.position.y<-.02)d.position.y=1.9}});flakes.forEach(f=>{if(f.visible){f.position.y-=.008;if(f.position.y<-.02)f.position.y=1.8}});renderer.render(scene,camera)}
+  function animate(t){if(paused||document.hidden||!stageVisible){raf=0;return;}raf=requestAnimationFrame(animate);if(t-last<33)return;last=t;const showDistrictNames=orbitRadius<6.25;districtGroup.children.forEach(obj=>{if(obj.userData.isDistrictLabel)obj.visible=showDistrictNames;});const speed=.35+Math.min(windSpeed,70)/70;atmosphere.rotation.y+=.00035*speed;cloudGroup.rotation.y+=.00022*speed;clouds.forEach((g,i)=>{g.position.y=.75+(i%3)*.55+Math.sin(t*.00045+i)*.045});core.scale.setScalar(1+Math.sin(t*.0015)*.08);ring.rotation.z=t*.0002*speed;particles.forEach(p=>{p.mesh.position.copy(p.curve.getPointAt((t*.00003*speed+p.phase)%1))});drops.forEach(d=>{if(d.visible){d.position.y-=.025+maxPrecip*.006;if(d.position.y<-.02)d.position.y=1.9}});flakes.forEach(f=>{if(f.visible){f.position.y-=.008;if(f.position.y<-.02)f.position.y=1.8}});renderer.render(scene,camera)}
   toggle.addEventListener('click',()=>{paused=!paused;toggle.textContent=paused?'▶ Spustit animaci':'⏸ Pozastavit animaci';toggle.setAttribute('aria-pressed',String(!paused));if(!paused&&!raf)raf=requestAnimationFrame(animate)});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!paused&&!raf)raf=requestAnimationFrame(animate)});
   window.addEventListener('pagehide',()=>{if(raf)cancelAnimationFrame(raf);renderer.dispose()},{once:true});
