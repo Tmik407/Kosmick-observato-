@@ -826,8 +826,7 @@ function loadWeather(force=false,retry=false){
     }
    }
    if(fallbackLoaded){
-    state.weatherRetryCount=0;
-    if(/429|ochrannou pauzu|aktivní ochrannou pauzu/i.test(String(error.message))&&state.weatherRetryCount<1&&!state.weatherRetryTimer){
+    if(/429|ochrannou pauzu|aktivní ochrannou pauzu/i.test(String(error.message))&&(state.weatherRetryCount||0)<1&&!state.weatherRetryTimer){
      const delay=Math.max(65000,weatherApiCooldownUntil-Date.now()+2500);
      state.weatherRetryTimer=setTimeout(()=>{state.weatherRetryTimer=0;state.weatherRetryCount++;state.lastWeatherAttempt=0;loadWeather(true,true)},delay);
     }
