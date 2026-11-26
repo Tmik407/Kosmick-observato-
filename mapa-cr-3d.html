@@ -333,24 +333,34 @@ map.on("style.load",()=>{
  map.on("mouseenter","city-points",()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave","city-points",()=>map.getCanvas().style.cursor="");
  status("Mapa připravena · meteorologické zdroje se načítají samostatně…");
 });
-// Centrální fronta a ochrana proti opakovaným požadavkům Open-Meteo.
-let weatherApiCooldownUntil=0,weatherApiQueue=Promise.resolve();
+// Centrální fronta, sdílení souběžných požadavků a trvalá ochrana proti HTTP 429.
+// Pauza se ukládá do localStorage, aby obnovení stránky znovu nespustilo zahlcující požadavky.
+const WEATHER_API_COOLDOWN_KEY="x5WeatherApiCooldownUntil";
+let weatherApiCooldownUntil=(()=>{try{const saved=Number(localStorage.getItem(WEATHER_API_COOLDOWN_KEY)||0);return Number.isFinite(saved)&&saved>Date.now()?saved:0}catch(_){return 0}})();
+let weatherApiQueue=Promise.resolve();
 const weatherApiInflight=new Map();
 async function fetchWeatherApi(url,options={}){
  if(weatherApiInflight.has(url))return (await weatherApiInflight.get(url)).clone();
  const request=(async()=>{
   const wait=Math.max(0,weatherApiCooldownUntil-Date.now());
-  if(wait>0)throw Error("Open-Meteo má aktivní ochrannou pauzu ještě "+Math.ceil(wait/1000)+" s. Počkej prosím.");
+  if(wait>0)throw Error("Meteorologické API má ochrannou pauzu ještě "+Math.ceil(wait/1000)+" s. Používám záložní zdroj, aby se limit dále nezvyšoval.");
   const run=weatherApiQueue.then(async()=>{
    const remaining=Math.max(0,weatherApiCooldownUntil-Date.now());
-   if(remaining>0)throw Error("Open-Meteo má aktivní ochrannou pauzu ještě "+Math.ceil(remaining/1000)+" s.");
-   const controller=new AbortController();const requestTimer=setTimeout(()=>controller.abort(),20000);
-   let response;try{response=await fetch(url,{...options,cache:options.cache||"default",signal:controller.signal})}catch(err){if(err?.name==="AbortError")throw Error("Open-Meteo: požadavek překročil limit 20 s.");throw err}finally{clearTimeout(requestTimer)}
+   if(remaining>0)throw Error("Meteorologické API má ochrannou pauzu ještě "+Math.ceil(remaining/1000)+" s.");
+   const controller=new AbortController();const requestTimer=setTimeout(()=>controller.abort(),25000);
+   let response;try{response=await fetch(url,{...options,cache:options.cache||"default",signal:controller.signal})}catch(err){if(err?.name==="AbortError")throw Error("Meteorologické API: požadavek překročil limit 25 s.");throw err}finally{clearTimeout(requestTimer)}
    if(response.status===429){
-    const header=Number(response.headers.get("Retry-After"));
-    const pause=Number.isFinite(header)&&header>0?Math.min(120000,header*1000):60000;
+    const retryAfter=response.headers.get("Retry-After")||"",seconds=Number(retryAfter);
+    let pause=Number.isFinite(seconds)&&seconds>0?seconds*1000:(Date.parse(retryAfter)>Date.now()?Date.parse(retryAfter)-Date.now():180000);
+    pause=Math.max(60000,Math.min(15*60*1000,pause));
     weatherApiCooldownUntil=Date.now()+pause;
-    throw Error("Open-Meteo vrátilo HTTP 429. Další požadavky pozastaveny na "+Math.ceil(pause/1000)+" s, aby se limit dále nezvyšoval.");
+    try{localStorage.setItem(WEATHER_API_COOLDOWN_KEY,String(weatherApiCooldownUntil))}catch(_){}
+    let detail="";try{detail=(await response.clone().text()).slice(0,220)}catch(_){}
+    throw Error("Meteorologické API HTTP 429 · "+Math.ceil(pause/60000)+" min ochranná pauza"+(detail?" · "+detail:""));
+   }
+   if(!response.ok){
+    let detail="";try{detail=(await response.clone().text()).slice(0,260)}catch(_){}
+    throw Error("Meteorologické API HTTP "+response.status+(detail?" · "+detail:""));
    }
    return response;
   });
