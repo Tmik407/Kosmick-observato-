@@ -1,6 +1,13 @@
 name: X-5 Guardian · phase 2 tests
 
 on:
+  push:
+    branches: [x5-guardian-v2-freshness-trends]
+    paths:
+      - "scripts/x5_guardian*.py"
+      - "scripts/x5_history.py"
+      - "tests/**"
+      - "x5-guardian-dashboard.html"
   pull_request:
     branches: [main]
     paths:
