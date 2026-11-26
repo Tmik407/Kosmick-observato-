@@ -85,7 +85,14 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
 </header>
 <section id="liveClock" aria-label="Aktuální český čas">
  <div><div class="clock-live"><span class="clock-dot"></span>ŽIVÝ ČAS · ČESKO</div><div id="liveClockTime" class="clock-time" aria-live="off">--:--:--</div><div id="liveClockDate" class="clock-date">Načítám datum…</div></div>
- <div class="clock-meta"><div><b>Časové pásmo</b> · Europe/Prague</div><div>Hodiny se obnovují každou sekundu</div><div id="liveClockSync">Čas zařízení · čekám na synchronizaci</div><div id="weatherDataUpdated" style="margin-top:5px;font-weight:700">Meteorologická data · čekám na načtení</div><div id="weatherDataAge" style="margin-top:2px">Stav dat se zobrazí po načtení</div><div class="source-status-row"><span id="openMeteoStatus" class="source-status pending">Open-Meteo · čeká</span><span id="metNorwayStatus" class="source-status pending">MET Norway · čeká</span></div></div>
+ <div class="clock-meta"><div><b>Časové pásmo</b> · Europe/Prague</div><div>Hodiny se obnovují každou sekundu</div><div id="liveClockSync">Čas zařízení · čekám na synchronizaci</div><div id="weatherDataUpdated" style="margin-top:5px;font-weight:700">Meteorologická data · čekám na načtení</div><div id="weatherDataAge" style="margin-top:2px">Stav dat se zobrazí po načtení</div><div class="source-status-row"><span id="openMeteoStatus" class="source-status pending">Open-Meteo · čeká</span><span id="ecmwfStatus" class="source-status pending">ECMWF IFS · čeká</span><span id="metNorwayStatus" class="source-status pending">MET Norway · čeká</span></div></div>
+</section>
+<section class="panel" id="modelControlPanel" style="margin:0 0 12px;background:linear-gradient(120deg,#fff,#f0f9fd)">
+ <div class="row" style="justify-content:space-between;align-items:center">
+  <div><b>🌐 Meteorologický model</b><div class="small">Vyber zdroj předpovědi pro mapu, města, časovou osu i 3D model.</div></div>
+  <div class="row"><select id="weatherModelSelect" aria-label="Vybraný meteorologický model"><option value="openmeteo">Open-Meteo · automatický výběr</option><option value="ecmwf">ECMWF IFS HRES · 9 km</option></select><button type="button" id="compareEcmwfButton">⚖️ Porovnat s ECMWF</button></div>
+ </div>
+ <div id="modelCompareResult" class="small" role="status" aria-live="polite" style="margin-top:8px">Porovnání modelů zatím neproběhlo.</div>
 </section>
 
 <section class="map-card">
@@ -220,7 +227,7 @@ const cities=[
 ];
 const grid=[];
 for(let lat=48.65;lat<=50.95;lat+=.48)for(let lon=12.15;lon<=18.55;lon+=.72)grid.push({name:"",lat:+lat.toFixed(3),lon:+lon.toFixed(3)});
-const all=[...grid,...cities],state={hour:0,rows:[],times:[],forecastSource:"Open-Meteo",lastWeatherLoad:0,weatherLoading:false,visible:{temperature:true,precipitation:false,wind:true,cities:true,stations:true},stations:[],map:null,features:[],particles:[],raf:0,analyticsCustom:null,analyticsCompare:null,analyticsSearchBusy:false,analyticsCompareBusy:false,weatherRetryCount:0,weatherRetryTimer:0,lastWeatherAttempt:0};
+const all=[...grid,...cities],state={hour:0,rows:[],times:[],forecastSource:"Open-Meteo",selectedModel:"openmeteo",lastWeatherLoad:0,weatherLoading:false,visible:{temperature:true,precipitation:false,wind:true,cities:true,stations:true},stations:[],map:null,features:[],particles:[],raf:0,analyticsCustom:null,analyticsCompare:null,analyticsSearchBusy:false,analyticsCompareBusy:false,weatherRetryCount:0,weatherRetryTimer:0,lastWeatherAttempt:0};
 const status=(s)=>$("status").textContent=s;
 let forecastPlaybackTimer=0;
 function stopForecastPlayback(){if(forecastPlaybackTimer){clearInterval(forecastPlaybackTimer);forecastPlaybackTimer=0;}const b=$("forecastPlay");if(b){b.textContent="▶ Automaticky přehrávat";b.setAttribute("aria-pressed","false");}}
@@ -699,8 +706,8 @@ function loadWeather(force=false,retry=false){
  if(!retry&&state.lastWeatherAttempt&&now-state.lastWeatherAttempt<10*60*1000){status("Požadavky jsou omezeny ochranou proti přetížení · další kontrola nejdříve za "+Math.ceil((10*60*1000-(now-state.lastWeatherAttempt))/60000)+" min");return;}
  if(!force&&state.lastWeatherLoad&&now-state.lastWeatherLoad<10*60*1000){status("Používám aktuální předpověď · poslední načtení před méně než 10 minutami");return;}
  state.lastWeatherAttempt=now;
- state.weatherLoading=true;window.__weatherVortexSetSourceStatus?.("openmeteo","loading","načítám");status("Načítám předpověď pro 15 měst jedním požadavkem…");$("refresh").disabled=true;
- const makeUrl=places=>"https://api.open-meteo.com/v1/forecast?latitude="+places.map(p=>p.lat).join(",")+"&longitude="+places.map(p=>p.lon).join(",")+"&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m&forecast_days=4&timezone=Europe%2FPrague";
+ state.weatherLoading=true;window.__weatherVortexSetSourceStatus?.(state.selectedModel==="ecmwf"?"ecmwf":"openmeteo","loading","načítám");status("Načítám "+(state.selectedModel==="ecmwf"?"ECMWF IFS":"Open-Meteo")+" pro 15 měst…");$("refresh").disabled=true;
+ const makeUrl=places=>(state.selectedModel==="ecmwf"?"https://api.open-meteo.com/v1/ecmwf?":"https://api.open-meteo.com/v1/forecast?")+"latitude="+places.map(p=>p.lat).join(",")+"&longitude="+places.map(p=>p.lon).join(",")+"&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover&forecast_days=4&timezone=Europe%2FPrague";
  const nearestCityRow=p=>{let best=0,distance=Infinity;for(let i=0;i<cities.length;i++){const d=(p.lat-cities[i].lat)**2+(p.lon-cities[i].lon)**2;if(d<distance){distance=d;best=i}}return best};
  const useRows=(rows,source="Open-Meteo")=>{
   $("forecastTimeline").disabled=false;$("forecastHour").disabled=false;
@@ -719,12 +726,12 @@ function loadWeather(force=false,retry=false){
    const data=await response.json(),cityRows=Array.isArray(data)?data:[data];
    if(cityRows.length!==cities.length)throw Error("Nesouhlasí počet měst");
    const gridRows=grid.map(p=>cityRows[nearestCityRow(p)]);
-   useRows([...gridRows,...cityRows],"Open-Meteo");window.__weatherVortexSetSourceStatus?.("openmeteo","ok","dostupné");window.__weatherVortexSetSourceStatus?.("metnorway","pending","záloha připravena");
+   useRows([...gridRows,...cityRows],state.selectedModel==="ecmwf"?"ECMWF IFS HRES (Open-Meteo API)":"Open-Meteo · Best Match");window.__weatherVortexSetSourceStatus?.(state.selectedModel==="ecmwf"?"ecmwf":"openmeteo","ok","dostupné");window.__weatherVortexSetSourceStatus?.(state.selectedModel==="ecmwf"?"openmeteo":"ecmwf","pending",state.selectedModel==="ecmwf"?"další zdroj":"volitelný model");window.__weatherVortexSetSourceStatus?.("metnorway","pending","záloha připravena");
    state.weatherRetryCount=0;
    if(state.weatherRetryTimer){clearTimeout(state.weatherRetryTimer);state.weatherRetryTimer=0;}
    status("Počasí načteno · 15 měst · jedna žádost Open-Meteo");
   }catch(error){
-   let fallbackLoaded=false;window.__weatherVortexSetSourceStatus?.("openmeteo","bad","nedostupné");window.__weatherVortexSetSourceStatus?.("metnorway","loading","načítám zálohu");
+   let fallbackLoaded=false;window.__weatherVortexSetSourceStatus?.(state.selectedModel==="ecmwf"?"ecmwf":"openmeteo","bad","nedostupné");window.__weatherVortexSetSourceStatus?.("metnorway","loading","načítám zálohu");
    try{
     const fallbackRows=await loadMetNoFallback();
     useRows(fallbackRows,"MET Norway (záložní globální model)");window.__weatherVortexSetSourceStatus?.("metnorway","ok","dostupné · aktivní záloha");
@@ -764,6 +771,9 @@ $("forecastHour").addEventListener("change",e=>{stopForecastPlayback();state.hou
 $("forecastTimeline").addEventListener("input",e=>{stopForecastPlayback();state.hour=+e.target.value;$("forecastHour").value=String(state.hour);applyHour()});
 $("forecastPlay").addEventListener("click",()=>{if(forecastPlaybackTimer)stopForecastPlayback();else startForecastPlayback();});
 $("refresh").addEventListener("click",()=>loadWeather(true));
+$("weatherModelSelect").addEventListener("change",e=>{state.selectedModel=e.target.value;state.lastWeatherLoad=0;state.lastWeatherAttempt=0;loadWeather(true,true)});
+async function compareEcmwfNow(){const button=$("compareEcmwfButton"),out=$("modelCompareResult");button.disabled=true;out.textContent="Načítám nezávislou předpověď ECMWF IFS pro porovnání…";try{const places=cities,url="https://api.open-meteo.com/v1/ecmwf?latitude="+places.map(p=>p.lat).join(",")+"&longitude="+places.map(p=>p.lon).join(",")+"&hourly=temperature_2m,precipitation,wind_speed_10m&forecast_days=4&timezone=Europe%2FPrague";const response=await fetchWeatherApi(url,{cache:"no-store"});if(!response.ok)throw Error("ECMWF HTTP "+response.status);const payload=await response.json(),rows=Array.isArray(payload)?payload:[payload];if(rows.length!==cities.length)throw Error("ECMWF nevrátilo všech 15 měst");const activeTime=state.times[state.hour],values=[];for(let i=0;i<cities.length;i++){const a=state.rows[grid.length+i]?.hourly,b=rows[i]?.hourly;if(!a||!b)continue;let ai=state.hour,bi=b.time.findIndex(t=>Math.abs(Date.parse(t)-Date.parse(activeTime))<30*60*1000);if(bi<0)bi=b.time.findIndex(t=>Date.parse(t)>=Date.parse(activeTime));if(bi<0)continue;const at=Number(a.temperature_2m?.[ai]),bt=Number(b.temperature_2m?.[bi]),aw=Number(a.wind_speed_10m?.[ai]),bw=Number(b.wind_speed_10m?.[bi]),ap=Number(a.precipitation?.[ai]),bp=Number(b.precipitation?.[bi]);if([at,bt,aw,bw,ap,bp].every(Number.isFinite))values.push({name:cities[i].name,dt:bt-at,dw:bw-aw,dp:bp-ap});}if(!values.length)throw Error("Pro zvolený čas nejsou společné hodnoty");const mean=k=>values.reduce((sum,v)=>sum+v[k],0)/values.length,fmt=n=>(n>0?"+":"")+n.toFixed(1);out.innerHTML="<b>ECMWF IFS ↔ "+(state.forecastSource||"aktivní model")+"</b> · "+new Date(activeTime).toLocaleString("cs-CZ")+"<br>Průměrný rozdíl ECMWF − aktivní model ("+values.length+" měst): teplota <b>"+fmt(mean("dt"))+" °C</b> · vítr <b>"+fmt(mean("dw"))+" km/h</b> · srážky <b>"+fmt(mean("dp"))+" mm/h</b>.<br><span>Rozdíl je orientační průměr, nikoli ověření přesnosti předpovědi.</span>";window.__weatherVortexSetSourceStatus?.("ecmwf","ok","porovnání dostupné");}catch(err){out.textContent="Porovnání ECMWF se nezdařilo: "+err.message;window.__weatherVortexSetSourceStatus?.("ecmwf","bad","chyba načtení")}finally{button.disabled=false}}
+$("compareEcmwfButton").addEventListener("click",compareEcmwfNow);
 $("findPrecip").addEventListener("click",()=>{
  if(!state.rows.length||!state.times.length)return;
  let best={amount:0,index:0,rain:0,snow:0};
@@ -1496,7 +1506,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
  let dataTimestamp=0,dataSource='',dataMode='none';
  const dataTimeFmt=new Intl.DateTimeFormat('cs-CZ',{timeZone:zone,hour:'2-digit',minute:'2-digit',second:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'});
  window.__weatherVortexSetSourceStatus=(source,state,label)=>{
-  const el=document.getElementById(source==='openmeteo'?'openMeteoStatus':'metNorwayStatus');
+  const el=document.getElementById(source==='openmeteo'?'openMeteoStatus':source==='ecmwf'?'ecmwfStatus':'metNorwayStatus');
   if(!el)return;
   el.className='source-status '+(state==='ok'?'ok':state==='bad'?'bad':state==='loading'?'loading':state==='cached'?'cached':'pending');
   el.textContent=(source==='openmeteo'?'Open-Meteo':'MET Norway')+' · '+label;
