@@ -36,7 +36,8 @@ def number(value):
         return None
 
 def fetch_station(station, stamp, base=BASE):
-    url = f"{base}/data/10min/10m-{station['id']}-{stamp}.json"
+    url = (f"{base}/data/10m-{station['id']}-{stamp}.json" if base == NOW_BASE
+           else f"{base}/data/10min/10m-{station['id']}-{stamp}.json")
     try:
         doc = get_json(url)
         values = doc.get("data", {}).get("data", {}).get("values", [])
