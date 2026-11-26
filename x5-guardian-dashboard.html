@@ -35,11 +35,11 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
 <body>
 <header><small>Kosmická observatoř X-5</small><h1>Guardian · administrační panel</h1><p>Kontrola dostupnosti zdrojů a historie diagnostiky</p></header>
 <main>
-<div class="notice"><strong>Bezpečný režim:</strong> panel pouze zobrazuje diagnostická data vložená do reportu při běhu GitHub Actions, případně data načtená ručně. Neprovádí opravy, nic neposílá na server a neobsahuje přístupové klíče. Hlavní meteorologická stránka zůstává oddělená.</div>
+<div class="notice"><strong>Bezpečný režim:</strong> panel pouze čte veřejný diagnostický přehled z oddělené datové větve nebo JSON načtený ručně. Neprovádí opravy a neobsahuje přístupové klíče. Hlavní meteorologická stránka zůstává oddělená.</div><p id="autoStatus" class="muted" role="status">Automatické načítání: čekám na spojení…</p>
 <div class="actions">
 <label class="filelabel" for="diagFile">Načíst diagnostiku JSON</label><input id="diagFile" type="file" accept=".json,application/json">
 <label class="filelabel" for="historyFile">Načíst historii JSON</label><input id="historyFile" type="file" accept=".json,application/json">
-<button id="demoBtn" type="button">Zobrazit ukázková data</button><button id="clearBtn" type="button">Vymazat zobrazení</button>
+<button id="refreshBtn" class="primary" type="button">Aktualizovat data</button><button id="demoBtn" type="button">Zobrazit ukázková data</button><button id="clearBtn" type="button">Vymazat zobrazení</button>
 </div>
 <div class="grid" aria-live="polite">
 <div class="card metric"><span>Poslední kontrola</span><strong id="lastTime" style="font-size:17px">—</strong></div>
@@ -96,11 +96,32 @@ el('historyFile').addEventListener('change',e=>loadFile(e.target.files[0],render
 el('clearBtn').addEventListener('click',()=>{diagnostic=null;history=[];el('lastTime').textContent='—';['okCount','warnCount','failCount'].forEach(id=>el(id).textContent='—');el('diagInfo').textContent='Diagnostika není načtena';el('historyInfo').textContent='Historie není načtena';el('checks').innerHTML='<div class="empty">Diagnostika není načtena.</div>';el('history').innerHTML='<div class="empty">Historie není načtena.</div>';});
 el('demoBtn').addEventListener('click',()=>{renderDiagnostic({checked_at_utc:new Date().toISOString(),checks:[{name:'GitHub Pages / HTML',state:'OK',detail:'Ukázková odpověď'},{name:'Open-Meteo',state:'WARN',detail:'Ukázkové varování'},{name:'MET Norway',state:'OK',detail:'Časová řada dostupná'}]});renderHistory([{checked_at_utc:new Date(Date.now()-86400000).toISOString(),checks:[{state:'OK'},{state:'WARN'}]},{checked_at_utc:new Date().toISOString(),checks:[{state:'OK'},{state:'WARN'},{state:'OK'}]}]);});
 const embeddedDiag=el('x5-embedded-diagnostics'), embeddedHistory=el('x5-embedded-history');
+const DATA_BASE='https://raw.githubusercontent.com/Tmik407/Kosmick-observato-/x5-guardian-data/latest/';
+async function refreshRemote(){
+ const status=el('autoStatus');
+ status.textContent='Načítám poslední veřejnou diagnostiku…';
+ try{
+  const stamp=Date.now();
+  const responses=await Promise.all([
+   fetch(DATA_BASE+'diagnostics.json?v='+stamp,{cache:'no-store'}),
+   fetch(DATA_BASE+'history.json?v='+stamp,{cache:'no-store'})
+  ]);
+  if(!responses[0].ok) throw new Error('Diagnostika není zatím publikována (HTTP '+responses[0].status+').');
+  const diag=await responses[0].json();
+  renderDiagnostic(diag);
+  if(responses[1].ok){const hist=await responses[1].json();renderHistory(hist);}
+  status.textContent='Automaticky načteno · '+safeDate(diag.checked_at_utc)+' · další kontrola za 10 minut.';
+ }catch(error){
+  status.textContent='Automatické načtení se nezdařilo: '+error.message+' Ruční import JSON zůstává dostupný.';
+ }
+}
+el('refreshBtn').addEventListener('click',refreshRemote);
+
 if(embeddedDiag && embeddedHistory){
  try{renderDiagnostic(JSON.parse(embeddedDiag.textContent));renderHistory(JSON.parse(embeddedHistory.textContent));}
  catch(e){el('diagInfo').textContent='Vložená data se nepodařilo načíst';console.error('X-5 embedded report:',e);}
 }
-})();
+refreshRemote();\nsetInterval(refreshRemote,10*60*1000);\n})();
 </script>
 </body>
 </html>
