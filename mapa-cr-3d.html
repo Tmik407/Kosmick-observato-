@@ -137,6 +137,29 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
   <button type="button" data-cloud-altitude="2" aria-pressed="true">🌤️ Vysoká oblačnost</button>
  </div>
  <div id="weatherVortexCloudAltitudeStatus" role="status" aria-live="polite">Aktivní výškové hladiny: nízká, střední a vysoká · výška je schematická, nikoli měření v km.</div>
+ <div id="weatherVortexCloudTuning" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin:6px 0 8px">
+  <section class="cloud-tune" data-cloud-tune="0" style="padding:9px;border:1px solid #c9dce7;border-radius:10px;background:#f7fbfe">
+   <b>☁️ Nízká oblačnost</b>
+   <label style="display:block;font-size:12px;margin-top:6px">Intenzita <output id="cloudIntensityValue0">100 %</output></label>
+   <input type="range" min="50" max="150" step="5" value="100" data-cloud-intensity="0" aria-label="Intenzita nízké oblačnosti" style="width:100%;min-height:28px">
+   <label style="display:block;font-size:12px;margin-top:4px">Průhlednost <output id="cloudOpacityValue0">100 %</output></label>
+   <input type="range" min="20" max="100" step="5" value="100" data-cloud-opacity="0" aria-label="Průhlednost nízké oblačnosti" style="width:100%;min-height:28px">
+  </section>
+  <section class="cloud-tune" data-cloud-tune="1" style="padding:9px;border:1px solid #c9dce7;border-radius:10px;background:#f7fbfe">
+   <b>🌥️ Střední oblačnost</b>
+   <label style="display:block;font-size:12px;margin-top:6px">Intenzita <output id="cloudIntensityValue1">100 %</output></label>
+   <input type="range" min="50" max="150" step="5" value="100" data-cloud-intensity="1" aria-label="Intenzita střední oblačnosti" style="width:100%;min-height:28px">
+   <label style="display:block;font-size:12px;margin-top:4px">Průhlednost <output id="cloudOpacityValue1">100 %</output></label>
+   <input type="range" min="20" max="100" step="5" value="100" data-cloud-opacity="1" aria-label="Průhlednost střední oblačnosti" style="width:100%;min-height:28px">
+  </section>
+  <section class="cloud-tune" data-cloud-tune="2" style="padding:9px;border:1px solid #c9dce7;border-radius:10px;background:#f7fbfe">
+   <b>🌤️ Vysoká oblačnost</b>
+   <label style="display:block;font-size:12px;margin-top:6px">Intenzita <output id="cloudIntensityValue2">100 %</output></label>
+   <input type="range" min="50" max="150" step="5" value="100" data-cloud-intensity="2" aria-label="Intenzita vysoké oblačnosti" style="width:100%;min-height:28px">
+   <label style="display:block;font-size:12px;margin-top:4px">Průhlednost <output id="cloudOpacityValue2">100 %</output></label>
+   <input type="range" min="20" max="100" step="5" value="100" data-cloud-opacity="2" aria-label="Průhlednost vysoké oblačnosti" style="width:100%;min-height:28px">
+  </section>
+ </div>
  <div id="weatherVortexStage" style="position:relative;height:470px;min-height:360px;margin-top:10px;border-radius:13px;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#173f61,#071827 72%)">
   <canvas id="weatherVortex3d" style="display:block;width:100%;height:100%;touch-action:pan-y"></canvas>
   <div style="position:absolute;left:10px;top:10px;padding:7px 9px;border:1px solid #52738d;border-radius:8px;background:#061526d9;color:#e9f6ff;font-size:11px;pointer-events:none">MODEL 3D · ČESKÁ REPUBLIKA<br><span id="weatherVortexStatus">Čekám na data předpovědi…</span></div>
@@ -1212,6 +1235,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   schematicCloudButton?.addEventListener('click',()=>{showSchematicClouds=!showSchematicClouds;schematicCloudButton.setAttribute('aria-pressed',String(showSchematicClouds));schematicCloudButton.textContent='☁️ Schematická oblačnost: '+(showSchematicClouds?'zapnuta':'vypnuta');if(windFeatures.length)readWeather(windFeatures);});
   const cloudAltitudeButtons=document.querySelectorAll('[data-cloud-altitude]');
   const cloudAltitudeVisible=[true,true,true];
+  const cloudIntensity=[100,100,100],cloudOpacity=[100,100,100];
   const cloudAltitudeStatus=document.getElementById('weatherVortexCloudAltitudeStatus');
   const cloudAltitudeNames=['nízká','střední','vysoká'];
   function updateCloudAltitudeStatus(){
@@ -1225,6 +1249,17 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    cloudAltitudeVisible[layer]=!cloudAltitudeVisible[layer];
    clouds.forEach(g=>{if(g.userData.cloudLayer===layer)g.visible=!!g.userData.cloudAvailable&&cloudAltitudeVisible[layer]});
    updateCloudAltitudeStatus();
+  document.querySelectorAll('[data-cloud-intensity],[data-cloud-opacity]').forEach(input=>input.addEventListener('input',()=>{
+   const layer=Number(input.dataset.cloudIntensity??input.dataset.cloudOpacity);
+   if(!Number.isInteger(layer)||layer<0||layer>2)return;
+   if(input.hasAttribute('data-cloud-intensity'))cloudIntensity[layer]=Number(input.value);
+   else cloudOpacity[layer]=Number(input.value);
+   const intensityOutput=document.getElementById('cloudIntensityValue'+layer),opacityOutput=document.getElementById('cloudOpacityValue'+layer);
+   if(intensityOutput)intensityOutput.textContent=cloudIntensity[layer]+' %';
+   if(opacityOutput)opacityOutput.textContent=cloudOpacity[layer]+' %';
+   clouds.forEach(g=>{if(g.userData.cloudLayer===layer){g.scale.setScalar(.85+cloudIntensity[layer]/100*.15);g.userData.layerMaterials?.forEach(mat=>{mat.opacity=(g.userData.baseCloudOpacity??mat.opacity)*cloudOpacity[layer]/100})}});
+  }));
+
   }));
   updateCloudAltitudeStatus();
   layerControls?.querySelectorAll('[data-vortex-layer]').forEach(btn=>btn.addEventListener('click',()=>{
@@ -1277,7 +1312,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    stormIntensity=selectedStorms.length?Math.min(1,selectedStorms.reduce((v,q)=>v+Math.min(1,q.rain/3)*(q.cloud/100),0)/selectedStorms.length):0;
    stormClouds.forEach((g,i)=>{const q=selectedStorms[i];g.visible=!!q;if(q){g.position.set(q.x,terrainHeightAt(q.x,q.z)+.72,q.z);g.scale.setScalar(.82+Math.min(1,q.rain/4)*.32);g.userData.baseY=g.position.y;lightningBolts[i].group.position.set(q.x,terrainHeightAt(q.x,q.z)+1.12,q.z);lightningBolts[i].group.visible=true}else lightningBolts[i].group.visible=false});
    lightningGroup.visible=vortexLayers.clouds&&stormIntensity>0;
-   clouds.forEach((g,i)=>{const q=selectedClouds[i]||null;const schematic=!q&&showSchematicClouds;const cover=q?q.cloud:(schematic?42:0);if(q){g.position.x=q.x;g.position.z=q.z;g.userData.baseX=q.x;g.userData.baseZ=q.z;g.userData.baseY=terrainHeightAt(q.x,q.z)+.48+g.userData.cloudLayer*.42;g.position.y=g.userData.baseY}else if(schematic){const spread=getSchematicCloudPositions(),point=spread[i%Math.max(1,spread.length)]||{x:0,z:0};g.position.x=point.x;g.position.z=point.z;g.userData.baseX=g.position.x;g.userData.baseZ=g.position.z;g.userData.baseY=terrainHeightAt(g.position.x,g.position.z)+.48+g.userData.cloudLayer*.42;g.position.y=g.userData.baseY}else{g.visible=false}const layer=g.userData.cloudLayer||0,layerOpacity=[1,.78,.58][layer],opacity=(schematic ? .16 :(cover<8?0:.035+(cover/100)*.22))*layerOpacity;g.userData.layerMaterials.forEach(mat=>{mat.opacity=opacity});g.children.forEach(puff=>{puff.visible=schematic||cover>=8});g.userData.cloudAvailable=!!q&&cover>=8||schematic;g.visible=g.userData.cloudAvailable&&cloudAltitudeVisible[g.userData.cloudLayer||0]});
+   clouds.forEach((g,i)=>{const q=selectedClouds[i]||null;const schematic=!q&&showSchematicClouds;const cover=q?q.cloud:(schematic?42:0);if(q){g.position.x=q.x;g.position.z=q.z;g.userData.baseX=q.x;g.userData.baseZ=q.z;g.userData.baseY=terrainHeightAt(q.x,q.z)+.48+g.userData.cloudLayer*.42;g.position.y=g.userData.baseY}else if(schematic){const spread=getSchematicCloudPositions(),point=spread[i%Math.max(1,spread.length)]||{x:0,z:0};g.position.x=point.x;g.position.z=point.z;g.userData.baseX=g.position.x;g.userData.baseZ=g.position.z;g.userData.baseY=terrainHeightAt(g.position.x,g.position.z)+.48+g.userData.cloudLayer*.42;g.position.y=g.userData.baseY}else{g.visible=false}const layer=g.userData.cloudLayer||0,layerOpacity=[1,.78,.58][layer],opacity=(schematic ? .16 :(cover<8?0:.035+(cover/100)*.22))*layerOpacity;g.userData.baseCloudOpacity=opacity;g.scale.setScalar(.85+cloudIntensity[layer]/100*.15);g.userData.layerMaterials.forEach(mat=>{mat.opacity=opacity*cloudOpacity[layer]/100});g.children.forEach(puff=>{puff.visible=schematic||cover>=8});g.userData.cloudAvailable=!!q&&cover>=8||schematic;g.visible=g.userData.cloudAvailable&&cloudAltitudeVisible[g.userData.cloudLayer||0]});
    const cold=avgTemp<0,warm=avgTemp>=12;const palette=cold?[.08,.32,1]:warm?[1,.28,.06]:[.02,.78,.48];const colors=heatGeo.attributes.color;
    // Interpolace teploty z jednotlivých bodů předpovědi do každého vrcholu 3D plochy (IDW).
    const tempPoints=weatherPoints.map(q=>({x:q.x,z:q.z,t:q.temp}));
