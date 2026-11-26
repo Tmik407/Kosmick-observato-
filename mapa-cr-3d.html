@@ -131,6 +131,13 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
   </div>
   <div style="position:absolute;left:10px;bottom:10px;display:flex;gap:7px;flex-wrap:wrap;color:#eaf7ff;font-size:10px;pointer-events:none;background:#061526c9;padding:6px 8px;border-radius:8px"><span>🔵 Chlad</span><span>🟢 Mírno</span><span>🟠 Teplo</span><span>💧 Déšť</span><span>❄️ Sníh</span></div>
   <div id="weatherTerrainBadge" style="position:absolute;right:10px;top:58px;padding:5px 8px;border:1px solid #52738d;border-radius:7px;background:#061526d9;color:#dff4ff;font-size:10px;pointer-events:none">Načítám výšková data…</div>
+  <div id="weatherAltitudeScale" aria-label="Schematická výšková stupnice atmosféry" style="position:absolute;left:10px;top:104px;z-index:2;width:48px;padding:7px 6px;border:1px solid #52738d;border-radius:8px;background:#061526d9;color:#eaf7ff;font-size:9px;line-height:1.2;pointer-events:none">
+   <div style="font-weight:700;text-align:center;margin-bottom:7px">Výška</div>
+   <div style="display:flex;gap:5px;align-items:stretch;height:112px">
+    <div style="width:4px;border-radius:4px;background:linear-gradient(to top,#e8f6ff,#5acbff,#3988db,#756de0)"></div>
+    <div style="display:flex;flex-direction:column;justify-content:space-between;flex:1"><span>12 km</span><span>9 km</span><span>6 km</span><span>3 km</span><span>0 km</span></div>
+   </div>
+  </div>
   <div style="position:absolute;right:10px;bottom:42px;width:150px;padding:7px 9px;border:1px solid #52738d;border-radius:8px;background:#061526df;color:#eaf7ff;font-size:10px;pointer-events:none">
    <div style="font-weight:700;margin-bottom:5px">Výška terénu · m n. m.</div>
    <div style="height:9px;border-radius:5px;background:linear-gradient(90deg,#296b38,#579440,#9e9e4d,#7b6445,#7b7d7b,#d1d6d1)"></div>
@@ -727,9 +734,25 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   // Schematické výškové hladiny atmosféry.
   const atmosphere=new THREE.Group();scene.add(atmosphere);
   for(let k=0;k<4;k++){const shell=new THREE.Mesh(new THREE.CylinderGeometry(3.5+k*.48,4.0+k*.48,.16,96,1,true),new THREE.MeshBasicMaterial({color:[0x35bfff,0x4ed6e8,0x91cfff,0x6d9cff][k],transparent:true,opacity:.19,side:THREE.DoubleSide,depthWrite:false}));shell.position.y=.45+k*.52;shell.scale.y=1.5;atmosphere.add(shell)}
-  // Oblaka ve třech výškových hladinách.
+  // Prostorová oblačnost ve třech výškových hladinách. Sdílená geometrie šetří výkon tabletu.
   const cloudGroup=new THREE.Group();scene.add(cloudGroup);const clouds=[];
-  for(let n=0;n<24;n++){const g=new THREE.Group(),a=n*2.399,r=1.45+(n%6)*.48,y=.9+(n%3)*.62;for(let q=0;q<4;q++){const puff=new THREE.Mesh(new THREE.SphereGeometry(.12+(q%2)*.04,10,8),new THREE.MeshBasicMaterial({color:0xd8f3ff,transparent:true,opacity:.16,depthWrite:false}));puff.position.set((q-1.5)*.18,(q%2)*.1,0);g.add(puff)}g.position.set(Math.cos(a)*r,y,Math.sin(a)*r);cloudGroup.add(g);clouds.push(g)}
+  const cloudPuffGeo=new THREE.SphereGeometry(1,12,10);
+  const cloudMats=[
+   new THREE.MeshStandardMaterial({color:0x527caa,transparent:true,opacity:.30,roughness:1,depthWrite:false}),
+   new THREE.MeshStandardMaterial({color:0xa8d7f2,transparent:true,opacity:.38,roughness:1,depthWrite:false}),
+   new THREE.MeshStandardMaterial({color:0xe8f7ff,transparent:true,opacity:.48,roughness:1,depthWrite:false})
+  ];
+  for(let n=0;n<18;n++){
+   const g=new THREE.Group(),a=n*2.399,r=.45+(n%6)*.43,level=n%3,y=1.05+level*.55;
+   const puffData=[
+    [-.30,0,0,.28,.16,.22,0],[-.12,.12,.02,.34,.22,.27,1],
+    [.12,.08,-.03,.32,.20,.25,2],[.34,-.015,.02,.25,.15,.21,1],
+    [-.04,-.06,.17,.27,.15,.22,0],[.16,.02,-.17,.28,.16,.22,2],
+    [-.30,-.07,-.12,.22,.13,.18,1]
+   ];
+   for(const [px,py,pz,sx,sy,sz,mi] of puffData){const puff=new THREE.Mesh(cloudPuffGeo,cloudMats[mi]);puff.position.set(px,py,pz);puff.scale.set(sx,sy,sz);g.add(puff)}
+   g.position.set(Math.cos(a)*r,y,Math.sin(a)*r);g.rotation.y=a*.35;cloudGroup.add(g);clouds.push(g)
+  }
   const light=new THREE.DirectionalLight(0xffffff,2);light.position.set(3,8,5);scene.add(light);
   const base=new THREE.Mesh(new THREE.CylinderGeometry(4.8,5,.25,96),new THREE.MeshStandardMaterial({color:0x123b55,roughness:.8}));base.position.y=-.38;scene.add(base);
   const grid=new THREE.GridHelper(9.2,26,0x58b7d5,0x28617d);grid.position.y=-.12;scene.add(grid);
@@ -757,7 +780,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   let demGrid=null;const demSize=81;
   function terrainHeightAt(x,z){
    if(demGrid){const gx=Math.max(0,Math.min(demSize-1,(x+3.6)/7.2*(demSize-1))),gz=Math.max(0,Math.min(demSize-1,(z+3.6)/7.2*(demSize-1))),x0=Math.floor(gx),z0=Math.floor(gz),x1=Math.min(demSize-1,x0+1),z1=Math.min(demSize-1,z0+1),tx=gx-x0,tz=gz-z0;
-    const a=demGrid[z0*demSize+x0]*(1-tx)+demGrid[z0*demSize+x1]*tx,b=demGrid[z1*demSize+x0]*(1-tx)+demGrid[z1*demSize+x1]*tx;return (a*(1-tz)+b*tz)*.00052}
+    const a=demGrid[z0*demSize+x0]*(1-tx)+demGrid[z0*demSize+x1]*tx,b=demGrid[z1*demSize+x0]*(1-tx)+demGrid[z1*demSize+x1]*tx;return (a*(1-tz)+b*tz)*.00060}
    let h=.018*Math.sin(x*1.7)*Math.cos(z*1.35);for(const p of terrainPeaks){const dx=(x-p.x)/p.sx,dz=(z-p.z)/p.sz;h+=p.a*Math.exp(-.5*(dx*dx+dz*dz))}return h
   }
   function terrainColorAt(h){const m=Math.max(0,h/.00055);const stops=[{v:0,c:[.16,.42,.22]},{v:250,c:[.34,.58,.25]},{v:500,c:[.62,.62,.30]},{v:900,c:[.48,.39,.27]},{v:1300,c:[.48,.49,.48]},{v:1700,c:[.82,.84,.82]}];let k=0;while(k<stops.length-2&&m>stops[k+1].v)k++;const a=stops[k],b=stops[k+1],t=Math.max(0,Math.min(1,(m-a.v)/(b.v-a.v)));return new THREE.Color().setRGB(a.c[0]+(b.c[0]-a.c[0])*t,a.c[1]+(b.c[1]-a.c[1])*t,a.c[2]+(b.c[2]-a.c[2])*t)}
@@ -1160,7 +1183,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   }
   window.__weatherVortexSetValidTime=iso=>{validTimeLabel=iso?new Date(iso).toLocaleString('cs-CZ',{weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';if(windFeatures.length)status.textContent='Vítr '+windSpeed.toFixed(1)+' km/h · směr '+Math.round(windDir)+'° · teplota '+avgTemp.toFixed(1)+' °C · srážky '+maxPrecip.toFixed(2)+' mm/h · oblačnost '+Math.round(avgCloudCover)+' %'+(validTimeLabel?' · platnost '+validTimeLabel:'');};
   if(window.__weatherVortexCurrentValidTime)window.__weatherVortexSetValidTime(window.__weatherVortexCurrentValidTime);
-  function animate(t){if(paused||document.hidden||!stageVisible){raf=0;return;}raf=requestAnimationFrame(animate);if(t-last<33)return;last=t;const closeView=orbitRadius<5.65,cityView=orbitRadius<6.85;regionGroup.children.forEach(obj=>{if(obj.userData.mapLabelKind==='region')obj.visible=!closeView;});cityGroup.children.forEach(obj=>{if(obj.userData.mapLabelKind==='city')obj.visible=cityView;});districtGroup.children.forEach(obj=>{if(obj.userData.isDistrictLabel)obj.visible=closeView;});if(closeView){const w=renderer.domElement.clientWidth,h=renderer.domElement.clientHeight,occupied=[];const labels=districtGroup.children.filter(o=>o.userData.isDistrictLabel).sort((a,b)=>a.position.distanceTo(camera.position)-b.position.distanceTo(camera.position));labels.forEach(obj=>{if(!obj.visible)return;const q=obj.position.clone().project(camera),x=(q.x*.5+.5)*w,y=(-q.y*.5+.5)*h,boxW=Math.max(34,obj.userData.labelWidth*6.2),boxH=18;const collision=occupied.some(b=>Math.abs(x-b.x)<(boxW+b.w)*.48&&Math.abs(y-b.y)<(boxH+b.h)*.55);if(q.z<0||q.z>1||x<0||x>w||y<0||y>h||collision){obj.visible=false;return;}occupied.push({x,y,w:boxW,h:boxH});});}const speed=.35+Math.min(windSpeed,70)/70;atmosphere.rotation.y+=.00035*speed;cloudGroup.rotation.y+=.00022*speed;clouds.forEach((g,i)=>{g.position.y=.75+(i%3)*.55+Math.sin(t*.00045+i)*.045});core.scale.setScalar(1+Math.sin(t*.0015)*.08);ring.rotation.z=t*.0002*speed;particles.forEach(p=>{p.mesh.position.copy(p.curve.getPointAt((t*.00003*speed+p.phase)%1))});drops.forEach(d=>{if(d.visible){d.position.y-=.025+maxPrecip*.006;if(d.position.y<-.02)d.position.y=1.9}});flakes.forEach(f=>{if(f.visible){f.position.y-=.008;if(f.position.y<-.02)f.position.y=1.8}});renderer.render(scene,camera)}
+  function animate(t){if(paused||document.hidden||!stageVisible){raf=0;return;}raf=requestAnimationFrame(animate);if(t-last<33)return;last=t;const closeView=orbitRadius<5.65,cityView=orbitRadius<6.85;regionGroup.children.forEach(obj=>{if(obj.userData.mapLabelKind==='region')obj.visible=!closeView;});cityGroup.children.forEach(obj=>{if(obj.userData.mapLabelKind==='city')obj.visible=cityView;});districtGroup.children.forEach(obj=>{if(obj.userData.isDistrictLabel)obj.visible=closeView;});if(closeView){const w=renderer.domElement.clientWidth,h=renderer.domElement.clientHeight,occupied=[];const labels=districtGroup.children.filter(o=>o.userData.isDistrictLabel).sort((a,b)=>a.position.distanceTo(camera.position)-b.position.distanceTo(camera.position));labels.forEach(obj=>{if(!obj.visible)return;const q=obj.position.clone().project(camera),x=(q.x*.5+.5)*w,y=(-q.y*.5+.5)*h,boxW=Math.max(34,obj.userData.labelWidth*6.2),boxH=18;const collision=occupied.some(b=>Math.abs(x-b.x)<(boxW+b.w)*.48&&Math.abs(y-b.y)<(boxH+b.h)*.55);if(q.z<0||q.z>1||x<0||x>w||y<0||y>h||collision){obj.visible=false;return;}occupied.push({x,y,w:boxW,h:boxH});});}const speed=.35+Math.min(windSpeed,70)/70;atmosphere.rotation.y+=.00035*speed;cloudGroup.rotation.y+=.00022*speed;clouds.forEach((g,i)=>{g.position.y=1.05+(i%3)*.55+Math.sin(t*.00045+i)*.055;g.rotation.z=Math.sin(t*.00018+i*.7)*.035});core.scale.setScalar(1+Math.sin(t*.0015)*.08);ring.rotation.z=t*.0002*speed;particles.forEach(p=>{p.mesh.position.copy(p.curve.getPointAt((t*.00003*speed+p.phase)%1))});drops.forEach(d=>{if(d.visible){d.position.y-=.025+maxPrecip*.006;if(d.position.y<-.02)d.position.y=1.9}});flakes.forEach(f=>{if(f.visible){f.position.y-=.008;if(f.position.y<-.02)f.position.y=1.8}});renderer.render(scene,camera)}
   toggle.addEventListener('click',()=>{paused=!paused;toggle.textContent=paused?'▶ Spustit animaci':'⏸ Pozastavit animaci';toggle.setAttribute('aria-pressed',String(!paused));if(!paused&&!raf)raf=requestAnimationFrame(animate)});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!paused&&!raf)raf=requestAnimationFrame(animate)});
   window.addEventListener('pagehide',()=>{if(raf)cancelAnimationFrame(raf);renderer.dispose()},{once:true});
