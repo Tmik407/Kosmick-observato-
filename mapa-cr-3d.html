@@ -720,13 +720,16 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
  try{
   const lowPower=window.matchMedia('(pointer: coarse)').matches;renderer=new THREE.WebGLRenderer({canvas,antialias:!lowPower,alpha:true,powerPreference:'low-power'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,lowPower?1.1:1.5));
   scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(38,1,.1,100);camera.position.set(0,3.8,6.9);camera.lookAt(0,.25,0);
-  scene.add(new THREE.AmbientLight(0xb8e7ff,1.5));
+  scene.add(new THREE.AmbientLight(0xb8e7ff,1.35));
+  scene.add(new THREE.HemisphereLight(0xb9eaff,0x102d43,.82));
+  // Druhé boční světlo zvýrazní výškové rozdíly pohoří a plastický reliéf.
+  const terrainFill=new THREE.DirectionalLight(0x70cfff,.78);terrainFill.position.set(-5,5,-4);scene.add(terrainFill);
   // Schematické výškové hladiny atmosféry.
   const atmosphere=new THREE.Group();scene.add(atmosphere);
   for(let k=0;k<4;k++){const shell=new THREE.Mesh(new THREE.CylinderGeometry(3.5+k*.48,4.0+k*.48,.16,96,1,true),new THREE.MeshBasicMaterial({color:[0x35bfff,0x4ed6e8,0x91cfff,0x6d9cff][k],transparent:true,opacity:.19,side:THREE.DoubleSide,depthWrite:false}));shell.position.y=.45+k*.52;shell.scale.y=1.5;atmosphere.add(shell)}
   // Oblaka ve třech výškových hladinách.
   const cloudGroup=new THREE.Group();scene.add(cloudGroup);const clouds=[];
-  for(let n=0;n<24;n++){const g=new THREE.Group(),a=n*2.399,r=1.45+(n%6)*.48,y=.9+(n%3)*.62;for(let q=0;q<4;q++){const puff=new THREE.Mesh(new THREE.SphereGeometry(.12+(q%2)*.04,10,8),new THREE.MeshBasicMaterial({color:0xc7eaff,transparent:true,opacity:.11,depthWrite:false}));puff.position.set((q-1.5)*.18,(q%2)*.1,0);g.add(puff)}g.position.set(Math.cos(a)*r,y,Math.sin(a)*r);cloudGroup.add(g);clouds.push(g)}
+  for(let n=0;n<24;n++){const g=new THREE.Group(),a=n*2.399,r=1.45+(n%6)*.48,y=.9+(n%3)*.62;for(let q=0;q<4;q++){const puff=new THREE.Mesh(new THREE.SphereGeometry(.12+(q%2)*.04,10,8),new THREE.MeshBasicMaterial({color:0xd8f3ff,transparent:true,opacity:.16,depthWrite:false}));puff.position.set((q-1.5)*.18,(q%2)*.1,0);g.add(puff)}g.position.set(Math.cos(a)*r,y,Math.sin(a)*r);cloudGroup.add(g);clouds.push(g)}
   const light=new THREE.DirectionalLight(0xffffff,2);light.position.set(3,8,5);scene.add(light);
   const base=new THREE.Mesh(new THREE.CylinderGeometry(4.8,5,.25,96),new THREE.MeshStandardMaterial({color:0x123b55,roughness:.8}));base.position.y=-.38;scene.add(base);
   const grid=new THREE.GridHelper(9.2,26,0x58b7d5,0x28617d);grid.position.y=-.12;scene.add(grid);
@@ -754,7 +757,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   let demGrid=null;const demSize=81;
   function terrainHeightAt(x,z){
    if(demGrid){const gx=Math.max(0,Math.min(demSize-1,(x+3.6)/7.2*(demSize-1))),gz=Math.max(0,Math.min(demSize-1,(z+3.6)/7.2*(demSize-1))),x0=Math.floor(gx),z0=Math.floor(gz),x1=Math.min(demSize-1,x0+1),z1=Math.min(demSize-1,z0+1),tx=gx-x0,tz=gz-z0;
-    const a=demGrid[z0*demSize+x0]*(1-tx)+demGrid[z0*demSize+x1]*tx,b=demGrid[z1*demSize+x0]*(1-tx)+demGrid[z1*demSize+x1]*tx;return (a*(1-tz)+b*tz)*.00040}
+    const a=demGrid[z0*demSize+x0]*(1-tx)+demGrid[z0*demSize+x1]*tx,b=demGrid[z1*demSize+x0]*(1-tx)+demGrid[z1*demSize+x1]*tx;return (a*(1-tz)+b*tz)*.00052}
    let h=.018*Math.sin(x*1.7)*Math.cos(z*1.35);for(const p of terrainPeaks){const dx=(x-p.x)/p.sx,dz=(z-p.z)/p.sz;h+=p.a*Math.exp(-.5*(dx*dx+dz*dz))}return h
   }
   function terrainColorAt(h){const m=Math.max(0,h/.00055);const stops=[{v:0,c:[.16,.42,.22]},{v:250,c:[.34,.58,.25]},{v:500,c:[.62,.62,.30]},{v:900,c:[.48,.39,.27]},{v:1300,c:[.48,.49,.48]},{v:1700,c:[.82,.84,.82]}];let k=0;while(k<stops.length-2&&m>stops[k+1].v)k++;const a=stops[k],b=stops[k+1],t=Math.max(0,Math.min(1,(m-a.v)/(b.v-a.v)));return new THREE.Color().setRGB(a.c[0]+(b.c[0]-a.c[0])*t,a.c[1]+(b.c[1]-a.c[1])*t,a.c[2]+(b.c[2]-a.c[2])*t)}
@@ -762,19 +765,20 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   terrainGeo.setAttribute('color',new THREE.Float32BufferAttribute(terrainColors,3));terrainGeo.computeVertexNormals();
   const terrain=new THREE.Mesh(terrainGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.94,metalness:0,side:THREE.DoubleSide}));terrain.position.y=-.085;scene.add(terrain);
   // Jasná hranice mapy ČR a jemný okraj reliéfu.
-  const borderPts=czBorder.map(p=>new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.075,p.z));const borderCurve=new THREE.CatmullRomCurve3(borderPts,true,'centripetal');const borderOuter=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,320,.042,8,true),new THREE.MeshBasicMaterial({color:0x08283c,transparent:true,opacity:.96,depthTest:true}));const borderLine=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,320,.019,8,true),new THREE.MeshBasicMaterial({color:0x9beaff,transparent:true,opacity:.92,depthTest:true}));borderOuter.renderOrder=34;borderLine.renderOrder=35;scene.add(borderOuter,borderLine);
+  const borderPts=czBorder.map(p=>new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.075,p.z));const borderCurve=new THREE.CatmullRomCurve3(borderPts,true,'centripetal');const borderOuter=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,320,.042,8,true),new THREE.MeshBasicMaterial({color:0x08283c,transparent:true,opacity:.96,depthTest:true}));const borderLine=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,320,.019,8,true),new THREE.MeshBasicMaterial({color:0x9beaff,transparent:true,opacity:.92,depthTest:true}));const borderGlow=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,320,.085,8,true),new THREE.MeshBasicMaterial({color:0x20bfff,transparent:true,opacity:.17,depthWrite:false,blending:THREE.AdditiveBlending,depthTest:true}));
+  borderGlow.renderOrder=33;borderOuter.renderOrder=34;borderLine.renderOrder=35;scene.add(borderGlow,borderOuter,borderLine);
   // Geografická orientace 3D mapy: hlavní pohoří a řeky ČR.
   const geoPoint=(lon,lat)=>({x:((lon-12.15)/(18.55-12.15))*7.2-3.6,z:((50.95-lat)/(50.95-48.65))*7.2-3.6});
   const geoOverlay=new THREE.Group();scene.add(geoOverlay);
   function addGeoLabel(name,lon,lat,kind='mountain'){
    const p=geoPoint(lon,lat),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
    canvas.width=512;canvas.height=128;ctx.clearRect(0,0,512,128);
-   ctx.font=kind==='river'?'bold 43px Arial':'bold 40px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+   ctx.font=kind==='river'?'bold 46px Arial':'bold 43px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
    ctx.lineWidth=10;ctx.strokeStyle='rgba(3,18,32,.88)';ctx.strokeText(name,256,64);
    ctx.fillStyle=kind==='river'?'#9beaff':'#fff2c7';ctx.fillText(name,256,64);
    const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
    const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,transparent:true,depthTest:false,depthWrite:false}));
-   sprite.userData.geoPoint=p;sprite.position.set(p.x,terrainHeightAt(p.x,p.z)+.13,p.z);sprite.scale.set(kind==='river'?1.12:.92,.23,1);sprite.renderOrder=30;geoOverlay.add(sprite);
+   sprite.userData.geoPoint=p;sprite.position.set(p.x,terrainHeightAt(p.x,p.z)+.13,p.z);sprite.scale.set(kind==='river'?1.18:1.02,.255,1);sprite.renderOrder=30;geoOverlay.add(sprite);
   }
   function addGeoRiver(name,coords){
    const pts=coords.map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.075,p.z)});
@@ -944,7 +948,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   const heatPos=heatGeo.attributes.position,heatColor=[];
   for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,terrainHeightAt(x,z)+.018);heatColor.push(.08,.5,.95)}
   heatGeo.setAttribute('color',new THREE.Float32BufferAttribute(heatColor,3));heatGeo.computeVertexNormals();
-  const heat=new THREE.Mesh(heatGeo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.42,side:THREE.DoubleSide,depthWrite:false}));heat.position.y=-.045;scene.add(heat);
+  const heat=new THREE.Mesh(heatGeo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.20,side:THREE.DoubleSide,depthWrite:false}));heat.position.y=-.045;scene.add(heat);
   // Načtení výšek s lokální cache: omezuje opakované dotazy při HTTP 429.
   async function loadCopernicusTerrain(){
    const badge=document.getElementById('weatherTerrainBadge');
@@ -1078,7 +1082,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   const ring=new THREE.Mesh(new THREE.TorusGeometry(.58,.025,8,64),new THREE.MeshBasicMaterial({color:0x8deaff,transparent:true,opacity:.95}));ring.rotation.x=Math.PI/2;ring.position.y=.32;scene.add(ring);
   const vortexLayers={terrain:true,temperature:true,clouds:true,precipitation:true,atmosphere:true,wind:true};
   function applyVortexLayers(){
-   terrain.visible=vortexLayers.terrain;borderOuter.visible=vortexLayers.terrain;borderLine.visible=vortexLayers.terrain;
+   terrain.visible=vortexLayers.terrain;borderGlow.visible=vortexLayers.terrain;borderOuter.visible=vortexLayers.terrain;borderLine.visible=vortexLayers.terrain;
    heat.visible=vortexLayers.temperature&&vortexLayers.terrain;patches.forEach(p=>p.visible=vortexLayers.temperature&&vortexLayers.terrain);
    const tempLegend=document.getElementById('weatherTemperatureLegend');if(tempLegend){const showTemp=vortexLayers.temperature&&vortexLayers.terrain;tempLegend.hidden=!showTemp;tempLegend.style.setProperty('display',showTemp?'block':'none','important');tempLegend.setAttribute('aria-hidden',String(!showTemp));}
    cloudGroup.visible=vortexLayers.clouds;atmosphere.visible=vortexLayers.atmosphere;
