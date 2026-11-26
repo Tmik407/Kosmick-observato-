@@ -837,7 +837,6 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   let stormIntensity=0;
   const light=new THREE.DirectionalLight(0xffffff,2);light.position.set(3,8,5);scene.add(light);
   const base=new THREE.Mesh(new THREE.CylinderGeometry(4.8,5,.25,96),new THREE.MeshStandardMaterial({color:0x123b55,roughness:.8}));base.position.y=-.38;scene.add(base);
-  const grid=new THREE.GridHelper(9.2,26,0x58b7d5,0x28617d);grid.position.y=-.12;scene.add(grid);
   // 3D reliéf ČR: schematická výšková mapa s polohou hlavních pohoří.
   // Výšky jsou vizualizační aproximace, nikoli naměřený DEM model.
   const terrainGeo=new THREE.PlaneGeometry(7.4,7.4,300,300);terrainGeo.rotateX(-Math.PI/2);
@@ -870,8 +869,32 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   terrainGeo.setAttribute('color',new THREE.Float32BufferAttribute(terrainColors,3));terrainGeo.computeVertexNormals();
   const terrain=new THREE.Mesh(terrainGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.94,metalness:0,side:THREE.DoubleSide}));terrain.position.y=-.085;scene.add(terrain);
   // Jasná hranice mapy ČR a jemný okraj reliéfu.
-  const borderPts=czBorder.map(p=>new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.075,p.z));const borderCurve=new THREE.CatmullRomCurve3(borderPts,true,'centripetal');const borderOuter=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,320,.042,8,true),new THREE.MeshBasicMaterial({color:0x08283c,transparent:true,opacity:.96,depthTest:true}));const borderLine=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,320,.019,8,true),new THREE.MeshBasicMaterial({color:0x9beaff,transparent:true,opacity:.92,depthTest:true}));const borderGlow=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,320,.085,8,true),new THREE.MeshBasicMaterial({color:0x20bfff,transparent:true,opacity:.17,depthWrite:false,blending:THREE.AdditiveBlending,depthTest:true}));
+  // Zvýrazněná státní hranice s jemným světelným lemem.
+  const borderPts=czBorder.map(p=>new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.105,p.z));
+  const borderCurve=new THREE.CatmullRomCurve3(borderPts,true,'centripetal');
+  const borderOuter=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,420,.052,8,true),new THREE.MeshBasicMaterial({color:0x06283d,transparent:true,opacity:1,depthTest:true}));
+  const borderLine=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,420,.027,8,true),new THREE.MeshBasicMaterial({color:0xc5f5ff,transparent:true,opacity:1,depthTest:true}));
+  const borderGlow=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,420,.12,8,true),new THREE.MeshBasicMaterial({color:0x20bfff,transparent:true,opacity:.25,depthWrite:false,blending:THREE.AdditiveBlending,depthTest:true}));
   borderGlow.renderOrder=33;borderOuter.renderOrder=34;borderLine.renderOrder=35;scene.add(borderGlow,borderOuter,borderLine);
+  // Mřížka je vykreslena pouze uvnitř polygonu ČR; žádné přesahy mimo státní hranici.
+  const clippedGridPositions=[],gridSteps=26,gridMin=-3.6,gridMax=3.6,gridSamples=360;
+  function addClippedGridLine(horizontal,fixed){
+   let previous=null;
+   for(let i=0;i<=gridSamples;i++){
+    const variable=gridMin+(gridMax-gridMin)*i/gridSamples;
+    const x=horizontal?variable:fixed,z=horizontal?fixed:variable,inside=insideCzech(x,z);
+    if(inside&&previous){clippedGridPositions.push(previous.x,previous.y,previous.z,x,terrainHeightAt(x,z)+.022,z)}
+    previous=inside?{x,y:terrainHeightAt(x,z)+.022,z}:null;
+   }
+  }
+  for(let i=0;i<=gridSteps;i++){
+   const v=gridMin+(gridMax-gridMin)*i/gridSteps;
+   addClippedGridLine(true,v);addClippedGridLine(false,v);
+  }
+  const clippedGridGeo=new THREE.BufferGeometry();
+  clippedGridGeo.setAttribute('position',new THREE.Float32BufferAttribute(clippedGridPositions,3));
+  const clippedGrid=new THREE.LineSegments(clippedGridGeo,new THREE.LineBasicMaterial({color:0x397f9d,transparent:true,opacity:.32,depthWrite:false}));
+  clippedGrid.renderOrder=12;scene.add(clippedGrid);
   // Geografická orientace 3D mapy: hlavní pohoří a řeky ČR.
   const geoPoint=(lon,lat)=>({x:((lon-12.15)/(18.55-12.15))*7.2-3.6,z:((50.95-lat)/(50.95-48.65))*7.2-3.6});
   const geoOverlay=new THREE.Group();scene.add(geoOverlay);
