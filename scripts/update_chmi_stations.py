@@ -132,6 +132,23 @@ def main():
         raise RuntimeError("No station observations retrieved")
     generated = dt.datetime.now(dt.timezone.utc)
     newest = max((s.get("observed_utc") or "") for s in result)
+    def observation_age(station):
+        stamp = station.get("observed_utc")
+        if not stamp:
+            return None
+        try:
+            parsed = dt.datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=dt.timezone.utc)
+            return max(0, int((generated - parsed.astimezone(dt.timezone.utc)).total_seconds() // 60))
+        except (TypeError, ValueError):
+            return None
+    ages = [observation_age(station) for station in result]
+    fresh_count = sum(age is not None and age <= 30 for age in ages)
+    delayed_count = sum(age is not None and 30 < age <= 90 for age in ages)
+    stale_count = sum(age is not None and age > 90 for age in ages)
+    unknown_count = sum(age is None for age in ages)
+    newest_age = min((age for age in ages if age is not None), default=None)
     payload = {
         "source": "ČHMÚ Open Data · meteorology/climate/recent/data/10min",
         "license": "CC BY 4.0",
@@ -141,11 +158,16 @@ def main():
         "station_count": len(result),
         "fresh_now_station_count": sum(1 for s in result if s.get("data_source") == "now"),
         "recent_fallback_station_count": sum(1 for s in result if s.get("data_source") == "recent"),
+        "fresh_observation_station_count": fresh_count,
+        "delayed_observation_station_count": delayed_count,
+        "stale_observation_station_count": stale_count,
+        "unknown_observation_station_count": unknown_count,
+        "latest_observation_age_minutes": newest_age,
         "station_networks": {prefix: sum(1 for s in result if s["id"].startswith(prefix)) for prefix in SUPPORTED_WSI_PREFIXES},
         "stations": result,
         "latest_observation_utc": newest,
         "available_elements": sorted({e for s in result for e in s.get("elements", [])}),
-        "note": "Automatizované stanice přednostně používají průběžně aktualizovaný adresář ČHMÚ /now. Ostatní stanice nebo chybějící aktuální soubory používají /recent jako zálohu; tento archiv se aktualizuje po kontrole zpravidla dvakrát denně. Dostupné prvky se liší podle pozorovacího programu. Prázdné hodnoty jsou vynechány, kvalita je převzata ze zdroje ČHMÚ."
+        "note": "Počet stanic /now a /recent označuje zdroj souboru, nikoli jeho aktuálnost. Skutečná čerstvost se počítá z času posledního měření: čerstvé do 30 min, opožděné 30–90 min, starší nad 90 min. Automatizované stanice přednostně používají ČHMÚ /now; ostatní nebo chybějící soubory používají /recent. Dostupné prvky se liší podle pozorovacího programu. Prázdné hodnoty jsou vynechány, kvalita je převzata ze zdroje ČHMÚ."
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     tmp = OUT.with_suffix(".tmp")
