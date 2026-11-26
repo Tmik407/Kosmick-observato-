@@ -125,6 +125,13 @@ def main() -> int:
         "## Doporučené další kroky",
     ]
     issues = [(name, state, detail) for name, state, detail in checks if state != "OK"]
+    diagnostic_payload = {
+        "checked_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "checks": [{"name": name, "state": state, "detail": detail} for name, state, detail in checks],
+    }
+    with open("x5-guardian-diagnostics.json", "w", encoding="utf-8") as output:
+        json.dump(diagnostic_payload, output, ensure_ascii=False, indent=2)
+
     if issues:
         lines.extend(f"- **{name} ({state}):** {diagnoses.get(name, 'Prověřit zdroj a jeho poslední chybovou odpověď.')} Detail: {detail}" for name, state, detail in issues)
     else:
