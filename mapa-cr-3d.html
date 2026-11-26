@@ -862,7 +862,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    ctx.font='bold 34px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=8;ctx.strokeStyle='rgba(2,16,29,.94)';ctx.strokeText(name,320,56);ctx.fillStyle='#fff4d4';ctx.fillText(name,320,56);
    const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false,depthWrite:false}));
-   sp.userData.geoPoint=p;sp.position.set(p.x,terrainHeightAt(p.x,p.z)+.22,p.z);sp.scale.set(.78,.14,1);sp.renderOrder=42;districtGroup.add(sp);
+   sp.userData.geoPoint=p;sp.position.set(p.x,terrainHeightAt(p.x,p.z)+.22,p.z);sp.scale.set(.58,.105,1);sp.renderOrder=42;districtGroup.add(sp);
   }
   async function loadCzechDistricts(){
    try{
@@ -880,7 +880,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
      polygons.forEach(poly=>poly.forEach(ring=>{
       const pts=ring.filter(([lon,lat])=>lon>=12&&lon<=18.7&&lat>=48.5&&lat<=51.1).map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.145,p.z)});
       if(pts.length<3)return;
-      const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x9de8ff,transparent:true,opacity:.88,depthTest:false}));
+      const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x77b9d2,transparent:true,opacity:.52,depthTest:false}));
       line.renderOrder=38;districtGroup.add(line);drawn++;
      }));
      if(name)addDistrictLabel(name,polygons[0]?.[0]);
@@ -1081,8 +1081,10 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    function sampleLocal(x,z,key){let weighted=0,total=0,nearest=Infinity,nearValue=0;for(const q of weatherPoints){const d2=(q.x-x)*(q.x-x)+(q.z-z)*(q.z-z);if(d2<nearest){nearest=d2;nearValue=q[key]}const w=1/Math.max(.025,d2*d2);weighted+=q[key]*w;total+=w}return total?weighted/total:nearValue}
    tempSampler=(x,z)=>({temp:sampleLocal(x,z,'temp'),cloud:sampleLocal(x,z,'cloud'),speed:sampleLocal(x,z,'speed'),rain:sampleLocal(x,z,'rain'),snow:sampleLocal(x,z,'snow')});
    // Oblaka se rozmístí nad body s nejvyšší předpovězenou oblačností, ne do pevného kruhu.
-   const cloudyPoints=weatherPoints.filter(q=>q.cloud>=5).sort((a,b)=>b.cloud-a.cloud);
-   clouds.forEach((g,i)=>{const q=cloudyPoints.length?cloudyPoints[i%cloudyPoints.length]:null;const cover=q?q.cloud:0;if(q){const spread=cloudyPoints.length>1?((i%3)-1)*.16:0;g.position.x=Math.max(-3.45,Math.min(3.45,q.x+spread));g.position.z=Math.max(-3.45,Math.min(3.45,q.z+((Math.floor(i/3)%3)-1)*.12))}const opacity=cover<5?0:.025+(cover/100)*.24;g.children.forEach(puff=>{puff.material.opacity=opacity;puff.visible=cover>=5});g.visible=cover>=5});
+   // Oblaka vybíráme pouze z bodů uvnitř státní hranice; žádné shluky mimo ČR.
+   const cloudyPoints=weatherPoints.filter(q=>q.cloud>=8&&insideCzech(q.x,q.z)).sort((a,b)=>b.cloud-a.cloud);
+   const selectedClouds=[];cloudyPoints.forEach(q=>{if(selectedClouds.length<clouds.length&&selectedClouds.every(p=>Math.hypot(p.x-q.x,p.z-q.z)>.34))selectedClouds.push(q)});
+   clouds.forEach((g,i)=>{const q=selectedClouds[i]||null;const cover=q?q.cloud:0;if(q){g.position.x=q.x;g.position.z=q.z;g.position.y=terrainHeightAt(q.x,q.z)+.48+(i%3)*.24}else{g.visible=false}const opacity=cover<8?0:.018+(cover/100)*.18;g.children.forEach(puff=>{puff.material.opacity=opacity;puff.visible=cover>=8});g.visible=!!q&&cover>=8});
    const cold=avgTemp<0,warm=avgTemp>=12;const palette=cold?[.08,.32,1]:warm?[1,.28,.06]:[.02,.78,.48];const colors=heatGeo.attributes.color;
    // Interpolace teploty z jednotlivých bodů předpovědi do každého vrcholu 3D plochy (IDW).
    const tempPoints=weatherPoints.map(q=>({x:q.x,z:q.z,t:q.temp}));
