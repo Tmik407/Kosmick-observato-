@@ -267,33 +267,37 @@ setTimeout(()=>{
  let ready=false;try{ready=map.isStyleLoaded()&&map.areTilesLoaded()}catch(_){}
  if(!ready)activateX5RasterFallback("záložní dlaždice OSM HOT se nenačetly do 12 sekund");
 },22000);
- // Dotykové ovládání tabletů: svislé gesto roluje stránku, vodorovné gesto posouvá mapu.
- // Dvoupalcové přiblížení ponecháváme v nativním ovladači MapLibre.
+ // Dotykové ovládání tabletů: jeden prst roluje stránku, dva prsty ovládají mapu.
  if(window.matchMedia("(pointer: coarse)").matches){
   map.dragPan.disable();
+  map.touchZoomRotate.disable();
+  map.touchPitch.disable();
   const touchSurface=map.getCanvasContainer();
   touchSurface.style.touchAction="pan-y";
-  let touchStart=null,touchMode=null,lastTouch=null;
+  let twoFinger=null;
+  const getPair=ev=>{
+   const a=ev.touches[0],b=ev.touches[1];
+   return {x:(a.clientX+b.clientX)/2,y:(a.clientY+b.clientY)/2,d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)};
+  };
   touchSurface.addEventListener("touchstart",ev=>{
-   if(ev.touches.length!==1){touchStart=null;touchMode=null;lastTouch=null;return;}
-   const t=ev.touches[0];touchStart={x:t.clientX,y:t.clientY};lastTouch=touchStart;touchMode="pending";
-  },{passive:true});
-  touchSurface.addEventListener("touchmove",ev=>{
-   if(ev.touches.length!==1||!touchStart)return;
-   const t=ev.touches[0],dx=t.clientX-touchStart.x,dy=t.clientY-touchStart.y;
-   if(touchMode==="pending"&&Math.hypot(dx,dy)>9)touchMode=Math.abs(dx)>Math.abs(dy)*1.15?"map":"scroll";
-   if(touchMode==="map"){
-    ev.preventDefault();
-    const stepX=t.clientX-lastTouch.x,stepY=t.clientY-lastTouch.y;
-    map.panBy([stepX,stepY],{animate:false});
-    lastTouch={x:t.clientX,y:t.clientY};
-   }
+   if(ev.touches.length===2){ev.preventDefault();twoFinger=getPair(ev);}
+   else if(ev.touches.length!==1)twoFinger=null;
   },{passive:false});
-  const finishTouch=()=>{touchStart=null;touchMode=null;lastTouch=null;};
-  touchSurface.addEventListener("touchend",finishTouch,{passive:true});
-  touchSurface.addEventListener("touchcancel",finishTouch,{passive:true});
+  touchSurface.addEventListener("touchmove",ev=>{
+   if(ev.touches.length!==2||!twoFinger)return;
+   ev.preventDefault();
+   const next=getPair(ev),dx=next.x-twoFinger.x,dy=next.y-twoFinger.y;
+   if(Math.abs(dx)+Math.abs(dy)>0)map.panBy([dx,dy],{animate:false});
+   if(twoFinger.d>0&&next.d>0){
+    const delta=Math.log2(next.d/twoFinger.d);
+    if(Math.abs(delta)>.002)map.zoomTo(map.getZoom()+delta,{around:[next.x,next.y],animate:false});
+   }
+   twoFinger=next;
+  },{passive:false});
+  touchSurface.addEventListener("touchend",ev=>{if(ev.touches.length<2)twoFinger=null;},{passive:true});
+  touchSurface.addEventListener("touchcancel",()=>{twoFinger=null;},{passive:true});
  }
-map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),"top-right");
+ map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),"top-right");
 map.addControl(new maplibregl.ScaleControl({maxWidth:110,unit:"metric"}),"bottom-left");
 const flowCanvas=$("flowCanvas"),ctx=flowCanvas.getContext("2d");
 function sizeCanvas(){const r=$("map").getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);flowCanvas.width=Math.round(r.width*d);flowCanvas.height=Math.round(r.height*d);flowCanvas.style.width=r.width+"px";flowCanvas.style.height=r.height+"px";ctx.setTransform(d,0,0,d,0,0)}
