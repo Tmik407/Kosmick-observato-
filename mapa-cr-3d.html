@@ -872,9 +872,9 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   // Zvýrazněná státní hranice s jemným světelným lemem.
   const borderPts=czBorder.map(p=>new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.105,p.z));
   const borderCurve=new THREE.CatmullRomCurve3(borderPts,true,'centripetal');
-  const borderOuter=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,420,.052,8,true),new THREE.MeshBasicMaterial({color:0x06283d,transparent:true,opacity:1,depthTest:true}));
-  const borderLine=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,420,.027,8,true),new THREE.MeshBasicMaterial({color:0xc5f5ff,transparent:true,opacity:1,depthTest:true}));
-  const borderGlow=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,420,.12,8,true),new THREE.MeshBasicMaterial({color:0x20bfff,transparent:true,opacity:.25,depthWrite:false,blending:THREE.AdditiveBlending,depthTest:true}));
+  const borderOuter=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,420,.038,8,true),new THREE.MeshBasicMaterial({color:0x06283d,transparent:true,opacity:1,depthTest:true}));
+  const borderLine=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,420,.021,8,true),new THREE.MeshBasicMaterial({color:0xc5f5ff,transparent:true,opacity:1,depthTest:true}));
+  const borderGlow=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,420,.065,8,true),new THREE.MeshBasicMaterial({color:0x20bfff,transparent:true,opacity:.16,depthWrite:false,blending:THREE.AdditiveBlending,depthTest:true}));
   borderGlow.renderOrder=33;borderOuter.renderOrder=34;borderLine.renderOrder=35;scene.add(borderGlow,borderOuter,borderLine);
   // Pomocná prostorová mřížka byla odstraněna; čistý reliéf a zvýrazněná hranice ČR zůstávají.
   // Geografická orientace 3D mapy: hlavní pohoří a řeky ČR.
@@ -1221,7 +1221,11 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
      x=nx;z=nz;
     }
     if(pts.length<3)continue;
-    const curve=new THREE.CatmullRomCurve3(pts),line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(100)),new THREE.LineBasicMaterial({color:cols[n%4],transparent:true,opacity:.78}));
+    // Použijeme lomenou čáru z ověřených bodů. Catmull-Rom interpolace
+    // mohla mezi body vybočit přes státní hranici a vytvořit modré přesahy.
+    const curve=new THREE.CurvePath();
+    for(let k=1;k<pts.length;k++)curve.add(new THREE.LineCurve3(pts[k-1],pts[k]));
+    const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:cols[n%4],transparent:true,opacity:.78}));
     streamGroup.add(line);windLines.push(line);
     const dot=new THREE.Mesh(windArrowGeo,new THREE.MeshBasicMaterial({color:cols[n%4],transparent:true,opacity:.96}));scene.add(dot);particles.push({mesh:dot,curve,phase:n/windLineCount});
    }
