@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4f8fb">
+<title>Nová mapa počasí ČR | X-5</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+:root{color-scheme:light;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#eef4f8;color:#173044}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:14px}
+header,.panel{max-width:1180px;margin:0 auto 12px;background:#fff;border:1px solid #dce7ee;border-radius:16px;padding:14px 16px;box-shadow:0 3px 14px #1730440a}
+h1{font-size:clamp(19px,3vw,26px);margin:0 0 5px}p{margin:0;color:#587080;font-size:14px}
+.toolbar{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:12px}
+button,select{font:inherit;border:1px solid #c6d8e3;background:#f7fbfd;color:#173044;border-radius:10px;padding:10px 13px;min-height:42px}
+button{font-weight:650;cursor:pointer}button:active{transform:translateY(1px)}
+#mapShell{max-width:1180px;margin:auto;background:#fff;border:1px solid #dce7ee;border-radius:18px;padding:10px;box-shadow:0 5px 20px #17304412}
+#map{height:min(68vh,720px);min-height:420px;width:100%;border-radius:12px;overflow:hidden;background:#e5edf1}
+#status{padding:9px 4px 2px;font-size:13px;color:#587080}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:13px;color:#587080}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#087eae;margin-right:5px}
+.maplibregl-ctrl-group{border-radius:10px!important;overflow:hidden}
+.maplibregl-popup-content{font:14px system-ui;padding:11px 13px;border-radius:10px}
+@media(max-width:650px){body{padding:8px}header{padding:12px}#mapShell{padding:6px}#map{height:64vh;min-height:380px}.toolbar button{flex:1}}
+</style>
+</head>
+<body>
+<header>
+<h1>Nová mapa počasí České republiky</h1>
+<p>Samostatné testovací mapové jádro X-5. Původní meteorologická stránka zůstává beze změny.</p>
+<div class="toolbar">
+<button id="reset" type="button">⌖ Zpět na Českou republiku</button>
+<select id="city" aria-label="Vybrat město">
+<option value="">Vybrat město…</option>
+<option value="Most">Most</option><option value="Chomutov">Chomutov</option><option value="Litvínov">Litvínov</option>
+<option value="Jirkov">Jirkov</option><option value="Kadaň">Kadaň</option><option value="Teplice">Teplice</option>
+<option value="Praha">Praha</option><option value="Brno">Brno</option><option value="Ostrava">Ostrava</option>
+</select>
+<button id="zoomIn" type="button" aria-label="Přiblížit">＋</button>
+<button id="zoomOut" type="button" aria-label="Oddálit">－</button>
+</div>
+</header>
+<main id="mapShell">
+<div id="map" role="application" aria-label="Interaktivní mapa České republiky"></div>
+<div id="status" role="status" aria-live="polite">Připravuji mapový podklad…</div>
+<div class="legend"><span><i class="dot"></i>Vybraná města</span><span>Podklad: OpenStreetMap</span><span>Ovládání: myš nebo dva prsty na dotykové obrazovce</span></div>
+</main>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+(()=> {
+"use strict";
+const status=document.getElementById("status");
+const bounds=[[11.7,48.25],[19.1,51.25]];
+const places=[
+{name:"Most",coordinates:[13.6367,50.503]}, {name:"Chomutov",coordinates:[13.4106,50.460]},
+{name:"Litvínov",coordinates:[13.608,50.600]}, {name:"Jirkov",coordinates:[13.447,50.499]},
+{name:"Kadaň",coordinates:[13.266,50.375]}, {name:"Teplice",coordinates:[13.824,50.640]},
+{name:"Praha",coordinates:[14.4378,50.0755]}, {name:"Brno",coordinates:[16.6068,49.1951]},
+{name:"Ostrava",coordinates:[18.2625,49.8209]}
+];
+const map=new maplibregl.Map({
+container:"map",
+style:{version:8,sources:{"x5-osm":{type:"raster",tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors"}},layers:[{id:"x5-osm-base",type:"raster",source:"x5-osm",minzoom:0,maxzoom:19}]},
+center:[15.45,49.82],zoom:7.1,minZoom:5.4,maxZoom:14,maxBounds:bounds,
+pitch:0,bearing:0,renderWorldCopies:false,cooperativeGestures:true,fadeDuration:0,refreshExpiredTiles:false
+});
+map.addControl(new maplibregl.NavigationControl({showCompass:false,visualizePitch:false}),"top-right");
+map.addControl(new maplibregl.ScaleControl({maxWidth:110,unit:"metric"}),"bottom-left");
+const markers=new Map();
+for(const place of places){
+ const el=document.createElement("button");el.type="button";el.title=place.name;el.setAttribute("aria-label","Zobrazit město "+place.name);
+ el.style.cssText="width:13px;height:13px;min-height:0;padding:0;border:2px solid white;border-radius:50%;background:#087eae;box-shadow:0 1px 5px #1238;cursor:pointer";
+ const marker=new maplibregl.Marker({element:el,anchor:"center"}).setLngLat(place.coordinates).setPopup(new maplibregl.Popup({offset:12}).setText(place.name)).addTo(map);
+ markers.set(place.name,marker);
+ el.addEventListener("click",()=>{map.easeTo({center:place.coordinates,zoom:10,duration:500});});
+}
+function goHome(){map.stop();map.fitBounds(bounds,{padding:{top:45,bottom:45,left:45,right:45},duration:650,maxZoom:7.4});}
+document.getElementById("reset").addEventListener("click",goHome);
+document.getElementById("zoomIn").addEventListener("click",()=>map.zoomTo(Math.min(map.getZoom()+1,14),{duration:250}));
+document.getElementById("zoomOut").addEventListener("click",()=>map.zoomTo(Math.max(map.getZoom()-1,5.4),{duration:250}));
+document.getElementById("city").addEventListener("change",event=>{const marker=markers.get(event.target.value);if(marker){const p=marker.getLngLat();map.flyTo({center:[p.lng,p.lat],zoom:10,duration:700});marker.togglePopup();}});
+map.on("load",()=>{status.textContent="Mapa je načtená. Výchozí oblast: Česká republika. Posouvání je omezeno na okolí ČR.";map.resize();});
+map.on("error",event=>{const message=event?.error?.message||"Neznámá chyba mapového podkladu";status.textContent="Chyba načítání mapy: "+message;console.warn("X-5 map error",event?.error||event);});
+window.addEventListener("resize",()=>map.resize());
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)map.resize();});
+})();
+</script>
+</body>
+</html>
