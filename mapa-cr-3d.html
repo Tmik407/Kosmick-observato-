@@ -251,6 +251,7 @@ map.on("error",event=>{
  }
 });
 setTimeout(()=>{
+ if(x5RasterFallbackStage!==0)return;
  let ready=false;try{ready=map.isStyleLoaded()&&map.areTilesLoaded()}catch(_){}
  if(!ready)activateX5RasterFallback(x5StyleReady?"dlaždice se nenačetly do 10 sekund":"vektorový styl se nenačetl do 10 sekund");
 },10000);
