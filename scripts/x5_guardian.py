@@ -128,7 +128,26 @@ def main() -> int:
     issues = [(name, state, detail) for name, state, detail in checks if state != "OK"]
     diagnostic_payload = {
         "checked_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "checks": [\n            ({ "name": name, "state": state, "detail": detail, **({ "freshness": { "status": ("fresh" if chmi_age_h <= 6 else "delayed" if chmi_age_h <= 12 else "stale"), "age_hours": round(chmi_age_h, 2), "fresh_threshold_hours": 6, "stale_threshold_hours": 12 } } if name == "ČHMÚ archiv" and chmi_age_h is not None else {}) })\n            for name, state, detail in checks\n        ],
+        "checks": [
+            {
+                "name": name,
+                "state": state,
+                "detail": detail,
+                **(
+                    {
+                        "freshness": {
+                            "status": "fresh" if chmi_age_h <= 6 else "delayed" if chmi_age_h <= 12 else "stale",
+                            "age_hours": round(chmi_age_h, 2),
+                            "fresh_threshold_hours": 6,
+                            "stale_threshold_hours": 12,
+                        }
+                    }
+                    if name == "ČHMÚ archiv" and chmi_age_h is not None
+                    else {}
+                ),
+            }
+            for name, state, detail in checks
+        ],
     }
     with open("x5-guardian-diagnostics.json", "w", encoding="utf-8") as output:
         json.dump(diagnostic_payload, output, ensure_ascii=False, indent=2)
