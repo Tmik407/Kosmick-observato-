@@ -1,0 +1,43 @@
+import importlib.util
+import pathlib
+import unittest
+from unittest.mock import patch
+
+MODULE_PATH = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "update_chmi_stations.py"
+spec = importlib.util.spec_from_file_location("update_chmi_stations", MODULE_PATH)
+chmi = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(chmi)
+
+
+class TestStationFallback(unittest.TestCase):
+    def test_automated_station_prefers_now_then_recent(self):
+        station = {"id": "0-20000-0-11406", "name": "Test"}
+        live = {"id": station["id"], "data_source": "now"}
+        with patch.object(chmi, "fetch_station", side_effect=[(None, None), (live, None)]) as fetch:
+            result, error = chmi.fetch_station_with_fallback(station, "20261126", "20261125")
+        self.assertIsNone(error)
+        self.assertEqual(result, live)
+        self.assertEqual(fetch.call_args_list[0].args, (station, "20261126", chmi.NOW_BASE))
+        self.assertEqual(fetch.call_args_list[1].args, (station, "20261126", chmi.BASE))
+
+    def test_partner_station_uses_recent_without_now_request(self):
+        station = {"id": "0-203-0-11401", "name": "Test"}
+        archived = {"id": station["id"], "data_source": "recent"}
+        with patch.object(chmi, "fetch_station", return_value=(archived, None)) as fetch:
+            result, error = chmi.fetch_station_with_fallback(station, "20261126", "20261125")
+        self.assertIsNone(error)
+        self.assertEqual(result, archived)
+        self.assertEqual(fetch.call_args_list[0].args, (station, "20261126", chmi.BASE))
+
+    def test_missing_today_file_falls_back_to_previous_day(self):
+        station = {"id": "0-203-0-11401", "name": "Test"}
+        archived = {"id": station["id"], "data_source": "recent"}
+        with patch.object(chmi, "fetch_station", side_effect=[(None, None), (archived, None)]) as fetch:
+            result, error = chmi.fetch_station_with_fallback(station, "20261126", "20261125")
+        self.assertIsNone(error)
+        self.assertEqual(result, archived)
+        self.assertEqual(fetch.call_args_list[1].args, (station, "20261125", chmi.BASE))
+
+
+if __name__ == "__main__":
+    unittest.main()
