@@ -754,70 +754,101 @@ function loadWeather(force=false,retry=false){
  if(!retry&&state.lastWeatherAttempt&&now-state.lastWeatherAttempt<10*60*1000){status("Požadavky jsou omezeny ochranou proti přetížení · další kontrola nejdříve za "+Math.ceil((10*60*1000-(now-state.lastWeatherAttempt))/60000)+" min");return;}
  if(!force&&state.lastWeatherLoad&&now-state.lastWeatherLoad<10*60*1000){status("Používám aktuální předpověď · poslední načtení před méně než 10 minutami");return;}
  state.lastWeatherAttempt=now;
- state.weatherLoading=true;window.__weatherVortexSetSourceStatus?.(state.selectedModel==="ecmwf"?"ecmwf":"openmeteo","loading","načítám");status("Načítám "+(state.selectedModel==="ecmwf"?"ECMWF IFS":"Open-Meteo")+" pro 15 měst…");$("refresh").disabled=true;
- const makeUrl=places=>(state.selectedModel==="ecmwf"?"https://api.open-meteo.com/v1/ecmwf?":"https://api.open-meteo.com/v1/forecast?")+"latitude="+places.map(p=>p.lat).join(",")+"&longitude="+places.map(p=>p.lon).join(",")+"&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover&forecast_days=4&timezone=Europe%2FPrague";
+ state.weatherLoading=true;
+ const primaryModel=state.selectedModel==="ecmwf"?"ecmwf":"openmeteo";
+ const modelName=model=>model==="ecmwf"?"ECMWF IFS":"Open-Meteo";
+ window.__weatherVortexSetSourceStatus?.(primaryModel,"loading","načítám");
+ status("Načítám "+modelName(primaryModel)+" pro 15 měst…");$("refresh").disabled=true;
+ const makeUrl=(places,model)=> (model==="ecmwf"?"https://api.open-meteo.com/v1/ecmwf?":"https://api.open-meteo.com/v1/forecast?")+"latitude="+places.map(p=>p.lat).join(",")+"&longitude="+places.map(p=>p.lon).join(",")+"&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover&forecast_days=4&timezone=Europe%2FPrague";
  const nearestCityRow=p=>{let best=0,distance=Infinity;for(let i=0;i<cities.length;i++){const d=(p.lat-cities[i].lat)**2+(p.lon-cities[i].lon)**2;if(d<distance){distance=d;best=i}}return best};
  const useRows=(rows,source="Open-Meteo",mode="fresh",dataTimestamp=Date.now())=>{
   $("forecastTimeline").disabled=false;$("forecastHour").disabled=false;
   state.rows=rows;state.times=rows[0].hourly.time;state.forecastSource=source;state.lastWeatherLoad=dataTimestamp;window.__weatherVortexUpdateDataClock?.(dataTimestamp,source,mode);
   try{localStorage.setItem("weatherVortexForecastCache",JSON.stringify({savedAt:dataTimestamp,rows,times:state.times,source}))}catch(_){}
   const select=$("forecastHour");select.innerHTML=state.times.map((t,i)=>'<option value="'+i+'">'+new Date(t).toLocaleString("cs-CZ",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit"})+'</option>').join("");
-  const now=Date.now(),idx=state.times.findIndex(t=>new Date(t).getTime()>=now-30*60*1000);state.hour=idx>=0?idx:0;select.value=String(state.hour);applyHour();
+  const idx=state.times.findIndex(t=>new Date(t).getTime()>=Date.now()-30*60*1000);state.hour=idx>=0?idx:0;select.value=String(state.hour);applyHour();
+ };
+ const fetchModelRows=async model=>{
+  const response=await fetchWeatherApi(makeUrl(cities,model),{cache:"no-store"});
+  if(!response.ok)throw Error(modelName(model)+" HTTP "+response.status);
+  const payload=await response.json(),cityRows=Array.isArray(payload)?payload:[payload];
+  if(cityRows.length!==cities.length)throw Error(modelName(model)+": očekáváno "+cities.length+" měst, přijato "+cityRows.length);
+  const requiredFields=["temperature_2m","precipitation","rain","snowfall","wind_speed_10m","wind_direction_10m","wind_gusts_10m","cloud_cover"];
+  const referenceTimes=cityRows[0]?.hourly?.time;
+  if(!Array.isArray(referenceTimes)||referenceTimes.length<24)throw Error(modelName(model)+": neúplná časová osa");
+  for(let i=0;i<cityRows.length;i++){
+   const h=cityRows[i]?.hourly;
+   if(!h||!Array.isArray(h.time)||h.time.length!==referenceTimes.length||h.time.some((t,j)=>t!==referenceTimes[j]))throw Error(modelName(model)+": nesouhlasí časová osa města "+(cities[i]?.name||i+1));
+   for(const field of requiredFields)if(!Array.isArray(h[field])||h[field].length!==referenceTimes.length||h[field].some(v=>v===null||v===undefined||!Number.isFinite(Number(v))))throw Error(modelName(model)+": chybí "+field+" · "+(cities[i]?.name||i+1));
+  }
+  const gridRows=grid.map(p=>cityRows[nearestCityRow(p)]);
+  return [...gridRows,...cityRows];
  };
  (async()=>{
+  let fallbackLoaded=false,primaryError=null;
   try{
-   // Při HTTP 429 přeskočíme hlavní API a pokračujeme záložním modelem; neukončíme celý cyklus.
-   if(Date.now()<weatherApiCooldownUntil)throw Error("Open-Meteo je v ochranné pauze ještě "+Math.ceil((weatherApiCooldownUntil-Date.now())/1000)+" s.");
-   // Jeden dávkový požadavek pro 15 měst; další požadavky chrání 10minutový limit.
-   const response=await fetchWeatherApi(makeUrl(cities),{cache:"default"});
-   if(!response.ok)throw Error("Open-Meteo HTTP "+response.status);
-   const data=await response.json(),cityRows=Array.isArray(data)?data:[data];
-   if(cityRows.length!==cities.length)throw Error("Nesouhlasí počet měst: očekáváno "+cities.length+", přijato "+cityRows.length);
-   const requiredFields=["temperature_2m","precipitation","rain","snowfall","wind_speed_10m","wind_direction_10m","wind_gusts_10m","cloud_cover"];
-   const referenceTimes=cityRows[0]?.hourly?.time;
-   if(!Array.isArray(referenceTimes)||referenceTimes.length<24)throw Error("Zdroj nevrátil dostatečnou časovou osu");
-   for(let i=0;i<cityRows.length;i++){
-    const h=cityRows[i]?.hourly;
-    if(!h||!Array.isArray(h.time)||h.time.length!==referenceTimes.length||h.time.some((t,j)=>t!==referenceTimes[j]))throw Error("Nesouhlasí časová osa města "+(cities[i]?.name||i+1));
-    for(const field of requiredFields)if(!Array.isArray(h[field])||h[field].length!==referenceTimes.length||h[field].some(v=>v===null||v===undefined||!Number.isFinite(Number(v))))throw Error("Neúplná data: "+field+" · "+(cities[i]?.name||i+1));
-   }
-   const gridRows=grid.map(p=>cityRows[nearestCityRow(p)]);
-   useRows([...gridRows,...cityRows],state.selectedModel==="ecmwf"?"ECMWF IFS HRES (Open-Meteo API)":"Open-Meteo · Best Match");window.__weatherVortexSetSourceStatus?.(state.selectedModel==="ecmwf"?"ecmwf":"openmeteo","ok","data načtena · "+cities.length+" měst");window.__weatherVortexSetSourceStatus?.(state.selectedModel==="ecmwf"?"openmeteo":"ecmwf","pending",state.selectedModel==="ecmwf"?"neaktivní":"volitelný model");window.__weatherVortexSetSourceStatus?.("metnorway","pending","záloha připravena · nenačítá se");
+   if(primaryModel==="openmeteo"&&Date.now()<weatherApiCooldownUntil)throw Error("Open-Meteo je v ochranné pauze ještě "+Math.ceil((weatherApiCooldownUntil-Date.now())/1000)+" s.");
+   const rows=await fetchModelRows(primaryModel);
+   useRows(rows,primaryModel==="ecmwf"?"ECMWF IFS HRES (Open-Meteo API)":"Open-Meteo · Best Match");
+   window.__weatherVortexSetSourceStatus?.(primaryModel,"ok","data načtena · "+cities.length+" měst");
+   window.__weatherVortexSetSourceStatus?.(primaryModel==="ecmwf"?"openmeteo":"ecmwf","pending",primaryModel==="ecmwf"?"neaktivní":"volitelný model");
+   window.__weatherVortexSetSourceStatus?.("metnorway","pending","záloha připravena · nenačítá se");
    state.weatherRetryCount=0;
    if(state.weatherRetryTimer){clearTimeout(state.weatherRetryTimer);state.weatherRetryTimer=0;}
-   status("Počasí načteno · 15 měst · jedna žádost Open-Meteo");
+   status("Počasí načteno · "+modelName(primaryModel)+" · 15 měst");
   }catch(error){
-   let fallbackLoaded=false;window.__weatherVortexSetSourceStatus?.(state.selectedModel==="ecmwf"?"ecmwf":"openmeteo","bad","nedostupné");window.__weatherVortexSetSourceStatus?.("metnorway","loading","načítám zálohu");
+   primaryError=error;
+   window.__weatherVortexSetSourceStatus?.(primaryModel,"bad","nedostupné");
+   const alternateModel=primaryModel==="ecmwf"?"openmeteo":"ecmwf";
+   window.__weatherVortexSetSourceStatus?.(alternateModel,"loading","zkouším záložní model");
+   status(modelName(primaryModel)+" nedostupný · zkouším "+modelName(alternateModel)+"…");
    try{
-    const fallbackRows=await loadMetNoFallback(),meta=fallbackRows.weatherMeta||{savedAt:Date.now(),cached:false};
-    useRows(fallbackRows,"MET Norway (záložní globální model)",meta.cached?"cached":"fresh",meta.savedAt);window.__weatherVortexSetSourceStatus?.("metnorway",meta.cached?"cached":"ok",(meta.cached?"uložená záloha · ":"záloha aktivní · ")+cities.length+" měst");
+    const rows=await fetchModelRows(alternateModel);
+    useRows(rows,alternateModel==="ecmwf"?"ECMWF IFS HRES · automatická záloha":"Open-Meteo · automatická záloha");
+    window.__weatherVortexSetSourceStatus?.(alternateModel,"ok","aktivní záloha · "+cities.length+" měst");
+    window.__weatherVortexSetSourceStatus?.("metnorway","pending","záloha připravena · nenačítá se");
     fallbackLoaded=true;
-    $("weatherSummary").textContent="Hodinová služba Open-Meteo je dočasně nedostupná. "+(meta.cached?"Používám uloženou kopii MET Norway z "+new Date(meta.savedAt).toLocaleString("cs-CZ")+". ":"Načetla se záložní předpověď MET Norway. ")+"Její časové kroky se po prvních 48 hodinách mohou prodlužovat. Samostatná výška nového sněhu není v tomto záložním výstupu dostupná.";
-    status("Záložní předpověď načtena · MET Norway · 15 měst");
-   }catch(fallbackError){
-    window.__weatherVortexSetSourceStatus?.("metnorway","bad","nedostupné");
-    $("weatherSummary").textContent="Open-Meteo: "+error.message+" · Záložní MET Norway: "+fallbackError.message+" · Zůstává dostupná náhradní mapa měření ČHMÚ.";
+    $("weatherSummary").textContent=modelName(primaryModel)+" je dočasně nedostupný ("+error.message+"). Automaticky používám "+modelName(alternateModel)+"; zobrazená mapa, města a časová osa používají tento záložní zdroj.";
+    status("Předpověď načtena · automatická záloha "+modelName(alternateModel)+" · 15 měst");
+   }catch(alternateError){
+    window.__weatherVortexSetSourceStatus?.(alternateModel,"bad","nedostupné");
+    window.__weatherVortexSetSourceStatus?.("metnorway","loading","načítám zálohu");
+    try{
+     const fallbackRows=await loadMetNoFallback(),meta=fallbackRows.weatherMeta||{savedAt:Date.now(),cached:false};
+     useRows(fallbackRows,"MET Norway (záložní globální model)",meta.cached?"cached":"fresh",meta.savedAt);
+     window.__weatherVortexSetSourceStatus?.("metnorway",meta.cached?"cached":"ok",(meta.cached?"uložená záloha · ":"záloha aktivní · ")+cities.length+" měst");
+     fallbackLoaded=true;
+     $("weatherSummary").textContent=modelName(primaryModel)+" ani "+modelName(alternateModel)+" nejsou dostupné. "+(meta.cached?"Používám uloženou kopii MET Norway z "+new Date(meta.savedAt).toLocaleString("cs-CZ")+". ":"Načetla se záložní předpověď MET Norway. ")+"Její časové kroky se po prvních 48 hodinách mohou prodlužovat. Samostatná výška nového sněhu není v tomto záložním výstupu dostupná.";
+     status("Záložní předpověď načtena · MET Norway · 15 měst");
+    }catch(fallbackError){
+     window.__weatherVortexSetSourceStatus?.("metnorway","bad","nedostupné");
+     $("weatherSummary").textContent=modelName(primaryModel)+": "+error.message+" · "+modelName(alternateModel)+": "+alternateError.message+" · MET Norway: "+fallbackError.message+" · Mapa a stanice ČHMÚ zůstávají dostupné.";
+    }
    }
    if(fallbackLoaded){
     state.weatherRetryCount=0;
+    if(/429|ochrannou pauzu|aktivní ochrannou pauzu/i.test(String(error.message))&&state.weatherRetryCount<1&&!state.weatherRetryTimer){
+     const delay=Math.max(65000,weatherApiCooldownUntil-Date.now()+2500);
+     state.weatherRetryTimer=setTimeout(()=>{state.weatherRetryTimer=0;state.weatherRetryCount++;state.lastWeatherAttempt=0;loadWeather(true,true)},delay);
+    }
    }else{
     let cached=null;try{cached=JSON.parse(localStorage.getItem("weatherVortexForecastCache")||"null")}catch(_){}
     if(cached?.rows?.length===all.length&&cached?.times?.length&&Date.now()-(cached.savedAt||0)<72*60*60*1000){
-    state.rows=cached.rows;state.times=cached.times;state.forecastSource=cached.source||"uložená předpověď";state.lastWeatherLoad=cached.savedAt||Date.now();window.__weatherVortexUpdateDataClock?.(state.lastWeatherLoad,state.forecastSource,"cached");window.__weatherVortexSetSourceStatus?.(cached.source?.includes("MET Norway")?"metnorway":"openmeteo","cached","používá se uložená kopie");
-    const select=$("forecastHour");select.innerHTML=state.times.map((t,i)=>'<option value="'+i+'">'+new Date(t).toLocaleString("cs-CZ",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit"})+'</option>').join("");
-    const now=Date.now(),idx=state.times.findIndex(t=>new Date(t).getTime()>=now-30*60*1000);state.hour=idx>=0?idx:0;select.value=String(state.hour);applyHour();
-    status("Záložní předpověď z mezipaměti · živá data Open-Meteo jsou dočasně omezená");
-    $("weatherSummary").textContent="Zobrazuji poslední uloženou předpověď. Open-Meteo dočasně omezilo požadavky (HTTP 429); data se automaticky zkusí obnovit.";
-   }else{
-    window.__weatherVortexSetSourceStatus?.("openmeteo","bad","nedostupné");window.__weatherVortexSetSourceStatus?.("metnorway","bad","nedostupné");
-    status("Předpověď je dočasně nedostupná");$("forecastTimelineLabel").textContent="Předpověď dočasně nedostupná";$("forecastTimeline").disabled=true;$("forecastHour").disabled=true;$("validTime").textContent="Časová osa čeká na obnovení meteorologického zdroje.";
-     $("weatherSummary").textContent=error.message+" · Mapa a stanice ČHMÚ zůstávají dostupné.";
-   }
-    // Po limitu HTTP 429 provedeme pouze jeden automatický opakovaný pokus.
+     state.rows=cached.rows;state.times=cached.times;state.forecastSource=cached.source||"uložená předpověď";state.lastWeatherLoad=cached.savedAt||Date.now();window.__weatherVortexUpdateDataClock?.(state.lastWeatherLoad,state.forecastSource,"cached");
+     window.__weatherVortexSetSourceStatus?.(cached.source?.includes("MET Norway")?"metnorway":cached.source?.includes("ECMWF")?"ecmwf":"openmeteo","cached","používá se uložená kopie");
+     const select=$("forecastHour");select.innerHTML=state.times.map((t,i)=>'<option value="'+i+'">'+new Date(t).toLocaleString("cs-CZ",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit"})+'</option>').join("");
+     const idx=state.times.findIndex(t=>new Date(t).getTime()>=Date.now()-30*60*1000);state.hour=idx>=0?idx:0;select.value=String(state.hour);applyHour();
+     status("Záložní předpověď z mezipaměti · živé zdroje jsou dočasně nedostupné");
+     $("weatherSummary").textContent="Zobrazuji poslední uloženou předpověď z "+state.forecastSource+". Živé zdroje se nepodařilo načíst.";
+    }else{
+     window.__weatherVortexSetSourceStatus?.("openmeteo","bad","nedostupné");window.__weatherVortexSetSourceStatus?.("ecmwf","bad","nedostupné");window.__weatherVortexSetSourceStatus?.("metnorway","bad","nedostupné");
+     status("Předpověď je dočasně nedostupná");$("forecastTimelineLabel").textContent="Předpověď dočasně nedostupná";$("forecastTimeline").disabled=true;$("forecastHour").disabled=true;$("validTime").textContent="Časová osa čeká na obnovení meteorologického zdroje.";
+     $("weatherSummary").textContent="Předpověď je dočasně nedostupná. "+error.message+" · Mapa a stanice ČHMÚ zůstávají dostupné.";
+    }
     if(/429|ochrannou pauzu|aktivní ochrannou pauzu/i.test(String(error.message))&&state.weatherRetryCount<1&&!state.weatherRetryTimer){
      const delay=Math.max(65000,weatherApiCooldownUntil-Date.now()+2500);
      status("Open-Meteo dočasně omezuje požadavky · automatický nový pokus za "+Math.ceil(delay/1000)+" s");
-     state.weatherRetryTimer=setTimeout(()=>{state.weatherRetryTimer=0;state.weatherRetryCount++;loadWeather(true,true)},delay);
+     state.weatherRetryTimer=setTimeout(()=>{state.weatherRetryTimer=0;state.weatherRetryCount++;state.lastWeatherAttempt=0;loadWeather(true,true)},delay);
     }
    }
   }finally{state.weatherLoading=false;$("refresh").disabled=false}
