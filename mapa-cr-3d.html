@@ -386,8 +386,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   const baseShape=new THREE.Shape();crOutline.forEach(([x,z],i)=>{if(i===0)baseShape.moveTo(x,-z);else baseShape.lineTo(x,-z)});baseShape.closePath();
   const baseExtrude=new THREE.ExtrudeGeometry(baseShape,{depth:.28,bevelEnabled:true,bevelSegments:2,steps:1,bevelSize:.055,bevelThickness:.05});
   baseExtrude.rotateX(-Math.PI/2);
-  const base=new THREE.Mesh(baseExtrude,new THREE.MeshStandardMaterial({color:0x123b55,roughness:.78,metalness:.18}));base.position.y=-.42;scene.add(base);
-  const outlinePoints=crOutline.map(([x,z])=>new THREE.Vector3(x,-.06,z));
+  const base=new THREE.Mesh(baseExtrude,new THREE.MeshStandardMaterial({color:0x123b55,roughness:.78,metalness:.18}));base.position.y=-.33;scene.add(base);
+  const outlinePoints=crOutline.map(([x,z])=>new THREE.Vector3(x,.012,z));
   const border=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(outlinePoints),new THREE.LineBasicMaterial({color:0x61eaff,transparent:true,opacity:.98}));scene.add(border);
   const grid=new THREE.GridHelper(9.2,26,0x58b7d5,0x28617d);grid.position.y=-.16;grid.material.transparent=true;grid.material.opacity=.28;scene.add(grid);
   // Viditelná barevná teplotní plocha s gradientem a jemným zvlněním.
