@@ -828,7 +828,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
      line.renderOrder=37;official.add(line);
     });
     if(!official.children.length)throw new Error('Prázdná geometrie hranice');
-    scene.add(official);borderLine.visible=false;
+    scene.add(official);borderLine.visible=false;borderOuter.visible=false;
     if(badge)badge.textContent='Terén: ČÚZK Data250 · přesná státní hranice + DEM '+demSize+'×'+demSize;
    }catch(err){console.warn('X-5 oficiální státní hranice:',err);if(badge)badge.title='Záložní zjednodušený obrys ČR; ČÚZK Data250 se nepodařilo načíst: '+String(err.message||err)}
   }
