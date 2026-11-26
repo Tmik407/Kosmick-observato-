@@ -230,23 +230,29 @@ state.map=map;
 // Odolné načítání mapového podkladu: při selhání úvodního vektorového stylu přepni
 // na nezávislý rastrový podklad. Přepnutí stylu znovu spustí níže uvedený load handler,
 // který znovu vytvoří meteorologické vrstvy a terén.
-let x5BaseStyleReady=false,x5RasterFallbackUsed=false,x5StyleErrorCount=0;
+let x5StyleReady=false,x5RasterFallbackUsed=false,x5StyleErrorCount=0;
 function activateX5RasterFallback(reason){
- if(x5BaseStyleReady||x5RasterFallbackUsed)return;
+ if(x5RasterFallbackUsed)return;
  x5RasterFallbackUsed=true;
- console.warn("X-5: přepínám na záložní mapový podklad.",reason||"časový limit");
+ console.warn("X-5: přepínám na záložní mapový podklad.",reason||"mapové dlaždice se nenačetly");
  try{
   map.setStyle({version:8,sources:{"x5-voyager":{type:"raster",tiles:["https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors © CARTO"}},layers:[{id:"x5-voyager-base",type:"raster",source:"x5-voyager",minzoom:0,maxzoom:19}]});
  }catch(error){console.error("X-5: záložní mapa se nepodařila aktivovat",error);}
 }
-map.on("style.load",()=>{x5BaseStyleReady=true;});
+map.on("style.load",()=>{x5StyleReady=true;});
 map.on("error",event=>{
- if(!x5BaseStyleReady&&!x5RasterFallbackUsed){
-  x5StyleErrorCount++;
-  if(x5StyleErrorCount>=2)activateX5RasterFallback(event?.error?.message||"chyby načítání vektorového stylu");
+ x5StyleErrorCount++;
+ const message=String(event?.error?.message||"");
+ if(!x5RasterFallbackUsed&&(/style|sprite|glyph|tile|source|HTTP 4|HTTP 5|Failed to fetch|NetworkError/i.test(message)||x5StyleErrorCount>=3)){
+  activateX5RasterFallback(message||"opakované chyby mapových zdrojů");
  }
 });
-setTimeout(()=>{if(!x5BaseStyleReady)activateX5RasterFallback("vektorový styl se nenačetl do 15 sekund");},15000);
+setTimeout(()=>{
+ if(x5RasterFallbackUsed)return;
+ let tilesReady=false;
+ try{tilesReady=map.isStyleLoaded()&&map.areTilesLoaded()}catch(_){}
+ if(!tilesReady)activateX5RasterFallback(x5StyleReady?"mapové dlaždice se nenačetly do 18 sekund":"vektorový styl se nenačetl do 18 sekund");
+},18000);
 // Na dotykových zařízeních vypnout tažení mapy jedním prstem, aby gesto patřilo rolování stránky.
 if(window.matchMedia("(pointer: coarse)").matches){map.dragPan.disable();}
 map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),"top-right");
@@ -281,7 +287,7 @@ map.on("style.load",()=>{
  map.on("mouseenter","chmi-station-points",()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave","chmi-station-points",()=>map.getCanvas().style.cursor="");
  map.on("click","city-points",(e)=>{const p=e.features[0].properties;new maplibregl.Popup().setLngLat(e.lngLat).setHTML("<b>"+p.name+"</b><br>"+p.temp.toFixed(1)+" °C<br>Vítr "+p.wind.toFixed(0)+" km/h<br>Srážky "+p.precip.toFixed(1)+" mm<br>"+(p.snow>0?"Sníh "+p.snow.toFixed(1)+" cm":"Déšť "+p.rain.toFixed(1)+" mm")).addTo(map)});
  map.on("mouseenter","city-points",()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave","city-points",()=>map.getCanvas().style.cursor="");
- status("3D mapa připravena · načítám počasí a stanice ČHMÚ…");loadWeather();loadStations();
+ status("Mapa připravena · meteorologické zdroje se načítají samostatně…");
 });
 // Centrální fronta a ochrana proti opakovaným požadavkům Open-Meteo.
 let weatherApiCooldownUntil=0,weatherApiQueue=Promise.resolve();
@@ -780,7 +786,8 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden){if(state.
 window.setInterval(()=>{if(!document.hidden){loadWeather();loadStations()}},15*60*1000);
 map.on("load",()=>{if(!state.raf)animateFlow()});
  // Záložní start předpovědi nezávisí na události load mapových dlaždic.
- setTimeout(()=>{if(!state.rows.length&&!state.weatherLoading)loadWeather()},5000);
+ setTimeout(()=>{if(!state.rows.length&&!state.weatherLoading)loadWeather()},1200);
+  setTimeout(()=>{if(!state.lastStationsLoad)loadStations()},2200);
 })();
 </script>
 <script type="module">
