@@ -881,15 +881,15 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   const terrain=new THREE.Mesh(terrainGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.94,metalness:0,side:THREE.DoubleSide}));terrain.position.y=-.085;scene.add(terrain);
   // Jasná hranice mapy ČR a jemný okraj reliéfu.
   // Zvýrazněná státní hranice s jemným světelným lemem.
-  const borderPts=czBorder.map(p=>new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.205,p.z));
+  const borderPts=czBorder.map(p=>new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.115,p.z));
   // Uzavřená centripetální křivka omezuje hranatý vzhled zjednodušených hraničních bodů.
   // Geometrie hranice zůstává oddělena od terénu a je čitelná i při změně úhlu kamery.
   const borderCurve=new THREE.CatmullRomCurve3(borderPts,true,'centripetal',.35);
   // Třívrstvá hranice: široký tmavý lem, jasná tyrkysová kontura a jemné vnitřní světlo.
-  const borderOuter=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,900,.073,10,true),new THREE.MeshBasicMaterial({color:0x031522,transparent:true,opacity:1,depthTest:false,depthWrite:false}));
-  const borderLine=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,900,.043,10,true),new THREE.MeshBasicMaterial({color:0x70eaff,transparent:true,opacity:1,depthTest:false,depthWrite:false}));
-  const borderHighlight=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,900,.012,8,true),new THREE.MeshBasicMaterial({color:0xe5fcff,transparent:true,opacity:.9,depthTest:false,depthWrite:false}));
-  const borderGlow=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,900,.19,10,true),new THREE.MeshBasicMaterial({color:0x00cfff,transparent:true,opacity:.28,depthWrite:false,blending:THREE.AdditiveBlending,depthTest:false}));
+  const borderOuter=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,900,.038,8,true),new THREE.MeshBasicMaterial({color:0x031522,transparent:true,opacity:1,depthTest:false,depthWrite:false}));
+  const borderLine=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,900,.024,8,true),new THREE.MeshBasicMaterial({color:0x70eaff,transparent:true,opacity:1,depthTest:false,depthWrite:false}));
+  const borderHighlight=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,900,.007,6,true),new THREE.MeshBasicMaterial({color:0xe5fcff,transparent:true,opacity:.9,depthTest:false,depthWrite:false}));
+  const borderGlow=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,900,.085,8,true),new THREE.MeshBasicMaterial({color:0x00cfff,transparent:true,opacity:.11,depthWrite:false,blending:THREE.AdditiveBlending,depthTest:false}));
   borderGlow.renderOrder=48;borderOuter.renderOrder=49;borderLine.renderOrder=50;borderHighlight.renderOrder=51;
   scene.add(borderGlow,borderOuter,borderLine,borderHighlight);
   // Pomocná prostorová mřížka byla odstraněna; čistý reliéf a zvýrazněná hranice ČR zůstávají.
@@ -1083,8 +1083,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    heatGeo.dispose();heatGeo=new THREE.PlaneGeometry(7.4,7.4,240,240);heatGeo.rotateX(-Math.PI/2);clipToCzech(heatGeo);heatPos=heatGeo.attributes.position;
    const hc=[];for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,terrainHeightAt(x,z)+.018);hc.push(.08,.5,.95)}
    heatGeo.setAttribute('color',new THREE.Float32BufferAttribute(hc,3));heatGeo.computeVertexNormals();heat.geometry=heatGeo;
-   const pts=czBorder.map(p=>new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.205,p.z)),curve=new THREE.CatmullRomCurve3(pts,true,'centripetal',.35);
-   [[borderGlow,.19,10],[borderOuter,.073,10],[borderLine,.043,10],[borderHighlight,.012,8]].forEach(([mesh,radius,segments])=>{mesh.geometry.dispose();mesh.geometry=new THREE.TubeGeometry(curve,900,radius,segments,true)});
+   const pts=czBorder.map(p=>new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.115,p.z)),curve=new THREE.CatmullRomCurve3(pts,true,'centripetal',.35);
+   [[borderGlow,.085,8],[borderOuter,.038,8],[borderLine,.024,8],[borderHighlight,.007,6]].forEach(([mesh,radius,segments])=>{mesh.geometry.dispose();mesh.geometry=new THREE.TubeGeometry(curve,900,radius,segments,true)});
    refreshGeoOverlayHeights();
   }
   async function loadOfficialCzechGeometry(){
