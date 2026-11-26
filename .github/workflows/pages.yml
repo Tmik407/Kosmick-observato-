@@ -110,7 +110,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$SITE_URL"
-          for path in index.html polarni-vir.html polar-vortex-3d.html mapa-cr-3d.html data/chmi-stations-latest.json data/polar-vortex-10hpa-timeline.json gfs-polarni-3d.js ch1411-impact.json space-weather-history.json space-weather-status.json coronal-hole-history.json giro-status.json irtam-density.json aurora-history.json bfo-bdv-quality-2026-11-01.json manifest.webmanifest sw.js offline.html icon.svg; do
+          for path in index.html polarni-vir.html polar-vortex-3d.html mapa-cr-3d.html data/chmi-stations-latest.json mapa-cr-3d-nova.html data/polar-vortex-10hpa-timeline.json gfs-polarni-3d.js ch1411-impact.json space-weather-history.json space-weather-status.json coronal-hole-history.json giro-status.json irtam-density.json aurora-history.json bfo-bdv-quality-2026-11-01.json manifest.webmanifest sw.js offline.html icon.svg; do
             ok=0
             for attempt in $(seq 1 12); do
               code=$(curl --silent --show-error --location --output "/tmp/x5-check" --write-out "%{http_code}" "$SITE_URL$path" || true)
@@ -169,4 +169,10 @@ jobs:
           curl --fail --silent --show-error --location "${SITE_URL}data/chmi-stations-latest.json" -o /tmp/x5-chmi.json
           python -c 'import json,sys; d=json.load(open(sys.argv[1],encoding="utf-8")); assert len(d.get("stations",[]))>0; print("ČHMÚ stations OK:",len(d["stations"]))' /tmp/x5-chmi.json
           echo "Mapa počasí: teplota, déšť/sníh, test srážek a archiv ČHMÚ ověřeny."
+          curl --fail --silent --show-error --location "${SITE_URL}mapa-cr-3d-nova.html" -o /tmp/x5-weather-map-new.html
+          grep -q 'api.open-meteo.com/v1/ecmwf' /tmp/x5-weather-map-new.html
+          grep -q 'data-layer="precipitation"' /tmp/x5-weather-map-new.html
+          grep -q 'chmi-stations-latest.json' /tmp/x5-weather-map-new.html
+          grep -q 'id="forecastTime"' /tmp/x5-weather-map-new.html
+          echo "Nová mapa X-5: předpověď, vrstvy a stanice ČHMÚ ověřeny."
           echo "Smoke test X-5 dokončen."
