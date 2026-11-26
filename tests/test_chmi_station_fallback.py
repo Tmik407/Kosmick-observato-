@@ -20,6 +20,15 @@ class TestStationFallback(unittest.TestCase):
         self.assertEqual(fetch.call_args_list[0].args, (station, "20261126", chmi.NOW_BASE))
         self.assertEqual(fetch.call_args_list[1].args, (station, "20261126", chmi.BASE))
 
+    def test_now_uses_flat_data_directory(self):
+        station = {"id": "0-20000-0-11406", "name": "Test"}
+        payload = {"data": {"data": {"values": []}}}
+        with patch.object(chmi, "get_json", return_value=payload) as get_json:
+            chmi.fetch_station(station, "20261126", chmi.NOW_BASE)
+        url = get_json.call_args.args[0]
+        self.assertIn("/now/data/10m-0-20000-0-11406-20261126.json", url)
+        self.assertNotIn("/now/data/10min/", url)
+
     def test_partner_station_uses_recent_without_now_request(self):
         station = {"id": "0-203-0-11401", "name": "Test"}
         archived = {"id": station["id"], "data_source": "recent"}
