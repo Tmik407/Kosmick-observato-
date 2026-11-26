@@ -27,7 +27,10 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 .status{display:inline-block;padding:3px 8px;border-radius:20px;font-size:12px;font-weight:750;background:#f1f5f9}.status.OK{color:var(--green);background:#dcfce7}.status.WARN{color:var(--amber);background:#fef3c7}.status.FAIL{color:var(--red);background:#fee2e2}
 .history-row{display:grid;grid-template-columns:170px 1fr 110px;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
 .bars{height:12px;background:#edf1f6;border-radius:20px;overflow:hidden;display:flex}.bars i{height:100%;display:block}.bars .ok{background:#22a06b}.bars .warn{background:#e5a000}.bars .fail{background:#dc5555}
-.empty{color:var(--muted);padding:20px 0;text-align:center}\n.finding{border:1px solid var(--line);border-left:4px solid #94a3b8;border-radius:10px;padding:12px 14px;margin:10px 0;background:#fff}\n.finding.warning{border-left-color:#d97706}.finding.critical{border-left-color:#dc2626}.finding.info{border-left-color:#2563eb}\n.finding h3{font-size:15px;margin:0 0 7px}.finding p{margin:5px 0;font-size:13px}.finding strong{color:var(--ink)}
+.empty{color:var(--muted);padding:20px 0;text-align:center}
+.finding{border:1px solid var(--line);border-left:4px solid #94a3b8;border-radius:10px;padding:12px 14px;margin:10px 0;background:#fff}
+.finding.warning{border-left-color:#d97706}.finding.critical{border-left-color:#dc2626}.finding.info{border-left-color:#2563eb}
+.finding h3{font-size:15px;margin:0 0 7px}.finding p{margin:5px 0;font-size:13px}.finding strong{color:var(--ink)}
 footer{color:var(--muted);font-size:12px;margin-top:22px}
 @media(max-width:700px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.history-row{grid-template-columns:1fr 1fr}.history-row .counts{grid-column:1/-1}table{font-size:12px}th,td{padding:8px 5px}}
 </style>
@@ -48,7 +51,8 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
 <div class="card metric fail"><span>Chyby</span><strong id="failCount">—</strong></div>
 </div>
 <section class="card"><div class="sectionhead"><h2>Stav zdrojů</h2><span id="diagInfo" class="muted">Diagnostika není načtena</span></div><div id="checks"><div class="empty">Načtěte x5-guardian-diagnostics.json z reportu GitHub Actions.</div></div></section>
-<section class="card"><div class="sectionhead"><h2>Analýza a doporučení</h2><span id="analysisInfo" class="muted">Analýza není načtena</span></div><div id="analysis"><div class="empty">Po další automatické kontrole se zde zobrazí vysvětlení příčin a doporučené kroky.</div></div></section>\n<section class="card"><div class="sectionhead"><h2>Historie kontrol</h2><span id="historyInfo" class="muted">Historie není načtena</span></div><div id="history"><div class="empty">Načtěte history.json z reportu GitHub Actions.</div></div></section>
+<section class="card"><div class="sectionhead"><h2>Analýza a doporučení</h2><span id="analysisInfo" class="muted">Analýza není načtena</span></div><div id="analysis"><div class="empty">Po další automatické kontrole se zde zobrazí vysvětlení příčin a doporučené kroky.</div></div></section>
+<section class="card"><div class="sectionhead"><h2>Historie kontrol</h2><span id="historyInfo" class="muted">Historie není načtena</span></div><div id="history"><div class="empty">Načtěte history.json z reportu GitHub Actions.</div></div></section>
 <footer>Serverová diagnostika nepotvrzuje vykreslení map, CORS, JavaScript ani ovládání na Android tabletu. Historie je omezena na 100 záznamů; dostupnost cache a artefaktů závisí na GitHub Actions.</footer>
 </main>
 <!-- X5_EMBEDDED_DATA -->
@@ -66,7 +70,8 @@ function renderDiagnostic(data) {
  const [ok,warn,fail] = countStates(checks);
  el('lastTime').textContent = safeDate(data.checked_at_utc);
  el('okCount').textContent = ok; el('warnCount').textContent = warn; el('failCount').textContent = fail;
- el('diagInfo').textContent = checks.length + ' kontrol';\n renderAnalysis(data.analysis);
+ el('diagInfo').textContent = checks.length + ' kontrol';
+ renderAnalysis(data.analysis);
  const table = document.createElement('table');
  const thead = document.createElement('thead'); thead.innerHTML = '<tr><th>Zdroj</th><th>Stav</th><th>Detail</th></tr>'; table.append(thead);
  const tbody = document.createElement('tbody');
@@ -145,7 +150,9 @@ if(embeddedDiag && embeddedHistory){
  try{renderDiagnostic(JSON.parse(embeddedDiag.textContent));renderHistory(JSON.parse(embeddedHistory.textContent));}
  catch(e){el('diagInfo').textContent='Vložená data se nepodařilo načíst';console.error('X-5 embedded report:',e);}
 }
-refreshRemote();\nsetInterval(refreshRemote,10*60*1000);\n})();
+refreshRemote();
+setInterval(refreshRemote,10*60*1000);
+})();
 </script>
 </body>
 </html>
