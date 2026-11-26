@@ -33,7 +33,7 @@ jobs:
           python-version: "3.12"
       - name: Run repair-advisor unit tests
         working-directory: scripts
-        run: python -m unittest -v test_x5_repair_advisor.py
+        run: python -m unittest -v test_x5_repair_advisor.py test_x5_ai_analyzer.py
       - name: Run live diagnostics
         run: python3 scripts/x5_guardian.py
       - name: Generate repair proposals (no changes applied)
@@ -44,3 +44,9 @@ jobs:
           else
             echo "Diagnostika nevytvořila JSON; návrhy oprav nebyly vygenerovány." >> "$GITHUB_STEP_SUMMARY"
           fi
+      - name: Optional AI analysis (requires OPENAI_API_KEY secret)
+        if: always() && hashFiles('x5-guardian-diagnostics.json') != ''
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: gpt-6.2-astra
+        run: python3 scripts/x5_ai_analyzer.py x5-guardian-diagnostics.json
