@@ -870,13 +870,17 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   const terrain=new THREE.Mesh(terrainGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.94,metalness:0,side:THREE.DoubleSide}));terrain.position.y=-.085;scene.add(terrain);
   // Jasná hranice mapy ČR a jemný okraj reliéfu.
   // Zvýrazněná státní hranice s jemným světelným lemem.
-  const borderPts=czBorder.map(p=>new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.19,p.z));
-  const borderCurve=new THREE.CurvePath();for(let i=0;i<borderPts.length;i++)borderCurve.add(new THREE.LineCurve3(borderPts[i],borderPts[(i+1)%borderPts.length]));
-  // Výrazná státní hranice: tmavý kontrastní lem, jasná tyrkysová linka a širší světelná aura.
-  const borderOuter=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,560,.052,10,true),new THREE.MeshBasicMaterial({color:0x031827,transparent:true,opacity:1,depthTest:false,depthWrite:false}));
-  const borderLine=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,560,.036,10,true),new THREE.MeshBasicMaterial({color:0x8ff3ff,transparent:true,opacity:1,depthTest:false,depthWrite:false}));
-  const borderGlow=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,560,.115,10,true),new THREE.MeshBasicMaterial({color:0x00cfff,transparent:true,opacity:.38,depthWrite:false,blending:THREE.AdditiveBlending,depthTest:false}));
-  borderGlow.renderOrder=48;borderOuter.renderOrder=49;borderLine.renderOrder=50;scene.add(borderGlow,borderOuter,borderLine);
+  const borderPts=czBorder.map(p=>new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.205,p.z));
+  // Uzavřená centripetální křivka omezuje hranatý vzhled zjednodušených hraničních bodů.
+  // Geometrie hranice zůstává oddělena od terénu a je čitelná i při změně úhlu kamery.
+  const borderCurve=new THREE.CatmullRomCurve3(borderPts,true,'centripetal',.35);
+  // Třívrstvá hranice: široký tmavý lem, jasná tyrkysová kontura a jemné vnitřní světlo.
+  const borderOuter=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,900,.073,10,true),new THREE.MeshBasicMaterial({color:0x031522,transparent:true,opacity:1,depthTest:false,depthWrite:false}));
+  const borderLine=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,900,.043,10,true),new THREE.MeshBasicMaterial({color:0x70eaff,transparent:true,opacity:1,depthTest:false,depthWrite:false}));
+  const borderHighlight=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,900,.012,8,true),new THREE.MeshBasicMaterial({color:0xe5fcff,transparent:true,opacity:.9,depthTest:false,depthWrite:false}));
+  const borderGlow=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,900,.19,10,true),new THREE.MeshBasicMaterial({color:0x00cfff,transparent:true,opacity:.28,depthWrite:false,blending:THREE.AdditiveBlending,depthTest:false}));
+  borderGlow.renderOrder=48;borderOuter.renderOrder=49;borderLine.renderOrder=50;borderHighlight.renderOrder=51;
+  scene.add(borderGlow,borderOuter,borderLine,borderHighlight);
   // Pomocná prostorová mřížka byla odstraněna; čistý reliéf a zvýrazněná hranice ČR zůstávají.
   // Geografická orientace 3D mapy: hlavní pohoří a řeky ČR.
   const geoPoint=(lon,lat)=>({x:((lon-12.09)/(18.85-12.09))*7.2-3.6,z:((49.835-lat)/(18.85-12.09))*7.2*1.563});
