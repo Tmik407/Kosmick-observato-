@@ -2,7 +2,7 @@ name: CHMI live meteorological stations
 on:
   workflow_dispatch:
   schedule:
-    - cron: "7,27,47 * * * *"
+    - cron: "11,26,41,56 * * * *"
   push:
     branches: [main]
     paths:
@@ -26,7 +26,34 @@ jobs:
         with:
           python-version: "3.12"
       - name: Download and process CHMI observations
-        run: python -m pip install --upgrade requests && python scripts/update_chmi_stations.py
+        run: python -m pip install --upgrade requests && python -m py_compile scripts/update_chmi_stations.py && python scripts/update_chmi_stations.py
+      - name: Report observation freshness
+        run: |
+          python - <<'PY'
+          import datetime as dt, json, os
+          from pathlib import Path
+          doc = json.loads(Path("data/chmi-stations-latest.json").read_text(encoding="utf-8"))
+          newest = doc.get("latest_observation_utc")
+          age = None
+          if newest:
+              stamp = dt.datetime.fromisoformat(newest.replace("Z", "+00:00"))
+              age = max(0, int((dt.datetime.now(dt.timezone.utc) - stamp).total_seconds() // 60))
+          fresh = doc.get("fresh_observation_station_count", 0)
+          delayed = doc.get("delayed_observation_station_count", 0)
+          stale = doc.get("stale_observation_station_count", 0)
+          unknown = doc.get("unknown_observation_station_count", 0)
+          summary = (
+              f"### ČHMÚ – čerstvost měření\n"
+              f"- Nejnovější měření: {newest or 'neznámé'} ({age if age is not None else 'neznámé'} min)\n"
+              f"- Čerstvá ≤30 min: {fresh}; opožděná 30–90 min: {delayed}; starší >90 min: {stale}; neznámý čas: {unknown}\n"
+              f"- Zdrojové soubory /now: {doc.get('fresh_now_station_count', 0)}; /recent: {doc.get('recent_fallback_station_count', 0)}\n"
+          )
+          print(summary)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write(summary)
+          if age is None or age > 90:
+              print(f"::warning::ČHMÚ data jsou zastaralá: nejnovější měření má stáří {age if age is not None else 'neznámé'} minut.")
+          PY
       - name: Publish station snapshot
         run: |
           set -euo pipefail
