@@ -918,7 +918,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    const writeStore=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value))}catch(_){}};
    const cached=readStore(cacheKey);
    if(cached&&Array.isArray(cached.values)&&Date.now()-Number(cached.savedAt)<cacheTtl){
-    try{applyElevations(cached.values);if(badge)badge.textContent='Terén: načten z uložené výškové cache · Copernicus GLO-90';return}catch(_){}
+    try{applyElevations(cached.values);if(badge)badge.textContent='Terén: načten z místní výškové cache · DEM '+demSize+'×'+demSize+' bodů';return}catch(_){}
    }
    const cooldown=Number(readStore(cooldownKey)?.until||0);
    // I při cooldownu starších zdrojů zkusíme nejprve oficiální ČÚZK DMR 5G.
