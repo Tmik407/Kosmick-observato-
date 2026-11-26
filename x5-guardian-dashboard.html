@@ -29,7 +29,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 .bars{height:12px;background:#edf1f6;border-radius:20px;overflow:hidden;display:flex}.bars i{height:100%;display:block}.bars .ok{background:#22a06b}.bars .warn{background:#e5a000}.bars .fail{background:#dc5555}
 .empty{color:var(--muted);padding:20px 0;text-align:center}
 .finding{border:1px solid var(--line);border-left:4px solid #94a3b8;border-radius:10px;padding:12px 14px;margin:10px 0;background:#fff}
-.finding.warning{border-left-color:#d97706}.finding.critical{border-left-color:#dc2626}.finding.info{border-left-color:#2563eb}
+.finding.warning{border-left-color:#d97706}.finding.critical{border-left-color:#dc2626}.finding.info{border-left-color:#2563eb}\n.trend-list{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:10px 0}.trend-row{display:grid;grid-template-columns:minmax(120px,1fr) auto minmax(170px,1.3fr);gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px}.trend-row:last-child{border-bottom:0}.trend-state{font-weight:750}.trend-state.ok{color:var(--green)}.trend-state.warn{color:var(--amber)}.trend-state.fail{color:var(--red)}@media(max-width:600px){.trend-row{grid-template-columns:1fr auto}.trend-row .muted{grid-column:1/-1}}
 .finding h3{font-size:15px;margin:0 0 7px}.finding p{margin:5px 0;font-size:13px}.finding strong{color:var(--ink)}
 footer{color:var(--muted);font-size:12px;margin-top:22px}
 @media(max-width:700px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.history-row{grid-template-columns:1fr 1fr}.history-row .counts{grid-column:1/-1}table{font-size:12px}th,td{padding:8px 5px}}
@@ -98,6 +98,23 @@ function renderAnalysis(analysis) {
   const heading=document.createElement('h3');heading.textContent='Opakující se problémy';host.append(heading);
   analysis.recurring_issues.forEach(item=>{const p=document.createElement('p');p.textContent=String(item.source)+': '+String(item.non_ok_in_last_8)+' neúspěšných/varovných kontrol z posledních 8. '+String(item.recommendation || '');host.append(p);});
  }
+ if(Array.isArray(analysis.source_trends) && analysis.source_trends.length){
+  const heading=document.createElement('h3');heading.textContent='Vývoj dostupnosti zdrojů';host.append(heading);
+  const table=document.createElement('div');table.className='trend-list';
+  analysis.source_trends.forEach(item=>{
+   const row=document.createElement('div');row.className='trend-row';
+   const name=document.createElement('strong');name.textContent=String(item.source || 'Zdroj');
+   const status=document.createElement('span');status.className='trend-state '+String(item.current_state || 'UNKNOWN').toLowerCase();status.textContent=String(item.current_state || 'UNKNOWN');
+   const stats=document.createElement('span');stats.className='muted';stats.textContent=String(item.samples_in_history || 0)+' záznamů v historii · OK '+String(item.ok_count || 0)+' · varování/chyby '+String(item.warning_or_fail_count || 0);
+   row.append(name,status,stats);table.append(row);
+  });
+  host.append(table);
+ }
+ if(analysis.freshness_policy){
+  const p=document.createElement('p');p.className='muted';
+  p.textContent='Čerstvost měření: OK do '+String(analysis.freshness_policy.fresh_up_to_hours)+' h; opožděná 6–12 h; zastaralá nad '+String(analysis.freshness_policy.stale_over_hours)+' h. '+String(analysis.freshness_policy.note || '');
+  host.append(p);
+ }
  if(Array.isArray(analysis.limitations)){
   const p=document.createElement('p');p.className='muted';p.textContent='Omezení: '+analysis.limitations.join(' ');host.append(p);
  }
@@ -123,7 +140,7 @@ async function loadFile(file, callback){if(!file)return;try{const parsed=JSON.pa
 el('diagFile').addEventListener('change',e=>loadFile(e.target.files[0],renderDiagnostic));
 el('historyFile').addEventListener('change',e=>loadFile(e.target.files[0],renderHistory));
 el('clearBtn').addEventListener('click',()=>{diagnostic=null;history=[];el('lastTime').textContent='—';['okCount','warnCount','failCount'].forEach(id=>el(id).textContent='—');el('diagInfo').textContent='Diagnostika není načtena';el('historyInfo').textContent='Historie není načtena';el('analysisInfo').textContent='Analýza není načtena';el('analysis').innerHTML='<div class="empty">Analýza není načtena.</div>';el('checks').innerHTML='<div class="empty">Diagnostika není načtena.</div>';el('history').innerHTML='<div class="empty">Historie není načtena.</div>';});
-el('demoBtn').addEventListener('click',()=>{renderDiagnostic({checked_at_utc:new Date().toISOString(),checks:[{name:'GitHub Pages / HTML',state:'OK',detail:'Ukázková odpověď'},{name:'Open-Meteo',state:'WARN',detail:'Ukázkové varování'},{name:'MET Norway',state:'OK',detail:'Časová řada dostupná'}],analysis:{engine:'X-5 Guardian Expert Rules 1.0',mode:'explainable_rules_not_llm',summary:'Ukázka: primární zdroj je nedostupný, záloha funguje.',findings:[{severity:'warning',title:'Primární předpověď nedostupná',likely_cause:'Výpadek API nebo limit požadavků.',impact:'Předpověď využívá záložní model.',recommendation:'Ponechat označenou zálohu a opakovat kontrolu.',confidence:'vysoká',automatic_repair:false}],recurring_issues:[],limitations:['Serverová kontrola nepotvrzuje vykreslení mapy.']}});renderHistory([{checked_at_utc:new Date(Date.now()-86400000).toISOString(),checks:[{state:'OK'},{state:'WARN'}]},{checked_at_utc:new Date().toISOString(),checks:[{state:'OK'},{state:'WARN'},{state:'OK'}]}]);});
+el('demoBtn').addEventListener('click',()=>{renderDiagnostic({checked_at_utc:new Date().toISOString(),checks:[{name:'GitHub Pages / HTML',state:'OK',detail:'Ukázková odpověď'},{name:'Open-Meteo',state:'WARN',detail:'Ukázkové varování'},{name:'MET Norway',state:'OK',detail:'Časová řada dostupná'}],analysis:{engine:'X-5 Guardian Expert Rules 2.0',mode:'explainable_rules_not_llm',summary:'Ukázka: primární zdroj je nedostupný, záloha funguje.',findings:[{severity:'warning',title:'Primární předpověď nedostupná',likely_cause:'Výpadek API nebo limit požadavků.',impact:'Předpověď využívá záložní model.',recommendation:'Ponechat označenou zálohu a opakovat kontrolu.',confidence:'vysoká',automatic_repair:false}],recurring_issues:[],limitations:['Serverová kontrola nepotvrzuje vykreslení mapy.']}});renderHistory([{checked_at_utc:new Date(Date.now()-86400000).toISOString(),checks:[{state:'OK'},{state:'WARN'}]},{checked_at_utc:new Date().toISOString(),checks:[{state:'OK'},{state:'WARN'},{state:'OK'}]}]);});
 const embeddedDiag=el('x5-embedded-diagnostics'), embeddedHistory=el('x5-embedded-history');
 const DATA_BASE='https://raw.githubusercontent.com/Tmik407/Kosmick-observato-/x5-guardian-data/latest/';
 async function refreshRemote(){
