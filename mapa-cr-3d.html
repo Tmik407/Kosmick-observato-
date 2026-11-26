@@ -666,7 +666,8 @@ async function loadStations(){
   const ageText=ms=>{if(!Number.isFinite(ms)||ms<0)return "čas neověřen";const m=Math.floor(ms/60000);return m<60?m+" min":Math.floor(m/60)+" h "+(m%60)+" min"};
   const observationAge=newest?Date.now()-newest:NaN,archiveAge=Number.isFinite(generated)?Date.now()-generated:NaN;
   const freshness=!Number.isFinite(observationAge)?"bez času měření":observationAge<=90*60000?"aktuální měření":observationAge<=6*3600000?"opožděná měření":"starší měření";
-  $("stationSummary").textContent="ČHMÚ: "+state.stations.length+" stanic · nejnovější měření "+(newest?new Date(newest).toLocaleString("cs-CZ",{timeZone:"Europe/Prague"}):"čas neuveden")+" · stáří měření: "+ageText(observationAge)+" · "+freshness+" · archiv vytvořen "+(doc.generated_utc||"—")+" (stáří "+ageText(archiveAge)+").";
+  const liveCount=Number(doc.fresh_now_station_count)||0,recentCount=Number(doc.recent_fallback_station_count)||0;
+  $("stationSummary").textContent="ČHMÚ: "+state.stations.length+" stanic · aktuální zdroj /now: "+liveCount+" · archivní záloha /recent: "+recentCount+" · nejnovější měření "+(newest?new Date(newest).toLocaleString("cs-CZ",{timeZone:"Europe/Prague"}):"čas neuveden")+" · stáří měření: "+ageText(observationAge)+" · "+freshness+" · archiv vytvořen "+(doc.generated_utc||"—")+" (stáří "+ageText(archiveAge)+").";
   $("stationList").innerHTML=state.stations.slice(0,24).map(st=>'<span class="city-chip">📡 '+st.name+(Number.isFinite(st.temperature_c)?' · '+st.temperature_c.toFixed(1)+' °C':'')+'</span>').join("");
   status("Počasí + "+state.stations.length+" stanic ČHMÚ");
  }catch(e){$("stationSummary").textContent="Stanice ČHMÚ zatím nedostupné: "+e.message+". Předpovědní vrstva Open-Meteo zůstává funkční."}
