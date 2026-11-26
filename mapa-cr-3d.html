@@ -227,19 +227,38 @@ function stopForecastPlayback(){if(forecastPlaybackTimer){clearInterval(forecast
 function startForecastPlayback(){if(!state.times.length)return;stopForecastPlayback();const b=$("forecastPlay");if(b){b.textContent="Ⅱ Pozastavit přehrávání";b.setAttribute("aria-pressed","true");}forecastPlaybackTimer=setInterval(()=>{if(document.hidden){stopForecastPlayback();return;}if(state.hour>=state.times.length-1){stopForecastPlayback();return;}state.hour++;$("forecastHour").value=String(state.hour);$("forecastTimeline").value=String(state.hour);applyHour();},1400);}
 const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/liberty",center:[15.35,49.82],zoom:6.75,pitch:35,bearing:-8,maxPitch:75,cooperativeGestures:true,attributionControl:true});
 state.map=map;
-// Záložní podklad: pokud se vektorový styl nebo jeho počáteční požadavky nenačtou,
-// přepni mapu na standardní rastrové dlaždice OpenStreetMap.
-let x5BaseMapLoaded=false,x5BaseMapFallback=false;
-map.on("load",()=>{x5BaseMapLoaded=true;});
-function useX5RasterFallback(reason){
- if(x5BaseMapLoaded||x5BaseMapFallback)return;
- x5BaseMapFallback=true;
- console.warn("WEATHER VORTEX: přepínám na záložní mapový podklad.",reason||"timeout");
- const fallbackStyle={version:8,sources:{"x5-osm-raster":{type:"raster",tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors"}},layers:[{id:"x5-osm-raster-layer",type:"raster",source:"x5-osm-raster",minzoom:0,maxzoom:19}]};
- try{map.setStyle(fallbackStyle);}catch(err){console.error("Záložní mapový podklad se nepodařilo aktivovat:",err);}
+// Kontrola skutečného načtení mapových dlaždic. Událost "load" sama o sobě
+// nezaručuje, že se na tabletu vykreslily podkladové mapové dlaždice.
+let x5StyleReady=false,x5RasterFallbackStage=0,x5StyleErrorCount=0;
+function activateX5RasterFallback(reason){
+ const stage=x5RasterFallbackStage+1;
+ if(stage>2)return;
+ x5RasterFallbackStage=stage;
+ console.warn("WEATHER VORTEX: přepínám mapový podklad na zálohu "+stage+".",reason||"mapové dlaždice se nenačetly");
+ const source=stage===1?{"x5-raster":{type:"raster",tiles:["https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors © CARTO"}}:{"x5-osm":{type:"raster",tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors"}};
+ const layer=stage===1?{id:"x5-raster-base",type:"raster",source:"x5-raster",minzoom:0,maxzoom:19}:{id:"x5-osm-base",type:"raster",source:"x5-osm",minzoom:0,maxzoom:19};
+ try{map.setStyle({version:8,sources:source,layers:[layer]});}catch(err){console.error("Záložní mapový podklad se nepodařilo aktivovat:",err);}
 }
-map.on("error",event=>{if(!x5BaseMapLoaded&&!x5BaseMapFallback)useX5RasterFallback(event?.error?.message||"chyba při načítání stylu");});
-setTimeout(()=>{if(!x5BaseMapLoaded)useX5RasterFallback("vektorový styl se nenačetl do 12 sekund");},12000);
+map.on("style.load",()=>{x5StyleReady=true;});
+map.on("error",event=>{
+ x5StyleErrorCount++;
+ const message=String(event?.error?.message||"");
+ if(x5RasterFallbackStage===0&&(/style|sprite|glyph|tile|source|HTTP 4|HTTP 5|Failed to fetch|NetworkError/i.test(message)||x5StyleErrorCount>=3)){
+  activateX5RasterFallback(message||"opakované chyby mapových zdrojů");
+ }else if(x5RasterFallbackStage===1&&(/tile|source|HTTP 4|HTTP 5|Failed to fetch|NetworkError/i.test(message))){
+  activateX5RasterFallback(message||"chyby záložních dlaždic CARTO");
+ }
+});
+setTimeout(()=>{
+ if(x5RasterFallbackStage!==0)return;
+ let ready=false;try{ready=map.isStyleLoaded()&&map.areTilesLoaded()}catch(_){}
+ if(!ready)activateX5RasterFallback(x5StyleReady?"dlaždice se nenačetly do 10 sekund":"vektorový styl se nenačetl do 10 sekund");
+},10000);
+setTimeout(()=>{
+ if(x5RasterFallbackStage!==1)return;
+ let ready=false;try{ready=map.isStyleLoaded()&&map.areTilesLoaded()}catch(_){}
+ if(!ready)activateX5RasterFallback("záložní dlaždice CARTO se nenačetly do 12 sekund");
+},22000);
 // Na dotykových zařízeních vypnout tažení mapy jedním prstem, aby gesto patřilo rolování stránky.
 if(window.matchMedia("(pointer: coarse)").matches){map.dragPan.disable();}
 map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),"top-right");
