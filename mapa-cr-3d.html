@@ -750,7 +750,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    {x:-3.0,z:1.25,a:.16,sx:.48,sz:.68}, // Český les
    {x:.0,z:1.35,a:.13,sx:1.0,sz:.8} // Českomoravská vrchovina
   ];
-  let demGrid=null;const demSize=49;
+  let demGrid=null;const demSize=81;
   function terrainHeightAt(x,z){
    if(demGrid){const gx=Math.max(0,Math.min(demSize-1,(x+3.6)/7.2*(demSize-1))),gz=Math.max(0,Math.min(demSize-1,(z+3.6)/7.2*(demSize-1))),x0=Math.floor(gx),z0=Math.floor(gz),x1=Math.min(demSize-1,x0+1),z1=Math.min(demSize-1,z0+1),tx=gx-x0,tz=gz-z0;
     const a=demGrid[z0*demSize+x0]*(1-tx)+demGrid[z0*demSize+x1]*tx,b=demGrid[z1*demSize+x0]*(1-tx)+demGrid[z1*demSize+x1]*tx;return (a*(1-tz)+b*tz)*.00040}
@@ -948,7 +948,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   async function loadCopernicusTerrain(){
    const badge=document.getElementById('weatherTerrainBadge');
    const coords=[];for(let j=0;j<demSize;j++)for(let i=0;i<demSize;i++)coords.push({lat:50.95-j/(demSize-1)*2.3,lon:12.15+i/(demSize-1)*6.4});
-   const cacheKey='x5-dem-cz-grid-v8',cooldownKey='x5-dem-cz-cooldown-v1',cacheTtl=30*24*60*60*1000;
+   const cacheKey='x5-dem-cz-grid-v9',cooldownKey='x5-dem-cz-cooldown-v1',cacheTtl=30*24*60*60*1000;
    const applyElevations=values=>{
     if(!Array.isArray(values)||values.length!==demSize*demSize||values.some(v=>!Number.isFinite(Number(v))))throw new Error('Neúplná výšková data');
     demGrid=values.map(Number);
@@ -991,7 +991,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    let primaryError='neznámá chyba';
    try{
     if(badge)badge.textContent='Terén: dotazuji Open-Meteo…';
-    const values=[];for(let start=0;start<coords.length;start+=80){const batch=coords.slice(start,start+80),lat=batch.map(p=>p.lat.toFixed(4)).join(','),lon=batch.map(p=>p.lon.toFixed(4)).join(',');
+    const values=[];for(let start=0;start<coords.length;start+=100){const batch=coords.slice(start,start+100),lat=batch.map(p=>p.lat.toFixed(4)).join(','),lon=batch.map(p=>p.lon.toFixed(4)).join(',');
      const response=await timedFetch('https://api.open-meteo.com/v1/elevation?latitude='+lat+'&longitude='+lon,10000);
      if(!response.ok)throw new Error('Open-Meteo HTTP '+response.status);
      const data=await response.json();if(!Array.isArray(data.elevation)||data.elevation.length!==batch.length)throw new Error('Neúplný výškový vzorek');values.push(...data.elevation)}
@@ -1005,8 +1005,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    try{
     if(badge)badge.textContent='Terén: zkouším globální ArcGIS WorldElevation3D…';
     const values=[];
-    for(let start=0;start<coords.length;start+=70){
-     const batch=coords.slice(start,start+70),points=batch.map(p=>[p.lon,p.lat]);
+    for(let start=0;start<coords.length;start+=100){
+     const batch=coords.slice(start,start+100),points=batch.map(p=>[p.lon,p.lat]);
      const geometry=encodeURIComponent(JSON.stringify({points,spatialReference:{wkid:4326}}));
      const url='https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer/getSamples?geometryType=esriGeometryMultipoint&geometry='+geometry+'&returnFirstValueOnly=true&interpolation=RSP_BilinearInterpolation&f=json';
      const response=await timedFetch(url,14000);if(!response.ok)throw new Error('ArcGIS HTTP '+response.status);
