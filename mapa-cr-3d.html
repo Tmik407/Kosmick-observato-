@@ -781,7 +781,7 @@ function loadWeather(force=false,retry=false){
     const fallbackRows=await loadMetNoFallback(),meta=fallbackRows.weatherMeta||{savedAt:Date.now(),cached:false};
     useRows(fallbackRows,"MET Norway (záložní globální model)",meta.cached?"cached":"fresh",meta.savedAt);window.__weatherVortexSetSourceStatus?.("metnorway",meta.cached?"cached":"ok",(meta.cached?"uložená záloha · ":"záloha aktivní · ")+cities.length+" měst");
     fallbackLoaded=true;
-    $("weatherSummary").textContent="Hodinová služba Open-Meteo je dočasně nedostupná. +(meta.cached?"Používám uloženou kopii MET Norway z "+new Date(meta.savedAt).toLocaleString("cs-CZ")+". ":"Načetla se záložní předpověď MET Norway. ")+"Její časové kroky se po prvních 48 hodinách mohou prodlužovat. Samostatná výška nového sněhu není v tomto záložním výstupu dostupná.";
+    $("weatherSummary").textContent="Hodinová služba Open-Meteo je dočasně nedostupná. "+(meta.cached?"Používám uloženou kopii MET Norway z "+new Date(meta.savedAt).toLocaleString("cs-CZ")+". ":"Načetla se záložní předpověď MET Norway. ")+"Její časové kroky se po prvních 48 hodinách mohou prodlužovat. Samostatná výška nového sněhu není v tomto záložním výstupu dostupná.";
     status("Záložní předpověď načtena · MET Norway · 15 měst");
    }catch(fallbackError){
     window.__weatherVortexSetSourceStatus?.("metnorway","bad","nedostupné");
