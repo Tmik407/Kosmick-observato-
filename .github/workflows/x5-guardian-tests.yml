@@ -1,0 +1,34 @@
+name: X-5 Guardian · phase 2 tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/x5_guardian*.py"
+      - "scripts/x5_history.py"
+      - "tests/**"
+      - ".github/workflows/x5-guardian-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: x5-guardian-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout proposed Guardian changes
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - name: Validate Python syntax
+        run: python3 -m py_compile scripts/x5_guardian.py scripts/x5_history.py scripts/x5_guardian_analysis.py tests/test_x5_guardian_analysis.py
+      - name: Run analysis unit tests
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v

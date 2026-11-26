@@ -28,6 +28,9 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 .history-row{display:grid;grid-template-columns:170px 1fr 110px;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
 .bars{height:12px;background:#edf1f6;border-radius:20px;overflow:hidden;display:flex}.bars i{height:100%;display:block}.bars .ok{background:#22a06b}.bars .warn{background:#e5a000}.bars .fail{background:#dc5555}
 .empty{color:var(--muted);padding:20px 0;text-align:center}
+.finding{border:1px solid var(--line);border-left:4px solid #94a3b8;border-radius:10px;padding:12px 14px;margin:10px 0;background:#fff}
+.finding.warning{border-left-color:#d97706}.finding.critical{border-left-color:#dc2626}.finding.info{border-left-color:#2563eb}
+.finding h3{font-size:15px;margin:0 0 7px}.finding p{margin:5px 0;font-size:13px}.finding strong{color:var(--ink)}
 footer{color:var(--muted);font-size:12px;margin-top:22px}
 @media(max-width:700px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.history-row{grid-template-columns:1fr 1fr}.history-row .counts{grid-column:1/-1}table{font-size:12px}th,td{padding:8px 5px}}
 </style>
@@ -48,6 +51,7 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
 <div class="card metric fail"><span>Chyby</span><strong id="failCount">—</strong></div>
 </div>
 <section class="card"><div class="sectionhead"><h2>Stav zdrojů</h2><span id="diagInfo" class="muted">Diagnostika není načtena</span></div><div id="checks"><div class="empty">Načtěte x5-guardian-diagnostics.json z reportu GitHub Actions.</div></div></section>
+<section class="card"><div class="sectionhead"><h2>Analýza a doporučení</h2><span id="analysisInfo" class="muted">Analýza není načtena</span></div><div id="analysis"><div class="empty">Po další automatické kontrole se zde zobrazí vysvětlení příčin a doporučené kroky.</div></div></section>
 <section class="card"><div class="sectionhead"><h2>Historie kontrol</h2><span id="historyInfo" class="muted">Historie není načtena</span></div><div id="history"><div class="empty">Načtěte history.json z reportu GitHub Actions.</div></div></section>
 <footer>Serverová diagnostika nepotvrzuje vykreslení map, CORS, JavaScript ani ovládání na Android tabletu. Historie je omezena na 100 záznamů; dostupnost cache a artefaktů závisí na GitHub Actions.</footer>
 </main>
@@ -67,11 +71,36 @@ function renderDiagnostic(data) {
  el('lastTime').textContent = safeDate(data.checked_at_utc);
  el('okCount').textContent = ok; el('warnCount').textContent = warn; el('failCount').textContent = fail;
  el('diagInfo').textContent = checks.length + ' kontrol';
+ renderAnalysis(data.analysis);
  const table = document.createElement('table');
  const thead = document.createElement('thead'); thead.innerHTML = '<tr><th>Zdroj</th><th>Stav</th><th>Detail</th></tr>'; table.append(thead);
  const tbody = document.createElement('tbody');
  checks.forEach(c => { const tr=document.createElement('tr'); [c.name,c.state,c.detail].forEach((v,i)=>{const td=document.createElement('td'); if(i===1){const badge=document.createElement('span');badge.className='status '+c.state;badge.textContent=c.state;td.append(badge)}else td.textContent=v;tr.append(td)});tbody.append(tr); });
  table.append(tbody); el('checks').replaceChildren(table);
+}
+function renderAnalysis(analysis) {
+ const host=el('analysis'); host.replaceChildren();
+ if(!analysis || !Array.isArray(analysis.findings)){
+  el('analysisInfo').textContent='Analýza není k dispozici';
+  host.innerHTML='<div class="empty">Diagnostika zatím neobsahuje analytickou vrstvu.</div>';return;
+ }
+ el('analysisInfo').textContent=String(analysis.engine || 'Guardian')+' · '+String(analysis.mode || 'analýza');
+ const summary=document.createElement('p');summary.textContent=String(analysis.summary || 'Analýza dokončena.');host.append(summary);
+ analysis.findings.forEach(f=>{
+  const card=document.createElement('article');card.className='finding '+String(f.severity || 'info');
+  const title=document.createElement('h3');title.textContent=String(f.title || 'Zjištění');card.append(title);
+  [['Pravděpodobná příčina',f.likely_cause],['Dopad',f.impact],['Doporučení',f.recommendation],['Jistota',f.confidence],['Automatická oprava',f.automatic_repair ? 'povolena' : 'vypnuta']].forEach(([label,value])=>{
+   const p=document.createElement('p'),strong=document.createElement('strong');strong.textContent=label+': ';p.append(strong,document.createTextNode(String(value || 'neuvedeno')));card.append(p);
+  });
+  host.append(card);
+ });
+ if(Array.isArray(analysis.recurring_issues) && analysis.recurring_issues.length){
+  const heading=document.createElement('h3');heading.textContent='Opakující se problémy';host.append(heading);
+  analysis.recurring_issues.forEach(item=>{const p=document.createElement('p');p.textContent=String(item.source)+': '+String(item.non_ok_in_last_8)+' neúspěšných/varovných kontrol z posledních 8. '+String(item.recommendation || '');host.append(p);});
+ }
+ if(Array.isArray(analysis.limitations)){
+  const p=document.createElement('p');p.className='muted';p.textContent='Omezení: '+analysis.limitations.join(' ');host.append(p);
+ }
 }
 function renderHistory(data) {
  if (!Array.isArray(data)) throw new Error('Historie musí být JSON pole záznamů.');
@@ -93,8 +122,8 @@ function renderHistory(data) {
 async function loadFile(file, callback){if(!file)return;try{const parsed=JSON.parse(await file.text());callback(parsed)}catch(e){alert('Soubor nelze načíst: '+e.message)}}
 el('diagFile').addEventListener('change',e=>loadFile(e.target.files[0],renderDiagnostic));
 el('historyFile').addEventListener('change',e=>loadFile(e.target.files[0],renderHistory));
-el('clearBtn').addEventListener('click',()=>{diagnostic=null;history=[];el('lastTime').textContent='—';['okCount','warnCount','failCount'].forEach(id=>el(id).textContent='—');el('diagInfo').textContent='Diagnostika není načtena';el('historyInfo').textContent='Historie není načtena';el('checks').innerHTML='<div class="empty">Diagnostika není načtena.</div>';el('history').innerHTML='<div class="empty">Historie není načtena.</div>';});
-el('demoBtn').addEventListener('click',()=>{renderDiagnostic({checked_at_utc:new Date().toISOString(),checks:[{name:'GitHub Pages / HTML',state:'OK',detail:'Ukázková odpověď'},{name:'Open-Meteo',state:'WARN',detail:'Ukázkové varování'},{name:'MET Norway',state:'OK',detail:'Časová řada dostupná'}]});renderHistory([{checked_at_utc:new Date(Date.now()-86400000).toISOString(),checks:[{state:'OK'},{state:'WARN'}]},{checked_at_utc:new Date().toISOString(),checks:[{state:'OK'},{state:'WARN'},{state:'OK'}]}]);});
+el('clearBtn').addEventListener('click',()=>{diagnostic=null;history=[];el('lastTime').textContent='—';['okCount','warnCount','failCount'].forEach(id=>el(id).textContent='—');el('diagInfo').textContent='Diagnostika není načtena';el('historyInfo').textContent='Historie není načtena';el('analysisInfo').textContent='Analýza není načtena';el('analysis').innerHTML='<div class="empty">Analýza není načtena.</div>';el('checks').innerHTML='<div class="empty">Diagnostika není načtena.</div>';el('history').innerHTML='<div class="empty">Historie není načtena.</div>';});
+el('demoBtn').addEventListener('click',()=>{renderDiagnostic({checked_at_utc:new Date().toISOString(),checks:[{name:'GitHub Pages / HTML',state:'OK',detail:'Ukázková odpověď'},{name:'Open-Meteo',state:'WARN',detail:'Ukázkové varování'},{name:'MET Norway',state:'OK',detail:'Časová řada dostupná'}],analysis:{engine:'X-5 Guardian Expert Rules 1.0',mode:'explainable_rules_not_llm',summary:'Ukázka: primární zdroj je nedostupný, záloha funguje.',findings:[{severity:'warning',title:'Primární předpověď nedostupná',likely_cause:'Výpadek API nebo limit požadavků.',impact:'Předpověď využívá záložní model.',recommendation:'Ponechat označenou zálohu a opakovat kontrolu.',confidence:'vysoká',automatic_repair:false}],recurring_issues:[],limitations:['Serverová kontrola nepotvrzuje vykreslení mapy.']}});renderHistory([{checked_at_utc:new Date(Date.now()-86400000).toISOString(),checks:[{state:'OK'},{state:'WARN'}]},{checked_at_utc:new Date().toISOString(),checks:[{state:'OK'},{state:'WARN'},{state:'OK'}]}]);});
 const embeddedDiag=el('x5-embedded-diagnostics'), embeddedHistory=el('x5-embedded-history');
 const DATA_BASE='https://raw.githubusercontent.com/Tmik407/Kosmick-observato-/x5-guardian-data/latest/';
 async function refreshRemote(){
@@ -121,7 +150,9 @@ if(embeddedDiag && embeddedHistory){
  try{renderDiagnostic(JSON.parse(embeddedDiag.textContent));renderHistory(JSON.parse(embeddedHistory.textContent));}
  catch(e){el('diagInfo').textContent='Vložená data se nepodařilo načíst';console.error('X-5 embedded report:',e);}
 }
-refreshRemote();\nsetInterval(refreshRemote,10*60*1000);\n})();
+refreshRemote();
+setInterval(refreshRemote,10*60*1000);
+})();
 </script>
 </body>
 </html>
