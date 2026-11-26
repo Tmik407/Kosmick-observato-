@@ -41,7 +41,7 @@ jobs:
           python - <<'PY'
           import re
           from pathlib import Path
-          files = [Path("_site/index.html"), Path("_site/polarni-vir.html"), Path("_site/polar-vortex-3d.html"), Path("_site/mapa-cr-3d.html")]
+          files = [Path("_site/index.html"), Path("_site/polarni-vir.html"), Path("_site/polar-vortex-3d.html"), Path("_site/mapa-cr-3d.html"), Path("_site/mapa-cr-3d-nova.html")]
           count = 0
           for page in files:
               source = page.read_text(encoding="utf-8")
