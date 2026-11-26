@@ -947,7 +947,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
     if(badge)badge.textContent='Terén: ČÚZK Data250 · přesná státní hranice + DEM '+demSize+'×'+demSize;
    }catch(err){console.warn('X-5 oficiální státní hranice:',err);if(badge)badge.title='Záložní zjednodušený obrys ČR; ČÚZK Data250 se nepodařilo načíst: '+String(err.message||err)}
   }
-  loadOfficialCzechBorder();
+  // Duplicitní externí obrys ČÚZK je vypnutý: jeho dotaz vracel i sousední hranice mimo ČR. Hranici zobrazuje přesný polygon czBorder výše.
 
   function refreshGeoOverlayHeights(){
    geoOverlay.children.forEach(obj=>{
