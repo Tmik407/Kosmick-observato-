@@ -41,11 +41,9 @@ def forecast_check(name: str, url: str):
         if not rows or not rows[0].get("hourly", {}).get("time"):
             raise ValueError("odpověď neobsahuje hodinovou časovou osu")
         times = rows[0]["hourly"]["time"]
-        newest = datetime.fromisoformat(times[0].replace("Z", "+00:00"))
-        if newest.tzinfo is None:
-            newest = newest.replace(tzinfo=timezone.utc)
-        age_h = (datetime.now(timezone.utc) - newest.astimezone(timezone.utc)).total_seconds() / 3600
-        add(name, "OK" if age_h < 3 else "WARN", f"časová osa dostupná; první termín {times[0]} (odchylka {age_h:.1f} h)")
+        # Forecast arrays can begin at local midnight; that is not the issue time.
+        # Avoid incorrectly flagging a valid forecast as stale from its first slot.
+        add(name, "OK", f"časová osa dostupná ({len(times)} termínů); první termín {times[0]}")
     except Exception as exc:
         add(name, "WARN", f"zdroj nedostupný nebo neplatná odpověď: {type(exc).__name__}: {exc}")
 
