@@ -37,7 +37,7 @@ jobs:
           age = None
           if newest:
               stamp = dt.datetime.fromisoformat(newest.replace("Z", "+00:00"))
-              age = max(0, int((dt.datetime.now(dt.timezone.utc) - stamp).total_seconds() //  60))
+              age = max(0, int((dt.datetime.now(dt.timezone.utc) - stamp).total_seconds() // 60))
           fresh = doc.get("fresh_observation_station_count", 0)
           delayed = doc.get("delayed_observation_station_count", 0)
           stale = doc.get("stale_observation_station_count", 0)
@@ -69,3 +69,4 @@ jobs:
               sleep $((attempt * 3))
             done
             exit 1
+          fi
