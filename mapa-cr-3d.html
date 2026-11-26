@@ -949,7 +949,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
      else if(g.type==='MultiLineString'&&g.coordinates)paths.push(...g.coordinates);
     });
     if(!paths.length)throw new Error('ČÚZK nevrátil geometrii státní hranice');
-    const official=new THREE.Group();
+    officialBoundaryGroup=new THREE.Group();const official=officialBoundaryGroup;
     paths.forEach(path=>{
      const coords=path.filter(c=>Array.isArray(c)&&Number.isFinite(c[0])&&Number.isFinite(c[1]));
      const pts=coords.map(c=>{const p=geoPoint(c[0],c[1]);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.16,p.z)});
@@ -969,6 +969,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
     if(obj.userData.geoPoint){const p=obj.userData.geoPoint;obj.position.y=terrainHeightAt(p.x,p.z)+.13}
     if(obj.userData.geoCoords){const pts=obj.userData.geoCoords.map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.16,p.z)});obj.geometry.setFromPoints(pts)}
    });
+   if(officialBoundaryGroup)officialBoundaryGroup.children.forEach(obj=>{if(obj.userData.geoCoords){const pts=obj.userData.geoCoords.map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.16,p.z)});obj.geometry.setFromPoints(pts)}});
    [regionGroup,cityGroup,districtGroup].forEach(group=>group.children.forEach(obj=>{
     if(obj.userData.geoPoint){const p=obj.userData.geoPoint;obj.position.y=terrainHeightAt(p.x,p.z)+.18}
     if(obj.userData.geoCoords){const pts=obj.userData.geoCoords.map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.105,p.z)});obj.geometry.setFromPoints(pts)}
@@ -1086,6 +1087,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    [[borderGlow,.085,8],[borderOuter,.038,8],[borderLine,.024,8],[borderHighlight,.007,6]].forEach(([mesh,radius,segments])=>{mesh.geometry.dispose();mesh.geometry=new THREE.TubeGeometry(curve,900,radius,segments,true)});
    refreshGeoOverlayHeights();
   }
+  let officialBoundaryGroup=null;
   async function loadOfficialCzechGeometry(){
    const badge=document.getElementById('weatherBoundaryBadge');
    if(badge)badge.textContent='Hranice ČR: načítám GeoJSON…';
@@ -1283,7 +1285,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   const ring=new THREE.Mesh(new THREE.TorusGeometry(.58,.025,8,64),new THREE.MeshBasicMaterial({color:0x8deaff,transparent:true,opacity:.95}));ring.rotation.x=Math.PI/2;ring.position.y=.32;scene.add(ring);
   const vortexLayers={terrain:true,temperature:true,clouds:true,precipitation:true,atmosphere:true,wind:true};
   function applyVortexLayers(){
-   terrain.visible=vortexLayers.terrain;borderGlow.visible=vortexLayers.terrain;borderOuter.visible=vortexLayers.terrain;borderLine.visible=vortexLayers.terrain;
+   terrain.visible=vortexLayers.terrain;borderGlow.visible=vortexLayers.terrain&&!officialBoundaryGroup;borderOuter.visible=vortexLayers.terrain&&!officialBoundaryGroup;borderLine.visible=vortexLayers.terrain&&!officialBoundaryGroup;borderHighlight.visible=vortexLayers.terrain&&!officialBoundaryGroup;if(officialBoundaryGroup)officialBoundaryGroup.visible=vortexLayers.terrain;
    heat.visible=vortexLayers.temperature&&vortexLayers.terrain;
    const tempLegend=document.getElementById('weatherTemperatureLegend');if(tempLegend){const showTemp=vortexLayers.temperature&&vortexLayers.terrain;tempLegend.hidden=!showTemp;tempLegend.style.setProperty('display',showTemp?'block':'none','important');tempLegend.setAttribute('aria-hidden',String(!showTemp));}
    cloudGroup.visible=vortexLayers.clouds;stormCloudGroup.visible=vortexLayers.clouds;lightningGroup.visible=vortexLayers.clouds&&stormIntensity>0;atmosphere.visible=vortexLayers.atmosphere;
