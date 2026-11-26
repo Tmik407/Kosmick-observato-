@@ -171,6 +171,7 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
   </div>
   <div style="position:absolute;left:10px;bottom:10px;display:flex;gap:7px;flex-wrap:wrap;color:#eaf7ff;font-size:10px;pointer-events:none;background:#061526c9;padding:6px 8px;border-radius:8px"><span>🔵 Chlad</span><span>🟢 Mírno</span><span>🟠 Teplo</span><span>💧 Déšť</span><span>❄️ Sníh</span></div>
   <div id="weatherTerrainBadge" style="position:absolute;right:10px;top:58px;padding:5px 8px;border:1px solid #52738d;border-radius:7px;background:#061526d9;color:#dff4ff;font-size:10px;pointer-events:none">Načítám výšková data…</div>
+  <div id="weatherBoundaryBadge" role="status" aria-live="polite" style="position:absolute;right:10px;top:88px;max-width:72%;padding:5px 8px;border:1px solid #52738d;border-radius:7px;background:#061526d9;color:#dff4ff;font-size:10px;pointer-events:none">Hranice ČR: ověřuji oficiální geometrii…</div>
   <div id="weatherAltitudeScale" aria-label="Schematická výšková stupnice atmosféry" style="position:absolute;left:10px;top:104px;z-index:2;width:48px;padding:7px 6px;border:1px solid #52738d;border-radius:8px;background:#061526d9;color:#eaf7ff;font-size:9px;line-height:1.2;pointer-events:none">
    <div style="font-weight:700;text-align:center;margin-bottom:7px">Výška</div>
    <div style="display:flex;gap:5px;align-items:stretch;height:112px">
@@ -1087,7 +1088,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    refreshGeoOverlayHeights();
   }
   async function loadOfficialCzechGeometry(){
-   const badge=document.getElementById('weatherTerrainBadge');
+   const badge=document.getElementById('weatherBoundaryBadge');
+   if(badge)badge.textContent='Hranice ČR: načítám GeoJSON…';
    try{
     const mr=await fetch('https://www.geoboundaries.org/api/current/gbOpen/CZE/ADM0/',{cache:'force-cache'});if(!mr.ok)throw new Error('geoBoundaries ADM0 HTTP '+mr.status);
     const meta=await mr.json();if(!meta.gjDownloadURL)throw new Error('Chybí odkaz na GeoJSON');
@@ -1096,12 +1098,15 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
     if(!rings.length)throw new Error('GeoJSON neobsahuje obrys ČR');
     const ring=rings.sort((a,b)=>b.length-a.length)[0];czBorderLL=ring.map(c=>[+c[0],+c[1]]).filter(c=>Number.isFinite(c[0])&&Number.isFinite(c[1]));
     if(czBorderLL.length<30)throw new Error('Obrys ČR je neúplný');
+    const bounds=czBorderLL.reduce((b,p)=>({minLon:Math.min(b.minLon,p[0]),maxLon:Math.max(b.maxLon,p[0]),minLat:Math.min(b.minLat,p[1]),maxLat:Math.max(b.maxLat,p[1])}),{minLon:Infinity,maxLon:-Infinity,minLat:Infinity,maxLat:-Infinity});
+    if(bounds.minLon<11.5||bounds.maxLon>19.5||bounds.minLat<48||bounds.maxLat>52)throw new Error('Souřadnice GeoJSON neodpovídají území ČR: '+JSON.stringify(bounds));
+    if(bounds.maxLon-bounds.minLon<5||bounds.maxLat-bounds.minLat<1.5)throw new Error('GeoJSON má neúplný geografický rozsah');
     czBorderControl=czBorderLL.map(([lon,lat])=>({x:((lon-12.09)/(18.85-12.09))*7.2-3.6,z:((49.835-lat)/(18.85-12.09))*7.2*1.563}));
     czBorderCurve=new THREE.CatmullRomCurve3(czBorderControl.map(p=>new THREE.Vector3(p.x,0,p.z)),true,'centripetal',.32);
     czBorder=czBorderCurve.getPoints(1200).map(p=>({x:p.x,z:p.z}));rebuildOfficialMask();
-    if(badge){badge.textContent='Terén: přesný obrys ČR · geoBoundaries ADM0';badge.title='geoBoundaries gbOpen · licence CC BY 4.0';}
-    console.info('X-5: oficiální hranice ČR načtena, '+czBorderLL.length+' vrcholů');
-   }catch(err){console.warn('X-5: načtení oficiální hranice selhalo',err);if(badge)badge.title='Záložní obrys ČR: '+String(err.message||err);}
+    if(badge){badge.textContent='Hranice ČR: oficiální GeoJSON načten · '+czBorderLL.length+' bodů';badge.title='geoBoundaries gbOpen · licence CC BY 4.0';badge.style.borderColor='#54c78b';}
+    console.info('X-5: oficiální hranice ČR načtena, '+czBorderLL.length+' vrcholů',bounds);
+   }catch(err){console.warn('X-5: načtení oficiální hranice selhalo',err);if(badge){badge.textContent='Hranice ČR: záložní obrys · GeoJSON se nenačetl';badge.title=String(err.message||err);badge.style.borderColor='#e2a45a';}}
   }
   loadOfficialCzechGeometry();
   // Načtení výšek s lokální cache: omezuje opakované dotazy při HTTP 429.
