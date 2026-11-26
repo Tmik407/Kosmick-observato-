@@ -1156,7 +1156,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    }
   }
   loadCopernicusTerrain();
-  const patches=[];for(const p of [{x:-1.8,z:.8,c:0x167dff},{x:1.6,z:-.9,c:0xff7838},{x:.1,z:1.9,c:0x12c9a7}]){const m=new THREE.Mesh(new THREE.CircleGeometry(1.45,48),new THREE.MeshBasicMaterial({color:p.c,transparent:true,opacity:.72,depthWrite:false,side:THREE.DoubleSide}));m.rotation.x=-Math.PI/2;m.position.set(p.x,-.045,p.z);scene.add(m);patches.push(m)}
+  // Dekorativní barevné meteorologické plochy musí respektovat státní hranici stejně jako reliéf.
+  const patches=[];for(const p of [{x:-1.8,z:.8,c:0x167dff},{x:1.6,z:-.9,c:0xff7838},{x:.1,z:1.9,c:0x12c9a7}]){const patchGeo=new THREE.CircleGeometry(1.45,64);clipToCzech(patchGeo);const m=new THREE.Mesh(patchGeo,new THREE.MeshBasicMaterial({color:p.c,transparent:true,opacity:.48,depthWrite:false,side:THREE.DoubleSide}));m.rotation.x=-Math.PI/2;m.position.set(p.x,-.045,p.z);scene.add(m);patches.push(m)}
   const rainGroup=new THREE.Group();scene.add(rainGroup);const drops=[];
   const precipParticleCount=lowPower?34:72;
   for(let n=0;n<precipParticleCount;n++){const a=n*2.399,r=.65+(n%9)*.39;const d=new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,.25,6),new THREE.MeshBasicMaterial({color:0x48cfff,transparent:true,opacity:.95}));d.position.set(Math.cos(a)*r,.2+(n%13)*.16,Math.sin(a)*r);rainGroup.add(d);drops.push(d)}
