@@ -267,8 +267,7 @@ setTimeout(()=>{
  let ready=false;try{ready=map.isStyleLoaded()&&map.areTilesLoaded()}catch(_){}
  if(!ready)activateX5RasterFallback("záložní dlaždice OSM HOT se nenačetly do 12 sekund");
 },22000);
-// Na dotykových zařízeních vypnout tažení mapy jedním prstem, aby gesto patřilo rolování stránky.
-if(window.matchMedia("(pointer: coarse)").matches){map.dragPan.disable();}
+ // Dotykové ovládání: tažení mapy jedním prstem je povoleno; přiblížení funguje gestem dvou prstů.
 map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),"top-right");
 map.addControl(new maplibregl.ScaleControl({maxWidth:110,unit:"metric"}),"bottom-left");
 const flowCanvas=$("flowCanvas"),ctx=flowCanvas.getContext("2d");
