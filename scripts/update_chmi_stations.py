@@ -11,6 +11,7 @@ import requests
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "chmi-stations-latest.json"
 BASE = "https://opendata.chmi.cz/meteorology/climate/recent"
+NOW_BASE = "https://opendata.chmi.cz/meteorology/climate/now"
 HEADERS = {"User-Agent": "PredpovedPocasiCR/1.2 (CHMI open data)"}
 # Standard CHMI WIGOS network plus additional 0-203 partner/automatic sites.
 SUPPORTED_WSI_PREFIXES = ("0-20000-0-", "0-203-0-")
@@ -34,8 +35,8 @@ def number(value):
     except (TypeError, ValueError):
         return None
 
-def fetch_station(station, stamp):
-    url = f"{BASE}/data/10min/10m-{station['id']}-{stamp}.json"
+def fetch_station(station, stamp, base=BASE):
+    url = f"{base}/data/10min/10m-{station['id']}-{stamp}.json"
     try:
         doc = get_json(url)
         values = doc.get("data", {}).get("data", {}).get("values", [])
@@ -49,14 +50,11 @@ def fetch_station(station, stamp):
                 continue
             old = latest.get(element)
             if old is None or str(when) > old["time"]:
-                latest[element] = {
-                    "value": value, "time": str(when),
-                    "flag": flag, "quality": quality
-                }
+                latest[element] = {"value": value, "time": str(when), "flag": flag, "quality": quality}
         if not latest:
             return None, None
         out = dict(station)
-        # Preserve every available element, not only the values displayed in the popup.
+        out["data_source"] = "now" if base == NOW_BASE else "recent"
         out["measurements"] = latest
         out["elements"] = sorted(latest)
         for element, target in ALIASES.items():
@@ -67,9 +65,26 @@ def fetch_station(station, stamp):
         out["quality_fields"] = {key: item["quality"] for key, item in latest.items()}
         return out, None
     except requests.HTTPError as exc:
-        return None, f"{station['name']} {stamp}: HTTP {exc.response.status_code}"
+        if exc.response is not None and exc.response.status_code == 404:
+            return None, None
+        return None, f"{station['name']} {stamp}: HTTP {exc.response.status_code if exc.response else 'error'}"
     except Exception as exc:
         return None, f"{station['name']} {stamp}: {exc}"
+
+def fetch_station_with_fallback(station, today_stamp, yesterday_stamp):
+    # /now obsahuje průběžně aktualizované soubory automatizovaných stanic.
+    # /recent je záloha po kontrole a publikuje se zpravidla dvakrát denně.
+    candidates = []
+    if station["id"].startswith("0-20000-0-"):
+        candidates.append((NOW_BASE, today_stamp))
+    candidates.extend(((BASE, today_stamp), (BASE, yesterday_stamp)))
+    for base, stamp in candidates:
+        item, error = fetch_station(station, stamp, base)
+        if item:
+            return item, None
+        if error:
+            print(error, flush=True)
+    return None, None
 
 def main():
     meta = None
@@ -101,25 +116,19 @@ def main():
             "elevation_m": number(elevation) or 0
         }
 
+    today_stamp = TODAY.strftime("%Y%m%d")
+    yesterday_stamp = (TODAY - dt.timedelta(days=1)).strftime("%Y%m%d")
     result = []
-    attempted_dates = []
-    for day in (TODAY, TODAY - dt.timedelta(days=1)):
-        stamp = day.strftime("%Y%m%d")
-        attempted_dates.append(stamp)
-        batch = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
-            futures = [pool.submit(fetch_station, station, stamp)
-                       for station in stations.values()]
-            for future in concurrent.futures.as_completed(futures):
-                item, error = future.result()
-                if item:
-                    batch.append(item)
-                elif error and "HTTP 404" not in error:
-                    print(error, flush=True)
-        if batch:
-            result = sorted(batch, key=lambda item: item["name"])
-            break
-
+    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
+        futures = [pool.submit(fetch_station_with_fallback, station, today_stamp, yesterday_stamp)
+                   for station in stations.values()]
+        for future in concurrent.futures.as_completed(futures):
+            item, error = future.result()
+            if item:
+                result.append(item)
+            elif error:
+                print(error, flush=True)
+    result.sort(key=lambda item: item["name"])
     if not result:
         raise RuntimeError("No station observations retrieved")
     generated = dt.datetime.now(dt.timezone.utc)
@@ -129,13 +138,15 @@ def main():
         "license": "CC BY 4.0",
         "generated_utc": generated.isoformat(timespec="seconds"),
         "metadata_date": meta_date,
-        "observation_date": attempted_dates[-1],
+        "observation_date": today_stamp,
         "station_count": len(result),
+        "fresh_now_station_count": sum(1 for s in result if s.get("data_source") == "now"),
+        "recent_fallback_station_count": sum(1 for s in result if s.get("data_source") == "recent"),
         "station_networks": {prefix: sum(1 for s in result if s["id"].startswith(prefix)) for prefix in SUPPORTED_WSI_PREFIXES},
         "stations": result,
         "latest_observation_utc": newest,
         "available_elements": sorted({e for s in result for e in s.get("elements", [])}),
-        "note": "Přímá měření z dostupných sítí ČHMÚ a spolupracujících pozorovacích míst. Dostupné prvky se liší podle pozorovacího programu; zařazeny jsou pouze stanice s dostupným 10min souborem. Prázdné hodnoty jsou vynechány, kvalita je převzata ze zdroje ČHMÚ."
+        "note": "Automatizované stanice přednostně používají průběžně aktualizovaný adresář ČHMÚ /now. Ostatní stanice nebo chybějící aktuální soubory používají /recent jako zálohu; tento archiv se aktualizuje po kontrole zpravidla dvakrát denně. Dostupné prvky se liší podle pozorovacího programu. Prázdné hodnoty jsou vynechány, kvalita je převzata ze zdroje ČHMÚ."
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     tmp = OUT.with_suffix(".tmp")
