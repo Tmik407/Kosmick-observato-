@@ -796,7 +796,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
     if(obj.userData.geoPoint){const p=obj.userData.geoPoint;obj.position.y=terrainHeightAt(p.x,p.z)+.13}
     if(obj.userData.geoCoords){const pts=obj.userData.geoCoords.map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.075,p.z)});obj.geometry.setFromPoints(pts)}
    });
-   [regionGroup,cityGroup].forEach(group=>group.children.forEach(obj=>{
+   [regionGroup,cityGroup,districtGroup].forEach(group=>group.children.forEach(obj=>{
     if(obj.userData.geoPoint){const p=obj.userData.geoPoint;obj.position.y=terrainHeightAt(p.x,p.z)+.18}
     if(obj.userData.geoCoords){const pts=obj.userData.geoCoords.map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.105,p.z)});obj.geometry.setFromPoints(pts)}
    }));
