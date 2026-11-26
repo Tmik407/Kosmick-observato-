@@ -1243,7 +1243,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   const vortexLayers={terrain:true,temperature:true,clouds:true,precipitation:true,atmosphere:true,wind:true};
   function applyVortexLayers(){
    terrain.visible=vortexLayers.terrain;borderGlow.visible=vortexLayers.terrain;borderOuter.visible=vortexLayers.terrain;borderLine.visible=vortexLayers.terrain;
-   heat.visible=vortexLayers.temperature&&vortexLayers.terrain;patches.forEach(p=>p.visible=vortexLayers.temperature&&vortexLayers.terrain);
+   heat.visible=vortexLayers.temperature&&vortexLayers.terrain;
    const tempLegend=document.getElementById('weatherTemperatureLegend');if(tempLegend){const showTemp=vortexLayers.temperature&&vortexLayers.terrain;tempLegend.hidden=!showTemp;tempLegend.style.setProperty('display',showTemp?'block':'none','important');tempLegend.setAttribute('aria-hidden',String(!showTemp));}
    cloudGroup.visible=vortexLayers.clouds;stormCloudGroup.visible=vortexLayers.clouds;lightningGroup.visible=vortexLayers.clouds&&stormIntensity>0;atmosphere.visible=vortexLayers.atmosphere;
    rainGroup.visible=vortexLayers.precipitation&&rainGroup.children.some(x=>x.visible);
