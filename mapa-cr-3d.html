@@ -232,7 +232,7 @@ const status=(s)=>$("status").textContent=s;
 let forecastPlaybackTimer=0;
 function stopForecastPlayback(){if(forecastPlaybackTimer){clearInterval(forecastPlaybackTimer);forecastPlaybackTimer=0;}const b=$("forecastPlay");if(b){b.textContent="▶ Automaticky přehrávat";b.setAttribute("aria-pressed","false");}}
 function startForecastPlayback(){if(!state.times.length)return;stopForecastPlayback();const b=$("forecastPlay");if(b){b.textContent="Ⅱ Pozastavit přehrávání";b.setAttribute("aria-pressed","true");}forecastPlaybackTimer=setInterval(()=>{if(document.hidden){stopForecastPlayback();return;}if(state.hour>=state.times.length-1){stopForecastPlayback();return;}state.hour++;$("forecastHour").value=String(state.hour);$("forecastTimeline").value=String(state.hour);applyHour();},1400);}
-const map=new maplibregl.Map({container:"map",style:{version:8,sources:{"x5-raster":{type:"raster",tiles:["https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors © CARTO"}},layers:[{id:"x5-raster-base",type:"raster",source:"x5-raster",minzoom:0,maxzoom:19}]},center:[15.35,49.82],zoom:6.75,pitch:35,bearing:-8,maxPitch:75,cooperativeGestures:true,attributionControl:true,fadeDuration:0,refreshExpiredTiles:false,renderWorldCopies:false,collectResourceTiming:false,maxTileCacheSize:window.matchMedia("(pointer: coarse)").matches?64:128});
+const map=new maplibregl.Map({container:"map",style:{version:8,sources:{"x5-osm":{type:"raster",tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors"}},layers:[{id:"x5-osm-base",type:"raster",source:"x5-osm",minzoom:0,maxzoom:19}]},center:[15.35,49.82],zoom:6.75,pitch:35,bearing:-8,maxPitch:75,cooperativeGestures:true,attributionControl:true,fadeDuration:0,refreshExpiredTiles:false,renderWorldCopies:false,collectResourceTiming:false,maxTileCacheSize:window.matchMedia("(pointer: coarse)").matches?64:128});
 state.map=map;
 // Odolné načítání mapového podkladu: při selhání úvodního vektorového stylu přepni
 // na nezávislý rastrový podklad. Přepnutí stylu znovu spustí níže uvedený load handler,
@@ -240,11 +240,11 @@ state.map=map;
 let x5StyleReady=false,x5RasterFallbackStage=0,x5StyleErrorCount=0;
 function activateX5RasterFallback(reason){
  const stage=x5RasterFallbackStage+1;
- if(stage>2)return;
+ if(stage>1)return;
  x5RasterFallbackStage=stage;
  console.warn("X-5: přepínám mapový podklad na zálohu "+stage+".",reason||"mapové dlaždice se nenačetly");
- const source=stage===1?{"x5-raster":{type:"raster",tiles:["https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors © CARTO"}}:{"x5-osm":{type:"raster",tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors"}};
- const layer=stage===1?{id:"x5-raster-base",type:"raster",source:"x5-raster",minzoom:0,maxzoom:19}:{id:"x5-osm-base",type:"raster",source:"x5-osm",minzoom:0,maxzoom:19};
+ const source={"x5-hot":{type:"raster",tiles:["https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors, HOT"}};
+ const layer={id:"x5-hot-base",type:"raster",source:"x5-hot",minzoom:0,maxzoom:19};
  try{map.setStyle({version:8,sources:source,layers:[layer]});}catch(error){console.error("X-5: záložní mapa se nepodařila aktivovat",error);}
 }
 map.on("style.load",()=>{x5StyleReady=true;});
@@ -252,20 +252,20 @@ map.on("error",event=>{
  x5StyleErrorCount++;
  const message=String(event?.error?.message||"");
  if(x5RasterFallbackStage===0&&(/tile|source|HTTP 4|HTTP 5|Failed to fetch|NetworkError/i.test(message))){
-  activateX5RasterFallback(message||"chyba rastrových dlaždic CARTO");
+  activateX5RasterFallback(message||"chyba dlaždic OpenStreetMap");
  }else if(x5RasterFallbackStage===1&&(/tile|source|HTTP 4|HTTP 5|Failed to fetch|NetworkError/i.test(message))){
-  activateX5RasterFallback(message||"chyby záložních dlaždic CARTO");
+  activateX5RasterFallback(message||"chyba záložních dlaždic OSM HOT");
  }
 });
 setTimeout(()=>{
  if(x5RasterFallbackStage!==0)return;
  let ready=false;try{ready=map.isStyleLoaded()&&map.areTilesLoaded()}catch(_){}
- if(!ready)activateX5RasterFallback("základní rastrové dlaždice CARTO se nenačetly do 10 sekund");
+ if(!ready)activateX5RasterFallback("dlaždice OpenStreetMap se nenačetly do 10 sekund");
 },10000);
 setTimeout(()=>{
  if(x5RasterFallbackStage!==1)return;
  let ready=false;try{ready=map.isStyleLoaded()&&map.areTilesLoaded()}catch(_){}
- if(!ready)activateX5RasterFallback("záložní dlaždice CARTO se nenačetly do 12 sekund");
+ if(!ready)activateX5RasterFallback("záložní dlaždice OSM HOT se nenačetly do 12 sekund");
 },22000);
 // Na dotykových zařízeních vypnout tažení mapy jedním prstem, aby gesto patřilo rolování stránky.
 if(window.matchMedia("(pointer: coarse)").matches){map.dragPan.disable();}
