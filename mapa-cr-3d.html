@@ -817,7 +817,10 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
  let renderer,scene,camera,raf=0,paused=false,last=0,windSpeed=8,windDir=250,avgTemp=5,maxPrecip=0,orbitYaw=0,orbitPitch=.48,orbitRadius=7.2;
   let validTimeLabel='',avgCloudCover=0,tempSampler=null,showSchematicClouds=false;
  try{
-  const lowPower=window.matchMedia('(pointer: coarse)').matches;renderer=new THREE.WebGLRenderer({canvas,antialias:!lowPower,alpha:true,powerPreference:'low-power'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,lowPower?1.1:1.5));
+  const lowPower=window.matchMedia('(pointer: coarse)').matches;
+   // Adaptivní hustota geometrie: na tabletech a telefonech méně vrcholů pro rychlejší start.
+   const terrainSegments=lowPower?220:300,heatSegments=lowPower?140:180;
+   renderer=new THREE.WebGLRenderer({canvas,antialias:!lowPower,alpha:true,powerPreference:'low-power'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,lowPower?1.0:1.35));
   scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(38,1,.1,100);camera.position.set(0,3.8,6.9);camera.lookAt(0,.25,0);
   scene.add(new THREE.AmbientLight(0xb8e7ff,1.35));
   scene.add(new THREE.HemisphereLight(0xb9eaff,0x102d43,.82));
@@ -891,7 +894,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   // Modrý válcový podklad byl odstraněn: po oříznutí reliéfu vytvářel dojem dalšího území mimo ČR.
   // 3D reliéf ČR: schematická výšková mapa s polohou hlavních pohoří.
   // Výšky jsou vizualizační aproximace, nikoli naměřený DEM model.
-  let terrainGeo=new THREE.PlaneGeometry(7.4,7.4,360,360);terrainGeo.rotateX(-Math.PI/2);
+  let terrainGeo=new THREE.PlaneGeometry(7.4,7.4,terrainSegments,terrainSegments);terrainGeo.rotateX(-Math.PI/2);
   let terrainPos=terrainGeo.attributes.position,terrainColors=[];
   // Zjednodušený obrys státního území ČR (WGS84, kartografická generalizace).
   let czBorderLL=[[12.09,50.26],[12.25,50.55],[12.55,50.75],[12.95,50.82],[13.35,50.90],[13.75,50.74],[14.20,50.86],[14.65,50.95],[15.05,50.88],[15.45,50.92],[15.85,50.78],[16.25,50.82],[16.65,50.75],[17.05,50.70],[17.45,50.55],[17.80,50.45],[18.20,50.25],[18.55,50.18],[18.85,50.05],[18.75,49.78],[18.55,49.55],[18.35,49.32],[18.20,49.05],[17.90,48.88],[17.55,48.78],[17.15,48.82],[16.75,48.72],[16.35,48.65],[15.95,48.70],[15.55,48.78],[15.10,48.72],[14.65,48.68],[14.20,48.72],[13.80,48.78],[13.40,48.75],[13.05,48.85],[12.75,49.05],[12.45,49.25],[12.25,49.55],[12.10,49.85],[12.09,50.26]];
@@ -1114,17 +1117,17 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   loadCzechDistricts();
 
   // Teplotní vrstva kopíruje výškový reliéf, aby se terén a počasí prostorově překrývaly.
-  let heatGeo=new THREE.PlaneGeometry(7.4,7.4,240,240);heatGeo.rotateX(-Math.PI/2);clipToCzech(heatGeo);
+  let heatGeo=new THREE.PlaneGeometry(7.4,7.4,heatSegments,heatSegments);heatGeo.rotateX(-Math.PI/2);clipToCzech(heatGeo);
   let heatPos=heatGeo.attributes.position,heatColor=[];
   for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,terrainHeightAt(x,z)+.018);heatColor.push(.08,.5,.95)}
   heatGeo.setAttribute('color',new THREE.Float32BufferAttribute(heatColor,3));heatGeo.computeVertexNormals();
   const heat=new THREE.Mesh(heatGeo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.20,side:THREE.DoubleSide,depthWrite:false}));heat.position.y=-.045;scene.add(heat);
   // Přesná hranice z GeoJSON znovu ořízne 3D povrch i teplotní vrstvu.
   function rebuildOfficialMask(){
-   terrainGeo.dispose();terrainGeo=new THREE.PlaneGeometry(7.4,7.4,360,360);terrainGeo.rotateX(-Math.PI/2);clipToCzech(terrainGeo);terrainPos=terrainGeo.attributes.position;
+   terrainGeo.dispose();terrainGeo=new THREE.PlaneGeometry(7.4,7.4,terrainSegments,terrainSegments);terrainGeo.rotateX(-Math.PI/2);clipToCzech(terrainGeo);terrainPos=terrainGeo.attributes.position;
    const tc=[];for(let i=0;i<terrainPos.count;i++){const x=terrainPos.getX(i),z=terrainPos.getZ(i),h=terrainHeightAt(x,z);terrainPos.setY(i,h);const c=terrainColorAt(h);tc.push(c.r,c.g,c.b)}
    terrainGeo.setAttribute('color',new THREE.Float32BufferAttribute(tc,3));terrainGeo.computeVertexNormals();terrain.geometry=terrainGeo;
-   heatGeo.dispose();heatGeo=new THREE.PlaneGeometry(7.4,7.4,240,240);heatGeo.rotateX(-Math.PI/2);clipToCzech(heatGeo);heatPos=heatGeo.attributes.position;
+   heatGeo.dispose();heatGeo=new THREE.PlaneGeometry(7.4,7.4,heatSegments,heatSegments);heatGeo.rotateX(-Math.PI/2);clipToCzech(heatGeo);heatPos=heatGeo.attributes.position;
    const hc=[];for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,terrainHeightAt(x,z)+.018);hc.push(.08,.5,.95)}
    heatGeo.setAttribute('color',new THREE.Float32BufferAttribute(hc,3));heatGeo.computeVertexNormals();heat.geometry=heatGeo;
    const pts=czBorder.map(p=>new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.115,p.z)),curve=new THREE.CatmullRomCurve3(pts,true,'centripetal',.35);
