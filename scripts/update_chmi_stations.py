@@ -75,9 +75,7 @@ def fetch_station(station, stamp, base=BASE):
 def fetch_station_with_fallback(station, today_stamp, yesterday_stamp):
     # /now obsahuje průběžně aktualizované soubory automatizovaných stanic.
     # /recent je záloha po kontrole a publikuje se zpravidla dvakrát denně.
-    candidates = []
-    if station["id"].startswith("0-20000-0-"):
-        candidates.append((NOW_BASE, today_stamp))
+    candidates = [(NOW_BASE, today_stamp)]
     candidates.extend(((BASE, today_stamp), (BASE, yesterday_stamp)))
     for base, stamp in candidates:
         item, error = fetch_station(station, stamp, base)
