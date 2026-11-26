@@ -123,6 +123,11 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
   <button type="button" data-vortex-layer="temperature" aria-pressed="true">🌡️ Teplotní povrch</button>
   <button type="button" data-vortex-layer="clouds" aria-pressed="true">☁️ Oblačnost</button>
   <button type="button" id="weatherVortexSchematicClouds" aria-pressed="false">☁️ Schematická oblačnost: vypnuta</button>
+  <div id="weatherVortexCloudLayerControls" role="group" aria-label="Samostatné výškové vrstvy oblačnosti" style="display:flex;flex-wrap:wrap;gap:6px;width:100%;margin:2px 0 4px">
+   <button type="button" data-cloud-altitude="0" aria-pressed="true">☁️ Nízká oblačnost</button>
+   <button type="button" data-cloud-altitude="1" aria-pressed="true">🌥️ Střední oblačnost</button>
+   <button type="button" data-cloud-altitude="2" aria-pressed="true">🌤️ Vysoká oblačnost</button>
+  </div>
   <button type="button" data-vortex-layer="precipitation" aria-pressed="true">🌧️ Déšť / sníh</button>
   <button type="button" data-vortex-layer="atmosphere" aria-pressed="true">🌐 Atmosféra</button>
   <button type="button" data-vortex-layer="wind" aria-pressed="true">💨 Proudnice větru</button>
@@ -773,7 +778,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   }
   for(let n=0;n<cloudCount;n++){
    const g=new THREE.Group(),a=n*2.399,r=.45+(n%6)*.43,level=n%3,y=1.05+level*.55;
-   g.userData.cloudLayer=level;
+   g.userData.cloudLayer=level;g.userData.cloudAvailable=false;
    const layerCloudMats=cloudMats.map(mat=>mat.clone());
    g.userData.layerMaterials=layerCloudMats;
    const puffData=[
@@ -1200,6 +1205,15 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   window.__weatherVortexSetPrecipitationVisible=visible=>{vortexLayers.precipitation=!!visible;const b=layerControls?.querySelector('[data-vortex-layer="precipitation"]');if(b)b.setAttribute('aria-pressed',String(vortexLayers.precipitation));applyVortexLayers()};
   const schematicCloudButton=document.getElementById('weatherVortexSchematicClouds');
   schematicCloudButton?.addEventListener('click',()=>{showSchematicClouds=!showSchematicClouds;schematicCloudButton.setAttribute('aria-pressed',String(showSchematicClouds));schematicCloudButton.textContent='☁️ Schematická oblačnost: '+(showSchematicClouds?'zapnuta':'vypnuta');if(windFeatures.length)readWeather(windFeatures);});
+  const cloudAltitudeButtons=document.querySelectorAll('[data-cloud-altitude]');
+  const cloudAltitudeVisible=[true,true,true];
+  cloudAltitudeButtons.forEach(btn=>btn.addEventListener('click',()=>{
+   const layer=Number(btn.dataset.cloudAltitude);
+   if(!Number.isInteger(layer)||layer<0||layer>2)return;
+   cloudAltitudeVisible[layer]=!cloudAltitudeVisible[layer];
+   btn.setAttribute('aria-pressed',String(cloudAltitudeVisible[layer]));
+   clouds.forEach(g=>{if(g.userData.cloudLayer===layer)g.visible=!!g.userData.cloudAvailable&&cloudAltitudeVisible[layer]});
+  }));
   layerControls?.querySelectorAll('[data-vortex-layer]').forEach(btn=>btn.addEventListener('click',()=>{
    const key=btn.dataset.vortexLayer;if(key==='precipitation'){window.__weatherVortexTogglePrecipitation?.();return;}vortexLayers[key]=!vortexLayers[key];btn.setAttribute('aria-pressed',String(vortexLayers[key]));applyVortexLayers();
   }));
@@ -1250,7 +1264,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    stormIntensity=selectedStorms.length?Math.min(1,selectedStorms.reduce((v,q)=>v+Math.min(1,q.rain/3)*(q.cloud/100),0)/selectedStorms.length):0;
    stormClouds.forEach((g,i)=>{const q=selectedStorms[i];g.visible=!!q;if(q){g.position.set(q.x,terrainHeightAt(q.x,q.z)+.72,q.z);g.scale.setScalar(.82+Math.min(1,q.rain/4)*.32);g.userData.baseY=g.position.y;lightningBolts[i].group.position.set(q.x,terrainHeightAt(q.x,q.z)+1.12,q.z);lightningBolts[i].group.visible=true}else lightningBolts[i].group.visible=false});
    lightningGroup.visible=vortexLayers.clouds&&stormIntensity>0;
-   clouds.forEach((g,i)=>{const q=selectedClouds[i]||null;const schematic=!q&&showSchematicClouds;const cover=q?q.cloud:(schematic?42:0);if(q){g.position.x=q.x;g.position.z=q.z;g.userData.baseX=q.x;g.userData.baseZ=q.z;g.userData.baseY=terrainHeightAt(q.x,q.z)+.48+g.userData.cloudLayer*.42;g.position.y=g.userData.baseY}else if(schematic){const spread=getSchematicCloudPositions(),point=spread[i%Math.max(1,spread.length)]||{x:0,z:0};g.position.x=point.x;g.position.z=point.z;g.userData.baseX=g.position.x;g.userData.baseZ=g.position.z;g.userData.baseY=terrainHeightAt(g.position.x,g.position.z)+.48+g.userData.cloudLayer*.42;g.position.y=g.userData.baseY}else{g.visible=false}const layer=g.userData.cloudLayer||0,layerOpacity=[1,.78,.58][layer],opacity=(schematic ? .16 :(cover<8?0:.035+(cover/100)*.22))*layerOpacity;g.userData.layerMaterials.forEach(mat=>{mat.opacity=opacity});g.children.forEach(puff=>{puff.visible=schematic||cover>=8});g.visible=!!q&&cover>=8||schematic});
+   clouds.forEach((g,i)=>{const q=selectedClouds[i]||null;const schematic=!q&&showSchematicClouds;const cover=q?q.cloud:(schematic?42:0);if(q){g.position.x=q.x;g.position.z=q.z;g.userData.baseX=q.x;g.userData.baseZ=q.z;g.userData.baseY=terrainHeightAt(q.x,q.z)+.48+g.userData.cloudLayer*.42;g.position.y=g.userData.baseY}else if(schematic){const spread=getSchematicCloudPositions(),point=spread[i%Math.max(1,spread.length)]||{x:0,z:0};g.position.x=point.x;g.position.z=point.z;g.userData.baseX=g.position.x;g.userData.baseZ=g.position.z;g.userData.baseY=terrainHeightAt(g.position.x,g.position.z)+.48+g.userData.cloudLayer*.42;g.position.y=g.userData.baseY}else{g.visible=false}const layer=g.userData.cloudLayer||0,layerOpacity=[1,.78,.58][layer],opacity=(schematic ? .16 :(cover<8?0:.035+(cover/100)*.22))*layerOpacity;g.userData.layerMaterials.forEach(mat=>{mat.opacity=opacity});g.children.forEach(puff=>{puff.visible=schematic||cover>=8});g.userData.cloudAvailable=!!q&&cover>=8||schematic;g.visible=g.userData.cloudAvailable&&cloudAltitudeVisible[g.userData.cloudLayer||0]});
    const cold=avgTemp<0,warm=avgTemp>=12;const palette=cold?[.08,.32,1]:warm?[1,.28,.06]:[.02,.78,.48];const colors=heatGeo.attributes.color;
    // Interpolace teploty z jednotlivých bodů předpovědi do každého vrcholu 3D plochy (IDW).
    const tempPoints=weatherPoints.map(q=>({x:q.x,z:q.z,t:q.temp}));
