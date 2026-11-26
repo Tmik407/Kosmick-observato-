@@ -876,25 +876,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   const borderLine=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,420,.027,8,true),new THREE.MeshBasicMaterial({color:0xc5f5ff,transparent:true,opacity:1,depthTest:true}));
   const borderGlow=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,420,.12,8,true),new THREE.MeshBasicMaterial({color:0x20bfff,transparent:true,opacity:.25,depthWrite:false,blending:THREE.AdditiveBlending,depthTest:true}));
   borderGlow.renderOrder=33;borderOuter.renderOrder=34;borderLine.renderOrder=35;scene.add(borderGlow,borderOuter,borderLine);
-  // Mřížka je vykreslena pouze uvnitř polygonu ČR; žádné přesahy mimo státní hranici.
-  const clippedGridPositions=[],gridSteps=26,gridMin=-3.6,gridMax=3.6,gridSamples=360;
-  function addClippedGridLine(horizontal,fixed){
-   let previous=null;
-   for(let i=0;i<=gridSamples;i++){
-    const variable=gridMin+(gridMax-gridMin)*i/gridSamples;
-    const x=horizontal?variable:fixed,z=horizontal?fixed:variable,inside=insideCzech(x,z);
-    if(inside&&previous){clippedGridPositions.push(previous.x,previous.y,previous.z,x,terrainHeightAt(x,z)+.022,z)}
-    previous=inside?{x,y:terrainHeightAt(x,z)+.022,z}:null;
-   }
-  }
-  for(let i=0;i<=gridSteps;i++){
-   const v=gridMin+(gridMax-gridMin)*i/gridSteps;
-   addClippedGridLine(true,v);addClippedGridLine(false,v);
-  }
-  const clippedGridGeo=new THREE.BufferGeometry();
-  clippedGridGeo.setAttribute('position',new THREE.Float32BufferAttribute(clippedGridPositions,3));
-  const clippedGrid=new THREE.LineSegments(clippedGridGeo,new THREE.LineBasicMaterial({color:0x397f9d,transparent:true,opacity:.32,depthWrite:false}));
-  clippedGrid.renderOrder=12;scene.add(clippedGrid);
+  // Pomocná prostorová mřížka byla odstraněna; čistý reliéf a zvýrazněná hranice ČR zůstávají.
   // Geografická orientace 3D mapy: hlavní pohoří a řeky ČR.
   const geoPoint=(lon,lat)=>({x:((lon-12.15)/(18.55-12.15))*7.2-3.6,z:((50.95-lat)/(50.95-48.65))*7.2-3.6});
   const geoOverlay=new THREE.Group();scene.add(geoOverlay);
