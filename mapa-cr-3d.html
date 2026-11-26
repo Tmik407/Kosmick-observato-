@@ -39,6 +39,8 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
 #map .maplibregl-ctrl-attrib{font-size:10px}
 .maplibregl-popup-content{font:13px/1.5 system-ui;padding:11px 13px;border-radius:10px}
 @media(max-width:760px){main{padding:8px}.below{grid-template-columns:1fr}#map{height:62vh;min-height:400px}.map-card{padding:7px;border-radius:14px}.panel{padding:10px}header{margin-bottom:8px}}
+/* Tablet na šířku: nižší mapa ponechá prostor pro ovládací panel a další obsah. */
+@media(orientation:landscape) and (min-width:761px) and (max-height:1000px){#map{height:55vh;min-height:360px;max-height:520px}}
 @media(max-width:390px){#map{height:58vh;min-height:360px}.controls button{font-size:12px;padding:7px 8px}}
 #liveClock{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 12px;padding:12px 16px;background:linear-gradient(110deg,#fff,#eef8fd);border:1px solid #cfe1ec;border-radius:14px;box-shadow:0 5px 18px #12344a0a}
 #liveClock .clock-time{font-size:clamp(25px,4vw,34px);font-weight:800;letter-spacing:.04em;line-height:1.1;font-variant-numeric:tabular-nums;color:#087da9}
