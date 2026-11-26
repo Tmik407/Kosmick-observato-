@@ -818,7 +818,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    ctx.font=kind==='city'?'bold 42px Arial':'bold 35px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=9;ctx.strokeStyle='rgba(2,16,29,.92)';ctx.strokeText(name,384,64);ctx.fillStyle=kind==='city'?'#ffffff':'#ffe7a6';ctx.fillText(name,384,64);
    const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false,depthWrite:false}));
-   sp.userData.geoPoint=p;sp.position.set(p.x,terrainHeightAt(p.x,p.z)+.18,p.z);sp.scale.set(kind==='city'?1.02:1.22,.205,1);sp.renderOrder=40;
+   sp.userData.geoPoint=p;sp.userData.mapLabelKind=kind;sp.position.set(p.x,terrainHeightAt(p.x,p.z)+.18,p.z);sp.scale.set(kind==='city'?.92:1.08,kind==='city'?.155:.17,1);sp.renderOrder=40;
    (kind==='city'?cityGroup:regionGroup).add(sp);
   }
   const regionCenters={CZ010:[14.4378,50.0755],CZ020:[14.8,49.9],CZ031:[14.4,49.0],CZ032:[13.35,49.6],CZ041:[12.85,50.15],CZ042:[13.9,50.55],CZ051:[15.1,50.7],CZ052:[15.8,50.35],CZ053:[16.1,49.95],CZ063:[15.55,49.4],CZ064:[16.6,49.15],CZ071:[17.15,49.7],CZ072:[17.65,49.2],CZ080:[18.0,49.85]};
@@ -862,7 +862,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    ctx.font='bold 34px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=8;ctx.strokeStyle='rgba(2,16,29,.94)';ctx.strokeText(name,320,56);ctx.fillStyle='#fff4d4';ctx.fillText(name,320,56);
    const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false,depthWrite:false}));
-   sp.userData.geoPoint=p;sp.position.set(p.x,terrainHeightAt(p.x,p.z)+.22,p.z);sp.scale.set(.48,.085,1);sp.userData.isDistrictLabel=true;sp.renderOrder=42;districtGroup.add(sp);
+   sp.userData.geoPoint=p;sp.position.set(p.x,terrainHeightAt(p.x,p.z)+.22,p.z);sp.scale.set(.68,.105,1);sp.userData.isDistrictLabel=true;sp.userData.mapLabelKind='district';sp.renderOrder=42;districtGroup.add(sp);
   }
   async function loadCzechDistricts(){
    try{
@@ -1110,7 +1110,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   }
   window.__weatherVortexSetValidTime=iso=>{validTimeLabel=iso?new Date(iso).toLocaleString('cs-CZ',{weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';if(windFeatures.length)status.textContent='Vítr '+windSpeed.toFixed(1)+' km/h · směr '+Math.round(windDir)+'° · teplota '+avgTemp.toFixed(1)+' °C · srážky '+maxPrecip.toFixed(2)+' mm/h · oblačnost '+Math.round(avgCloudCover)+' %'+(validTimeLabel?' · platnost '+validTimeLabel:'');};
   if(window.__weatherVortexCurrentValidTime)window.__weatherVortexSetValidTime(window.__weatherVortexCurrentValidTime);
-  function animate(t){if(paused||document.hidden||!stageVisible){raf=0;return;}raf=requestAnimationFrame(animate);if(t-last<33)return;last=t;const showDistrictNames=orbitRadius<6.25;districtGroup.children.forEach(obj=>{if(obj.userData.isDistrictLabel)obj.visible=showDistrictNames;});const speed=.35+Math.min(windSpeed,70)/70;atmosphere.rotation.y+=.00035*speed;cloudGroup.rotation.y+=.00022*speed;clouds.forEach((g,i)=>{g.position.y=.75+(i%3)*.55+Math.sin(t*.00045+i)*.045});core.scale.setScalar(1+Math.sin(t*.0015)*.08);ring.rotation.z=t*.0002*speed;particles.forEach(p=>{p.mesh.position.copy(p.curve.getPointAt((t*.00003*speed+p.phase)%1))});drops.forEach(d=>{if(d.visible){d.position.y-=.025+maxPrecip*.006;if(d.position.y<-.02)d.position.y=1.9}});flakes.forEach(f=>{if(f.visible){f.position.y-=.008;if(f.position.y<-.02)f.position.y=1.8}});renderer.render(scene,camera)}
+  function animate(t){if(paused||document.hidden||!stageVisible){raf=0;return;}raf=requestAnimationFrame(animate);if(t-last<33)return;last=t;const closeView=orbitRadius<5.65,cityView=orbitRadius<6.85;regionGroup.children.forEach(obj=>{if(obj.userData.mapLabelKind==='region')obj.visible=!closeView;});cityGroup.children.forEach(obj=>{if(obj.userData.mapLabelKind==='city')obj.visible=cityView;});districtGroup.children.forEach(obj=>{if(obj.userData.isDistrictLabel)obj.visible=closeView;});const speed=.35+Math.min(windSpeed,70)/70;atmosphere.rotation.y+=.00035*speed;cloudGroup.rotation.y+=.00022*speed;clouds.forEach((g,i)=>{g.position.y=.75+(i%3)*.55+Math.sin(t*.00045+i)*.045});core.scale.setScalar(1+Math.sin(t*.0015)*.08);ring.rotation.z=t*.0002*speed;particles.forEach(p=>{p.mesh.position.copy(p.curve.getPointAt((t*.00003*speed+p.phase)%1))});drops.forEach(d=>{if(d.visible){d.position.y-=.025+maxPrecip*.006;if(d.position.y<-.02)d.position.y=1.9}});flakes.forEach(f=>{if(f.visible){f.position.y-=.008;if(f.position.y<-.02)f.position.y=1.8}});renderer.render(scene,camera)}
   toggle.addEventListener('click',()=>{paused=!paused;toggle.textContent=paused?'▶ Spustit animaci':'⏸ Pozastavit animaci';toggle.setAttribute('aria-pressed',String(!paused));if(!paused&&!raf)raf=requestAnimationFrame(animate)});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!paused&&!raf)raf=requestAnimationFrame(animate)});
   window.addEventListener('pagehide',()=>{if(raf)cancelAnimationFrame(raf);renderer.dispose()},{once:true});
