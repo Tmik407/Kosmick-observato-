@@ -2,7 +2,7 @@ name: CHMI live meteorological stations
 on:
   workflow_dispatch:
   schedule:
-    - cron: "11,26,41,56 * * * *"
+    - cron: "*/15 * * * *"
   push:
     branches: [main]
     paths:
