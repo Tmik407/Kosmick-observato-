@@ -402,6 +402,9 @@ function syncForecastTimeline(){
 }
 function applyHour(){
  const i=state.hour;if(!state.rows.length)return;
+ // Časová osa a 3D model se aktualizují nezávisle na načtení dlaždic MapLibre.
+ const time=state.times[i];window.__weatherVortexCurrentValidTime=time;window.__weatherVortexSetValidTime?.(time);
+ syncForecastTimeline();$("validTime").textContent="Platnost: "+new Date(time).toLocaleString("cs-CZ")+" · modelová předpověď";
  const features=all.map((p,n)=>weatherFeature(p,state.rows[n],i));
  // 3D model dostane předpověď nezávisle na načtení dlaždic a stylu MapLibre.
  window.__weatherVortexSetData?.(features.slice(0,grid.length));
@@ -411,7 +414,7 @@ function applyHour(){
  const cityFeatures=features.slice(grid.length).map(f=>{const c=cities.find(x=>x.lat===f.geometry.coordinates[1]&&x.lon===f.geometry.coordinates[0]);return {...f,properties:{...f.properties,name:c.name}}});
  map.getSource("cities").setData({type:"FeatureCollection",features:cityFeatures});
  state.features=features.slice(0,grid.length);
- const time=state.times[i];window.__weatherVortexCurrentValidTime=time;window.__weatherVortexSetValidTime?.(time);syncForecastTimeline();$("validTime").textContent="Platnost: "+new Date(time).toLocaleString("cs-CZ")+" · modelová předpověď";
+
  const avg=cityFeatures.reduce((a,f)=>a+f.properties.temp,0)/cityFeatures.length;
  const rainCount=cityFeatures.filter(f=>f.properties.rain>.1).length,snowCount=cityFeatures.filter(f=>f.properties.snow>.1).length;
  $("weatherSummary").textContent="Průměrná teplota ve sledovaných městech: "+avg.toFixed(1)+" °C. Déšť očekáván v "+rainCount+" městech, sněžení v "+snowCount+" městech. Klepnutím na bod města zobrazíš podrobnosti.";
@@ -666,6 +669,7 @@ function loadWeather(force=false,retry=false){
  const makeUrl=places=>"https://api.open-meteo.com/v1/forecast?latitude="+places.map(p=>p.lat).join(",")+"&longitude="+places.map(p=>p.lon).join(",")+"&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m&forecast_days=4&timezone=Europe%2FPrague";
  const nearestCityRow=p=>{let best=0,distance=Infinity;for(let i=0;i<cities.length;i++){const d=(p.lat-cities[i].lat)**2+(p.lon-cities[i].lon)**2;if(d<distance){distance=d;best=i}}return best};
  const useRows=(rows,source="Open-Meteo")=>{
+  $("forecastTimeline").disabled=false;$("forecastHour").disabled=false;
   state.rows=rows;state.times=rows[0].hourly.time;state.forecastSource=source;state.lastWeatherLoad=Date.now();window.__weatherVortexUpdateDataClock?.(state.lastWeatherLoad,source,"fresh");
   try{localStorage.setItem("weatherVortexForecastCache",JSON.stringify({savedAt:Date.now(),rows,times:state.times,source}))}catch(_){}
   const select=$("forecastHour");select.innerHTML=state.times.map((t,i)=>'<option value="'+i+'">'+new Date(t).toLocaleString("cs-CZ",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit"})+'</option>').join("");
@@ -709,8 +713,8 @@ function loadWeather(force=false,retry=false){
     $("weatherSummary").textContent="Zobrazuji poslední uloženou předpověď. Open-Meteo dočasně omezilo požadavky (HTTP 429); data se automaticky zkusí obnovit.";
    }else{
     window.__weatherVortexSetSourceStatus?.("openmeteo","bad","nedostupné");window.__weatherVortexSetSourceStatus?.("metnorway","bad","nedostupné");
-    status("Předpověď je dočasně nedostupná");
-    $("weatherSummary").textContent=error.message+" · Mapa a stanice ČHMÚ zůstávají dostupné.";
+    status("Předpověď je dočasně nedostupná");$("forecastTimelineLabel").textContent="Předpověď dočasně nedostupná";$("forecastTimeline").disabled=true;$("forecastHour").disabled=true;$("validTime").textContent="Časová osa čeká na obnovení meteorologického zdroje.";
+     $("weatherSummary").textContent=error.message+" · Mapa a stanice ČHMÚ zůstávají dostupné.";
    }
     // Po limitu HTTP 429 provedeme pouze jeden automatický opakovaný pokus.
     if(/429|ochrannou pauzu|aktivní ochrannou pauzu/i.test(String(error.message))&&state.weatherRetryCount<1&&!state.weatherRetryTimer){
@@ -842,14 +846,14 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   // Modrý válcový podklad byl odstraněn: po oříznutí reliéfu vytvářel dojem dalšího území mimo ČR.
   // 3D reliéf ČR: schematická výšková mapa s polohou hlavních pohoří.
   // Výšky jsou vizualizační aproximace, nikoli naměřený DEM model.
-  const terrainGeo=new THREE.PlaneGeometry(7.4,7.4,360,360);terrainGeo.rotateX(-Math.PI/2);
-  const terrainPos=terrainGeo.attributes.position,terrainColors=[];
+  let terrainGeo=new THREE.PlaneGeometry(7.4,7.4,360,360);terrainGeo.rotateX(-Math.PI/2);
+  let terrainPos=terrainGeo.attributes.position,terrainColors=[];
   // Zjednodušený obrys státního území ČR (WGS84, kartografická generalizace).
-  const czBorderLL=[[12.09,50.26],[12.25,50.55],[12.55,50.75],[12.95,50.82],[13.35,50.90],[13.75,50.74],[14.20,50.86],[14.65,50.95],[15.05,50.88],[15.45,50.92],[15.85,50.78],[16.25,50.82],[16.65,50.75],[17.05,50.70],[17.45,50.55],[17.80,50.45],[18.20,50.25],[18.55,50.18],[18.85,50.05],[18.75,49.78],[18.55,49.55],[18.35,49.32],[18.20,49.05],[17.90,48.88],[17.55,48.78],[17.15,48.82],[16.75,48.72],[16.35,48.65],[15.95,48.70],[15.55,48.78],[15.10,48.72],[14.65,48.68],[14.20,48.72],[13.80,48.78],[13.40,48.75],[13.05,48.85],[12.75,49.05],[12.45,49.25],[12.25,49.55],[12.10,49.85],[12.09,50.26]];
-  const czBorderControl=czBorderLL.map(([lon,lat])=>({x:((lon-12.09)/(18.85-12.09))*7.2-3.6,z:((49.835-lat)/(18.85-12.09))*7.2*1.563}));
+  let czBorderLL=[[12.09,50.26],[12.25,50.55],[12.55,50.75],[12.95,50.82],[13.35,50.90],[13.75,50.74],[14.20,50.86],[14.65,50.95],[15.05,50.88],[15.45,50.92],[15.85,50.78],[16.25,50.82],[16.65,50.75],[17.05,50.70],[17.45,50.55],[17.80,50.45],[18.20,50.25],[18.55,50.18],[18.85,50.05],[18.75,49.78],[18.55,49.55],[18.35,49.32],[18.20,49.05],[17.90,48.88],[17.55,48.78],[17.15,48.82],[16.75,48.72],[16.35,48.65],[15.95,48.70],[15.55,48.78],[15.10,48.72],[14.65,48.68],[14.20,48.72],[13.80,48.78],[13.40,48.75],[13.05,48.85],[12.75,49.05],[12.45,49.25],[12.25,49.55],[12.10,49.85],[12.09,50.26]];
+  let czBorderControl=czBorderLL.map(([lon,lat])=>({x:((lon-12.09)/(18.85-12.09))*7.2-3.6,z:((49.835-lat)/(18.85-12.09))*7.2*1.563}));
   // Pro ořez reliéfu používáme hustě vzorkovaný hladký obrys, nikoli hrubé kontrolní body.
-  const czBorderCurve=new THREE.CatmullRomCurve3(czBorderControl.map(p=>new THREE.Vector3(p.x,0,p.z)),true,'centripetal',.32);
-  const czBorder=czBorderCurve.getPoints(720).map(p=>({x:p.x,z:p.z}));
+  let czBorderCurve=new THREE.CatmullRomCurve3(czBorderControl.map(p=>new THREE.Vector3(p.x,0,p.z)),true,'centripetal',.32);
+  let czBorder=czBorderCurve.getPoints(720).map(p=>({x:p.x,z:p.z}));
   function insideCzech(x,z){let inside=false;for(let i=0,j=czBorder.length-1;i<czBorder.length;j=i++){const a=czBorder[i],b=czBorder[j];if(((a.z>z)!==(b.z>z))&&(x<(b.x-a.x)*(z-a.z)/(b.z-a.z)+a.x))inside=!inside;}return inside}
   function clipToCzech(geo){const pos=geo.attributes.position,idx=geo.index;if(!idx)return;const kept=[];for(let i=0;i<idx.count;i+=3){const ia=idx.getX(i),ib=idx.getX(i+1),ic=idx.getX(i+2),ax=pos.getX(ia),az=pos.getZ(ia),bx=pos.getX(ib),bz=pos.getZ(ib),cx=pos.getX(ic),cz=pos.getZ(ic),a=insideCzech(ax,az),b=insideCzech(bx,bz),d=insideCzech(cx,cz),m1=insideCzech((ax+bx)/2,(az+bz)/2),m2=insideCzech((bx+cx)/2,(bz+cz)/2),m3=insideCzech((cx+ax)/2,(cz+az)/2),center=insideCzech((ax+bx+cx)/3,(az+bz+cz)/3);if(a&&b&&d&&m1&&m2&&m3&&center)kept.push(ia,ib,ic)}geo.setIndex(kept);geo.computeVertexNormals()}
   clipToCzech(terrainGeo);
@@ -1065,11 +1069,41 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   loadCzechDistricts();
 
   // Teplotní vrstva kopíruje výškový reliéf, aby se terén a počasí prostorově překrývaly.
-  const heatGeo=new THREE.PlaneGeometry(7.4,7.4,240,240);heatGeo.rotateX(-Math.PI/2);clipToCzech(heatGeo);
-  const heatPos=heatGeo.attributes.position,heatColor=[];
+  let heatGeo=new THREE.PlaneGeometry(7.4,7.4,240,240);heatGeo.rotateX(-Math.PI/2);clipToCzech(heatGeo);
+  let heatPos=heatGeo.attributes.position,heatColor=[];
   for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,terrainHeightAt(x,z)+.018);heatColor.push(.08,.5,.95)}
   heatGeo.setAttribute('color',new THREE.Float32BufferAttribute(heatColor,3));heatGeo.computeVertexNormals();
   const heat=new THREE.Mesh(heatGeo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.20,side:THREE.DoubleSide,depthWrite:false}));heat.position.y=-.045;scene.add(heat);
+  // Přesná hranice z GeoJSON znovu ořízne 3D povrch i teplotní vrstvu.
+  function rebuildOfficialMask(){
+   terrainGeo.dispose();terrainGeo=new THREE.PlaneGeometry(7.4,7.4,360,360);terrainGeo.rotateX(-Math.PI/2);clipToCzech(terrainGeo);terrainPos=terrainGeo.attributes.position;
+   const tc=[];for(let i=0;i<terrainPos.count;i++){const x=terrainPos.getX(i),z=terrainPos.getZ(i),h=terrainHeightAt(x,z);terrainPos.setY(i,h);const c=terrainColorAt(h);tc.push(c.r,c.g,c.b)}
+   terrainGeo.setAttribute('color',new THREE.Float32BufferAttribute(tc,3));terrainGeo.computeVertexNormals();terrain.geometry=terrainGeo;
+   heatGeo.dispose();heatGeo=new THREE.PlaneGeometry(7.4,7.4,240,240);heatGeo.rotateX(-Math.PI/2);clipToCzech(heatGeo);heatPos=heatGeo.attributes.position;
+   const hc=[];for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,terrainHeightAt(x,z)+.018);hc.push(.08,.5,.95)}
+   heatGeo.setAttribute('color',new THREE.Float32BufferAttribute(hc,3));heatGeo.computeVertexNormals();heat.geometry=heatGeo;
+   const pts=czBorder.map(p=>new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.205,p.z)),curve=new THREE.CatmullRomCurve3(pts,true,'centripetal',.35);
+   [[borderGlow,.19,10],[borderOuter,.073,10],[borderLine,.043,10],[borderHighlight,.012,8]].forEach(([mesh,radius,segments])=>{mesh.geometry.dispose();mesh.geometry=new THREE.TubeGeometry(curve,900,radius,segments,true)});
+   refreshGeoOverlayHeights();
+  }
+  async function loadOfficialCzechGeometry(){
+   const badge=document.getElementById('weatherTerrainBadge');
+   try{
+    const mr=await fetch('https://www.geoboundaries.org/api/current/gbOpen/CZE/ADM0/',{cache:'force-cache'});if(!mr.ok)throw new Error('geoBoundaries ADM0 HTTP '+mr.status);
+    const meta=await mr.json();if(!meta.gjDownloadURL)throw new Error('Chybí odkaz na GeoJSON');
+    const gr=await fetch(meta.gjDownloadURL,{cache:'force-cache'});if(!gr.ok)throw new Error('GeoJSON HTTP '+gr.status);
+    const data=await gr.json(),rings=(data.features||[]).flatMap(f=>{const g=f.geometry;if(!g)return[];return g.type==='Polygon'?[g.coordinates[0]]:g.type==='MultiPolygon'?g.coordinates.map(p=>p[0]):[]}).filter(r=>r&&r.length>30);
+    if(!rings.length)throw new Error('GeoJSON neobsahuje obrys ČR');
+    const ring=rings.sort((a,b)=>b.length-a.length)[0];czBorderLL=ring.map(c=>[+c[0],+c[1]]).filter(c=>Number.isFinite(c[0])&&Number.isFinite(c[1]));
+    if(czBorderLL.length<30)throw new Error('Obrys ČR je neúplný');
+    czBorderControl=czBorderLL.map(([lon,lat])=>({x:((lon-12.09)/(18.85-12.09))*7.2-3.6,z:((49.835-lat)/(18.85-12.09))*7.2*1.563}));
+    czBorderCurve=new THREE.CatmullRomCurve3(czBorderControl.map(p=>new THREE.Vector3(p.x,0,p.z)),true,'centripetal',.32);
+    czBorder=czBorderCurve.getPoints(1200).map(p=>({x:p.x,z:p.z}));rebuildOfficialMask();
+    if(badge){badge.textContent='Terén: přesný obrys ČR · geoBoundaries ADM0';badge.title='geoBoundaries gbOpen · licence CC BY 4.0';}
+    console.info('X-5: oficiální hranice ČR načtena, '+czBorderLL.length+' vrcholů');
+   }catch(err){console.warn('X-5: načtení oficiální hranice selhalo',err);if(badge)badge.title='Záložní obrys ČR: '+String(err.message||err);}
+  }
+  loadOfficialCzechGeometry();
   // Načtení výšek s lokální cache: omezuje opakované dotazy při HTTP 429.
   async function loadCopernicusTerrain(){
    const badge=document.getElementById('weatherTerrainBadge');
