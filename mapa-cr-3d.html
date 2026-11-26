@@ -68,7 +68,7 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
   <div style="position:absolute;right:10px;bottom:10px;color:#e6f5ff;font-size:10px;pointer-events:none">Modré proudnice · částice větru · schematický reliéf</div>
   <div style="position:absolute;left:10px;bottom:10px;display:flex;gap:7px;flex-wrap:wrap;color:#eaf7ff;font-size:10px;pointer-events:none;background:#061526c9;padding:6px 8px;border-radius:8px"><span>🔵 Chlad</span><span>🟢 Mírno</span><span>🟠 Teplo</span><span>💧 Déšť</span><span>❄️ Sníh</span></div>
  </div>
-<p class="small" style="margin:8px 0 0">Ovládání modelu: dvěma prsty otáčej a přibližuj, tažením myší otáčej. Jedním prstem můžeš stránku normálně posouvat.</p>
+<p class="small" style="margin:8px 0 0">Ovládání modelu: dvěma prsty otáčej a přibližuj, tažením myší otáčej. Zobrazený reliéf je schematický 3D terénní model. Jedním prstem můžeš stránku normálně posouvat.</p>
  <p class="small" style="margin:8px 0 0">Proudění je vizualizováno prostorově podle dostupných meteorologických dat Open-Meteo. Tvar víru a reliéfní plocha jsou schematické, nejde o samostatné měření ani výstražný model.</p>
 </section>
 <div class="below">
@@ -369,7 +369,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
  const reset=document.getElementById('weatherVortexReset');
  const layerControls=document.getElementById('weatherVortexLayerControls');
  if(!canvas||!host)return;
- let renderer,scene,camera,raf=0,paused=false,last=0,windSpeed=8,windDir=250,avgTemp=5,maxPrecip=0,orbitYaw=0,orbitPitch=.48,orbitRadius=7.2;
+ let renderer,scene,camera,raf=0,paused=false,last=0,windSpeed=8,windDir=250,avgTemp=5,maxPrecip=0,orbitYaw=0,orbitPitch=.48,orbitRadius=8.6;
  try{
   renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));
   scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(38,1,.1,100);camera.position.set(0,3.8,6.9);camera.lookAt(0,.25,0);
@@ -381,14 +381,43 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   const cloudGroup=new THREE.Group();scene.add(cloudGroup);const clouds=[];
   for(let n=0;n<24;n++){const g=new THREE.Group(),a=n*2.399,r=1.45+(n%6)*.48,y=.9+(n%3)*.62;for(let q=0;q<4;q++){const puff=new THREE.Mesh(new THREE.SphereGeometry(.12+(q%2)*.04,10,8),new THREE.MeshBasicMaterial({color:0xc7eaff,transparent:true,opacity:.11,depthWrite:false}));puff.position.set((q-1.5)*.18,(q%2)*.1,0);g.add(puff)}g.position.set(Math.cos(a)*r,y,Math.sin(a)*r);cloudGroup.add(g);clouds.push(g)}
   const light=new THREE.DirectionalLight(0xffffff,2);light.position.set(3,8,5);scene.add(light);
-  const base=new THREE.Mesh(new THREE.CylinderGeometry(4.8,5,.25,96),new THREE.MeshStandardMaterial({color:0x123b55,roughness:.8}));base.position.y=-.38;scene.add(base);
-  const grid=new THREE.GridHelper(9.2,26,0x58b7d5,0x28617d);grid.position.y=-.12;scene.add(grid);
+  // Reliéfní podklad má obrys České republiky místo původního kruhového podstavce.
+  const crOutline=[[-3.35,-.55],[-3.12,-1.55],[-2.55,-2.55],[-1.55,-3.05],[-.45,-2.88],[.55,-3.18],[1.55,-2.82],[2.55,-2.25],[3.25,-1.25],[3.42,-.25],[3.05,.85],[2.62,1.95],[1.78,2.72],[.65,2.92],[-.35,2.68],[-1.35,3.12],[-2.35,2.62],[-3.05,1.62],[-3.42,.55]];
+  const baseShape=new THREE.Shape();crOutline.forEach(([x,z],i)=>{if(i===0)baseShape.moveTo(x,-z);else baseShape.lineTo(x,-z)});baseShape.closePath();
+  const baseExtrude=new THREE.ExtrudeGeometry(baseShape,{depth:.28,bevelEnabled:true,bevelSegments:2,steps:1,bevelSize:.055,bevelThickness:.05});
+  baseExtrude.rotateX(-Math.PI/2);
+  const base=new THREE.Mesh(baseExtrude,new THREE.MeshStandardMaterial({color:0x123b55,roughness:.78,metalness:.18}));base.position.y=-.42;scene.add(base);
+  const outlinePoints=crOutline.map(([x,z])=>new THREE.Vector3(x,-.06,z));
+  const border=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(outlinePoints),new THREE.LineBasicMaterial({color:0x61eaff,transparent:true,opacity:.98}));scene.add(border);
+  const grid=new THREE.GridHelper(9.2,26,0x58b7d5,0x28617d);grid.position.y=-.16;grid.material.transparent=true;grid.material.opacity=.28;scene.add(grid);
   // Viditelná barevná teplotní plocha s gradientem a jemným zvlněním.
-  const heatGeo=new THREE.PlaneGeometry(7.4,7.4,40,40);heatGeo.rotateX(-Math.PI/2);
-  const heatPos=heatGeo.attributes.position,heatColor=[];
-  for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,.018*Math.sin(x*1.7)*Math.cos(z*1.5));heatColor.push(.08,.5,.95)}
+  // Jemně triangulovaný reliéf uvnitř hranice ČR. Výšky jsou schematický terénní model, nikoli DEM měření.
+  function insideCR(x,z){let c=false;for(let i=0,j=crOutline.length-1;i<crOutline.length;j=i++){const [xi,zi]=crOutline[i],[xj,zj]=crOutline[j];if(((zi>z)!==(zj>z))&&(x<(xj-xi)*(z-zi)/(zj-zi)+xi))c=!c}return c}
+  function elevation(x,z){
+   const peak=(cx,cz,amp,sx,sz)=>amp*Math.exp(-(((x-cx)/sx)**2+((z-cz)/sz)**2));
+   return .035+peak(-2.55,.1,.34,.72,.52)+peak(-2.25,2.0,.29,.72,.58)+peak(.65,2.55,.36,.58,.42)+peak(2.45,.2,.42,.62,.72)+peak(2.75,-1.25,.25,.5,.55)+peak(-.8,-2.45,.18,.75,.42)+.018*Math.sin(x*2.3)*Math.cos(z*1.7);
+  }
+  const terrainVertices=[],terrainColors=[],terrainIndices=[];
+  const nx=76,nz=76,step=7.15/nx,x0=-3.575,z0=-3.575;
+  for(let iz=0;iz<nz;iz++)for(let ix=0;ix<nx;ix++){
+   const x=x0+(ix+.5)*step,z=z0+(iz+.5)*step;
+   if(!insideCR(x,z))continue;
+   const corners=[[x0+ix*step,z0+iz*step],[x0+(ix+1)*step,z0+iz*step],[x0+(ix+1)*step,z0+(iz+1)*step],[x0+ix*step,z0+(iz+1)*step]];
+   const ids=[];
+   for(const [px,pz] of corners){const y=elevation(px,pz);ids.push(terrainVertices.length/3);terrainVertices.push(px,y,pz);const h=Math.min(1,y/.55);terrainColors.push(.08+.12*h,.27+.38*h,.18+.12*(1-h))}
+   terrainIndices.push(ids[0],ids[1],ids[2],ids[0],ids[2],ids[3]);
+  }
+  const terrainGeo=new THREE.BufferGeometry();terrainGeo.setAttribute('position',new THREE.Float32BufferAttribute(terrainVertices,3));terrainGeo.setAttribute('color',new THREE.Float32BufferAttribute(terrainColors,3));terrainGeo.setIndex(terrainIndices);terrainGeo.computeVertexNormals();
+  const terrain=new THREE.Mesh(terrainGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.92,metalness:.04,side:THREE.DoubleSide}));terrain.position.y=-.08;scene.add(terrain);
+  // Barevná teplotní vrstva kopíruje reliéf a lze ji vypnout nezávisle.
+  const heatGeo=terrainGeo.clone(),heatPos=heatGeo.attributes.position,heatColor=[];
+  for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatColor.push(.08,.5,.95)}
   heatGeo.setAttribute('color',new THREE.Float32BufferAttribute(heatColor,3));heatGeo.computeVertexNormals();
-  const heat=new THREE.Mesh(heatGeo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.92,side:THREE.DoubleSide,depthWrite:false}));heat.position.y=-.075;scene.add(heat);
+  const heat=new THREE.Mesh(heatGeo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.38,side:THREE.DoubleSide,depthWrite:false}));heat.position.y=-.035;scene.add(heat);
+  // Světelné body významných měst a popisky jsou záměrně střídmé, aby zůstaly čitelné na tabletu.
+  const cityGroup=new THREE.Group();scene.add(cityGroup);
+  const cityData=[['Praha',14.4378,50.0755],['Most',13.636,50.503],['Ústí n. L.',14.032,50.661],['Liberec',15.056,50.767],['Plzeň',13.373,49.738],['Brno',16.608,49.195],['Ostrava',18.262,49.82],['Č. Budějovice',14.48,48.975],['Hradec Králové',15.832,50.21],['Olomouc',17.25,49.593]];
+  for(const [name,lon,lat] of cityData){const x=((lon-12.15)/(18.55-12.15))*7.15-3.575,z=((50.95-lat)/(50.95-48.65))*7.15-3.575;if(!insideCR(x,z))continue;const dot=new THREE.Mesh(new THREE.SphereGeometry(name==='Praha'?.075:.045,10,8),new THREE.MeshBasicMaterial({color:name==='Praha'?0xffd34d:0x9beaff}));dot.position.set(x,elevation(x,z)+.035,z);cityGroup.add(dot);}
   const patches=[];for(const p of [{x:-1.8,z:.8,c:0x167dff},{x:1.6,z:-.9,c:0xff7838},{x:.1,z:1.9,c:0x12c9a7}]){const m=new THREE.Mesh(new THREE.CircleGeometry(1.45,48),new THREE.MeshBasicMaterial({color:p.c,transparent:true,opacity:.72,depthWrite:false,side:THREE.DoubleSide}));m.rotation.x=-Math.PI/2;m.position.set(p.x,-.045,p.z);scene.add(m);patches.push(m)}
   const rainGroup=new THREE.Group();scene.add(rainGroup);const drops=[];
   for(let n=0;n<54;n++){const a=n*2.399,r=.65+(n%9)*.39;const d=new THREE.Mesh(new THREE.CylinderGeometry(.014,.014,.25,6),new THREE.MeshBasicMaterial({color:0x48cfff,transparent:true,opacity:.95}));d.position.set(Math.cos(a)*r,.2+(n%13)*.16,Math.sin(a)*r);rainGroup.add(d);drops.push(d)}
@@ -429,7 +458,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   const ring=new THREE.Mesh(new THREE.TorusGeometry(.58,.025,8,64),new THREE.MeshBasicMaterial({color:0x8deaff,transparent:true,opacity:.95}));ring.rotation.x=Math.PI/2;ring.position.y=.32;scene.add(ring);
   const vortexLayers={temperature:true,clouds:true,precipitation:true,atmosphere:true,wind:true};
   function applyVortexLayers(){
-   heat.visible=vortexLayers.temperature;patches.forEach(p=>p.visible=vortexLayers.temperature);
+   heat.visible=vortexLayers.temperature;patches.forEach(p=>p.visible=vortexLayers.temperature);terrain.visible=true;border.visible=true;cityGroup.visible=true;
    cloudGroup.visible=vortexLayers.clouds;atmosphere.visible=vortexLayers.atmosphere;
    rainGroup.visible=vortexLayers.precipitation&&rainGroup.children.some(x=>x.visible);
    snowGroup.visible=vortexLayers.precipitation&&snowGroup.children.some(x=>x.visible);
@@ -448,7 +477,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   canvas.addEventListener('pointermove',ev=>{if(!drag)return;orbitYaw-=(ev.clientX-drag.x)*.006;orbitPitch=Math.max(.12,Math.min(1.05,orbitPitch+(ev.clientY-drag.y)*.004));drag={x:ev.clientX,y:ev.clientY};updateCamera()});
   canvas.addEventListener('pointerup',()=>drag=null);canvas.addEventListener('pointercancel',()=>drag=null);
   canvas.addEventListener('touchstart',ev=>{if(ev.touches.length===2){ev.preventDefault();pinch=Math.hypot(ev.touches[0].clientX-ev.touches[1].clientX,ev.touches[0].clientY-ev.touches[1].clientY);drag={x:(ev.touches[0].clientX+ev.touches[1].clientX)/2,y:(ev.touches[0].clientY+ev.touches[1].clientY)/2} }},{passive:false});
-  canvas.addEventListener('touchmove',ev=>{if(ev.touches.length!==2||!drag)return;ev.preventDefault();const mid={x:(ev.touches[0].clientX+ev.touches[1].clientX)/2,y:(ev.touches[0].clientY+ev.touches[1].clientY)/2},dist=Math.hypot(ev.touches[0].clientX-ev.touches[1].clientX,ev.touches[0].clientY-ev.touches[1].clientY);orbitYaw-=(mid.x-drag.x)*.006;orbitPitch=Math.max(.12,Math.min(1.05,orbitPitch+(mid.y-drag.y)*.004));if(pinch)orbitRadius=Math.max(5.4,Math.min(10,orbitRadius-(dist-pinch)*.012));pinch=dist;drag=mid;updateCamera()},{passive:false});
+  canvas.addEventListener('touchmove',ev=>{if(ev.touches.length!==2||!drag)return;ev.preventDefault();const mid={x:(ev.touches[0].clientX+ev.touches[1].clientX)/2,y:(ev.touches[0].clientY+ev.touches[1].clientY)/2},dist=Math.hypot(ev.touches[0].clientX-ev.touches[1].clientX,ev.touches[0].clientY-ev.touches[1].clientY);orbitYaw-=(mid.x-drag.x)*.006;orbitPitch=Math.max(.12,Math.min(1.05,orbitPitch+(mid.y-drag.y)*.004));if(pinch)orbitRadius=Math.max(6.2,Math.min(11.5,orbitRadius-(dist-pinch)*.012));pinch=dist;drag=mid;updateCamera()},{passive:false});
   canvas.addEventListener('touchend',ev=>{if(ev.touches.length<2){drag=null;pinch=0}},{passive:true});
   function readWeather(features){const fs=features||window.__weatherVortexFeatures||[];if(!fs.length)return;const valid=fs.filter(f=>f&&f.properties);if(!valid.length)return;
    rebuildWindField(valid);windSpeed=valid.reduce((s,f)=>s+(+f.properties.speed||0),0)/valid.length;const rad=valid.reduce((s,f)=>s+Math.sin((+f.properties.direction||0)*Math.PI/180),0)/valid.length,cos=valid.reduce((s,f)=>s+Math.cos((+f.properties.direction||0)*Math.PI/180),0)/valid.length;windDir=(Math.atan2(rad,cos)*180/Math.PI+360)%360;avgTemp=valid.reduce((s,f)=>s+(+f.properties.temp||0),0)/valid.length;maxPrecip=Math.max(0,...valid.map(f=>Math.max(+f.properties.rain||0,+f.properties.snow||0,+f.properties.precip||0)));
