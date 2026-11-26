@@ -66,6 +66,24 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: gpt-6.2-astra
         run: python3 scripts/x5_ai_analyzer.py x5-guardian-diagnostics.json
+      - name: Build self-contained dashboard report
+        if: always() && hashFiles('x5-guardian-diagnostics.json') != ''
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          page = Path('x5-guardian-dashboard.html').read_text(encoding='utf-8')
+          diagnostics = json.loads(Path('x5-guardian-diagnostics.json').read_text(encoding='utf-8'))
+          history_path = Path('guardian-history/history.json')
+          history = json.loads(history_path.read_text(encoding='utf-8')) if history_path.exists() else []
+          def safe_json(value):
+              return json.dumps(value, ensure_ascii=False).replace('<', r'\\u003c').replace('>', r'\\u003e').replace('&', r'\\u0026')
+          embedded = ('<script type="application/json" id="x5-embedded-diagnostics">' + safe_json(diagnostics) + '</script>\\n'
+                      + '<script type="application/json" id="x5-embedded-history">' + safe_json(history) + '</script>')
+          page = page.replace('<!-- X5_EMBEDDED_DATA -->', embedded)
+          Path('x5-guardian-dashboard-live.html').write_text(page, encoding='utf-8')
+          print('Self-contained dashboard generated; no secrets are included.')
+          PY
       - name: Upload diagnostic reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -73,6 +91,8 @@ jobs:
           name: x5-guardian-report-${{ github.run_id }}
           path: |
             x5-guardian-diagnostics.json
+            x5-guardian-dashboard-live.html
+            x5-guardian-dashboard.html
             x5-repair-proposals.md
             x5-ai-analysis.md
             x5-guardian-history.md
