@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#edf5fb">
+<title>WEATHER VORTEX 3D X-5 · Testovací pracoviště</title>
+<style>
+:root{color-scheme:light;--ink:#17344a;--muted:#60798b;--line:#d5e2eb}
+*{box-sizing:border-box}
+body{margin:0;background:#edf4f9;color:var(--ink);font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1440px;margin:auto;padding:clamp(10px,2vw,22px)}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.kicker{font-size:11px;letter-spacing:.08em;color:#47718a;font-weight:700}
+h1{font-size:clamp(22px,4vw,32px);margin:2px 0;color:#15344b}
+p{margin:4px 0;color:var(--muted)}
+.badge{padding:7px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:12px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;box-shadow:0 8px 24px #12344a0c}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+button,a{font:inherit}
+button{border:1px solid #b9d2e1;background:#edf7fc;color:#17445e;border-radius:9px;padding:8px 11px;font-weight:700;cursor:pointer}
+a{color:#087da9;font-weight:700;text-decoration:none}
+a:hover{text-decoration:underline}
+iframe{display:block;width:100%;height:min(78vh,900px);min-height:600px;border:1px solid #cbdce6;border-radius:12px;background:#fff}
+.note{font-size:12px;margin-top:10px}
+@media(max-width:600px){main{padding:8px}.panel{padding:8px}iframe{height:78vh;min-height:540px}}
+</style>
+</head>
+<body>
+<main>
+<header>
+ <div><div class="kicker">VÝVOJOVÁ VĚTEV · TESTOVACÍ PRACOVIŠTĚ</div><h1>🌪️ WEATHER VORTEX 3D X-5</h1><p>Samostatné okno pro kontrolu 3D modelu, vrstev a ovládání na mobilu i tabletu.</p></div>
+ <div class="badge" id="loadState" role="status">Načítám testovací model…</div>
+</header>
+<section class="panel">
+ <div class="toolbar">
+  <button id="focusModel" type="button">Zobrazit 3D model</button>
+  <button id="reloadModel" type="button">↻ Znovu načíst</button>
+  <a href="./mapa-cr-3d.html" target="_blank" rel="noopener">Otevřít kompletní meteorologickou mapu ↗</a>
+ </div>
+ <iframe id="modelFrame" title="Interaktivní meteorologický 3D model České republiky" src="./mapa-cr-3d.html#weatherVortexStage" loading="eager" allow="fullscreen"></iframe>
+ <p class="note">Testovací stránka používá původní 3D model a jeho meteorologická data přímo ze souboru mapa-cr-3d.html. Neobsahuje kopii ani upravenou verzi modelového kódu; změny v testu proto nezasahují do původní stránky.</p>
+</section>
+</main>
+<script>
+(()=> {
+ const frame=document.getElementById('modelFrame'),state=document.getElementById('loadState');
+ function focus(){try{const doc=frame.contentDocument,stage=doc&&doc.getElementById('weatherVortexStage');if(stage){stage.scrollIntoView({block:'start',behavior:'instant'});state.textContent='Model načten · interaktivní test';return}}catch(e){}state.textContent='Model se načítá · případně použij odkaz na kompletní mapu'}
+ frame.addEventListener('load',()=>{state.textContent='Stránka modelu načtena';setTimeout(focus,250)});
+ document.getElementById('focusModel').addEventListener('click',focus);
+ document.getElementById('reloadModel').addEventListener('click',()=>{state.textContent='Znovu načítám…';frame.src='./mapa-cr-3d.html#weatherVortexStage'});
+})();
+</script>
+</body>
+</html>
