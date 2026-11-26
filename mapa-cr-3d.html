@@ -762,6 +762,36 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   const terrain=new THREE.Mesh(terrainGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.94,metalness:0,side:THREE.DoubleSide}));terrain.position.y=-.085;scene.add(terrain);
   // Jasná hranice mapy ČR a jemný okraj reliéfu.
   const borderPts=czBorder.map(p=>new THREE.Vector3(p.x,0,p.z));const borderCurve=new THREE.CatmullRomCurve3(borderPts,true,'centripetal');const borderLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints(borderCurve.getPoints(240)),new THREE.LineBasicMaterial({color:0x9beaff,transparent:true,opacity:1}));borderLine.position.y=.04;scene.add(borderLine);
+  // Geografická orientace 3D mapy: hlavní pohoří a řeky ČR.
+  const geoPoint=(lon,lat)=>({x:((lon-12.15)/(18.55-12.15))*7.2-3.6,z:((50.95-lat)/(50.95-48.65))*7.2-3.6});
+  const geoOverlay=new THREE.Group();scene.add(geoOverlay);
+  function addGeoLabel(name,lon,lat,kind='mountain'){
+   const p=geoPoint(lon,lat),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+   canvas.width=512;canvas.height=128;ctx.clearRect(0,0,512,128);
+   ctx.font=kind==='river'?'bold 43px Arial':'bold 40px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+   ctx.lineWidth=10;ctx.strokeStyle='rgba(3,18,32,.88)';ctx.strokeText(name,256,64);
+   ctx.fillStyle=kind==='river'?'#9beaff':'#fff2c7';ctx.fillText(name,256,64);
+   const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
+   const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,transparent:true,depthTest:false,depthWrite:false}));
+   sprite.position.set(p.x,terrainHeightAt(p.x,p.z)+.13,p.z);sprite.scale.set(kind==='river'?1.12:.92,.23,1);sprite.renderOrder=30;geoOverlay.add(sprite);
+  }
+  function addGeoRiver(name,coords){
+   const pts=coords.map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.075,p.z)});
+   const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x54d9ff,transparent:true,opacity:.92,depthTest:false}));
+   line.renderOrder=20;geoOverlay.add(line);
+   const mid=coords[Math.floor(coords.length/2)];addGeoLabel(name,mid[0],mid[1],'river');
+  }
+  [
+   ['Krušné hory',13.05,50.43],['Český les',12.62,49.38],['Šumava',13.55,49.08],
+   ['Jizerské hory',15.18,50.78],['Krkonoše',15.62,50.72],['Orlické hory',16.42,50.22],
+   ['Jeseníky',17.12,50.08],['Beskydy',18.18,49.52],['Českomoravská vrchovina',15.55,49.45]
+  ].forEach(v=>addGeoLabel(v[0],v[1],v[2]));
+  addGeoRiver('Vltava',[[13.56,48.98],[13.75,49.15],[14.15,49.32],[14.43,49.58],[14.42,49.82],[14.45,50.08],[14.47,50.28],[14.35,50.55]]);
+  addGeoRiver('Labe',[[15.55,50.78],[15.25,50.62],[14.95,50.55],[14.45,50.48],[14.25,50.35],[14.10,50.15],[14.05,50.0],[13.95,50.05]]);
+  addGeoRiver('Ohře',[[12.72,50.20],[13.05,50.18],[13.45,50.15],[13.82,50.22],[14.12,50.32]]);
+  addGeoRiver('Morava',[[17.12,50.20],[17.05,49.95],[17.20,49.72],[17.25,49.48],[17.15,49.22],[16.98,48.95],[16.95,48.70]]);
+  addGeoRiver('Odra',[[17.25,50.35],[17.45,50.12],[17.75,49.95],[18.05,49.82],[18.28,49.70]]);
+
   // Teplotní vrstva kopíruje výškový reliéf, aby se terén a počasí prostorově překrývaly.
   const heatGeo=new THREE.PlaneGeometry(7.4,7.4,160,160);heatGeo.rotateX(-Math.PI/2);clipToCzech(heatGeo);
   const heatPos=heatGeo.attributes.position,heatColor=[];
@@ -772,7 +802,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   async function loadCopernicusTerrain(){
    const badge=document.getElementById('weatherTerrainBadge');
    const coords=[];for(let j=0;j<demSize;j++)for(let i=0;i<demSize;i++)coords.push({lat:50.95-j/(demSize-1)*2.3,lon:12.15+i/(demSize-1)*6.4});
-   const cacheKey='x5-dem-cz-grid-v5',cooldownKey='x5-dem-cz-cooldown-v1',cacheTtl=30*24*60*60*1000;
+   const cacheKey='x5-dem-cz-grid-v6',cooldownKey='x5-dem-cz-cooldown-v1',cacheTtl=30*24*60*60*1000;
    const applyElevations=values=>{
     if(!Array.isArray(values)||values.length!==demSize*demSize||values.some(v=>!Number.isFinite(Number(v))))throw new Error('Neúplná výšková data');
     demGrid=values.map(Number);
