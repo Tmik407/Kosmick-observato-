@@ -66,6 +66,12 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
 
 
 #analyticsPanel{margin-top:12px}#analyticsPanel .chart-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}#analyticsPanel .chart-card{border:1px solid #dce8ef;border-radius:11px;padding:10px;min-width:0;background:#fbfdff}#analyticsPanel .chart-card h3{font-size:13px;margin:0 0 5px;color:#31566d}#analyticsPanel svg{display:block;width:100%;height:auto;overflow:visible}#analyticsPanel .chart-note{font-size:11px;color:#60798b;margin-top:4px}@media(max-width:760px){#analyticsPanel .chart-grid{grid-template-columns:1fr}}
+
+#weatherVortexStage{height:clamp(440px,56vw,620px)!important;min-height:420px}
+#forecastTimelinePanel .timeline-actions button{min-height:44px;padding:10px 13px}
+#forecastTimelinePanel input[type="range"]{min-height:32px;touch-action:pan-x}
+@media(max-width:700px){#weatherVortexStage{height:460px!important;min-height:400px}}
+@media(max-width:420px){#weatherVortexStage{height:420px!important;min-height:380px}}
 </style>
 </head>
 <body>
@@ -160,7 +166,6 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
  <p class="small" id="validTime">Čas platnosti bude uveden po načtení dat.</p>
  <p class="small" id="precipTest" aria-live="polite">Posuň časovou osu a sleduj změny počasí na mapě a v navazujícím 3D modelu.</p>
 </section>
->
 </main>
 <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
 <script>
