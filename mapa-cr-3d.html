@@ -773,12 +773,12 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    ctx.fillStyle=kind==='river'?'#9beaff':'#fff2c7';ctx.fillText(name,256,64);
    const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
    const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,transparent:true,depthTest:false,depthWrite:false}));
-   sprite.position.set(p.x,terrainHeightAt(p.x,p.z)+.13,p.z);sprite.scale.set(kind==='river'?1.12:.92,.23,1);sprite.renderOrder=30;geoOverlay.add(sprite);
+   sprite.userData.geoPoint=p;sprite.position.set(p.x,terrainHeightAt(p.x,p.z)+.13,p.z);sprite.scale.set(kind==='river'?1.12:.92,.23,1);sprite.renderOrder=30;geoOverlay.add(sprite);
   }
   function addGeoRiver(name,coords){
    const pts=coords.map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.075,p.z)});
    const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x54d9ff,transparent:true,opacity:.92,depthTest:false}));
-   line.renderOrder=20;geoOverlay.add(line);
+   line.userData.geoCoords=coords;line.renderOrder=20;geoOverlay.add(line);
    const mid=coords[Math.floor(coords.length/2)];addGeoLabel(name,mid[0],mid[1],'river');
   }
   [
@@ -791,6 +791,13 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   addGeoRiver('Ohře',[[12.72,50.20],[13.05,50.18],[13.45,50.15],[13.82,50.22],[14.12,50.32]]);
   addGeoRiver('Morava',[[17.12,50.20],[17.05,49.95],[17.20,49.72],[17.25,49.48],[17.15,49.22],[16.98,48.95],[16.95,48.70]]);
   addGeoRiver('Odra',[[17.25,50.35],[17.45,50.12],[17.75,49.95],[18.05,49.82],[18.28,49.70]]);
+  function refreshGeoOverlayHeights(){
+   geoOverlay.children.forEach(obj=>{
+    if(obj.userData.geoPoint){const p=obj.userData.geoPoint;obj.position.y=terrainHeightAt(p.x,p.z)+.13}
+    if(obj.userData.geoCoords){const pts=obj.userData.geoCoords.map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.075,p.z)});obj.geometry.setFromPoints(pts)}
+   });
+  }
+
 
   // Teplotní vrstva kopíruje výškový reliéf, aby se terén a počasí prostorově překrývaly.
   const heatGeo=new THREE.PlaneGeometry(7.4,7.4,160,160);heatGeo.rotateX(-Math.PI/2);clipToCzech(heatGeo);
@@ -809,7 +816,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
     for(let i=0;i<terrainPos.count;i++){const x=terrainPos.getX(i),z=terrainPos.getZ(i),h=terrainHeightAt(x,z);terrainPos.setY(i,h);const c=terrainColorAt(h);terrainGeo.attributes.color.setXYZ(i,c.r,c.g,c.b)}
     terrainPos.needsUpdate=true;terrainGeo.attributes.color.needsUpdate=true;terrainGeo.computeVertexNormals();
     for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,terrainHeightAt(x,z)+.018)}
-    heatPos.needsUpdate=true;heatGeo.computeVertexNormals();
+    heatPos.needsUpdate=true;heatGeo.computeVertexNormals();refreshGeoOverlayHeights();
    };
    const readStore=key=>{try{return JSON.parse(localStorage.getItem(key)||'null')}catch(_){return null}};
    const writeStore=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value))}catch(_){}};
