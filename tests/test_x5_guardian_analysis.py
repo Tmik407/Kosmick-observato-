@@ -63,6 +63,27 @@ class GuardianAnalysisTests(unittest.TestCase):
         ])
         self.assertEqual(analysis["findings"][0]["severity"], "info")
 
+
+    def test_chmi_stale_measurement_gets_specific_finding(self):
+        analysis = self.run_analysis([
+            {"name": "ČHMÚ archiv", "state": "WARN",
+             "freshness": {"status": "stale", "age_hours": 15.6}}
+        ])
+        self.assertTrue(any("zastaralá měření" in f["title"] for f in analysis["findings"]))
+
+    def test_source_trends_include_history_counts(self):
+        history = [
+            {"checked_at_utc": "2026-11-26T00:00:00+00:00",
+             "checks": [{"name": "Open-Meteo", "state": "OK"}]},
+            {"checked_at_utc": "2026-11-26T06:00:00+00:00",
+             "checks": [{"name": "Open-Meteo", "state": "WARN"}]},
+        ]
+        analysis = self.run_analysis([{"name": "Open-Meteo", "state": "OK"}], history)
+        trend = next(item for item in analysis["source_trends"] if item["source"] == "Open-Meteo")
+        self.assertEqual(trend["samples_in_history"], 2)
+        self.assertEqual(trend["ok_count"], 1)
+        self.assertEqual(trend["warning_or_fail_count"], 1)
+
     def test_no_finding_enables_automatic_repair(self):
         analysis = self.run_analysis([{"name": "Open-Meteo", "state": "WARN"}])
         self.assertTrue(analysis["findings"])

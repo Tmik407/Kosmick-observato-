@@ -62,11 +62,26 @@ def main() -> int:
             "Endpoint ECMWF přes Open-Meteo je nedostupný nebo vrací neplatnou strukturu.",
             "Porovnání modelů nemusí být dostupné; ostatní zdroje mohou fungovat nezávisle.",
             "Prověřit endpoint ECMWF a jeho parametry odděleně od hlavního Open-Meteo.")
+    chmi_item = checks.get("ČHMÚ archiv", {})
+    freshness = chmi_item.get("freshness", {}) if isinstance(chmi_item, dict) else {}
+    freshness_status = str(freshness.get("status", "")).lower()
+    age_hours = freshness.get("age_hours")
     if chmi in ("WARN", "FAIL"):
-        add("warning", "Archiv měření ČHMÚ vyžaduje kontrolu",
-            "Archiv může být nedostupný, neobsahovat platné časy měření nebo mít příliš stará data.",
+        if freshness_status == "stale":
+            title = "Archiv ČHMÚ obsahuje zastaralá měření"
+            cause = f"Nejnovější dostupné měření je staré {age_hours} h; hranice zastaralosti je 12 h."
+            recommendation = "Ověřit plánovač a běh aktualizace archivu, zdrojový endpoint a čas observed_utc. Do té doby měření označovat jako opožděná."
+        elif freshness_status == "delayed":
+            title = "Archiv ČHMÚ má opožděná měření"
+            cause = f"Nejnovější dostupné měření je staré {age_hours} h; běžná čerstvost je do 6 h."
+            recommendation = "Sledovat další aktualizaci a ověřit interval ingestu; data neprezentovat jako aktuální."
+        else:
+            title = "Archiv měření ČHMÚ vyžaduje kontrolu"
+            cause = "Archiv může být nedostupný, neobsahovat platné časy měření nebo mít příliš stará data."
+            recommendation = "Zkontrolovat aktualizační workflow archivu a časy observed_utc; stará měření neoznačovat jako aktuální."
+        add("warning", title, cause,
             "Pozorovaná měření nemusí reprezentovat aktuální stav.",
-            "Zkontrolovat aktualizační workflow archivu a časy observed_utc; stará měření neoznačovat jako aktuální.")
+            recommendation)
     if not findings:
         add("info", "Všechny sledované serverové kontroly jsou v pořádku",
             "Pravidlová analýza nenašla známý problém v kontrolovaných zdrojích.",
@@ -83,13 +98,39 @@ def main() -> int:
         if bad >= 3:
             recurring.append({"source": name, "non_ok_in_last_8": bad,
                               "recommendation": "Prověřit opakující se problém a historii běhů GitHub Actions."})
+    source_trends = []
+    for name in ("Open-Meteo", "ECMWF IFS přes Open-Meteo", "MET Norway", "ČHMÚ archiv", "GitHub Pages / HTML"):
+        samples = []
+        for row in history[-8:]:
+            if not isinstance(row, dict):
+                continue
+            match = next((item for item in row.get("checks", [])
+                          if isinstance(item, dict) and item.get("name") == name), None)
+            if match:
+                samples.append({"checked_at_utc": row.get("checked_at_utc"),
+                                "state": str(match.get("state", "UNKNOWN")).upper(),
+                                "freshness": match.get("freshness", {}).get("status")
+                                if isinstance(match.get("freshness"), dict) else None})
+        current = checks.get(name, {})
+        source_trends.append({
+            "source": name,
+            "current_state": str(current.get("state", "UNKNOWN")).upper(),
+            "samples_in_history": len(samples),
+            "ok_count": sum(1 for item in samples if item["state"] == "OK"),
+            "warning_or_fail_count": sum(1 for item in samples if item["state"] in ("WARN", "FAIL")),
+            "recent": samples[-4:]
+        })
+
     analysis = {
-        "engine": "X-5 Guardian Expert Rules 1.0",
+        "engine": "X-5 Guardian Expert Rules 2.0",
         "mode": "explainable_rules_not_llm",
         "generated_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "summary": "Zjištěno " + str(sum(1 for f in findings if f["severity"] in ("critical", "warning"))) + " upozornění; analýza je návrhová a nic automaticky neopravuje.",
         "findings": findings,
         "recurring_issues": recurring,
+        "source_trends": source_trends,
+        "freshness_policy": {"fresh_up_to_hours": 6, "delayed_over_hours": 6, "stale_over_hours": 12,
+                             "note": "Prahy jsou monitorovací pravidla; nezaručují interval publikace zdroje."},
         "limitations": ["Kontrola API neověřuje CORS, vykreslení mapy, běh JavaScriptu ani dotyková gesta.",
                         "Příčiny jsou pravděpodobné hypotézy založené na dostupných stavech, nikoli definitivní důkaz.",
                         "Automatické opravy a nasazení jsou vypnuté."]
