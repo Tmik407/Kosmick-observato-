@@ -28,6 +28,8 @@ jobs:
           python-version: "3.12"
       - name: Validate Guardian Python syntax
         run: python3 -m py_compile scripts/x5_guardian.py scripts/x5_history.py scripts/x5_guardian_analysis.py
+      - name: Test Guardian analysis rules
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
       - name: Restore bounded history
         uses: actions/cache/restore@v4
         with:
