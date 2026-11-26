@@ -791,6 +791,49 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   addGeoRiver('Ohře',[[12.72,50.20],[13.05,50.18],[13.45,50.15],[13.82,50.22],[14.12,50.32]]);
   addGeoRiver('Morava',[[17.12,50.20],[17.05,49.95],[17.20,49.72],[17.25,49.48],[17.15,49.22],[16.98,48.95],[16.95,48.70]]);
   addGeoRiver('Odra',[[17.25,50.35],[17.45,50.12],[17.75,49.95],[18.05,49.82],[18.28,49.70]]);
+  // Významné vrcholy: poziční značky s nadmořskou výškou (orientační popis).
+  const peakGroup=new THREE.Group();scene.add(peakGroup);
+  const peakData=[
+   ['Sněžka',15.739,50.736,1603],['Praděd',17.230,50.083,1491],
+   ['Králický Sněžník',16.847,50.208,1424],['Plechý',13.856,48.775,1378],
+   ['Lysá hora',18.447,49.546,1323],['Klínovec',12.967,50.396,1244]
+  ];
+  peakData.forEach(([name,lon,lat,alt])=>{
+   const p=geoPoint(lon,lat),h=terrainHeightAt(p.x,p.z)+.12;
+   const pin=new THREE.Mesh(new THREE.SphereGeometry(.055,12,10),new THREE.MeshStandardMaterial({color:0xffd36b,emissive:0x8b4a08,emissiveIntensity:.65,roughness:.35}));
+   pin.position.set(p.x,h,p.z);pin.renderOrder=36;peakGroup.add(pin);
+   const label=name+' · '+alt+' m';addGeoLabel(label,lon,lat,'mountain');
+  });
+  // Přesnější státní hranice z oficiální služby ČÚZK Data250.
+  async function loadOfficialCzechBorder(){
+   try{
+    const url='https://ags.cuzk.cz/arcgis/rest/services/DATA250/MapServer/0/query?where=1%3D1&outFields=*&returnGeometry=true&outSR=4326&f=geojson';
+    const response=await fetch(url,{mode:'cors',cache:'force-cache'});
+    if(!response.ok)throw new Error('ČÚZK HTTP '+response.status);
+    const data=await response.json(),features=data.features||[];
+    const paths=[];
+    features.forEach(feature=>{
+     const g=feature.geometry||{};
+     if(g.type==='LineString'&&g.coordinates)paths.push(g.coordinates);
+     else if(g.type==='MultiLineString'&&g.coordinates)paths.push(...g.coordinates);
+    });
+    if(!paths.length)throw new Error('ČÚZK nevrátil geometrii státní hranice');
+    const official=new THREE.Group();
+    paths.forEach(path=>{
+     const pts=path.filter(c=>Array.isArray(c)&&Number.isFinite(c[0])&&Number.isFinite(c[1])).map(c=>{
+      const p=geoPoint(c[0],c[1]);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.09,p.z);
+     });
+     if(pts.length<2)return;
+     const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x9beaff,transparent:true,opacity:.98,depthTest:true}));
+     line.renderOrder=37;official.add(line);
+    });
+    if(!official.children.length)throw new Error('Prázdná geometrie hranice');
+    scene.add(official);borderLine.visible=false;
+    if(badge)badge.textContent='Terén: ČÚZK Data250 · přesná státní hranice + DEM '+demSize+'×'+demSize;
+   }catch(err){console.warn('X-5 oficiální státní hranice:',err);if(badge)badge.title='Záložní zjednodušený obrys ČR; ČÚZK Data250 se nepodařilo načíst: '+String(err.message||err)}
+  }
+  loadOfficialCzechBorder();
+
   function refreshGeoOverlayHeights(){
    geoOverlay.children.forEach(obj=>{
     if(obj.userData.geoPoint){const p=obj.userData.geoPoint;obj.position.y=terrainHeightAt(p.x,p.z)+.13}
