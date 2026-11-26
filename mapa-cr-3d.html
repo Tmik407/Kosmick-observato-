@@ -67,6 +67,9 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
 
 #analyticsPanel{margin-top:12px}#analyticsPanel .chart-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}#analyticsPanel .chart-card{border:1px solid #dce8ef;border-radius:11px;padding:10px;min-width:0;background:#fbfdff}#analyticsPanel .chart-card h3{font-size:13px;margin:0 0 5px;color:#31566d}#analyticsPanel svg{display:block;width:100%;height:auto;overflow:visible}#analyticsPanel .chart-note{font-size:11px;color:#60798b;margin-top:4px}@media(max-width:760px){#analyticsPanel .chart-grid{grid-template-columns:1fr}}
 
+#weatherVortexCloudLayerControls button[aria-pressed="true"]{background:#d7f1ff!important;border:2px solid #2587ad!important;box-shadow:inset 0 0 0 1px #ffffff,0 1px 5px #1b789933;font-weight:800}
+#weatherVortexCloudLayerControls button[aria-pressed="false"]{background:#f1f5f8!important;border:1px solid #aebfca!important;color:#617583!important;opacity:.78}
+#weatherVortexCloudAltitudeStatus{margin:2px 0 5px;padding:7px 10px;border:1px solid #c5dce8;border-radius:9px;background:#f1f9fd;color:#31566d;font-size:12px;font-weight:700}
 #weatherVortexStage{height:clamp(440px,56vw,620px)!important;min-height:420px}
 #forecastTimelinePanel .timeline-actions button{min-height:44px;padding:10px 13px}
 #forecastTimelinePanel input[type="range"]{min-height:32px;touch-action:pan-x}
@@ -133,6 +136,7 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
   <button type="button" data-cloud-altitude="1" aria-pressed="true">🌥️ Střední oblačnost</button>
   <button type="button" data-cloud-altitude="2" aria-pressed="true">🌤️ Vysoká oblačnost</button>
  </div>
+ <div id="weatherVortexCloudAltitudeStatus" role="status" aria-live="polite">Aktivní výškové hladiny: nízká, střední a vysoká · výška je schematická, nikoli měření v km.</div>
  <div id="weatherVortexStage" style="position:relative;height:470px;min-height:360px;margin-top:10px;border-radius:13px;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#173f61,#071827 72%)">
   <canvas id="weatherVortex3d" style="display:block;width:100%;height:100%;touch-action:pan-y"></canvas>
   <div style="position:absolute;left:10px;top:10px;padding:7px 9px;border:1px solid #52738d;border-radius:8px;background:#061526d9;color:#e9f6ff;font-size:11px;pointer-events:none">MODEL 3D · ČESKÁ REPUBLIKA<br><span id="weatherVortexStatus">Čekám na data předpovědi…</span></div>
@@ -1208,13 +1212,21 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   schematicCloudButton?.addEventListener('click',()=>{showSchematicClouds=!showSchematicClouds;schematicCloudButton.setAttribute('aria-pressed',String(showSchematicClouds));schematicCloudButton.textContent='☁️ Schematická oblačnost: '+(showSchematicClouds?'zapnuta':'vypnuta');if(windFeatures.length)readWeather(windFeatures);});
   const cloudAltitudeButtons=document.querySelectorAll('[data-cloud-altitude]');
   const cloudAltitudeVisible=[true,true,true];
+  const cloudAltitudeStatus=document.getElementById('weatherVortexCloudAltitudeStatus');
+  const cloudAltitudeNames=['nízká','střední','vysoká'];
+  function updateCloudAltitudeStatus(){
+   const active=cloudAltitudeNames.filter((name,i)=>cloudAltitudeVisible[i]);
+   if(cloudAltitudeStatus)cloudAltitudeStatus.textContent=active.length?'Aktivní výškové hladiny: '+active.join(', ')+' · výška je schematická, nikoli měření v km.':'Všechny výškové hladiny oblačnosti jsou vypnuté.';
+   cloudAltitudeButtons.forEach(btn=>{const i=Number(btn.dataset.cloudAltitude);btn.setAttribute('aria-pressed',String(cloudAltitudeVisible[i]));});
+  }
   cloudAltitudeButtons.forEach(btn=>btn.addEventListener('click',()=>{
    const layer=Number(btn.dataset.cloudAltitude);
    if(!Number.isInteger(layer)||layer<0||layer>2)return;
    cloudAltitudeVisible[layer]=!cloudAltitudeVisible[layer];
-   btn.setAttribute('aria-pressed',String(cloudAltitudeVisible[layer]));
    clouds.forEach(g=>{if(g.userData.cloudLayer===layer)g.visible=!!g.userData.cloudAvailable&&cloudAltitudeVisible[layer]});
+   updateCloudAltitudeStatus();
   }));
+  updateCloudAltitudeStatus();
   layerControls?.querySelectorAll('[data-vortex-layer]').forEach(btn=>btn.addEventListener('click',()=>{
    const key=btn.dataset.vortexLayer;if(key==='precipitation'){window.__weatherVortexTogglePrecipitation?.();return;}vortexLayers[key]=!vortexLayers[key];btn.setAttribute('aria-pressed',String(vortexLayers[key]));applyVortexLayers();
   }));
