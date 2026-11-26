@@ -786,9 +786,9 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   const cloudGroup=new THREE.Group();scene.add(cloudGroup);const clouds=[];
   const cloudPuffGeo=new THREE.SphereGeometry(1,12,10);
   const cloudMats=[
-   new THREE.MeshStandardMaterial({color:0x6689ad,transparent:true,opacity:.36,roughness:1,depthWrite:false}),
-   new THREE.MeshStandardMaterial({color:0xb8dcf2,transparent:true,opacity:.44,roughness:1,depthWrite:false}),
-   new THREE.MeshStandardMaterial({color:0xf2faff,transparent:true,opacity:.54,roughness:1,depthWrite:false})
+   new THREE.MeshStandardMaterial({color:0x6689ad,transparent:true,opacity:.22,roughness:1,depthWrite:false}),
+   new THREE.MeshStandardMaterial({color:0xb8dcf2,transparent:true,opacity:.28,roughness:1,depthWrite:false}),
+   new THREE.MeshStandardMaterial({color:0xf2faff,transparent:true,opacity:.34,roughness:1,depthWrite:false})
   ];
   const cloudCount=lowPower?14:24;
   let schematicCloudPositions=null;
@@ -951,15 +951,14 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
     if(!paths.length)throw new Error('ČÚZK nevrátil geometrii státní hranice');
     const official=new THREE.Group();
     paths.forEach(path=>{
-     const pts=path.filter(c=>Array.isArray(c)&&Number.isFinite(c[0])&&Number.isFinite(c[1])).map(c=>{
-      const p=geoPoint(c[0],c[1]);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.09,p.z);
-     });
+     const coords=path.filter(c=>Array.isArray(c)&&Number.isFinite(c[0])&&Number.isFinite(c[1]));
+     const pts=coords.map(c=>{const p=geoPoint(c[0],c[1]);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.16,p.z)});
      if(pts.length<2)return;
-     const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x9beaff,transparent:true,opacity:.98,depthTest:true}));
-     line.renderOrder=37;official.add(line);
+     const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x8deaff,transparent:true,opacity:.98,depthTest:false,depthWrite:false}));
+     line.userData.geoCoords=coords;line.renderOrder=70;official.add(line);
     });
     if(!official.children.length)throw new Error('Prázdná geometrie hranice');
-    scene.add(official);borderLine.visible=false;borderOuter.visible=false;
+    scene.add(official);borderGlow.visible=false;borderOuter.visible=false;borderLine.visible=false;borderHighlight.visible=false;
     if(badge)badge.textContent='Terén: ČÚZK Data250 · přesná státní hranice + DEM '+demSize+'×'+demSize;
    }catch(err){console.warn('X-5 oficiální státní hranice:',err);if(badge)badge.title='Záložní zjednodušený obrys ČR; ČÚZK Data250 se nepodařilo načíst: '+String(err.message||err)}
   }
@@ -968,7 +967,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   function refreshGeoOverlayHeights(){
    geoOverlay.children.forEach(obj=>{
     if(obj.userData.geoPoint){const p=obj.userData.geoPoint;obj.position.y=terrainHeightAt(p.x,p.z)+.13}
-    if(obj.userData.geoCoords){const pts=obj.userData.geoCoords.map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.075,p.z)});obj.geometry.setFromPoints(pts)}
+    if(obj.userData.geoCoords){const pts=obj.userData.geoCoords.map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.16,p.z)});obj.geometry.setFromPoints(pts)}
    });
    [regionGroup,cityGroup,districtGroup].forEach(group=>group.children.forEach(obj=>{
     if(obj.userData.geoPoint){const p=obj.userData.geoPoint;obj.position.y=terrainHeightAt(p.x,p.z)+.18}
