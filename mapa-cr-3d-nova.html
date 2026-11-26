@@ -1,89 +1,51 @@
-<!doctype html>
-<html lang="cs">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f4f8fb">
-<title>Nová mapa počasí ČR | X-5</title>
-<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-<style>
-:root{color-scheme:light;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#eef4f8;color:#173044}
-*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:14px}
-header,.panel{max-width:1180px;margin:0 auto 12px;background:#fff;border:1px solid #dce7ee;border-radius:16px;padding:14px 16px;box-shadow:0 3px 14px #1730440a}
-h1{font-size:clamp(19px,3vw,26px);margin:0 0 5px}p{margin:0;color:#587080;font-size:14px}
-.toolbar{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:12px}
-button,select{font:inherit;border:1px solid #c6d8e3;background:#f7fbfd;color:#173044;border-radius:10px;padding:10px 13px;min-height:42px}
-button{font-weight:650;cursor:pointer}button:active{transform:translateY(1px)}
-#mapShell{max-width:1180px;margin:auto;background:#fff;border:1px solid #dce7ee;border-radius:18px;padding:10px;box-shadow:0 5px 20px #17304412}
-#map{height:min(68vh,720px);min-height:420px;width:100%;border-radius:12px;overflow:hidden;background:#e5edf1}
-#status{padding:9px 4px 2px;font-size:13px;color:#587080}
-.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:13px;color:#587080}
-.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#087eae;margin-right:5px}
-.maplibregl-ctrl-group{border-radius:10px!important;overflow:hidden}
-.maplibregl-popup-content{font:14px system-ui;padding:11px 13px;border-radius:10px}
-@media(max-width:650px){body{padding:8px}header{padding:12px}#mapShell{padding:6px}#map{height:64vh;min-height:380px}.toolbar button{flex:1}}
-</style>
-</head>
-<body>
-<header>
-<h1>Nová mapa počasí České republiky</h1>
-<p>Samostatné testovací mapové jádro X-5. Původní meteorologická stránka zůstává beze změny.</p>
-<div class="toolbar">
-<button id="reset" type="button">⌖ Zpět na Českou republiku</button>
-<select id="city" aria-label="Vybrat město">
-<option value="">Vybrat město…</option>
-<option value="Most">Most</option><option value="Chomutov">Chomutov</option><option value="Litvínov">Litvínov</option>
-<option value="Jirkov">Jirkov</option><option value="Kadaň">Kadaň</option><option value="Teplice">Teplice</option>
-<option value="Praha">Praha</option><option value="Brno">Brno</option><option value="Ostrava">Ostrava</option>
-</select>
-<button id="zoomIn" type="button" aria-label="Přiblížit">＋</button>
-<button id="zoomOut" type="button" aria-label="Oddálit">－</button>
-</div>
-</header>
-<main id="mapShell">
-<div id="map" role="application" aria-label="Interaktivní mapa České republiky"></div>
-<div id="status" role="status" aria-live="polite">Připravuji mapový podklad…</div>
-<div class="legend"><span><i class="dot"></i>Vybraná města</span><span>Podklad: OpenStreetMap</span><span>Ovládání: myš nebo dva prsty na dotykové obrazovce</span></div>
-</main>
-<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script>
-(()=> {
-"use strict";
-const status=document.getElementById("status");
-const bounds=[[11.7,48.25],[19.1,51.25]];
-const places=[
-{name:"Most",coordinates:[13.6367,50.503]}, {name:"Chomutov",coordinates:[13.4106,50.460]},
-{name:"Litvínov",coordinates:[13.608,50.600]}, {name:"Jirkov",coordinates:[13.447,50.499]},
-{name:"Kadaň",coordinates:[13.266,50.375]}, {name:"Teplice",coordinates:[13.824,50.640]},
-{name:"Praha",coordinates:[14.4378,50.0755]}, {name:"Brno",coordinates:[16.6068,49.1951]},
-{name:"Ostrava",coordinates:[18.2625,49.8209]}
-];
-const map=new maplibregl.Map({
-container:"map",
-style:{version:8,sources:{"x5-osm":{type:"raster",tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors"}},layers:[{id:"x5-osm-base",type:"raster",source:"x5-osm",minzoom:0,maxzoom:19}]},
-center:[15.45,49.82],zoom:7.1,minZoom:5.4,maxZoom:14,maxBounds:bounds,
-pitch:0,bearing:0,renderWorldCopies:false,cooperativeGestures:true,fadeDuration:0,refreshExpiredTiles:false
-});
-map.addControl(new maplibregl.NavigationControl({showCompass:false,visualizePitch:false}),"top-right");
-map.addControl(new maplibregl.ScaleControl({maxWidth:110,unit:"metric"}),"bottom-left");
-const markers=new Map();
-for(const place of places){
- const el=document.createElement("button");el.type="button";el.title=place.name;el.setAttribute("aria-label","Zobrazit město "+place.name);
- el.style.cssText="width:13px;height:13px;min-height:0;padding:0;border:2px solid white;border-radius:50%;background:#087eae;box-shadow:0 1px 5px #1238;cursor:pointer";
- const marker=new maplibregl.Marker({element:el,anchor:"center"}).setLngLat(place.coordinates).setPopup(new maplibregl.Popup({offset:12}).setText(place.name)).addTo(map);
- markers.set(place.name,marker);
- el.addEventListener("click",()=>{map.easeTo({center:place.coordinates,zoom:10,duration:500});});
+<!doctype html><html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f4f8fb"><title>Počasí ČR – meteorologická mapa X-5</title><link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"><style>
+:root{font-family:system-ui,sans-serif;background:#edf4f9;color:#173044}*{box-sizing:border-box}body{margin:0;padding:9px}header,.panel,#mapShell{max-width:1180px;margin:0 auto 11px;background:white;border:1px solid #dce7ee;border-radius:16px;padding:12px 14px;box-shadow:0 3px 14px #1730440a}h1{font-size:clamp(19px,3vw,26px);margin:0 0 4px}h2{font-size:16px;margin:0 0 8px}p,.muted{margin:0;color:#587080;font-size:13px}.toolbar,.layers,.legend,.meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:9px}button,select,input{font:inherit;border:1px solid #c6d8e3;background:#f7fbfd;color:#173044;border-radius:10px;padding:9px 11px;min-height:40px}button{font-weight:650}button[aria-pressed=true]{background:#d9f0fa;border-color:#1684b6}#map{height:min(62vh,690px);min-height:380px;border-radius:12px;overflow:hidden;background:#e5edf1}#mapShell{padding:8px}#status,#stationSummary{font-size:13px;color:#587080;padding:8px 2px 0}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px}.maplibregl-ctrl-group{border-radius:10px!important}.maplibregl-popup-content{font:14px system-ui;padding:11px;border-radius:10px}@media(max-width:650px){body{padding:6px}header,.panel{padding:10px}#map{height:58vh;min-height:350px}.toolbar button,.toolbar select{flex:1}}
+</style></head><body>
+<header><h1>🌦️ Meteorologická mapa České republiky X-5</h1><p>Nové mapové jádro · hodinová předpověď Open-Meteo / ECMWF · přímá měření ČHMÚ</p><div class="toolbar"><button id="home">⌖ Česká republika</button><select id="city" aria-label="Vybrat město"><option value="">Vybrat město…</option></select><select id="model" aria-label="Model"><option value="openmeteo">Open-Meteo · automatický výběr</option><option value="ecmwf">ECMWF IFS</option></select><button id="refresh">↻ Obnovit data</button></div><div class="meta"><span id="modelStatus">Model: čekám na data</span><span id="updated">· Aktualizace: —</span></div></header>
+<main id="mapShell"><div id="map" role="application" aria-label="Interaktivní meteorologická mapa ČR"></div><div id="status" role="status" aria-live="polite">Připravuji mapu…</div><div class="layers" id="layers"><button data-layer="temperature" aria-pressed="true">🌡️ Teplota</button><button data-layer="precipitation" aria-pressed="false">🌧️ Déšť / sníh</button><button data-layer="wind" aria-pressed="true">💨 Vítr</button><button data-layer="cities" aria-pressed="true">📍 Města</button><button data-layer="stations" aria-pressed="true">📡 Stanice ČHMÚ</button></div><div id="legend" class="legend">Teplota v °C · modrá = chladno, oranžová = teplo</div></main>
+<section class="panel"><div id="timeLabel">Čas předpovědi: načítám…</div><div class="toolbar"><input id="time" type="range" min="0" max="71" value="0" disabled style="flex:1"><button id="now" disabled>Teď</button></div></section>
+<section class="panel"><h2>Počasí ve sledovaných městech</h2><div id="summary">Načítám hodinovou předpověď…</div><div id="stationSummary">Načítám měření stanic ČHMÚ…</div></section>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script><script>
+(()=>{"use strict";const $=id=>document.getElementById(id),bounds=[[11.7,48.25],[19.1,51.25]];
+const cities=[["Praha",50.0755,14.4378],["Most",50.503,13.636],["Ústí nad Labem",50.661,14.032],["Chomutov",50.46,13.417],["Litvínov",50.60,13.608],["Jirkov",50.499,13.447],["Kadaň",50.375,13.266],["Teplice",50.640,13.824],["Liberec",50.767,15.056],["Karlovy Vary",50.231,12.871],["Plzeň",49.738,13.373],["České Budějovice",48.975,14.48],["Jihlava",49.396,15.591],["Hradec Králové",50.21,15.832],["Pardubice",50.034,15.781],["Brno",49.195,16.608],["Olomouc",49.593,17.25],["Ostrava",49.82,18.262],["Zlín",49.224,17.662]].map(([name,lat,lon])=>({name,lat,lon}));
+const state={rows:[],times:[],hour:0,model:"openmeteo",loadedAt:0,loading:false,visible:{temperature:true,precipitation:false,wind:true,cities:true,stations:true}};
+cities.forEach(c=>{let o=document.createElement("option");o.value=c.name;o.textContent=c.name;$("city").append(o)});
+const map=new maplibregl.Map({container:"map",style:{version:8,sources:{osm:{type:"raster",tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors"}},layers:[{id:"osm",type:"raster",source:"osm"}]},center:[15.45,49.82],zoom:7.1,minZoom:5.4,maxZoom:13,maxBounds:bounds,pitch:0,bearing:0,renderWorldCopies:false,cooperativeGestures:true,fadeDuration:0});
+map.addControl(new maplibregl.NavigationControl({showCompass:false}),"top-right");map.addControl(new maplibregl.ScaleControl({maxWidth:110,unit:"metric"}),"bottom-left");
+const empty=()=>({type:"FeatureCollection",features:[]}),say=s=>$("status").textContent=s,fmt=(v,d=1)=>Number.isFinite(Number(v))?Number(v).toFixed(d):"—",esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const nearest=p=>{let best=0,dist=Infinity;cities.forEach((c,i)=>{let d=(p.lat-c.lat)**2+(p.lon-c.lon)**2;if(d<dist){dist=d;best=i}});return best};
+function feature(p,row,i){let h=row.hourly,v=k=>Number(h[k]?.[i]??0);return {type:"Feature",geometry:{type:"Point",coordinates:[p.lon,p.lat]},properties:{name:p.name||"",temp:v("temperature_2m"),rain:v("rain"),snow:v("snowfall"),precip:v("precipitation"),wind:v("wind_speed_10m"),direction:v("wind_direction_10m"),gust:v("wind_gusts_10m")}}}
+function addLayers(){
+ map.addSource("weather",{type:"geojson",data:empty()});
+ map.addLayer({id:"temp",type:"circle",source:"weather",paint:{"circle-radius":["interpolate",["linear"],["zoom"],5,9,7,15,10,20],"circle-color":["interpolate",["linear"],["get","temp"],-20,"#2856bd",-5,"#287fc4",0,"#35a4c9",8,"#43b9a0",16,"#d6c34c",24,"#e99a3e",32,"#df6545"],"circle-opacity":.75,"circle-stroke-color":"#fff","circle-stroke-width":1.2}});
+ map.addLayer({id:"temp-label",type:"symbol",source:"weather",layout:{"text-field":["concat",["to-string",["round",["get","temp"]]],"°"],"text-size":11,"text-font":["Open Sans Bold"],"text-allow-overlap":true},paint:{"text-color":"#17364b","text-halo-color":"#fff","text-halo-width":1.5}});
+ map.addLayer({id:"precip",type:"circle",source:"weather",filter:[">",["max",["get","rain"],["get","snow"],["get","precip"]],.05],layout:{visibility:"none"},paint:{"circle-radius":["interpolate",["linear"],["get","precip"],.1,5,1,9,4,15,10,22],"circle-color":["case",[">",["get","snow"],["get","rain"]],"#75d3f6","#0877dc"],"circle-opacity":.9,"circle-stroke-color":"#fff","circle-stroke-width":1.5}});
+ map.addLayer({id:"wind",type:"symbol",source:"weather",layout:{"text-field":"↑","text-size":18,"text-rotate":["get","direction"],"text-allow-overlap":true},paint:{"text-color":"#075b83","text-halo-color":"#fff","text-halo-width":1.5}});
+ map.addSource("cities",{type:"geojson",data:empty()});map.addLayer({id:"city-points",type:"circle",source:"cities",paint:{"circle-radius":6,"circle-color":"#087eae","circle-stroke-color":"#fff","circle-stroke-width":2}});
+ map.addLayer({id:"city-labels",type:"symbol",source:"cities",layout:{"text-field":["get","name"],"text-size":11,"text-offset":[0,1.1],"text-anchor":"top"},paint:{"text-color":"#17364b","text-halo-color":"#fff","text-halo-width":1.5}});
+ map.addSource("stations",{type:"geojson",data:empty(),cluster:true,clusterRadius:48,clusterMaxZoom:10});
+ map.addLayer({id:"station-clusters",type:"circle",source:"stations",filter:["has","point_count"],paint:{"circle-color":["step",["get","point_count"],"#b24a9a",20,"#8c2677",80,"#64165a"],"circle-radius":["step",["get","point_count"],16,20,21,80,26],"circle-stroke-color":"#fff","circle-stroke-width":2}});
+ map.addLayer({id:"station-count",type:"symbol",source:"stations",filter:["has","point_count"],layout:{"text-field":["get","point_count_abbreviated"],"text-size":11},paint:{"text-color":"#fff"}});
+ map.addLayer({id:"station-points",type:"circle",source:"stations",minzoom:8,filter:["!",["has","point_count"]],paint:{"circle-radius":5,"circle-color":"#a13b91","circle-stroke-color":"#fff","circle-stroke-width":1.5}});
+ map.addLayer({id:"station-labels",type:"symbol",source:"stations",minzoom:9,filter:["!",["has","point_count"]],layout:{"text-field":["get","name"],"text-size":10,"text-offset":[0,1.1],"text-anchor":"top"},paint:{"text-color":"#64265e","text-halo-color":"#fff","text-halo-width":1.4}});
+ map.on("click","station-clusters",e=>{let f=map.queryRenderedFeatures(e.point,{layers:["station-clusters"]})[0];if(f)map.getSource("stations").getClusterExpansionZoom(f.properties.cluster_id,(err,z)=>{if(!err)map.easeTo({center:f.geometry.coordinates,zoom:z})})});
+ map.on("click","station-points",e=>{let p=e.features[0].properties;new maplibregl.Popup().setLngLat(e.lngLat).setHTML("<b>"+esc(p.name)+"</b><br>Stanice ČHMÚ<br>Teplota: "+fmt(p.temperature_c)+" °C<br>Vítr: "+fmt(p.wind_ms)+" m/s · směr "+fmt(p.wind_direction_deg,0)+"°<br>Vlhkost: "+fmt(p.humidity_pct,0)+" %<br>Tlak: "+fmt(p.pressure_hpa)+" hPa<br>Srážky: "+fmt(p.precipitation_mm)+" mm<br>Sníh: "+fmt(p.snow_depth_cm,0)+" cm<br><small>Měření: "+esc(p.observed_utc)+"</small>").addTo(map)});
+ map.on("click","city-points",e=>{let p=e.features[0].properties;new maplibregl.Popup().setLngLat(e.lngLat).setHTML("<b>"+esc(p.name)+"</b><br>"+fmt(p.temp)+" °C<br>Déšť: "+fmt(p.rain)+" mm/h · sníh: "+fmt(p.snow)+" cm/h<br>Vítr: "+fmt(p.wind)+" km/h · nárazy: "+fmt(p.gust)+" km/h").addTo(map)});
+ ["station-points","station-clusters","city-points"].forEach(id=>{map.on("mouseenter",id,()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave",id,()=>map.getCanvas().style.cursor="")});
 }
-function goHome(){map.stop();map.fitBounds(bounds,{padding:{top:45,bottom:45,left:45,right:45},duration:650,maxZoom:7.4});}
-document.getElementById("reset").addEventListener("click",goHome);
-document.getElementById("zoomIn").addEventListener("click",()=>map.zoomTo(Math.min(map.getZoom()+1,14),{duration:250}));
-document.getElementById("zoomOut").addEventListener("click",()=>map.zoomTo(Math.max(map.getZoom()-1,5.4),{duration:250}));
-document.getElementById("city").addEventListener("change",event=>{const marker=markers.get(event.target.value);if(marker){const p=marker.getLngLat();map.flyTo({center:[p.lng,p.lat],zoom:10,duration:700});marker.togglePopup();}});
-map.on("load",()=>{status.textContent="Mapa je načtená. Výchozí oblast: Česká republika. Posouvání je omezeno na okolí ČR.";map.resize();});
-map.on("error",event=>{const message=event?.error?.message||"Neznámá chyba mapového podkladu";status.textContent="Chyba načítání mapy: "+message;console.warn("X-5 map error",event?.error||event);});
-window.addEventListener("resize",()=>map.resize());
-document.addEventListener("visibilitychange",()=>{if(!document.hidden)map.resize();});
+function applyLayers(){let v=state.visible;[["temp",v.temperature],["temp-label",v.temperature],["precip",v.precipitation],["wind",v.wind],["city-points",v.cities],["city-labels",v.cities],["station-points",v.stations],["station-labels",v.stations],["station-clusters",v.stations],["station-count",v.stations]].forEach(([id,on])=>{if(map.getLayer(id))map.setLayoutProperty(id,"visibility",on?"visible":"none")});$("layers").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(!!v[b.dataset.layer])));$("legend").textContent=v.precipitation?"Déšť · mm/h (modrá) · sněžení · cm/h (světle modrá)":v.temperature?"Teplota v °C · modrá = chladno, oranžová = teplo":"Šipky ukazují směr větru"}
+function draw(){if(!state.rows.length)return;let i=state.hour,grid=[];for(let lat=48.65;lat<=50.95;lat+=.48)for(let lon=12.15;lon<=18.55;lon+=.72)grid.push({lat:+lat.toFixed(3),lon:+lon.toFixed(3)});let wf=grid.map(p=>feature(p,state.rows[nearest(p)],i)),cf=cities.map((p,n)=>feature(p,state.rows[n],i));map.getSource("weather")?.setData({type:"FeatureCollection",features:wf});map.getSource("cities")?.setData({type:"FeatureCollection",features:cf});$("time").value=String(i);$("timeLabel").textContent="Platnost předpovědi: "+new Date(state.times[i]).toLocaleString("cs-CZ",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});let avg=cf.reduce((s,f)=>s+f.properties.temp,0)/cf.length,wet=cf.filter(f=>f.properties.precip>.1).length,maxwind=Math.max(...cf.map(f=>f.properties.wind));$("summary").textContent="Průměrná teplota ve "+cities.length+" městech: "+avg.toFixed(1)+" °C. Srážky očekávány v "+wet+" městech. Nejvyšší vítr: "+maxwind.toFixed(1)+" km/h."}
+async function loadForecast(force=false){if(state.loading)return;if(!force&&state.loadedAt&&Date.now()-state.loadedAt<900000){say("Používám nedávno načtenou předpověď.");return}state.loading=true;$("refresh").disabled=true;say("Načítám předpověď pro "+cities.length+" měst…");let url=(state.model==="ecmwf"?"https://api.open-meteo.com/v1/ecmwf?":"https://api.open-meteo.com/v1/forecast?")+"latitude="+cities.map(c=>c.lat).join(",")+"&longitude="+cities.map(c=>c.lon).join(",")+"&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m&forecast_days=4&timezone=Europe%2FPrague";try{let r=await fetch(url,{cache:"no-store",signal:AbortSignal.timeout(25000)});if(!r.ok)throw Error("HTTP "+r.status);let data=await r.json(),rows=Array.isArray(data)?data:[data],times=rows[0]?.hourly?.time;if(rows.length!==cities.length||!times?.length)throw Error("Neúplná odpověď");let keys=["temperature_2m","precipitation","rain","snowfall","wind_speed_10m","wind_direction_10m","wind_gusts_10m"];rows.forEach((row,n)=>{if(!row.hourly||row.hourly.time.length!==times.length||keys.some(k=>!Array.isArray(row.hourly[k])||row.hourly[k].length!==times.length))throw Error("Chybí data pro "+cities[n].name)});state.rows=rows;state.times=times;state.loadedAt=Date.now();try{localStorage.setItem("x5-newmap-weather-cache",JSON.stringify({savedAt:state.loadedAt,model:state.model,rows,times}))}catch(_){}let idx=times.findIndex(t=>Date.parse(t)>=Date.now()-1800000);state.hour=idx>=0?idx:0;$("time").disabled=false;$("time").max=String(times.length-1);$("now").disabled=false;$("modelStatus").textContent="Model: "+(state.model==="ecmwf"?"ECMWF IFS · Open-Meteo API":"Open-Meteo · Best Match");$("updated").textContent="· Načteno: "+new Date(state.loadedAt).toLocaleTimeString("cs-CZ");draw();say("Předpověď načtena · "+cities.length+" měst · hodinové kroky")}catch(err){let c=null;try{c=JSON.parse(localStorage.getItem("x5-newmap-weather-cache")||"null")}catch(_){}if(c?.rows?.length===cities.length&&c.times?.length&&Date.now()-c.savedAt<48*3600000){state.rows=c.rows;state.times=c.times;state.hour=Math.max(0,c.times.findIndex(t=>Date.parse(t)>=Date.now()-1800000));$("time").disabled=false;$("time").max=String(c.times.length-1);$("now").disabled=false;draw();$("modelStatus").textContent="Model: uložená kopie";$("updated").textContent="· Uloženo: "+new Date(c.savedAt).toLocaleString("cs-CZ");say("Zdroj předpovědi nedostupný ("+err.message+"). Zobrazuji uložená data.")}else{say("Předpověď není dostupná: "+err.message+". Měření ČHMÚ zůstávají samostatně aktivní.");$("summary").textContent="Hodinová předpověď není nyní dostupná."}}finally{state.loading=false;$("refresh").disabled=false}}
+async function loadStations(){try{let r=await fetch("./data/chmi-stations-latest.json",{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);let doc=await r.json(),stations=Array.isArray(doc.stations)?doc.stations:[],features=stations.filter(s=>Number.isFinite(+s.lat)&&Number.isFinite(+s.lon)).map(s=>{let m=s.measurements||{},v=(k,a)=>Number.isFinite(Number(m[k]?.value))?Number(m[k].value):Number.isFinite(Number(s[a]))?Number(s[a]):null;return {type:"Feature",geometry:{type:"Point",coordinates:[+s.lon,+s.lat]},properties:{name:s.name||"Stanice ČHMÚ",temperature_c:v("T","temperature_c"),humidity_pct:v("H","humidity_pct"),wind_ms:v("F","wind_ms"),wind_direction_deg:v("D","wind_direction_deg"),pressure_hpa:v("P","pressure_hpa"),precipitation_mm:v("RR","precipitation_mm"),snow_depth_cm:v("SCE","snow_depth_cm"),observed_utc:s.observed_utc||""}}});map.getSource("stations").setData({type:"FeatureCollection",features});let newest=Math.max(0,...stations.map(s=>Date.parse(s.observed_utc||"")||0));$("stationSummary").textContent="ČHMÚ: "+features.length+" stanic · nejnovější měření: "+(newest?Math.floor((Date.now()-newest)/60000)+" min":"čas neznámý")+" · publikováno "+(doc.generated_utc?new Date(doc.generated_utc).toLocaleString("cs-CZ"):"bez času")}catch(e){$("stationSummary").textContent="Stanice ČHMÚ nyní nejsou dostupné: "+e.message}}
+map.on("load",()=>{addLayers();applyLayers();map.fitBounds(bounds,{padding:32,duration:0,maxZoom:7.4});say("Mapa připravena · načítám meteorologická data…");loadForecast(true);loadStations()});
+$("home").onclick=()=>{map.stop();map.fitBounds(bounds,{padding:32,duration:500,maxZoom:7.4})};
+$("city").onchange=e=>{let c=cities.find(x=>x.name===e.target.value);if(!c)return;map.flyTo({center:[c.lon,c.lat],zoom:9.5,duration:600});let i=cities.indexOf(c),row=state.rows[i];if(row){let p=feature(c,row,state.hour).properties;new maplibregl.Popup().setLngLat([c.lon,c.lat]).setHTML("<b>"+esc(c.name)+"</b><br>"+fmt(p.temp)+" °C<br>Vítr "+fmt(p.wind)+" km/h<br>Srážky "+fmt(p.precip)+" mm/h").addTo(map)}};
+$("model").onchange=e=>{state.model=e.target.value;state.loadedAt=0;loadForecast(true)};
+$("refresh").onclick=()=>{state.loadedAt=0;loadForecast(true);loadStations()};
+$("time").oninput=e=>{state.hour=Number(e.target.value);draw()};
+$("now").onclick=()=>{let i=state.times.findIndex(t=>Date.parse(t)>=Date.now()-1800000);state.hour=i>=0?i:0;draw()};
+$("layers").onclick=e=>{let b=e.target.closest("button[data-layer]");if(!b)return;state.visible[b.dataset.layer]=!state.visible[b.dataset.layer];applyLayers()};
+window.addEventListener("resize",()=>map.resize());document.addEventListener("visibilitychange",()=>{if(!document.hidden){map.resize();if(Date.now()-state.loadedAt>1800000)loadForecast(true);loadStations()}});
+setInterval(()=>{if(!document.hidden){state.loadedAt=0;loadForecast(true);loadStations()}},1800000);
 })();
-</script>
-</body>
-</html>
+</script></body></html>
