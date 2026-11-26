@@ -36,9 +36,9 @@ iframe{display:block;width:100%;height:min(78vh,900px);min-height:600px;border:1
  <div class="toolbar">
   <button id="focusModel" type="button">Zobrazit 3D model</button>
   <button id="reloadModel" type="button">↻ Znovu načíst</button>
-  <a href="./mapa-cr-3d.html" target="_blank" rel="noopener">Otevřít kompletní meteorologickou mapu ↗</a>
+  <a href="https://raw.githack.com/Tmik407/Kosmick-observato-/development/weather-vortex-3d-x5-stage3-20261126/mapa-cr-3d.html" target="_blank" rel="noopener">Otevřít kompletní meteorologickou mapu ↗</a>
  </div>
- <iframe id="modelFrame" title="Interaktivní meteorologický 3D model České republiky" src="./mapa-cr-3d.html#weatherVortexStage" loading="eager" allow="fullscreen"></iframe>
+ <iframe id="modelFrame" title="Interaktivní meteorologický 3D model České republiky" src="https://raw.githack.com/Tmik407/Kosmick-observato-/development/weather-vortex-3d-x5-stage3-20261126/mapa-cr-3d.html#weatherVortexStage" loading="eager" allow="fullscreen"></iframe>
  <p class="note">Testovací stránka používá původní 3D model a jeho meteorologická data přímo ze souboru mapa-cr-3d.html. Neobsahuje kopii ani upravenou verzi modelového kódu; změny v testu proto nezasahují do původní stránky.</p>
 </section>
 <section class="panel" style="margin-top:10px" aria-label="Diagnostika zařízení a kontrolní seznam">
@@ -85,7 +85,7 @@ iframe{display:block;width:100%;height:min(78vh,900px);min-height:600px;border:1
  function focus(){try{const doc=frame.contentDocument,stage=doc&&doc.getElementById('weatherVortexStage');if(stage){stage.scrollIntoView({block:'start',behavior:'instant'});state.textContent='Model načten · interaktivní test';return}}catch(e){}state.textContent='Model se načítá · případně použij odkaz na kompletní mapu'}
  frame.addEventListener('load',()=>{state.textContent='Stránka modelu načtena';$('frameState').textContent='Načteno';setTimeout(focus,250);diagnostics()});
  document.getElementById('focusModel').addEventListener('click',focus);
- document.getElementById('reloadModel').addEventListener('click',()=>{state.textContent='Znovu načítám…';$('frameState').textContent='Načítám…';frame.src='./mapa-cr-3d.html#weatherVortexStage'});
+ document.getElementById('reloadModel').addEventListener('click',()=>{state.textContent='Znovu načítám…';$('frameState').textContent='Načítám…';frame.src='https://raw.githack.com/Tmik407/Kosmick-observato-/development/weather-vortex-3d-x5-stage3-20261126/mapa-cr-3d.html#weatherVortexStage'});
  diagnostics();
 })();
 </script>
