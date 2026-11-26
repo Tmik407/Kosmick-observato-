@@ -95,6 +95,7 @@ def main() -> int:
                     pass
         newest = max(observed) if observed else None
         age_h = (datetime.now(timezone.utc) - newest).total_seconds() / 3600 if newest else None
+        chmi_age_h = age_h
         state = "OK" if age_h is not None and age_h <= 6 else "WARN"
         detail = f"{len(stations)} stanic; nejnovější měření {newest.isoformat(timespec='minutes') if newest else 'nenalezeno'}"
         if age_h is not None:
