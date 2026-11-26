@@ -227,6 +227,19 @@ function stopForecastPlayback(){if(forecastPlaybackTimer){clearInterval(forecast
 function startForecastPlayback(){if(!state.times.length)return;stopForecastPlayback();const b=$("forecastPlay");if(b){b.textContent="Ⅱ Pozastavit přehrávání";b.setAttribute("aria-pressed","true");}forecastPlaybackTimer=setInterval(()=>{if(document.hidden){stopForecastPlayback();return;}if(state.hour>=state.times.length-1){stopForecastPlayback();return;}state.hour++;$("forecastHour").value=String(state.hour);$("forecastTimeline").value=String(state.hour);applyHour();},1400);}
 const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/liberty",center:[15.35,49.82],zoom:6.75,pitch:35,bearing:-8,maxPitch:75,cooperativeGestures:true,attributionControl:true});
 state.map=map;
+// Záložní podklad: pokud se vektorový styl nebo jeho počáteční požadavky nenačtou,
+// přepni mapu na standardní rastrové dlaždice OpenStreetMap.
+let x5BaseMapLoaded=false,x5BaseMapFallback=false;
+map.on("load",()=>{x5BaseMapLoaded=true;});
+function useX5RasterFallback(reason){
+ if(x5BaseMapLoaded||x5BaseMapFallback)return;
+ x5BaseMapFallback=true;
+ console.warn("WEATHER VORTEX: přepínám na záložní mapový podklad.",reason||"timeout");
+ const fallbackStyle={version:8,sources:{"x5-osm-raster":{type:"raster",tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors"}},layers:[{id:"x5-osm-raster-layer",type:"raster",source:"x5-osm-raster",minzoom:0,maxzoom:19}]};
+ try{map.setStyle(fallbackStyle);}catch(err){console.error("Záložní mapový podklad se nepodařilo aktivovat:",err);}
+}
+map.on("error",event=>{if(!x5BaseMapLoaded&&!x5BaseMapFallback)useX5RasterFallback(event?.error?.message||"chyba při načítání stylu");});
+setTimeout(()=>{if(!x5BaseMapLoaded)useX5RasterFallback("vektorový styl se nenačetl do 12 sekund");},12000);
 // Na dotykových zařízeních vypnout tažení mapy jedním prstem, aby gesto patřilo rolování stránky.
 if(window.matchMedia("(pointer: coarse)").matches){map.dragPan.disable();}
 map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),"top-right");
