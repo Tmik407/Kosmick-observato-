@@ -38,26 +38,30 @@ function draw(){if(!state.rows.length)return;let i=state.hour,grid=[];for(let la
 async function fetchMetNoCity(place){
  const lat=Number(place.lat.toFixed(4)),lon=Number(place.lon.toFixed(4)),key=lat+","+lon,cacheKey="x5-newmap-metno:"+key;
  let cached=null;try{cached=JSON.parse(localStorage.getItem(cacheKey)||"null")}catch(_){}
- if(cached?.savedAt&&Date.now()-cached.savedAt<3*60*60*1000&&cached.row?.hourly?.time?.length)return {...cached.row,__cache:{savedAt:cached.savedAt,cached:true}};
  const url="https://api.met.no/weatherapi/locationforecast/2.0/compact?lat="+lat+"&lon="+lon;
- const response=await fetch(url,{mode:"cors",cache:"no-store",signal:AbortSignal.timeout(18000)});
- if(!response.ok)throw Error("MET Norway HTTP "+response.status+" · "+place.name);
- const doc=await response.json(),series=doc?.properties?.timeseries||[];
- if(!series.length)throw Error("MET Norway nevrátilo časovou řadu · "+place.name);
- const time=[],temperature_2m=[],rain=[],snowfall=[],precipitation=[],wind_speed_10m=[],wind_direction_10m=[],wind_gusts_10m=[];
- for(const item of series){
-  const d=item.data?.instant?.details||{},next=item.data?.next_1_hours||item.data?.next_6_hours||item.data?.next_12_hours;
-  const period=item.data?.next_1_hours?1:item.data?.next_6_hours?6:item.data?.next_12_hours?12:1;
-  const amount=Number(next?.details?.precipitation_amount||0)/period;
-  time.push(item.time);temperature_2m.push(Number(d.air_temperature??0));
-  rain.push(amount);precipitation.push(amount);snowfall.push(0);
-  wind_speed_10m.push(Number(d.wind_speed??0)*3.6);
-  wind_direction_10m.push(Number(d.wind_from_direction??0));
-  wind_gusts_10m.push(Number(d.wind_speed_of_gust??d.wind_speed??0)*3.6);
+ try{
+  const response=await fetch(url,{mode:"cors",cache:"no-store",signal:AbortSignal.timeout(18000)});
+  if(!response.ok)throw Error("MET Norway HTTP "+response.status+" · "+place.name);
+  const doc=await response.json(),series=doc?.properties?.timeseries||[];
+  if(!series.length)throw Error("MET Norway nevrátilo časovou řadu · "+place.name);
+  const time=[],temperature_2m=[],rain=[],snowfall=[],precipitation=[],wind_speed_10m=[],wind_direction_10m=[],wind_gusts_10m=[];
+  for(const item of series){
+   const d=item.data?.instant?.details||{},next=item.data?.next_1_hours||item.data?.next_6_hours||item.data?.next_12_hours;
+   const period=item.data?.next_1_hours?1:item.data?.next_6_hours?6:item.data?.next_12_hours?12:1;
+   const amount=Number(next?.details?.precipitation_amount||0)/period;
+   time.push(item.time);temperature_2m.push(Number(d.air_temperature??0));
+   rain.push(amount);precipitation.push(amount);snowfall.push(0);
+   wind_speed_10m.push(Number(d.wind_speed??0)*3.6);
+   wind_direction_10m.push(Number(d.wind_from_direction??0));
+   wind_gusts_10m.push(Number(d.wind_speed_of_gust??d.wind_speed??0)*3.6);
+  }
+  const row={hourly:{time,temperature_2m,rain,snowfall,precipitation,wind_speed_10m,wind_direction_10m,wind_gusts_10m}};
+  const savedAt=Date.now();try{localStorage.setItem(cacheKey,JSON.stringify({savedAt,row}))}catch(_){}
+  row.__cache={savedAt,cached:false};return row;
+ }catch(error){
+  if(cached?.savedAt&&Date.now()-cached.savedAt<3*60*60*1000&&cached.row?.hourly?.time?.length)return {...cached.row,__cache:{savedAt:cached.savedAt,cached:true}};
+  throw error;
  }
- const row={hourly:{time,temperature_2m,rain,snowfall,precipitation,wind_speed_10m,wind_direction_10m,wind_gusts_10m}};
- const savedAt=Date.now();try{localStorage.setItem(cacheKey,JSON.stringify({savedAt,row}))}catch(_){}
- row.__cache={savedAt,cached:false};return row;
 }
 async function loadMetNoFallback(){
  say("Open-Meteo omezuje požadavky · načítám záložní předpověď MET Norway…");
