@@ -123,14 +123,15 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
   <button type="button" data-vortex-layer="temperature" aria-pressed="true">🌡️ Teplotní povrch</button>
   <button type="button" data-vortex-layer="clouds" aria-pressed="true">☁️ Oblačnost</button>
   <button type="button" id="weatherVortexSchematicClouds" aria-pressed="false">☁️ Schematická oblačnost: vypnuta</button>
-  <div id="weatherVortexCloudLayerControls" role="group" aria-label="Samostatné výškové vrstvy oblačnosti" style="display:flex;flex-wrap:wrap;gap:6px;width:100%;margin:2px 0 4px">
-   <button type="button" data-cloud-altitude="0" aria-pressed="true">☁️ Nízká oblačnost</button>
-   <button type="button" data-cloud-altitude="1" aria-pressed="true">🌥️ Střední oblačnost</button>
-   <button type="button" data-cloud-altitude="2" aria-pressed="true">🌤️ Vysoká oblačnost</button>
-  </div>
+
   <button type="button" data-vortex-layer="precipitation" aria-pressed="true">🌧️ Déšť / sníh</button>
   <button type="button" data-vortex-layer="atmosphere" aria-pressed="true">🌐 Atmosféra</button>
   <button type="button" data-vortex-layer="wind" aria-pressed="true">💨 Proudnice větru</button>
+ </div>
+ <div id="weatherVortexCloudLayerControls" role="group" aria-label="Samostatné výškové vrstvy oblačnosti" style="display:flex!important;visibility:visible!important;flex-wrap:wrap;gap:6px;width:100%;margin:7px 0 4px">
+  <button type="button" data-cloud-altitude="0" aria-pressed="true">☁️ Nízká oblačnost</button>
+  <button type="button" data-cloud-altitude="1" aria-pressed="true">🌥️ Střední oblačnost</button>
+  <button type="button" data-cloud-altitude="2" aria-pressed="true">🌤️ Vysoká oblačnost</button>
  </div>
  <div id="weatherVortexStage" style="position:relative;height:470px;min-height:360px;margin-top:10px;border-radius:13px;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#173f61,#071827 72%)">
   <canvas id="weatherVortex3d" style="display:block;width:100%;height:100%;touch-action:pan-y"></canvas>
