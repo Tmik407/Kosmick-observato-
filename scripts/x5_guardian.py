@@ -8,10 +8,8 @@ from __future__ import annotations
 
 import json
 import sys
-import urllib.error
 import urllib.request
 from datetime import datetime, timezone
-from email.utils import parsedate_to_datetime
 
 BASE = "https://tmik407.github.io/Kosmick-observato-"
 PAGE = BASE + "/mapa-cr-3d.html"
@@ -105,11 +103,43 @@ def main() -> int:
     except Exception as exc:
         add("ČHMÚ archiv", "WARN", f"archiv nedostupný nebo neplatný: {type(exc).__name__}: {exc}")
 
-    print("\n## Shrnutí")
-    for state in ("OK", "WARN", "FAIL"):
-        print(f"- {state}: {sum(1 for _, s, _ in checks if s == state)}")
-    print("\nPoznámka: jde o serverovou dostupnost API. Tato kontrola nepotvrzuje CORS, vykreslení mapy ani chování prohlížeče na tabletu.")
-    return 1 if any(state == "FAIL" for _, state, _ in checks) else 0
+    counts = {state: sum(1 for _, item_state, _ in checks if item_state == state) for state in ("OK", "WARN", "FAIL")}
+    diagnoses = {
+        "GitHub Pages / HTML": "Prověřit GitHub Pages deployment, cestu stránky a poslední workflow.",
+        "Open-Meteo": "Prověřit HTTP odpověď, limit požadavků, síť a strukturu hourly.time.",
+        "ECMWF IFS přes Open-Meteo": "Prověřit dostupnost endpointu ECMWF a parametry požadavku; jiné modely mohou fungovat nezávisle.",
+        "MET Norway": "Prověřit odpověď API, síť a identifikační User-Agent; při výpadku ponechat jasně označenou zálohu.",
+        "ČHMÚ archiv": "Prověřit aktualizační workflow archivu, generated_utc a observed_utc; stará měření neoznačovat jako aktuální.",
+    }
+    lines = [
+        "# X-5 AI System Guardian · diagnostický protokol",
+        f"Kontrola UTC: {datetime.now(timezone.utc).isoformat(timespec='seconds')}",
+        "",
+        "| Stav | Počet |", "|---|---:|",
+        *(f"| {state} | {counts[state]} |" for state in ("OK", "WARN", "FAIL")),
+        "",
+        "## Výsledky kontrol",
+        "| Kontrola | Stav | Detail |", "|---|---|---|",
+        *(f"| {name} | {state} | {detail.replace('|', '/')} |" for name, state, detail in checks),
+        "",
+        "## Doporučené další kroky",
+    ]
+    issues = [(name, state, detail) for name, state, detail in checks if state != "OK"]
+    if issues:
+        lines.extend(f"- **{name} ({state}):** {diagnoses.get(name, 'Prověřit zdroj a jeho poslední chybovou odpověď.')} Detail: {detail}" for name, state, detail in issues)
+    else:
+        lines.append("- V rozsahu těchto serverových kontrol nebyl zjištěn problém.")
+    lines.extend([
+        "",
+        "> Omezení: serverová dostupnost API nepotvrzuje CORS, vykreslení mapy, JavaScript ani gesta v Android prohlížeči. Doporučení jsou pravidlová diagnostika, nikoli automatická oprava.",
+    ])
+    report = "\n".join(lines) + "\n"
+    print("\n" + report)
+    summary_path = __import__("os").environ.get("GITHUB_STEP_SUMMARY")
+    if summary_path:
+        with open(summary_path, "a", encoding="utf-8") as summary:
+            summary.write(report)
+    return 1 if counts["FAIL"] else 0
 
 
 if __name__ == "__main__":
