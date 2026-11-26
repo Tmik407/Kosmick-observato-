@@ -1348,7 +1348,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    function colorForTemperature(t){const u=Math.max(0,Math.min(1,(t-scaleMin)/(scaleMax-scaleMin)));if(u<.25)return cA.copy(coldColor).lerp(coolColor,u*4);if(u<.5)return cA.copy(coolColor).lerp(mildColor,(u-.25)*4);if(u<.75)return cA.copy(mildColor).lerp(warmColor,(u-.5)*4);return cA.copy(warmColor).lerp(hotColor,(u-.75)*4)}
    for(let i=0;i<colors.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);let weighted=0,total=0,nearest=Infinity,nearestTemp=avgTemp;for(const q of tempPoints){const d2=(q.x-x)*(q.x-x)+(q.z-z)*(q.z-z);if(d2<nearest){nearest=d2;nearestTemp=q.t}const w=1/Math.max(.025,d2*d2);weighted+=q.t*w;total+=w}const localTemp=total?weighted/total:nearestTemp;const col=colorForTemperature(localTemp);colors.setXYZ(i,col.r,col.g,col.b)}
    colors.needsUpdate=true;
-   patches[0].material.opacity=cold?.78:.4;patches[1].material.opacity=warm?.8:.42;patches[2].material.opacity=.58;
+   // Dekorativní barevné disky byly odstraněny; teplotní pole zůstává vykreslené v barvách reliéfu.
    // Částice se zobrazují jen v oblastech, kde interpolovaná předpověď hlásí daný jev.
    const rainPoints=weatherPoints.filter(q=>q.rain>.01).sort((a,b)=>b.rain-a.rain),snowPoints=weatherPoints.filter(q=>q.snow>.001).sort((a,b)=>b.snow-a.snow);
    const rain=rainPoints.length>0,snow=snowPoints.length>0;
