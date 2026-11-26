@@ -66,6 +66,15 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
 
 
 #analyticsPanel{margin-top:12px}#analyticsPanel .chart-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}#analyticsPanel .chart-card{border:1px solid #dce8ef;border-radius:11px;padding:10px;min-width:0;background:#fbfdff}#analyticsPanel .chart-card h3{font-size:13px;margin:0 0 5px;color:#31566d}#analyticsPanel svg{display:block;width:100%;height:auto;overflow:visible}#analyticsPanel .chart-note{font-size:11px;color:#60798b;margin-top:4px}@media(max-width:760px){#analyticsPanel .chart-grid{grid-template-columns:1fr}}
+
+#weatherVortexCloudLayerControls button[aria-pressed="true"]{background:#d7f1ff!important;border:2px solid #2587ad!important;box-shadow:inset 0 0 0 1px #ffffff,0 1px 5px #1b789933;font-weight:800}
+#weatherVortexCloudLayerControls button[aria-pressed="false"]{background:#f1f5f8!important;border:1px solid #aebfca!important;color:#617583!important;opacity:.78}
+#weatherVortexCloudAltitudeStatus{margin:2px 0 5px;padding:7px 10px;border:1px solid #c5dce8;border-radius:9px;background:#f1f9fd;color:#31566d;font-size:12px;font-weight:700}
+#weatherVortexStage{height:clamp(440px,56vw,620px)!important;min-height:420px}
+#forecastTimelinePanel .timeline-actions button{min-height:44px;padding:10px 13px}
+#forecastTimelinePanel input[type="range"]{min-height:32px;touch-action:pan-x}
+@media(max-width:700px){#weatherVortexStage{height:460px!important;min-height:400px}}
+@media(max-width:420px){#weatherVortexStage{height:420px!important;min-height:380px}}
 </style>
 </head>
 <body>
@@ -110,15 +119,46 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
  <p class="chart-note" id="analyticsTime">Grafy se aktualizují podle dostupné hodinové předpovědi a zvoleného času.</p>
 </section>
 <section class="panel" style="margin-top:12px">
- <div class="row" style="justify-content:space-between;flex-wrap:wrap"><div><h2 style="margin:0">🌪️ WEATHER VORTEX 3D X-5</h2><p class="small" style="margin:4px 0 0">Prostorová vizualizace atmosférického proudění nad Českou republikou</p></div><div class="row" style="gap:6px"><button id="weatherVortexReset" type="button">↺ Výchozí pohled</button><button id="weatherVortexToggle" aria-pressed="true">⏸ Pozastavit animaci</button></div></div>
+ <div class="row" style="justify-content:space-between;flex-wrap:wrap"><div><h2 style="margin:0">🌪️ WEATHER VORTEX 3D X-5</h2><p class="small" style="margin:4px 0 0">Prostorová vizualizace atmosférického proudění nad Českou republikou</p><a href="./x5-3d-model-studio.html" target="_blank" rel="noopener" style="display:inline-flex;margin-top:7px;padding:8px 11px;border:1px solid #75b5cc;border-radius:9px;background:#e7f6fc;color:#17445a;font-weight:750;text-decoration:none">🧊 Otevřít X-5 3D Model Studio</a></div><div class="row" style="gap:6px"><button id="weatherVortexReset" type="button">↺ Výchozí pohled</button><button id="weatherVortexToggle" aria-pressed="true">⏸ Pozastavit animaci</button></div></div>
  <div style="margin-top:10px;font-size:13px;font-weight:700;color:#31566d">Ovládání 3D vrstev – zapni nebo vypni jednotlivé jevy:</div>
  <div id="weatherVortexLayerControls" class="controls" style="display:flex!important;visibility:visible!important;flex-wrap:wrap;gap:6px;margin-top:7px">
   <button type="button" data-vortex-layer="terrain" aria-pressed="true">🗺️ Reliéf ČR</button>
   <button type="button" data-vortex-layer="temperature" aria-pressed="true">🌡️ Teplotní povrch</button>
   <button type="button" data-vortex-layer="clouds" aria-pressed="true">☁️ Oblačnost</button>
+  <button type="button" id="weatherVortexSchematicClouds" aria-pressed="false">☁️ Schematická oblačnost: vypnuta</button>
+
   <button type="button" data-vortex-layer="precipitation" aria-pressed="true">🌧️ Déšť / sníh</button>
   <button type="button" data-vortex-layer="atmosphere" aria-pressed="true">🌐 Atmosféra</button>
   <button type="button" data-vortex-layer="wind" aria-pressed="true">💨 Proudnice větru</button>
+ </div>
+ <div id="weatherVortexCloudLayerControls" role="group" aria-label="Samostatné výškové vrstvy oblačnosti" style="display:flex!important;visibility:visible!important;flex-wrap:wrap;gap:6px;width:100%;margin:7px 0 4px">
+  <button type="button" data-cloud-altitude="0" aria-pressed="true">☁️ Nízká oblačnost</button>
+  <button type="button" data-cloud-altitude="1" aria-pressed="true">🌥️ Střední oblačnost</button>
+  <button type="button" data-cloud-altitude="2" aria-pressed="true">🌤️ Vysoká oblačnost</button>
+ </div>
+ <div id="weatherVortexCloudAltitudeStatus" role="status" aria-live="polite">Aktivní výškové hladiny: nízká, střední a vysoká · výška je schematická, nikoli měření v km.</div>
+ <div id="weatherVortexCloudTuning" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin:6px 0 8px">
+  <section class="cloud-tune" data-cloud-tune="0" style="padding:9px;border:1px solid #c9dce7;border-radius:10px;background:#f7fbfe">
+   <b>☁️ Nízká oblačnost</b>
+   <label style="display:block;font-size:12px;margin-top:6px">Intenzita <output id="cloudIntensityValue0">100 %</output></label>
+   <input type="range" min="50" max="150" step="5" value="100" data-cloud-intensity="0" aria-label="Intenzita nízké oblačnosti" style="width:100%;min-height:28px">
+   <label style="display:block;font-size:12px;margin-top:4px">Viditelnost <output id="cloudOpacityValue0">100 %</output></label>
+   <input type="range" min="0" max="100" step="5" value="100" data-cloud-opacity="0" aria-label="Viditelnost nízké oblačnosti" style="width:100%;min-height:28px">
+  </section>
+  <section class="cloud-tune" data-cloud-tune="1" style="padding:9px;border:1px solid #c9dce7;border-radius:10px;background:#f7fbfe">
+   <b>🌥️ Střední oblačnost</b>
+   <label style="display:block;font-size:12px;margin-top:6px">Intenzita <output id="cloudIntensityValue1">100 %</output></label>
+   <input type="range" min="50" max="150" step="5" value="100" data-cloud-intensity="1" aria-label="Intenzita střední oblačnosti" style="width:100%;min-height:28px">
+   <label style="display:block;font-size:12px;margin-top:4px">Viditelnost <output id="cloudOpacityValue1">100 %</output></label>
+   <input type="range" min="0" max="100" step="5" value="100" data-cloud-opacity="1" aria-label="Viditelnost střední oblačnosti" style="width:100%;min-height:28px">
+  </section>
+  <section class="cloud-tune" data-cloud-tune="2" style="padding:9px;border:1px solid #c9dce7;border-radius:10px;background:#f7fbfe">
+   <b>🌤️ Vysoká oblačnost</b>
+   <label style="display:block;font-size:12px;margin-top:6px">Intenzita <output id="cloudIntensityValue2">100 %</output></label>
+   <input type="range" min="50" max="150" step="5" value="100" data-cloud-intensity="2" aria-label="Intenzita vysoké oblačnosti" style="width:100%;min-height:28px">
+   <label style="display:block;font-size:12px;margin-top:4px">Viditelnost <output id="cloudOpacityValue2">100 %</output></label>
+   <input type="range" min="0" max="100" step="5" value="100" data-cloud-opacity="2" aria-label="Viditelnost vysoké oblačnosti" style="width:100%;min-height:28px">
+  </section>
  </div>
  <div id="weatherVortexStage" style="position:relative;height:470px;min-height:360px;margin-top:10px;border-radius:13px;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#173f61,#071827 72%)">
   <canvas id="weatherVortex3d" style="display:block;width:100%;height:100%;touch-action:pan-y"></canvas>
@@ -131,6 +171,7 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
   </div>
   <div style="position:absolute;left:10px;bottom:10px;display:flex;gap:7px;flex-wrap:wrap;color:#eaf7ff;font-size:10px;pointer-events:none;background:#061526c9;padding:6px 8px;border-radius:8px"><span>🔵 Chlad</span><span>🟢 Mírno</span><span>🟠 Teplo</span><span>💧 Déšť</span><span>❄️ Sníh</span></div>
   <div id="weatherTerrainBadge" style="position:absolute;right:10px;top:58px;padding:5px 8px;border:1px solid #52738d;border-radius:7px;background:#061526d9;color:#dff4ff;font-size:10px;pointer-events:none">Načítám výšková data…</div>
+  <div id="weatherBoundaryBadge" role="status" aria-live="polite" style="position:absolute;right:10px;top:88px;max-width:72%;padding:5px 8px;border:1px solid #52738d;border-radius:7px;background:#061526d9;color:#dff4ff;font-size:10px;pointer-events:none">Hranice ČR: ověřuji oficiální geometrii…</div>
   <div id="weatherAltitudeScale" aria-label="Schematická výšková stupnice atmosféry" style="position:absolute;left:10px;top:104px;z-index:2;width:48px;padding:7px 6px;border:1px solid #52738d;border-radius:8px;background:#061526d9;color:#eaf7ff;font-size:9px;line-height:1.2;pointer-events:none">
    <div style="font-weight:700;text-align:center;margin-bottom:7px">Výška</div>
    <div style="display:flex;gap:5px;align-items:stretch;height:112px">
@@ -147,6 +188,7 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
 <div id="weatherVortexCityForecast" aria-live="polite" style="display:none;margin-top:10px;padding:12px 14px;border:1px solid #b8d5e3;border-radius:12px;background:linear-gradient(135deg,#f5fbff,#eaf5fa);color:#17394d;white-space:pre-line;line-height:1.55;font-size:13px;overflow-wrap:anywhere"></div>
 <p class="small" style="margin:8px 0 0">Ovládání modelu: dvěma prsty otáčej a přibližuj, tažením myší otáčej. Jedním prstem můžeš stránku normálně posouvat.</p>
  <p class="small" style="margin:8px 0 0">Proudění je schematicky vizualizováno podle aktuálně načtených meteorologických dat. Tvar víru a reliéfní plocha nejsou samostatným měřením ani výstražným modelem.</p>
+ <p class="small" style="margin:6px 0 0">Schematická oblačnost je pouze ilustrační vrstva pro zobrazení 3D mraků; nepředstavuje předpověď ani naměřenou oblačnost. Mraky jsou rozděleny do nízké, střední a vysoké výškové hladiny s odlišnou průhledností a rychlostí pohybu.</p>
 </section>
 <section class="panel" id="forecastTimelinePanel" aria-label="Časová osa meteorologické předpovědi">
  <h2 style="margin:0 0 8px">⏱️ Časová osa předpovědi</h2>
@@ -160,7 +202,6 @@ select{border:1px solid #b9d2e1;background:#fff;border-radius:8px;padding:8px;co
  <p class="small" id="validTime">Čas platnosti bude uveden po načtení dat.</p>
  <p class="small" id="precipTest" aria-live="polite">Posuň časovou osu a sleduj změny počasí na mapě a v navazujícím 3D modelu.</p>
 </section>
->
 </main>
 <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
 <script>
@@ -233,7 +274,8 @@ async function fetchWeatherApi(url,options={}){
   const run=weatherApiQueue.then(async()=>{
    const remaining=Math.max(0,weatherApiCooldownUntil-Date.now());
    if(remaining>0)throw Error("Open-Meteo má aktivní ochrannou pauzu ještě "+Math.ceil(remaining/1000)+" s.");
-   const response=await fetch(url,{...options,cache:options.cache||"default"});
+   const controller=new AbortController();const requestTimer=setTimeout(()=>controller.abort(),20000);
+   let response;try{response=await fetch(url,{...options,cache:options.cache||"default",signal:controller.signal})}catch(err){if(err?.name==="AbortError")throw Error("Open-Meteo: požadavek překročil limit 20 s.");throw err}finally{clearTimeout(requestTimer)}
    if(response.status===429){
     const header=Number(response.headers.get("Retry-After"));
     const pause=Number.isFinite(header)&&header>0?Math.min(120000,header*1000):60000;
@@ -361,16 +403,19 @@ function syncForecastTimeline(){
 }
 function applyHour(){
  const i=state.hour;if(!state.rows.length)return;
- // Odpověď Open-Meteo může dorazit dříve než se dokončí načtení stylu MapLibre.
- // V takovém případě počkáme na zdroje mapy; map load následně znovu spustí načtení.
- if(!map||!map.getSource("weather-grid")||!map.getSource("cities")){status("Předpověď načtena · čekám na zdroje mapy…");map?.once("idle",()=>{if(state.rows.length)applyHour()});return;}
+ // Časová osa a 3D model se aktualizují nezávisle na načtení dlaždic MapLibre.
+ const time=state.times[i];window.__weatherVortexCurrentValidTime=time;window.__weatherVortexSetValidTime?.(time);
+ syncForecastTimeline();$("validTime").textContent="Platnost: "+new Date(time).toLocaleString("cs-CZ")+" · modelová předpověď";
  const features=all.map((p,n)=>weatherFeature(p,state.rows[n],i));
+ // 3D model dostane předpověď nezávisle na načtení dlaždic a stylu MapLibre.
+ window.__weatherVortexSetData?.(features.slice(0,grid.length));
+ // Mapová vrstva může čekat na styl; časová osa a 3D model ale mohou běžet dál.
+ if(!map||!map.getSource("weather-grid")||!map.getSource("cities")){status("Předpověď načtena · čekám na zdroje mapy…");map?.once("idle",()=>{if(state.rows.length)applyHour()});return;}
  map.getSource("weather-grid").setData({type:"FeatureCollection",features:features.slice(0,grid.length)});
  const cityFeatures=features.slice(grid.length).map(f=>{const c=cities.find(x=>x.lat===f.geometry.coordinates[1]&&x.lon===f.geometry.coordinates[0]);return {...f,properties:{...f.properties,name:c.name}}});
  map.getSource("cities").setData({type:"FeatureCollection",features:cityFeatures});
  state.features=features.slice(0,grid.length);
-  window.__weatherVortexSetData?.(state.features);
- const time=state.times[i];window.__weatherVortexCurrentValidTime=time;window.__weatherVortexSetValidTime?.(time);syncForecastTimeline();$("validTime").textContent="Platnost: "+new Date(time).toLocaleString("cs-CZ")+" · modelová předpověď";
+
  const avg=cityFeatures.reduce((a,f)=>a+f.properties.temp,0)/cityFeatures.length;
  const rainCount=cityFeatures.filter(f=>f.properties.rain>.1).length,snowCount=cityFeatures.filter(f=>f.properties.snow>.1).length;
  $("weatherSummary").textContent="Průměrná teplota ve sledovaných městech: "+avg.toFixed(1)+" °C. Déšť očekáván v "+rainCount+" městech, sněžení v "+snowCount+" městech. Klepnutím na bod města zobrazíš podrobnosti.";
@@ -625,6 +670,7 @@ function loadWeather(force=false,retry=false){
  const makeUrl=places=>"https://api.open-meteo.com/v1/forecast?latitude="+places.map(p=>p.lat).join(",")+"&longitude="+places.map(p=>p.lon).join(",")+"&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m&forecast_days=4&timezone=Europe%2FPrague";
  const nearestCityRow=p=>{let best=0,distance=Infinity;for(let i=0;i<cities.length;i++){const d=(p.lat-cities[i].lat)**2+(p.lon-cities[i].lon)**2;if(d<distance){distance=d;best=i}}return best};
  const useRows=(rows,source="Open-Meteo")=>{
+  $("forecastTimeline").disabled=false;$("forecastHour").disabled=false;
   state.rows=rows;state.times=rows[0].hourly.time;state.forecastSource=source;state.lastWeatherLoad=Date.now();window.__weatherVortexUpdateDataClock?.(state.lastWeatherLoad,source,"fresh");
   try{localStorage.setItem("weatherVortexForecastCache",JSON.stringify({savedAt:Date.now(),rows,times:state.times,source}))}catch(_){}
   const select=$("forecastHour");select.innerHTML=state.times.map((t,i)=>'<option value="'+i+'">'+new Date(t).toLocaleString("cs-CZ",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit"})+'</option>').join("");
@@ -668,8 +714,8 @@ function loadWeather(force=false,retry=false){
     $("weatherSummary").textContent="Zobrazuji poslední uloženou předpověď. Open-Meteo dočasně omezilo požadavky (HTTP 429); data se automaticky zkusí obnovit.";
    }else{
     window.__weatherVortexSetSourceStatus?.("openmeteo","bad","nedostupné");window.__weatherVortexSetSourceStatus?.("metnorway","bad","nedostupné");
-    status("Předpověď je dočasně nedostupná");
-    $("weatherSummary").textContent=error.message+" · Mapa a stanice ČHMÚ zůstávají dostupné.";
+    status("Předpověď je dočasně nedostupná");$("forecastTimelineLabel").textContent="Předpověď dočasně nedostupná";$("forecastTimeline").disabled=true;$("forecastHour").disabled=true;$("validTime").textContent="Časová osa čeká na obnovení meteorologického zdroje.";
+     $("weatherSummary").textContent=error.message+" · Mapa a stanice ČHMÚ zůstávají dostupné.";
    }
     // Po limitu HTTP 429 provedeme pouze jeden automatický opakovaný pokus.
     if(/429|ochrannou pauzu|aktivní ochrannou pauzu/i.test(String(error.message))&&state.weatherRetryCount<1&&!state.weatherRetryTimer){
@@ -713,6 +759,8 @@ window.__weatherVortexTogglePrecipitation=()=>{state.visible.precipitation=!stat
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){if(state.rows.length)loadWeather();if(!state.lastStationsLoad||Date.now()-state.lastStationsLoad>15*60*1000)loadStations()}});
 window.setInterval(()=>{if(!document.hidden){loadWeather();loadStations()}},15*60*1000);
 map.on("load",()=>{if(!state.raf)animateFlow()});
+ // Záložní start předpovědi nezávisí na události load mapových dlaždic.
+ setTimeout(()=>{if(!state.rows.length&&!state.weatherLoading)loadWeather()},5000);
 })();
 </script>
 <script type="module">
@@ -723,7 +771,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
  const layerControls=document.getElementById('weatherVortexLayerControls');
  if(!canvas||!host)return;
  let renderer,scene,camera,raf=0,paused=false,last=0,windSpeed=8,windDir=250,avgTemp=5,maxPrecip=0,orbitYaw=0,orbitPitch=.48,orbitRadius=7.2;
-  let validTimeLabel='',avgCloudCover=0,tempSampler=null;
+  let validTimeLabel='',avgCloudCover=0,tempSampler=null,showSchematicClouds=false;
  try{
   const lowPower=window.matchMedia('(pointer: coarse)').matches;renderer=new THREE.WebGLRenderer({canvas,antialias:!lowPower,alpha:true,powerPreference:'low-power'});renderer.setPixelRatio(Math.min(devicePixelRatio||1,lowPower?1.1:1.5));
   scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(38,1,.1,100);camera.position.set(0,3.8,6.9);camera.lookAt(0,.25,0);
@@ -738,33 +786,77 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   const cloudGroup=new THREE.Group();scene.add(cloudGroup);const clouds=[];
   const cloudPuffGeo=new THREE.SphereGeometry(1,12,10);
   const cloudMats=[
-   new THREE.MeshStandardMaterial({color:0x527caa,transparent:true,opacity:.30,roughness:1,depthWrite:false}),
-   new THREE.MeshStandardMaterial({color:0xa8d7f2,transparent:true,opacity:.38,roughness:1,depthWrite:false}),
-   new THREE.MeshStandardMaterial({color:0xe8f7ff,transparent:true,opacity:.48,roughness:1,depthWrite:false})
+   new THREE.MeshStandardMaterial({color:0x6689ad,transparent:true,opacity:.22,roughness:1,depthWrite:false}),
+   new THREE.MeshStandardMaterial({color:0xb8dcf2,transparent:true,opacity:.28,roughness:1,depthWrite:false}),
+   new THREE.MeshStandardMaterial({color:0xf2faff,transparent:true,opacity:.34,roughness:1,depthWrite:false})
   ];
-  for(let n=0;n<18;n++){
+  const cloudCount=lowPower?14:24;
+  let schematicCloudPositions=null;
+  function getSchematicCloudPositions(){
+   if(schematicCloudPositions)return schematicCloudPositions;
+   const candidates=[];
+   for(let z=-3.15;z<=3.15;z+=.38)for(let x=-3.25;x<=3.25;x+=.38){
+    if(insideCzech(x,z)&&insideCzech(x-.20,z)&&insideCzech(x+.20,z)&&insideCzech(x,z-.14)&&insideCzech(x,z+.14))candidates.push({x,z});
+   }
+   const selected=[];
+   if(candidates.length){
+    let first=0,best=Infinity;
+    candidates.forEach((p,i)=>{const d=p.x*p.x+p.z*p.z;if(d<best){best=d;first=i}});
+    selected.push(candidates.splice(first,1)[0]);
+    while(selected.length<cloudCount&&candidates.length){
+     let pick=0,score=-1;
+     candidates.forEach((p,i)=>{const nearest=Math.min(...selected.map(q=>(p.x-q.x)**2+(p.z-q.z)**2));if(nearest>score){score=nearest;pick=i}});
+     selected.push(candidates.splice(pick,1)[0]);
+    }
+   }
+   schematicCloudPositions=selected;
+   return selected;
+  }
+  for(let n=0;n<cloudCount;n++){
    const g=new THREE.Group(),a=n*2.399,r=.45+(n%6)*.43,level=n%3,y=1.05+level*.55;
+   g.userData.cloudLayer=level;g.userData.cloudAvailable=false;
+   const layerCloudMats=cloudMats.map(mat=>mat.clone());
+   g.userData.layerMaterials=layerCloudMats;
    const puffData=[
     [-.30,0,0,.28,.16,.22,0],[-.12,.12,.02,.34,.22,.27,1],
     [.12,.08,-.03,.32,.20,.25,2],[.34,-.015,.02,.25,.15,.21,1],
     [-.04,-.06,.17,.27,.15,.22,0],[.16,.02,-.17,.28,.16,.22,2],
-    [-.30,-.07,-.12,.22,.13,.18,1]
+    [-.30,-.07,-.12,.22,.13,.18,1],
+    [-.12,.20,.02,.58,.045,.13,2],[.22,.17,-.04,.48,.035,.11,1],
+    [-.34,.12,.09,.38,.03,.09,2],
+    [-.10,.30,.015,.22,.17,.20,2],[.30,.22,-.015,.20,.14,.18,2]
    ];
-   for(const [px,py,pz,sx,sy,sz,mi] of puffData){const puff=new THREE.Mesh(cloudPuffGeo,cloudMats[mi]);puff.position.set(px,py,pz);puff.scale.set(sx,sy,sz);g.add(puff)}
+   for(const [px,py,pz,sx,sy,sz,mi] of puffData){const puff=new THREE.Mesh(cloudPuffGeo,layerCloudMats[mi]);puff.position.set(px,py,pz);puff.scale.set(sx,sy,sz);g.add(puff)}
    g.position.set(Math.cos(a)*r,y,Math.sin(a)*r);g.rotation.y=a*.35;cloudGroup.add(g);clouds.push(g)
   }
+  // Bouřkové věže a záblesky jsou schematické efekty odvozené z předpovězené oblačnosti a deště.
+  // Nejde o detekci skutečných blesků: zdroj neposkytuje lokalizaci elektrických výbojů.
+  const stormCloudGroup=new THREE.Group(),lightningGroup=new THREE.Group();scene.add(stormCloudGroup,lightningGroup);
+  const stormClouds=[],lightningBolts=[],stormCloudMat=new THREE.MeshStandardMaterial({color:0x263b52,roughness:1,transparent:true,opacity:.72,depthWrite:false});
+  const stormPuffGeo=new THREE.SphereGeometry(1,10,8),stormCount=lowPower?2:3;
+  for(let n=0;n<stormCount;n++){
+   const g=new THREE.Group();
+   [[0,0,0,.42,.25,.38],[-.28,.08,.04,.34,.22,.31],[.28,.1,-.04,.35,.24,.32],[0,.28,0,.25,.48,.25],[-.04,.58,0,.36,.16,.28],[.22,.52,.02,.28,.13,.22]].forEach(([x,y,z,sx,sy,sz])=>{const m=new THREE.Mesh(stormPuffGeo,stormCloudMat);m.position.set(x,y,z);m.scale.set(sx,sy,sz);g.add(m)});
+   g.visible=false;stormCloudGroup.add(g);stormClouds.push(g);
+   const boltGroup=new THREE.Group(),boltMat=new THREE.LineBasicMaterial({color:0xd9f4ff,transparent:true,opacity:0,linewidth:2,depthWrite:false});
+   const pts=[new THREE.Vector3(0,0,0),new THREE.Vector3(-.09,-.24,.02),new THREE.Vector3(.07,-.48,.05),new THREE.Vector3(-.02,-.72,.08),new THREE.Vector3(.12,-.96,.1)];
+   const bolt=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),boltMat);boltGroup.add(bolt);boltGroup.visible=false;lightningGroup.add(boltGroup);lightningBolts.push({group:boltGroup,material:boltMat,phase:n*2.17});
+  }
+  let stormIntensity=0;
   const light=new THREE.DirectionalLight(0xffffff,2);light.position.set(3,8,5);scene.add(light);
-  const base=new THREE.Mesh(new THREE.CylinderGeometry(4.8,5,.25,96),new THREE.MeshStandardMaterial({color:0x123b55,roughness:.8}));base.position.y=-.38;scene.add(base);
-  const grid=new THREE.GridHelper(9.2,26,0x58b7d5,0x28617d);grid.position.y=-.12;scene.add(grid);
+  // Modrý válcový podklad byl odstraněn: po oříznutí reliéfu vytvářel dojem dalšího území mimo ČR.
   // 3D reliéf ČR: schematická výšková mapa s polohou hlavních pohoří.
   // Výšky jsou vizualizační aproximace, nikoli naměřený DEM model.
-  const terrainGeo=new THREE.PlaneGeometry(7.4,7.4,300,300);terrainGeo.rotateX(-Math.PI/2);
-  const terrainPos=terrainGeo.attributes.position,terrainColors=[];
+  let terrainGeo=new THREE.PlaneGeometry(7.4,7.4,360,360);terrainGeo.rotateX(-Math.PI/2);
+  let terrainPos=terrainGeo.attributes.position,terrainColors=[];
   // Zjednodušený obrys státního území ČR (WGS84, kartografická generalizace).
-  const czBorderLL=[[12.09,50.26],[12.25,50.55],[12.55,50.75],[12.95,50.82],[13.35,50.90],[13.75,50.74],[14.20,50.86],[14.65,50.95],[15.05,50.88],[15.45,50.92],[15.85,50.78],[16.25,50.82],[16.65,50.75],[17.05,50.70],[17.45,50.55],[17.80,50.45],[18.20,50.25],[18.55,50.18],[18.85,50.05],[18.75,49.78],[18.55,49.55],[18.35,49.32],[18.20,49.05],[17.90,48.88],[17.55,48.78],[17.15,48.82],[16.75,48.72],[16.35,48.65],[15.95,48.70],[15.55,48.78],[15.10,48.72],[14.65,48.68],[14.20,48.72],[13.80,48.78],[13.40,48.75],[13.05,48.85],[12.75,49.05],[12.45,49.25],[12.25,49.55],[12.10,49.85],[12.09,50.26]];
-  const czBorder=czBorderLL.map(([lon,lat])=>({x:((lon-12.15)/(18.55-12.15))*7.2-3.6,z:((50.95-lat)/(50.95-48.65))*7.2-3.6}));
+  let czBorderLL=[[12.09,50.26],[12.25,50.55],[12.55,50.75],[12.95,50.82],[13.35,50.90],[13.75,50.74],[14.20,50.86],[14.65,50.95],[15.05,50.88],[15.45,50.92],[15.85,50.78],[16.25,50.82],[16.65,50.75],[17.05,50.70],[17.45,50.55],[17.80,50.45],[18.20,50.25],[18.55,50.18],[18.85,50.05],[18.75,49.78],[18.55,49.55],[18.35,49.32],[18.20,49.05],[17.90,48.88],[17.55,48.78],[17.15,48.82],[16.75,48.72],[16.35,48.65],[15.95,48.70],[15.55,48.78],[15.10,48.72],[14.65,48.68],[14.20,48.72],[13.80,48.78],[13.40,48.75],[13.05,48.85],[12.75,49.05],[12.45,49.25],[12.25,49.55],[12.10,49.85],[12.09,50.26]];
+  let czBorderControl=czBorderLL.map(([lon,lat])=>({x:((lon-12.09)/(18.85-12.09))*7.2-3.6,z:((49.835-lat)/(18.85-12.09))*7.2*1.563}));
+  // Pro ořez reliéfu používáme hustě vzorkovaný hladký obrys, nikoli hrubé kontrolní body.
+  let czBorderCurve=new THREE.CatmullRomCurve3(czBorderControl.map(p=>new THREE.Vector3(p.x,0,p.z)),true,'centripetal',.32);
+  let czBorder=czBorderCurve.getPoints(720).map(p=>({x:p.x,z:p.z}));
   function insideCzech(x,z){let inside=false;for(let i=0,j=czBorder.length-1;i<czBorder.length;j=i++){const a=czBorder[i],b=czBorder[j];if(((a.z>z)!==(b.z>z))&&(x<(b.x-a.x)*(z-a.z)/(b.z-a.z)+a.x))inside=!inside;}return inside}
-  function clipToCzech(geo){const pos=geo.attributes.position,idx=geo.index;if(!idx)return;const kept=[];for(let i=0;i<idx.count;i+=3){const ia=idx.getX(i),ib=idx.getX(i+1),ic=idx.getX(i+2),cx=(pos.getX(ia)+pos.getX(ib)+pos.getX(ic))/3,cz=(pos.getZ(ia)+pos.getZ(ib)+pos.getZ(ic))/3;if(insideCzech(cx,cz))kept.push(ia,ib,ic)}geo.setIndex(kept);geo.computeVertexNormals()}
+  function clipToCzech(geo){const pos=geo.attributes.position,idx=geo.index;if(!idx)return;const kept=[];for(let i=0;i<idx.count;i+=3){const ia=idx.getX(i),ib=idx.getX(i+1),ic=idx.getX(i+2),ax=pos.getX(ia),az=pos.getZ(ia),bx=pos.getX(ib),bz=pos.getZ(ib),cx=pos.getX(ic),cz=pos.getZ(ic),a=insideCzech(ax,az),b=insideCzech(bx,bz),d=insideCzech(cx,cz),m1=insideCzech((ax+bx)/2,(az+bz)/2),m2=insideCzech((bx+cx)/2,(bz+cz)/2),m3=insideCzech((cx+ax)/2,(cz+az)/2),center=insideCzech((ax+bx+cx)/3,(az+bz+cz)/3);if(a&&b&&d&&m1&&m2&&m3&&center)kept.push(ia,ib,ic)}geo.setIndex(kept);geo.computeVertexNormals()}
   clipToCzech(terrainGeo);
   const terrainPeaks=[
    {x:-2.45,z:-1.75,a:.28,sx:.72,sz:.42}, // Krušné hory
@@ -788,10 +880,21 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   terrainGeo.setAttribute('color',new THREE.Float32BufferAttribute(terrainColors,3));terrainGeo.computeVertexNormals();
   const terrain=new THREE.Mesh(terrainGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.94,metalness:0,side:THREE.DoubleSide}));terrain.position.y=-.085;scene.add(terrain);
   // Jasná hranice mapy ČR a jemný okraj reliéfu.
-  const borderPts=czBorder.map(p=>new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.075,p.z));const borderCurve=new THREE.CatmullRomCurve3(borderPts,true,'centripetal');const borderOuter=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,320,.042,8,true),new THREE.MeshBasicMaterial({color:0x08283c,transparent:true,opacity:.96,depthTest:true}));const borderLine=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,320,.019,8,true),new THREE.MeshBasicMaterial({color:0x9beaff,transparent:true,opacity:.92,depthTest:true}));const borderGlow=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,320,.085,8,true),new THREE.MeshBasicMaterial({color:0x20bfff,transparent:true,opacity:.17,depthWrite:false,blending:THREE.AdditiveBlending,depthTest:true}));
-  borderGlow.renderOrder=33;borderOuter.renderOrder=34;borderLine.renderOrder=35;scene.add(borderGlow,borderOuter,borderLine);
+  // Zvýrazněná státní hranice s jemným světelným lemem.
+  const borderPts=czBorder.map(p=>new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.115,p.z));
+  // Uzavřená centripetální křivka omezuje hranatý vzhled zjednodušených hraničních bodů.
+  // Geometrie hranice zůstává oddělena od terénu a je čitelná i při změně úhlu kamery.
+  const borderCurve=new THREE.CatmullRomCurve3(borderPts,true,'centripetal',.35);
+  // Třívrstvá hranice: široký tmavý lem, jasná tyrkysová kontura a jemné vnitřní světlo.
+  const borderOuter=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,900,.038,8,true),new THREE.MeshBasicMaterial({color:0x031522,transparent:true,opacity:1,depthTest:false,depthWrite:false}));
+  const borderLine=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,900,.024,8,true),new THREE.MeshBasicMaterial({color:0x70eaff,transparent:true,opacity:1,depthTest:false,depthWrite:false}));
+  const borderHighlight=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,900,.007,6,true),new THREE.MeshBasicMaterial({color:0xe5fcff,transparent:true,opacity:.9,depthTest:false,depthWrite:false}));
+  const borderGlow=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,900,.085,8,true),new THREE.MeshBasicMaterial({color:0x00cfff,transparent:true,opacity:.11,depthWrite:false,blending:THREE.AdditiveBlending,depthTest:false}));
+  borderGlow.renderOrder=48;borderOuter.renderOrder=49;borderLine.renderOrder=50;borderHighlight.renderOrder=51;
+  scene.add(borderGlow,borderOuter,borderLine,borderHighlight);
+  // Pomocná prostorová mřížka byla odstraněna; čistý reliéf a zvýrazněná hranice ČR zůstávají.
   // Geografická orientace 3D mapy: hlavní pohoří a řeky ČR.
-  const geoPoint=(lon,lat)=>({x:((lon-12.15)/(18.55-12.15))*7.2-3.6,z:((50.95-lat)/(50.95-48.65))*7.2-3.6});
+  const geoPoint=(lon,lat)=>({x:((lon-12.09)/(18.85-12.09))*7.2-3.6,z:((49.835-lat)/(18.85-12.09))*7.2*1.563});
   const geoOverlay=new THREE.Group();scene.add(geoOverlay);
   function addGeoLabel(name,lon,lat,kind='mountain'){
    const p=geoPoint(lon,lat),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
@@ -846,27 +949,27 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
      else if(g.type==='MultiLineString'&&g.coordinates)paths.push(...g.coordinates);
     });
     if(!paths.length)throw new Error('ČÚZK nevrátil geometrii státní hranice');
-    const official=new THREE.Group();
+    officialBoundaryGroup=new THREE.Group();const official=officialBoundaryGroup;
     paths.forEach(path=>{
-     const pts=path.filter(c=>Array.isArray(c)&&Number.isFinite(c[0])&&Number.isFinite(c[1])).map(c=>{
-      const p=geoPoint(c[0],c[1]);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.09,p.z);
-     });
+     const coords=path.filter(c=>Array.isArray(c)&&Number.isFinite(c[0])&&Number.isFinite(c[1]));
+     const pts=coords.map(c=>{const p=geoPoint(c[0],c[1]);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.16,p.z)});
      if(pts.length<2)return;
-     const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x9beaff,transparent:true,opacity:.98,depthTest:true}));
-     line.renderOrder=37;official.add(line);
+     const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x8deaff,transparent:true,opacity:.98,depthTest:false,depthWrite:false}));
+     line.userData.geoCoords=coords;line.renderOrder=70;official.add(line);
     });
     if(!official.children.length)throw new Error('Prázdná geometrie hranice');
-    scene.add(official);borderLine.visible=false;borderOuter.visible=false;
+    scene.add(official);borderGlow.visible=false;borderOuter.visible=false;borderLine.visible=false;borderHighlight.visible=false;
     if(badge)badge.textContent='Terén: ČÚZK Data250 · přesná státní hranice + DEM '+demSize+'×'+demSize;
    }catch(err){console.warn('X-5 oficiální státní hranice:',err);if(badge)badge.title='Záložní zjednodušený obrys ČR; ČÚZK Data250 se nepodařilo načíst: '+String(err.message||err)}
   }
-  loadOfficialCzechBorder();
+  // Duplicitní externí obrys ČÚZK je vypnutý: jeho dotaz vracel i sousední hranice mimo ČR. Hranici zobrazuje přesný polygon czBorder výše.
 
   function refreshGeoOverlayHeights(){
    geoOverlay.children.forEach(obj=>{
     if(obj.userData.geoPoint){const p=obj.userData.geoPoint;obj.position.y=terrainHeightAt(p.x,p.z)+.13}
-    if(obj.userData.geoCoords){const pts=obj.userData.geoCoords.map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.075,p.z)});obj.geometry.setFromPoints(pts)}
+    if(obj.userData.geoCoords){const pts=obj.userData.geoCoords.map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.16,p.z)});obj.geometry.setFromPoints(pts)}
    });
+   if(officialBoundaryGroup)officialBoundaryGroup.children.forEach(obj=>{if(obj.userData.geoCoords){const pts=obj.userData.geoCoords.map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.16,p.z)});obj.geometry.setFromPoints(pts)}});
    [regionGroup,cityGroup,districtGroup].forEach(group=>group.children.forEach(obj=>{
     if(obj.userData.geoPoint){const p=obj.userData.geoPoint;obj.position.y=terrainHeightAt(p.x,p.z)+.18}
     if(obj.userData.geoCoords){const pts=obj.userData.geoCoords.map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.105,p.z)});obj.geometry.setFromPoints(pts)}
@@ -967,11 +1070,46 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   loadCzechDistricts();
 
   // Teplotní vrstva kopíruje výškový reliéf, aby se terén a počasí prostorově překrývaly.
-  const heatGeo=new THREE.PlaneGeometry(7.4,7.4,240,240);heatGeo.rotateX(-Math.PI/2);clipToCzech(heatGeo);
-  const heatPos=heatGeo.attributes.position,heatColor=[];
+  let heatGeo=new THREE.PlaneGeometry(7.4,7.4,240,240);heatGeo.rotateX(-Math.PI/2);clipToCzech(heatGeo);
+  let heatPos=heatGeo.attributes.position,heatColor=[];
   for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,terrainHeightAt(x,z)+.018);heatColor.push(.08,.5,.95)}
   heatGeo.setAttribute('color',new THREE.Float32BufferAttribute(heatColor,3));heatGeo.computeVertexNormals();
   const heat=new THREE.Mesh(heatGeo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.20,side:THREE.DoubleSide,depthWrite:false}));heat.position.y=-.045;scene.add(heat);
+  // Přesná hranice z GeoJSON znovu ořízne 3D povrch i teplotní vrstvu.
+  function rebuildOfficialMask(){
+   terrainGeo.dispose();terrainGeo=new THREE.PlaneGeometry(7.4,7.4,360,360);terrainGeo.rotateX(-Math.PI/2);clipToCzech(terrainGeo);terrainPos=terrainGeo.attributes.position;
+   const tc=[];for(let i=0;i<terrainPos.count;i++){const x=terrainPos.getX(i),z=terrainPos.getZ(i),h=terrainHeightAt(x,z);terrainPos.setY(i,h);const c=terrainColorAt(h);tc.push(c.r,c.g,c.b)}
+   terrainGeo.setAttribute('color',new THREE.Float32BufferAttribute(tc,3));terrainGeo.computeVertexNormals();terrain.geometry=terrainGeo;
+   heatGeo.dispose();heatGeo=new THREE.PlaneGeometry(7.4,7.4,240,240);heatGeo.rotateX(-Math.PI/2);clipToCzech(heatGeo);heatPos=heatGeo.attributes.position;
+   const hc=[];for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,terrainHeightAt(x,z)+.018);hc.push(.08,.5,.95)}
+   heatGeo.setAttribute('color',new THREE.Float32BufferAttribute(hc,3));heatGeo.computeVertexNormals();heat.geometry=heatGeo;
+   const pts=czBorder.map(p=>new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.115,p.z)),curve=new THREE.CatmullRomCurve3(pts,true,'centripetal',.35);
+   [[borderGlow,.085,8],[borderOuter,.038,8],[borderLine,.024,8],[borderHighlight,.007,6]].forEach(([mesh,radius,segments])=>{mesh.geometry.dispose();mesh.geometry=new THREE.TubeGeometry(curve,900,radius,segments,true)});
+   refreshGeoOverlayHeights();
+  }
+  let officialBoundaryGroup=null;
+  async function loadOfficialCzechGeometry(){
+   const badge=document.getElementById('weatherBoundaryBadge');
+   if(badge)badge.textContent='Hranice ČR: načítám GeoJSON…';
+   try{
+    const mr=await fetch('https://www.geoboundaries.org/api/current/gbOpen/CZE/ADM0/',{cache:'force-cache'});if(!mr.ok)throw new Error('geoBoundaries ADM0 HTTP '+mr.status);
+    const meta=await mr.json();if(!meta.gjDownloadURL)throw new Error('Chybí odkaz na GeoJSON');
+    const gr=await fetch(meta.gjDownloadURL,{cache:'force-cache'});if(!gr.ok)throw new Error('GeoJSON HTTP '+gr.status);
+    const data=await gr.json(),rings=(data.features||[]).flatMap(f=>{const g=f.geometry;if(!g)return[];return g.type==='Polygon'?[g.coordinates[0]]:g.type==='MultiPolygon'?g.coordinates.map(p=>p[0]):[]}).filter(r=>r&&r.length>30);
+    if(!rings.length)throw new Error('GeoJSON neobsahuje obrys ČR');
+    const ring=rings.sort((a,b)=>b.length-a.length)[0];czBorderLL=ring.map(c=>[+c[0],+c[1]]).filter(c=>Number.isFinite(c[0])&&Number.isFinite(c[1]));
+    if(czBorderLL.length<30)throw new Error('Obrys ČR je neúplný');
+    const bounds=czBorderLL.reduce((b,p)=>({minLon:Math.min(b.minLon,p[0]),maxLon:Math.max(b.maxLon,p[0]),minLat:Math.min(b.minLat,p[1]),maxLat:Math.max(b.maxLat,p[1])}),{minLon:Infinity,maxLon:-Infinity,minLat:Infinity,maxLat:-Infinity});
+    if(bounds.minLon<11.5||bounds.maxLon>19.5||bounds.minLat<48||bounds.maxLat>52)throw new Error('Souřadnice GeoJSON neodpovídají území ČR: '+JSON.stringify(bounds));
+    if(bounds.maxLon-bounds.minLon<5||bounds.maxLat-bounds.minLat<1.5)throw new Error('GeoJSON má neúplný geografický rozsah');
+    czBorderControl=czBorderLL.map(([lon,lat])=>({x:((lon-12.09)/(18.85-12.09))*7.2-3.6,z:((49.835-lat)/(18.85-12.09))*7.2*1.563}));
+    czBorderCurve=new THREE.CatmullRomCurve3(czBorderControl.map(p=>new THREE.Vector3(p.x,0,p.z)),true,'centripetal',.32);
+    czBorder=czBorderCurve.getPoints(1200).map(p=>({x:p.x,z:p.z}));rebuildOfficialMask();
+    if(badge){badge.textContent='Hranice ČR: oficiální GeoJSON načten · '+czBorderLL.length+' bodů';badge.title='geoBoundaries gbOpen · licence CC BY 4.0';badge.style.borderColor='#54c78b';}
+    console.info('X-5: oficiální hranice ČR načtena, '+czBorderLL.length+' vrcholů',bounds);
+   }catch(err){console.warn('X-5: načtení oficiální hranice selhalo',err);if(badge){badge.textContent='Hranice ČR: záložní obrys · GeoJSON se nenačetl';badge.title=String(err.message||err);badge.style.borderColor='#e2a45a';}}
+  }
+  loadOfficialCzechGeometry();
   // Načtení výšek s lokální cache: omezuje opakované dotazy při HTTP 429.
   async function loadCopernicusTerrain(){
    const badge=document.getElementById('weatherTerrainBadge');
@@ -1061,11 +1199,43 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    }
   }
   loadCopernicusTerrain();
-  const patches=[];for(const p of [{x:-1.8,z:.8,c:0x167dff},{x:1.6,z:-.9,c:0xff7838},{x:.1,z:1.9,c:0x12c9a7}]){const m=new THREE.Mesh(new THREE.CircleGeometry(1.45,48),new THREE.MeshBasicMaterial({color:p.c,transparent:true,opacity:.72,depthWrite:false,side:THREE.DoubleSide}));m.rotation.x=-Math.PI/2;m.position.set(p.x,-.045,p.z);scene.add(m);patches.push(m)}
+  // Odstraněny dekorativní barevné disky: neodpovídaly meteorologickým datům a přesahovaly obrys ČR.
   const rainGroup=new THREE.Group();scene.add(rainGroup);const drops=[];
-  for(let n=0;n<54;n++){const a=n*2.399,r=.65+(n%9)*.39;const d=new THREE.Mesh(new THREE.CylinderGeometry(.014,.014,.25,6),new THREE.MeshBasicMaterial({color:0x48cfff,transparent:true,opacity:.95}));d.position.set(Math.cos(a)*r,.2+(n%13)*.16,Math.sin(a)*r);rainGroup.add(d);drops.push(d)}
+  const precipParticleCount=lowPower?34:72;
+  for(let n=0;n<precipParticleCount;n++){const a=n*2.399,r=.65+(n%9)*.39;const d=new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,.25,6),new THREE.MeshBasicMaterial({color:0x48cfff,transparent:true,opacity:.95}));d.position.set(Math.cos(a)*r,.2+(n%13)*.16,Math.sin(a)*r);rainGroup.add(d);drops.push(d)}
   const snowGroup=new THREE.Group();scene.add(snowGroup);const flakes=[];
-  for(let n=0;n<30;n++){const a=n*2.399,r=.7+(n%7)*.43;const f=new THREE.Mesh(new THREE.SphereGeometry(.03,7,7),new THREE.MeshBasicMaterial({color:0xe4f8ff}));f.position.set(Math.cos(a)*r,.25+(n%9)*.18,Math.sin(a)*r);snowGroup.add(f);flakes.push(f)}
+  const snowParticleCount=lowPower?18:40;
+  for(let n=0;n<snowParticleCount;n++){const a=n*2.399,r=.7+(n%7)*.43;const f=new THREE.Mesh(new THREE.SphereGeometry(.03,7,7),new THREE.MeshBasicMaterial({color:0xe4f8ff}));f.position.set(Math.cos(a)*r,.25+(n%9)*.18,Math.sin(a)*r);snowGroup.add(f);flakes.push(f)}
+  // Pásma srážek: průsvitné eliptické plochy kopírují polohu a intenzitu předpovězených srážek.
+  const rainBandGroup=new THREE.Group(),snowBandGroup=new THREE.Group();scene.add(rainBandGroup,snowBandGroup);
+  const bandGeo=new THREE.SphereGeometry(1,20,12),rainBands=[],snowBands=[];
+  function makeBandPool(group,pool,color,maxCount){
+   for(let i=0;i<maxCount;i++){
+    const material=new THREE.MeshBasicMaterial({color,transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide});
+    const mesh=new THREE.Mesh(bandGeo,material);mesh.visible=false;mesh.renderOrder=7;group.add(mesh);pool.push(mesh);
+   }
+  }
+  makeBandPool(rainBandGroup,rainBands,0x238fe8,lowPower?7:15);
+  makeBandPool(snowBandGroup,snowBands,0xb9edff,lowPower?6:12);
+  function placePrecipitationBands(points,pool,kind){
+   const chosen=[];
+   for(const q of points){
+    if(!insideCzech(q.x,q.z))continue;
+    if(chosen.every(p=>Math.hypot(p.x-q.x,p.z-q.z)>.38))chosen.push(q);
+    if(chosen.length>=pool.length)break;
+   }
+   pool.forEach((mesh,i)=>{
+    const q=chosen[i];
+    if(!q){mesh.visible=false;return;}
+    const amount=kind==='rain'?q.rain:q.snow;
+    const wind=localWindAt(q.x,q.z),intensity=kind==='rain'?Math.min(1,amount/3):Math.min(1,amount/.8);
+    mesh.position.set(q.x,terrainHeightAt(q.x,q.z)+.075,q.z);
+    mesh.rotation.y=Math.atan2(wind.dx,wind.dz);
+    mesh.scale.set(.24+intensity*.34,.018,.42+intensity*.72);
+    mesh.userData.baseOpacity=.10+intensity*.24;mesh.material.opacity=mesh.userData.baseOpacity;
+    mesh.visible=amount>(kind==='rain'?.01:.001);
+   });
+  }
   const streamGroup=new THREE.Group();scene.add(streamGroup);const particles=[],windLines=[],cols=[0x39d9ff,0x77cfff,0xb4f4ff,0xffd16a];
   let windFeatures=[];
   function localWindAt(x,z){
@@ -1088,32 +1258,78 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    windLines.length=0;
    particles.forEach(p=>{scene.remove(p.mesh);p.mesh.geometry?.dispose();if(Array.isArray(p.mesh.material))p.mesh.material.forEach(m=>m.dispose());else p.mesh.material?.dispose()});
    particles.length=0;
-   for(let n=0;n<26;n++){
-    let x=-3.15+(n%6)*1.26,z=-3.05+Math.floor(n/6)*1.48,pts=[];
+   const windLineCount=lowPower?18:32,windArrowGeo=new THREE.ConeGeometry(.055,.22,7);
+   for(let n=0;n<windLineCount;n++){
+    let x=-3.15+(n%6)*1.26,z=-3.05+Math.floor(n/6)*1.02,pts=[];
+    // Proudnice začínají i končí uvnitř skutečného polygonu ČR; mimo území se nevykreslují.
+    if(!insideCzech(x,z))continue;
     for(let j=0;j<76;j++){
+     if(!insideCzech(x,z))break;
      const v=localWindAt(x,z),bend=Math.sin((x+z+n)*.8)*.018;
      pts.push(new THREE.Vector3(x,.18+Math.min(1.35,v.speed/65),z));
-     x+=v.dx*.075+bend;z+=v.dz*.075-bend;
-     if(Math.abs(x)>3.7||Math.abs(z)>3.7){x=Math.max(-3.5,Math.min(3.5,x));z=Math.max(-3.5,Math.min(3.5,z))}
+     const nx=x+v.dx*.075+bend,nz=z+v.dz*.075-bend;
+     if(!insideCzech(nx,nz))break;
+     x=nx;z=nz;
     }
-    const curve=new THREE.CatmullRomCurve3(pts),line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(130)),new THREE.LineBasicMaterial({color:cols[n%4],transparent:true,opacity:.78}));
+    if(pts.length<3)continue;
+    // Použijeme lomenou čáru z ověřených bodů. Catmull-Rom interpolace
+    // mohla mezi body vybočit přes státní hranici a vytvořit modré přesahy.
+    const curve=new THREE.CurvePath();
+    for(let k=1;k<pts.length;k++)curve.add(new THREE.LineCurve3(pts[k-1],pts[k]));
+    const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:cols[n%4],transparent:true,opacity:.78}));
     streamGroup.add(line);windLines.push(line);
-    const dot=new THREE.Mesh(new THREE.SphereGeometry(.052,8,8),new THREE.MeshBasicMaterial({color:cols[n%4]}));scene.add(dot);particles.push({mesh:dot,curve,phase:n/26});
+    const dot=new THREE.Mesh(windArrowGeo,new THREE.MeshBasicMaterial({color:cols[n%4],transparent:true,opacity:.96}));scene.add(dot);particles.push({mesh:dot,curve,phase:n/windLineCount});
    }
   }
   const core=new THREE.Mesh(new THREE.SphereGeometry(.34,24,18),new THREE.MeshBasicMaterial({color:0x4ccfff,transparent:true,opacity:.55}));core.position.y=.32;scene.add(core);
   const ring=new THREE.Mesh(new THREE.TorusGeometry(.58,.025,8,64),new THREE.MeshBasicMaterial({color:0x8deaff,transparent:true,opacity:.95}));ring.rotation.x=Math.PI/2;ring.position.y=.32;scene.add(ring);
   const vortexLayers={terrain:true,temperature:true,clouds:true,precipitation:true,atmosphere:true,wind:true};
   function applyVortexLayers(){
-   terrain.visible=vortexLayers.terrain;borderGlow.visible=vortexLayers.terrain;borderOuter.visible=vortexLayers.terrain;borderLine.visible=vortexLayers.terrain;
-   heat.visible=vortexLayers.temperature&&vortexLayers.terrain;patches.forEach(p=>p.visible=vortexLayers.temperature&&vortexLayers.terrain);
+   terrain.visible=vortexLayers.terrain;borderGlow.visible=vortexLayers.terrain&&!officialBoundaryGroup;borderOuter.visible=vortexLayers.terrain&&!officialBoundaryGroup;borderLine.visible=vortexLayers.terrain&&!officialBoundaryGroup;borderHighlight.visible=vortexLayers.terrain&&!officialBoundaryGroup;if(officialBoundaryGroup)officialBoundaryGroup.visible=vortexLayers.terrain;
+   heat.visible=vortexLayers.temperature&&vortexLayers.terrain;
    const tempLegend=document.getElementById('weatherTemperatureLegend');if(tempLegend){const showTemp=vortexLayers.temperature&&vortexLayers.terrain;tempLegend.hidden=!showTemp;tempLegend.style.setProperty('display',showTemp?'block':'none','important');tempLegend.setAttribute('aria-hidden',String(!showTemp));}
-   cloudGroup.visible=vortexLayers.clouds;atmosphere.visible=vortexLayers.atmosphere;
+   cloudGroup.visible=vortexLayers.clouds;stormCloudGroup.visible=vortexLayers.clouds;lightningGroup.visible=vortexLayers.clouds&&stormIntensity>0;atmosphere.visible=vortexLayers.atmosphere;
    rainGroup.visible=vortexLayers.precipitation&&rainGroup.children.some(x=>x.visible);
    snowGroup.visible=vortexLayers.precipitation&&snowGroup.children.some(x=>x.visible);
+   rainBandGroup.visible=vortexLayers.precipitation&&rainBands.some(x=>x.visible);
+   snowBandGroup.visible=vortexLayers.precipitation&&snowBands.some(x=>x.visible);
    streamGroup.visible=vortexLayers.wind;particles.forEach(p=>p.mesh.visible=vortexLayers.wind);core.visible=vortexLayers.wind;ring.visible=vortexLayers.wind;
   }
   window.__weatherVortexSetPrecipitationVisible=visible=>{vortexLayers.precipitation=!!visible;const b=layerControls?.querySelector('[data-vortex-layer="precipitation"]');if(b)b.setAttribute('aria-pressed',String(vortexLayers.precipitation));applyVortexLayers()};
+  const schematicCloudButton=document.getElementById('weatherVortexSchematicClouds');
+  schematicCloudButton?.addEventListener('click',()=>{showSchematicClouds=!showSchematicClouds;schematicCloudButton.setAttribute('aria-pressed',String(showSchematicClouds));schematicCloudButton.textContent='☁️ Schematická oblačnost: '+(showSchematicClouds?'zapnuta':'vypnuta');if(windFeatures.length)readWeather(windFeatures);});
+  const cloudAltitudeButtons=document.querySelectorAll('[data-cloud-altitude]');
+  const cloudAltitudeVisible=[true,true,true];
+  const cloudIntensity=[100,100,100],cloudOpacity=[100,100,100];
+  const cloudAltitudeStatus=document.getElementById('weatherVortexCloudAltitudeStatus');
+  const cloudAltitudeNames=['nízká','střední','vysoká'];
+  function updateCloudAltitudeStatus(){
+   const active=cloudAltitudeNames.filter((name,i)=>cloudAltitudeVisible[i]);
+   if(cloudAltitudeStatus)cloudAltitudeStatus.textContent=active.length?'Aktivní výškové hladiny: '+active.join(', ')+' · výška je schematická, nikoli měření v km.':'Všechny výškové hladiny oblačnosti jsou vypnuté.';
+   cloudAltitudeButtons.forEach(btn=>{const i=Number(btn.dataset.cloudAltitude);btn.setAttribute('aria-pressed',String(cloudAltitudeVisible[i]));});
+  }
+  cloudAltitudeButtons.forEach(btn=>btn.addEventListener('click',()=>{
+   const layer=Number(btn.dataset.cloudAltitude);
+   if(!Number.isInteger(layer)||layer<0||layer>2)return;
+   cloudAltitudeVisible[layer]=!cloudAltitudeVisible[layer];
+   clouds.forEach(g=>{if(g.userData.cloudLayer===layer)g.visible=!!g.userData.cloudAvailable&&cloudAltitudeVisible[layer]});
+   updateCloudAltitudeStatus();
+  }));
+  // Posuvníky jsou samostatné ovladače, nikoli součást kliknutí na výškovou hladinu.
+  document.querySelectorAll('[data-cloud-intensity],[data-cloud-opacity]').forEach(input=>input.addEventListener('input',()=>{
+   const layer=Number(input.dataset.cloudIntensity??input.dataset.cloudOpacity);
+   if(!Number.isInteger(layer)||layer<0||layer>2)return;
+   if(input.hasAttribute('data-cloud-intensity'))cloudIntensity[layer]=Number(input.value);
+   else cloudOpacity[layer]=Number(input.value);
+   const intensityOutput=document.getElementById('cloudIntensityValue'+layer),opacityOutput=document.getElementById('cloudOpacityValue'+layer);
+   if(intensityOutput)intensityOutput.textContent=cloudIntensity[layer]+' %';
+   if(opacityOutput)opacityOutput.textContent=cloudOpacity[layer]+' %';
+   clouds.forEach(g=>{if(g.userData.cloudLayer===layer){
+    g.scale.setScalar(cloudIntensity[layer]/100);
+    g.userData.layerMaterials?.forEach(mat=>{mat.opacity=(g.userData.baseCloudOpacity??0)*cloudOpacity[layer]/100});
+   }});
+  }));
+  updateCloudAltitudeStatus();
   layerControls?.querySelectorAll('[data-vortex-layer]').forEach(btn=>btn.addEventListener('click',()=>{
    const key=btn.dataset.vortexLayer;if(key==='precipitation'){window.__weatherVortexTogglePrecipitation?.();return;}vortexLayers[key]=!vortexLayers[key];btn.setAttribute('aria-pressed',String(vortexLayers[key]));applyVortexLayers();
   }));
@@ -1157,7 +1373,14 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    // Oblaka vybíráme pouze z bodů uvnitř státní hranice; žádné shluky mimo ČR.
    const cloudyPoints=weatherPoints.filter(q=>q.cloud>=8&&insideCzech(q.x,q.z)).sort((a,b)=>b.cloud-a.cloud);
    const selectedClouds=[];cloudyPoints.forEach(q=>{if(selectedClouds.length<clouds.length&&selectedClouds.every(p=>Math.hypot(p.x-q.x,p.z-q.z)>.34))selectedClouds.push(q)});
-   clouds.forEach((g,i)=>{const q=selectedClouds[i]||null;const cover=q?q.cloud:0;if(q){g.position.x=q.x;g.position.z=q.z;g.position.y=terrainHeightAt(q.x,q.z)+.48+(i%3)*.24}else{g.visible=false}const opacity=cover<8?0:.018+(cover/100)*.18;g.children.forEach(puff=>{puff.material.opacity=opacity;puff.visible=cover>=8});g.visible=!!q&&cover>=8});
+   // Bouřkové shluky vyžadují výraznou oblačnost a současně předpovězený déšť.
+   // Prahy spouštějí ilustraci, nikoli meteorologickou výstrahu nebo potvrzení bouřky.
+   const stormPoints=weatherPoints.filter(q=>q.cloud>=75&&q.rain>=.8&&insideCzech(q.x,q.z)).sort((a,b)=>(b.cloud*b.rain)-(a.cloud*a.rain));
+   const selectedStorms=[];stormPoints.forEach(q=>{if(selectedStorms.length<stormCount&&selectedStorms.every(p=>Math.hypot(p.x-q.x,p.z-q.z)>.55))selectedStorms.push(q)});
+   stormIntensity=selectedStorms.length?Math.min(1,selectedStorms.reduce((v,q)=>v+Math.min(1,q.rain/3)*(q.cloud/100),0)/selectedStorms.length):0;
+   stormClouds.forEach((g,i)=>{const q=selectedStorms[i];g.visible=!!q;if(q){g.position.set(q.x,terrainHeightAt(q.x,q.z)+.72,q.z);g.scale.setScalar(.82+Math.min(1,q.rain/4)*.32);g.userData.baseY=g.position.y;lightningBolts[i].group.position.set(q.x,terrainHeightAt(q.x,q.z)+1.12,q.z);lightningBolts[i].group.visible=true}else lightningBolts[i].group.visible=false});
+   lightningGroup.visible=vortexLayers.clouds&&stormIntensity>0;
+   clouds.forEach((g,i)=>{const q=selectedClouds[i]||null;const schematic=!q&&showSchematicClouds;const cover=q?q.cloud:(schematic?42:0);if(q){g.position.x=q.x;g.position.z=q.z;g.userData.baseX=q.x;g.userData.baseZ=q.z;g.userData.baseY=terrainHeightAt(q.x,q.z)+.48+g.userData.cloudLayer*.42;g.position.y=g.userData.baseY}else if(schematic){const spread=getSchematicCloudPositions(),point=spread[i%Math.max(1,spread.length)]||{x:0,z:0};g.position.x=point.x;g.position.z=point.z;g.userData.baseX=g.position.x;g.userData.baseZ=g.position.z;g.userData.baseY=terrainHeightAt(g.position.x,g.position.z)+.48+g.userData.cloudLayer*.42;g.position.y=g.userData.baseY}else{g.visible=false}const layer=g.userData.cloudLayer||0,layerOpacity=[1,.78,.58][layer],opacity=(schematic ? .16 :(cover<8?0:.035+(cover/100)*.22))*layerOpacity;g.userData.baseCloudOpacity=opacity;g.scale.setScalar(cloudIntensity[layer]/100);g.userData.layerMaterials.forEach(mat=>{mat.opacity=opacity*cloudOpacity[layer]/100});g.children.forEach(puff=>{puff.visible=schematic||cover>=8});g.userData.cloudAvailable=!!q&&cover>=8||schematic;g.visible=g.userData.cloudAvailable&&cloudAltitudeVisible[g.userData.cloudLayer||0]});
    const cold=avgTemp<0,warm=avgTemp>=12;const palette=cold?[.08,.32,1]:warm?[1,.28,.06]:[.02,.78,.48];const colors=heatGeo.attributes.color;
    // Interpolace teploty z jednotlivých bodů předpovědi do každého vrcholu 3D plochy (IDW).
    const tempPoints=weatherPoints.map(q=>({x:q.x,z:q.z,t:q.temp}));
@@ -1171,19 +1394,41 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    function colorForTemperature(t){const u=Math.max(0,Math.min(1,(t-scaleMin)/(scaleMax-scaleMin)));if(u<.25)return cA.copy(coldColor).lerp(coolColor,u*4);if(u<.5)return cA.copy(coolColor).lerp(mildColor,(u-.25)*4);if(u<.75)return cA.copy(mildColor).lerp(warmColor,(u-.5)*4);return cA.copy(warmColor).lerp(hotColor,(u-.75)*4)}
    for(let i=0;i<colors.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);let weighted=0,total=0,nearest=Infinity,nearestTemp=avgTemp;for(const q of tempPoints){const d2=(q.x-x)*(q.x-x)+(q.z-z)*(q.z-z);if(d2<nearest){nearest=d2;nearestTemp=q.t}const w=1/Math.max(.025,d2*d2);weighted+=q.t*w;total+=w}const localTemp=total?weighted/total:nearestTemp;const col=colorForTemperature(localTemp);colors.setXYZ(i,col.r,col.g,col.b)}
    colors.needsUpdate=true;
-   patches[0].material.opacity=cold?.78:.4;patches[1].material.opacity=warm?.8:.42;patches[2].material.opacity=.58;
+   // Dekorativní barevné disky byly odstraněny; teplotní pole zůstává vykreslené v barvách reliéfu.
    // Částice se zobrazují jen v oblastech, kde interpolovaná předpověď hlásí daný jev.
    const rainPoints=weatherPoints.filter(q=>q.rain>.01).sort((a,b)=>b.rain-a.rain),snowPoints=weatherPoints.filter(q=>q.snow>.001).sort((a,b)=>b.snow-a.snow);
    const rain=rainPoints.length>0,snow=snowPoints.length>0;
-   // Déšť a sníh se vykreslí přímo v oblastech, kde je předpověď hlásí.
-   drops.forEach((d,i)=>{const q=rainPoints.length?rainPoints[i%rainPoints.length]:null;if(q){const j=i%5;d.position.x=Math.max(-3.5,Math.min(3.5,q.x+(j-2)*.10));d.position.z=Math.max(-3.5,Math.min(3.5,q.z+((Math.floor(i/5)%3)-1)*.10));d.position.y=.35+(i%13)*.12}const amount=q?q.rain:0;d.visible=amount>.01;d.material.opacity=Math.min(.9,.22+amount*.22)});
-   flakes.forEach((f,i)=>{const q=snowPoints.length?snowPoints[i%snowPoints.length]:null;if(q){const j=i%5;f.position.x=Math.max(-3.5,Math.min(3.5,q.x+(j-2)*.12));f.position.z=Math.max(-3.5,Math.min(3.5,q.z+((Math.floor(i/5)%3)-1)*.12));f.position.y=.4+(i%9)*.16}const amount=q?q.snow:0;f.visible=amount>.001;f.material.opacity=Math.min(.95,.3+amount*.35)});
+   // Pásma se vybírají jen z bodů uvnitř hranice ČR a jejich velikost odpovídá intenzitě.
+   placePrecipitationBands(rainPoints,rainBands,'rain');
+   placePrecipitationBands(snowPoints,snowBands,'snow');
+   // Déšť a sníh jsou rozmístěny podle předpovědi a unášeny místním větrem.
+   drops.forEach((d,i)=>{
+    const q=rainPoints.length?rainPoints[i%rainPoints.length]:null;
+    if(q){
+     const j=i%5,dx=Math.max(-3.5,Math.min(3.5,q.x+(j-2)*.10)),dz=Math.max(-3.5,Math.min(3.5,q.z+((Math.floor(i/5)%3)-1)*.10)),wind=localWindAt(q.x,q.z);
+     d.position.set(dx,.35+(i%13)*.12,dz);d.userData.baseX=dx;d.userData.baseZ=dz;d.userData.baseY=d.position.y;d.userData.windX=wind.dx;d.userData.windZ=wind.dz;
+     d.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(wind.dx*.22,-1,wind.dz*.22).normalize());
+    }
+    const amount=q?q.rain:0;d.visible=amount>.01;d.material.opacity=Math.min(.9,.22+amount*.22);
+   });
+   flakes.forEach((f,i)=>{
+    const q=snowPoints.length?snowPoints[i%snowPoints.length]:null;
+    if(q){
+     const j=i%5,dx=Math.max(-3.5,Math.min(3.5,q.x+(j-2)*.12)),dz=Math.max(-3.5,Math.min(3.5,q.z+((Math.floor(i/5)%3)-1)*.12)),wind=localWindAt(q.x,q.z);
+     f.position.set(dx,.4+(i%9)*.16,dz);f.userData.baseX=dx;f.userData.baseZ=dz;f.userData.baseY=f.position.y;f.userData.windX=wind.dx;f.userData.windZ=wind.dz;
+    }
+    const amount=q?q.snow:0;f.visible=amount>.001;f.material.opacity=Math.min(.95,.3+amount*.35);
+   });
    rainGroup.visible=rain&&vortexLayers.precipitation;snowGroup.visible=snow&&vortexLayers.precipitation;applyVortexLayers();
    status.textContent='Vítr '+windSpeed.toFixed(1)+' km/h · směr '+Math.round(windDir)+'° · teplota '+avgTemp.toFixed(1)+' °C · srážky '+maxPrecip.toFixed(2)+' mm/h · oblačnost '+Math.round(avgCloudCover)+' %'+(validTimeLabel?' · platnost '+validTimeLabel:'');
   }
   window.__weatherVortexSetValidTime=iso=>{validTimeLabel=iso?new Date(iso).toLocaleString('cs-CZ',{weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';if(windFeatures.length)status.textContent='Vítr '+windSpeed.toFixed(1)+' km/h · směr '+Math.round(windDir)+'° · teplota '+avgTemp.toFixed(1)+' °C · srážky '+maxPrecip.toFixed(2)+' mm/h · oblačnost '+Math.round(avgCloudCover)+' %'+(validTimeLabel?' · platnost '+validTimeLabel:'');};
   if(window.__weatherVortexCurrentValidTime)window.__weatherVortexSetValidTime(window.__weatherVortexCurrentValidTime);
-  function animate(t){if(paused||document.hidden||!stageVisible){raf=0;return;}raf=requestAnimationFrame(animate);if(t-last<33)return;last=t;const closeView=orbitRadius<5.65,cityView=orbitRadius<6.85;regionGroup.children.forEach(obj=>{if(obj.userData.mapLabelKind==='region')obj.visible=!closeView;});cityGroup.children.forEach(obj=>{if(obj.userData.mapLabelKind==='city')obj.visible=cityView;});districtGroup.children.forEach(obj=>{if(obj.userData.isDistrictLabel)obj.visible=closeView;});if(closeView){const w=renderer.domElement.clientWidth,h=renderer.domElement.clientHeight,occupied=[];const labels=districtGroup.children.filter(o=>o.userData.isDistrictLabel).sort((a,b)=>a.position.distanceTo(camera.position)-b.position.distanceTo(camera.position));labels.forEach(obj=>{if(!obj.visible)return;const q=obj.position.clone().project(camera),x=(q.x*.5+.5)*w,y=(-q.y*.5+.5)*h,boxW=Math.max(34,obj.userData.labelWidth*6.2),boxH=18;const collision=occupied.some(b=>Math.abs(x-b.x)<(boxW+b.w)*.48&&Math.abs(y-b.y)<(boxH+b.h)*.55);if(q.z<0||q.z>1||x<0||x>w||y<0||y>h||collision){obj.visible=false;return;}occupied.push({x,y,w:boxW,h:boxH});});}const speed=.35+Math.min(windSpeed,70)/70;atmosphere.rotation.y+=.00035*speed;cloudGroup.rotation.y+=.00022*speed;clouds.forEach((g,i)=>{g.position.y=1.05+(i%3)*.55+Math.sin(t*.00045+i)*.055;g.rotation.z=Math.sin(t*.00018+i*.7)*.035});core.scale.setScalar(1+Math.sin(t*.0015)*.08);ring.rotation.z=t*.0002*speed;particles.forEach(p=>{p.mesh.position.copy(p.curve.getPointAt((t*.00003*speed+p.phase)%1))});drops.forEach(d=>{if(d.visible){d.position.y-=.025+maxPrecip*.006;if(d.position.y<-.02)d.position.y=1.9}});flakes.forEach(f=>{if(f.visible){f.position.y-=.008;if(f.position.y<-.02)f.position.y=1.8}});renderer.render(scene,camera)}
+  function animate(t){if(paused||document.hidden||!stageVisible){raf=0;return;}raf=requestAnimationFrame(animate);if(t-last<33)return;last=t;const closeView=orbitRadius<5.65,cityView=orbitRadius<6.85;regionGroup.children.forEach(obj=>{if(obj.userData.mapLabelKind==='region')obj.visible=!closeView;});cityGroup.children.forEach(obj=>{if(obj.userData.mapLabelKind==='city')obj.visible=cityView;});districtGroup.children.forEach(obj=>{if(obj.userData.isDistrictLabel)obj.visible=closeView;});if(closeView){const w=renderer.domElement.clientWidth,h=renderer.domElement.clientHeight,occupied=[];const labels=districtGroup.children.filter(o=>o.userData.isDistrictLabel).sort((a,b)=>a.position.distanceTo(camera.position)-b.position.distanceTo(camera.position));labels.forEach(obj=>{if(!obj.visible)return;const q=obj.position.clone().project(camera),x=(q.x*.5+.5)*w,y=(-q.y*.5+.5)*h,boxW=Math.max(34,obj.userData.labelWidth*6.2),boxH=18;const collision=occupied.some(b=>Math.abs(x-b.x)<(boxW+b.w)*.48&&Math.abs(y-b.y)<(boxH+b.h)*.55);if(q.z<0||q.z>1||x<0||x>w||y<0||y>h||collision){obj.visible=false;return;}occupied.push({x,y,w:boxW,h:boxH});});}const speed=.35+Math.min(windSpeed,70)/70;atmosphere.rotation.y+=.00035*speed;cloudGroup.rotation.y+=.00022*speed;stormCloudGroup.rotation.y+=.00012*speed;stormClouds.forEach((g,i)=>{if(g.visible){g.position.y=g.userData.baseY+Math.sin(t*.00028+i)*.025;g.rotation.z=Math.sin(t*.00016+i)*.018}});lightningBolts.forEach(b=>{const pulse=Math.pow(Math.max(0,Math.sin(t*.0032+b.phase)),22)*stormIntensity;b.material.opacity=pulse*.95;b.group.visible=stormIntensity>.05&&pulse>.035});clouds.forEach((g,i)=>{const layer=g.userData.cloudLayer||0,layerSpeed=[1,.72,.48][layer],drift=Math.sin(t*.00018*layerSpeed+i*.65)*(.045+Math.min(windSpeed,60)*.0012),windRad=windDir*Math.PI/180;g.position.x=(g.userData.baseX??g.position.x)+Math.sin(windRad)*drift;g.position.z=(g.userData.baseZ??g.position.z)+Math.cos(windRad)*drift;g.position.y=(g.userData.baseY??(1.05+layer*.42))+Math.sin(t*.00045*layerSpeed+i)*(.04+layer*.008);g.rotation.z=Math.sin(t*.00018*layerSpeed+i*.7)*.045;g.rotation.x=Math.sin(t*.00013*layerSpeed+i*.4)*.025;g.rotation.y+=.00012*layerSpeed*(.4+Math.min(windSpeed,60)/60)});core.scale.setScalar(1+Math.sin(t*.0015)*.08);ring.rotation.z=t*.0002*speed;particles.forEach(p=>{const u=(t*.00003*speed+p.phase)%1;p.mesh.position.copy(p.curve.getPointAt(u));p.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),p.curve.getTangentAt(u).normalize())});drops.forEach(d=>{if(d.visible){d.position.y-=.025+maxPrecip*.006;const fall=Math.max(0,(d.userData.baseY||.35)-d.position.y);d.position.x=(d.userData.baseX||0)+(d.userData.windX||0)*fall*.22;d.position.z=(d.userData.baseZ||0)+(d.userData.windZ||0)*fall*.22;if(d.position.y<-.02){d.position.y=1.9;d.position.x=d.userData.baseX||0;d.position.z=d.userData.baseZ||0}}});
+   flakes.forEach((f,i)=>{if(f.visible){f.position.y-=.008;const drift=Math.max(0,(f.userData.baseY||.4)-f.position.y);f.position.x=(f.userData.baseX||0)+(f.userData.windX||0)*drift*.55+Math.sin(t*.001+i)*.025;f.position.z=(f.userData.baseZ||0)+(f.userData.windZ||0)*drift*.55+Math.cos(t*.0008+i)*.02;if(f.position.y<-.02){f.position.y=1.8;f.position.x=f.userData.baseX||0;f.position.z=f.userData.baseZ||0}}});
+   rainBands.forEach((m,i)=>{if(m.visible)m.material.opacity=(m.userData.baseOpacity||.12)*(.94+Math.sin(t*.001+i)*.06)});
+   snowBands.forEach((m,i)=>{if(m.visible)m.material.opacity=(m.userData.baseOpacity||.12)*(.96+Math.sin(t*.0008+i)*.04)});
+   renderer.render(scene,camera)}
   toggle.addEventListener('click',()=>{paused=!paused;toggle.textContent=paused?'▶ Spustit animaci':'⏸ Pozastavit animaci';toggle.setAttribute('aria-pressed',String(!paused));if(!paused&&!raf)raf=requestAnimationFrame(animate)});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!paused&&!raf)raf=requestAnimationFrame(animate)});
   window.addEventListener('pagehide',()=>{if(raf)cancelAnimationFrame(raf);renderer.dispose()},{once:true});
