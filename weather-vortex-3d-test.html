@@ -22,7 +22,7 @@ button{border:1px solid #b9d2e1;background:#edf7fc;color:#17445e;border-radius:9
 a{color:#087da9;font-weight:700;text-decoration:none}
 a:hover{text-decoration:underline}
 iframe{display:block;width:100%;height:min(78vh,900px);min-height:600px;border:1px solid #cbdce6;border-radius:12px;background:#fff}
-.note{font-size:12px;margin-top:10px}
+.note{font-size:12px;margin-top:10px}.diagnostics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}.metric{padding:9px;border:1px solid #dce8ef;border-radius:10px;background:#f8fbfd;min-width:0}.metric b{display:block;font-size:11px;color:#60798b}.metric span{font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.checks{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}.checks label{display:flex;align-items:center;gap:6px;font-size:13px}@media(max-width:700px){.diagnostics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){main{padding:8px}.panel{padding:8px}iframe{height:78vh;min-height:540px}}
 </style>
 </head>
@@ -41,14 +41,52 @@ iframe{display:block;width:100%;height:min(78vh,900px);min-height:600px;border:1
  <iframe id="modelFrame" title="Interaktivní meteorologický 3D model České republiky" src="./mapa-cr-3d.html#weatherVortexStage" loading="eager" allow="fullscreen"></iframe>
  <p class="note">Testovací stránka používá původní 3D model a jeho meteorologická data přímo ze souboru mapa-cr-3d.html. Neobsahuje kopii ani upravenou verzi modelového kódu; změny v testu proto nezasahují do původní stránky.</p>
 </section>
+<section class="panel" style="margin-top:10px" aria-label="Diagnostika zařízení a kontrolní seznam">
+ <h2 style="font-size:16px;margin:0 0 8px">Diagnostika zařízení</h2>
+ <div class="diagnostics">
+  <div class="metric"><b>Rozměry obrazovky</b><span id="screenSize">—</span></div>
+  <div class="metric"><b>Rozměry okna</b><span id="viewSize">—</span></div>
+  <div class="metric"><b>Pixel ratio</b><span id="pixelRatio">—</span></div>
+  <div class="metric"><b>Dotykové ovládání</b><span id="touchMode">—</span></div>
+  <div class="metric"><b>Velikost vloženého modelu</b><span id="frameSize">—</span></div>
+  <div class="metric"><b>WebGL</b><span id="webglState">—</span></div>
+  <div class="metric"><b>Stav modelové stránky</b><span id="frameState">Načítám…</span></div>
+  <div class="metric"><b>Stav testu</b><span id="testState">Připraven</span></div>
+ </div>
+ <h3 style="font-size:14px;margin:14px 0 6px">Kontrolní seznam na tabletu / mobilu</h3>
+ <div class="checks">
+  <label><input type="checkbox" class="testCheck"> Model je celý viditelný</label>
+  <label><input type="checkbox" class="testCheck"> Otáčení funguje</label>
+  <label><input type="checkbox" class="testCheck"> Přiblížení dvěma prsty funguje</label>
+  <label><input type="checkbox" class="testCheck"> Vrstvy lze zapínat a vypínat</label>
+  <label><input type="checkbox" class="testCheck"> Animace běží plynule</label>
+ </div>
+ <p class="note">Diagnostika zobrazuje technické parametry prohlížeče. Skutečnou plynulost animace a funkčnost dotykového ovládání je nutné potvrdit praktickým testem na zařízení.</p>
+</section>
 </main>
 <script>
 (()=> {
  const frame=document.getElementById('modelFrame'),state=document.getElementById('loadState');
+ const $=id=>document.getElementById(id);
+ function diagnostics(){
+  $('screenSize').textContent=screen.width+' × '+screen.height+' px';
+  $('viewSize').textContent=innerWidth+' × '+innerHeight+' px';
+  $('pixelRatio').textContent=String(devicePixelRatio||1);
+  $('touchMode').textContent=('ontouchstart' in window||navigator.maxTouchPoints>0)?'Podporováno':'Nedetekováno';
+  $('frameSize').textContent=Math.round(frame.clientWidth)+' × '+Math.round(frame.clientHeight)+' px';
+  let gl=null;try{const test=document.createElement('canvas');gl=test.getContext('webgl2')||test.getContext('webgl')}catch(e){}
+  $('webglState').textContent=gl?'Dostupné':'Nedostupné';
+  $('testState').textContent=document.querySelectorAll('.testCheck:checked').length+'/5 kontrol';
+ }
+ const checks=[...document.querySelectorAll('.testCheck')];
+ checks.forEach(x=>x.addEventListener('change',()=>{$('testState').textContent=checks.filter(y=>y.checked).length+'/5 kontrol'}));
+ addEventListener('resize',diagnostics);
+ if('ResizeObserver' in window)new ResizeObserver(diagnostics).observe(frame);
  function focus(){try{const doc=frame.contentDocument,stage=doc&&doc.getElementById('weatherVortexStage');if(stage){stage.scrollIntoView({block:'start',behavior:'instant'});state.textContent='Model načten · interaktivní test';return}}catch(e){}state.textContent='Model se načítá · případně použij odkaz na kompletní mapu'}
- frame.addEventListener('load',()=>{state.textContent='Stránka modelu načtena';setTimeout(focus,250)});
+ frame.addEventListener('load',()=>{state.textContent='Stránka modelu načtena';$('frameState').textContent='Načteno';setTimeout(focus,250);diagnostics()});
  document.getElementById('focusModel').addEventListener('click',focus);
- document.getElementById('reloadModel').addEventListener('click',()=>{state.textContent='Znovu načítám…';frame.src='./mapa-cr-3d.html#weatherVortexStage'});
+ document.getElementById('reloadModel').addEventListener('click',()=>{state.textContent='Znovu načítám…';$('frameState').textContent='Načítám…';frame.src='./mapa-cr-3d.html#weatherVortexStage'});
+ diagnostics();
 })();
 </script>
 </body>
