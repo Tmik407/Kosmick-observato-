@@ -20,7 +20,7 @@ jobs:
       - name: Checkout Guardian diagnostic tools
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: x5-ai-guardian-phase1
+          ref: x5-ai-guardian-phase2-main
           persist-credentials: false
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
@@ -38,6 +38,9 @@ jobs:
       - name: Update history
         if: always() && hashFiles('x5-guardian-diagnostics.json') != ''
         run: python3 scripts/x5_history.py x5-guardian-diagnostics.json guardian-history/history.json
+      - name: Analyze findings and recurring issues
+        if: always() && hashFiles('x5-guardian-diagnostics.json') != ''
+        run: python3 scripts/x5_guardian_analysis.py x5-guardian-diagnostics.json guardian-history/history.json
       - name: Save bounded history
         if: always() && hashFiles('guardian-history/history.json') != ''
         uses: actions/cache/save@v4
