@@ -743,7 +743,7 @@ function loadWeather(force=false,retry=false){
    if(state.weatherRetryTimer){clearTimeout(state.weatherRetryTimer);state.weatherRetryTimer=0;}
    status("Počasí načteno · 15 měst · jedna žádost Open-Meteo");
   }catch(error){
-   let fallbackLoaded=false;window.__weatherVortexSetSourceStatus?.("openmeteo","bad","nedostupné");window.__weatherVortexSetSourceStatus?.("metnorway","loading","načítám zálohu");
+   let fallbackLoaded=false;window.__weatherVortexSetSourceStatus?.("openmeteo","bad","nedostupné");
    try{
     window.__weatherVortexSetSourceStatus?.("ecmwf","loading","načítám záložní model");
     const ecmwf=await loadEcmwfForecast();
@@ -753,6 +753,7 @@ function loadWeather(force=false,retry=false){
     status("Záložní předpověď načtena · ECMWF IFS · 15 měst");
    }catch(ecmwfError){
     window.__weatherVortexSetSourceStatus?.("ecmwf","bad","nedostupný");
+    window.__weatherVortexSetSourceStatus?.("metnorway","loading","načítám zálohu");
     try{
     const fallbackRows=await loadMetNoFallback();
     useRows(fallbackRows,"MET Norway (záložní globální model)");window.__weatherVortexSetSourceStatus?.("metnorway","ok","dostupné · aktivní záloha");
@@ -760,11 +761,9 @@ function loadWeather(force=false,retry=false){
     $("weatherSummary").textContent="Hodinová služba Open-Meteo je dočasně nedostupná. Zobrazuji záložní předpověď MET Norway; její časové kroky se po prvních 48 hodinách mohou prodlužovat. Samostatná výška nového sněhu není v tomto záložním výstupu dostupná.";
     status("Záložní předpověď načtena · MET Norway · 15 měst");
    }catch(fallbackError){
+    window.__weatherVortexSetSourceStatus?.("metnorway","bad","nedostupné");
     $("weatherSummary").textContent="Open-Meteo: "+error.message+" · ECMWF IFS: "+ecmwfError.message+" · MET Norway: "+fallbackError.message+" · Zůstává dostupná mapa měření ČHMÚ.";
    }
-   }catch(outerFallbackError){
-    window.__weatherVortexSetSourceStatus?.("metnorway","bad","nedostupné");
-    $("weatherSummary").textContent="Open-Meteo: "+error.message+" · ECMWF IFS: "+ecmwfError.message+" · MET Norway: "+outerFallbackError.message+" · Zůstává dostupná náhradní mapa měření ČHMÚ.";
    }
    if(fallbackLoaded){
     state.weatherRetryCount=0;
