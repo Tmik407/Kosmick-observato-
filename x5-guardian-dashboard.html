@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f4f7fb">
+<title>X-5 Guardian · administrační panel</title>
+<style>
+:root{color-scheme:light;--ink:#17243a;--muted:#65748b;--line:#e2e8f0;--bg:#f4f7fb;--card:#fff;--blue:#2563eb;--green:#15803d;--amber:#b45309;--red:#b91c1c}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+header{background:#fff;border-bottom:1px solid var(--line);padding:22px max(18px,calc((100% - 1100px)/2))}
+header small{color:var(--muted);letter-spacing:.12em;text-transform:uppercase;font-weight:700}
+h1{font-size:clamp(24px,4vw,34px);margin:5px 0 2px}header p{margin:0;color:var(--muted)}
+main{max-width:1100px;margin:24px auto;padding:0 16px 40px}
+.notice{padding:13px 15px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:12px;color:#1e40af;margin-bottom:18px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 20px}
+button,.filelabel{border:1px solid #cbd5e1;background:#fff;border-radius:9px;padding:10px 14px;font:inherit;font-weight:650;color:var(--ink);cursor:pointer}
+button.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+input[type=file]{display:none}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0}
+.metric span{display:block;color:var(--muted);font-size:13px}.metric strong{font-size:30px;display:block;margin-top:3px}
+.metric.ok strong{color:var(--green)}.metric.warn strong{color:var(--amber)}.metric.fail strong{color:var(--red)}
+section{margin-top:18px}.sectionhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+h2{font-size:19px;margin:0 0 12px}.muted{color:var(--muted);font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:11px 9px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.status{display:inline-block;padding:3px 8px;border-radius:20px;font-size:12px;font-weight:750;background:#f1f5f9}.status.OK{color:var(--green);background:#dcfce7}.status.WARN{color:var(--amber);background:#fef3c7}.status.FAIL{color:var(--red);background:#fee2e2}
+.history-row{display:grid;grid-template-columns:170px 1fr 110px;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.bars{height:12px;background:#edf1f6;border-radius:20px;overflow:hidden;display:flex}.bars i{height:100%;display:block}.bars .ok{background:#22a06b}.bars .warn{background:#e5a000}.bars .fail{background:#dc5555}
+.empty{color:var(--muted);padding:20px 0;text-align:center}
+footer{color:var(--muted);font-size:12px;margin-top:22px}
+@media(max-width:700px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.history-row{grid-template-columns:1fr 1fr}.history-row .counts{grid-column:1/-1}table{font-size:12px}th,td{padding:8px 5px}}
+</style>
+</head>
+<body>
+<header><small>Kosmická observatoř X-5</small><h1>Guardian · administrační panel</h1><p>Kontrola dostupnosti zdrojů a historie diagnostiky</p></header>
+<main>
+<div class="notice"><strong>Bezpečný režim:</strong> panel pouze zobrazuje soubory, které sem ručně načtete. Neprovádí opravy, nic neposílá na server a neobsahuje přístupové klíče. Hlavní meteorologická stránka zůstává oddělená.</div>
+<div class="actions">
+<label class="filelabel" for="diagFile">Načíst diagnostiku JSON</label><input id="diagFile" type="file" accept=".json,application/json">
+<label class="filelabel" for="historyFile">Načíst historii JSON</label><input id="historyFile" type="file" accept=".json,application/json">
+<button id="demoBtn" type="button">Zobrazit ukázková data</button><button id="clearBtn" type="button">Vymazat zobrazení</button>
+</div>
+<div class="grid" aria-live="polite">
+<div class="card metric"><span>Poslední kontrola</span><strong id="lastTime" style="font-size:17px">—</strong></div>
+<div class="card metric ok"><span>OK</span><strong id="okCount">—</strong></div>
+<div class="card metric warn"><span>Varování</span><strong id="warnCount">—</strong></div>
+<div class="card metric fail"><span>Chyby</span><strong id="failCount">—</strong></div>
+</div>
+<section class="card"><div class="sectionhead"><h2>Stav zdrojů</h2><span id="diagInfo" class="muted">Diagnostika není načtena</span></div><div id="checks"><div class="empty">Načtěte x5-guardian-diagnostics.json z reportu GitHub Actions.</div></div></section>
+<section class="card"><div class="sectionhead"><h2>Historie kontrol</h2><span id="historyInfo" class="muted">Historie není načtena</span></div><div id="history"><div class="empty">Načtěte history.json z reportu GitHub Actions.</div></div></section>
+<footer>Serverová diagnostika nepotvrzuje vykreslení map, CORS, JavaScript ani ovládání na Android tabletu. Historie je omezena na 100 záznamů; dostupnost cache a artefaktů závisí na GitHub Actions.</footer>
+</main>
+<script>
+(() => {
+'use strict';
+let diagnostic = null, history = [];
+const el = id => document.getElementById(id);
+const safeDate = value => { const d = new Date(value); return Number.isNaN(d.getTime()) ? String(value || 'neuvedeno') : d.toLocaleString('cs-CZ'); };
+const countStates = checks => ['OK','WARN','FAIL'].map(s => checks.filter(c => c.state === s).length);
+function renderDiagnostic(data) {
+ if (!data || !Array.isArray(data.checks)) throw new Error('JSON musí obsahovat pole checks.');
+ diagnostic = data;
+ const checks = data.checks.filter(c => c && typeof c === 'object').map(c => ({name:String(c.name || 'Neznámá kontrola'),state:['OK','WARN','FAIL'].includes(String(c.state).toUpperCase()) ? String(c.state).toUpperCase() : 'WARN',detail:String(c.detail || '')}));
+ const [ok,warn,fail] = countStates(checks);
+ el('lastTime').textContent = safeDate(data.checked_at_utc);
+ el('okCount').textContent = ok; el('warnCount').textContent = warn; el('failCount').textContent = fail;
+ el('diagInfo').textContent = checks.length + ' kontrol';
+ const table = document.createElement('table');
+ const thead = document.createElement('thead'); thead.innerHTML = '<tr><th>Zdroj</th><th>Stav</th><th>Detail</th></tr>'; table.append(thead);
+ const tbody = document.createElement('tbody');
+ checks.forEach(c => { const tr=document.createElement('tr'); [c.name,c.state,c.detail].forEach((v,i)=>{const td=document.createElement('td'); if(i===1){const badge=document.createElement('span');badge.className='status '+c.state;badge.textContent=c.state;td.append(badge)}else td.textContent=v;tr.append(td)});tbody.append(tr); });
+ table.append(tbody); el('checks').replaceChildren(table);
+}
+function renderHistory(data) {
+ if (!Array.isArray(data)) throw new Error('Historie musí být JSON pole záznamů.');
+ history = data.filter(r => r && Array.isArray(r.checks)).slice(-100);
+ el('historyInfo').textContent = history.length + ' uložených kontrol (max. 100)';
+ const host=el('history'); host.replaceChildren();
+ if (!history.length){host.innerHTML='<div class="empty">Historie zatím neobsahuje žádné kontroly.</div>';return;}
+ history.slice().reverse().slice(0,20).forEach(row=>{
+  const counts=countStates(row.checks.map(c=>({state:['OK','WARN','FAIL'].includes(c.state)?c.state:'WARN'})));
+  const total=Math.max(1,counts.reduce((a,b)=>a+b,0));
+  const wrap=document.createElement('div');wrap.className='history-row';
+  const date=document.createElement('div');date.textContent=safeDate(row.checked_at_utc);
+  const bars=document.createElement('div');bars.className='bars';
+  [['ok',counts[0]],['warn',counts[1]],['fail',counts[2]]].forEach(([cls,n])=>{const b=document.createElement('i');b.className=cls;b.style.width=(n/total*100)+'%';bars.append(b)});
+  const label=document.createElement('div');label.className='counts';label.textContent='OK '+counts[0]+' · WARN '+counts[1]+' · FAIL '+counts[2];
+  wrap.append(date,bars,label);host.append(wrap);
+ });
+}
+async function loadFile(file, callback){if(!file)return;try{const parsed=JSON.parse(await file.text());callback(parsed)}catch(e){alert('Soubor nelze načíst: '+e.message)}}
+el('diagFile').addEventListener('change',e=>loadFile(e.target.files[0],renderDiagnostic));
+el('historyFile').addEventListener('change',e=>loadFile(e.target.files[0],renderHistory));
+el('clearBtn').addEventListener('click',()=>{diagnostic=null;history=[];el('lastTime').textContent='—';['okCount','warnCount','failCount'].forEach(id=>el(id).textContent='—');el('diagInfo').textContent='Diagnostika není načtena';el('historyInfo').textContent='Historie není načtena';el('checks').innerHTML='<div class="empty">Diagnostika není načtena.</div>';el('history').innerHTML='<div class="empty">Historie není načtena.</div>';});
+el('demoBtn').addEventListener('click',()=>{renderDiagnostic({checked_at_utc:new Date().toISOString(),checks:[{name:'GitHub Pages / HTML',state:'OK',detail:'Ukázková odpověď'},{name:'Open-Meteo',state:'WARN',detail:'Ukázkové varování'},{name:'MET Norway',state:'OK',detail:'Časová řada dostupná'}]});renderHistory([{checked_at_utc:new Date(Date.now()-86400000).toISOString(),checks:[{state:'OK'},{state:'WARN'}]},{checked_at_utc:new Date().toISOString(),checks:[{state:'OK'},{state:'WARN'},{state:'OK'}]}]);});
+})();
+</script>
+</body>
+</html>
