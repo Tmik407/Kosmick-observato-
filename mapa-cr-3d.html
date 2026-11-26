@@ -1210,13 +1210,18 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    const windLineCount=lowPower?18:32,windArrowGeo=new THREE.ConeGeometry(.055,.22,7);
    for(let n=0;n<windLineCount;n++){
     let x=-3.15+(n%6)*1.26,z=-3.05+Math.floor(n/6)*1.02,pts=[];
+    // Proudnice začínají i končí uvnitř skutečného polygonu ČR; mimo území se nevykreslují.
+    if(!insideCzech(x,z))continue;
     for(let j=0;j<76;j++){
+     if(!insideCzech(x,z))break;
      const v=localWindAt(x,z),bend=Math.sin((x+z+n)*.8)*.018;
      pts.push(new THREE.Vector3(x,.18+Math.min(1.35,v.speed/65),z));
-     x+=v.dx*.075+bend;z+=v.dz*.075-bend;
-     if(Math.abs(x)>3.7||Math.abs(z)>3.7){x=Math.max(-3.5,Math.min(3.5,x));z=Math.max(-3.5,Math.min(3.5,z))}
+     const nx=x+v.dx*.075+bend,nz=z+v.dz*.075-bend;
+     if(!insideCzech(nx,nz))break;
+     x=nx;z=nz;
     }
-    const curve=new THREE.CatmullRomCurve3(pts),line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(130)),new THREE.LineBasicMaterial({color:cols[n%4],transparent:true,opacity:.78}));
+    if(pts.length<3)continue;
+    const curve=new THREE.CatmullRomCurve3(pts),line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(100)),new THREE.LineBasicMaterial({color:cols[n%4],transparent:true,opacity:.78}));
     streamGroup.add(line);windLines.push(line);
     const dot=new THREE.Mesh(windArrowGeo,new THREE.MeshBasicMaterial({color:cols[n%4],transparent:true,opacity:.96}));scene.add(dot);particles.push({mesh:dot,curve,phase:n/windLineCount});
    }
