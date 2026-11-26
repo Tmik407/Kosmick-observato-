@@ -846,6 +846,55 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   }
   loadCzechRegions();
 
+  // Okresy ČR: oficiální polygonová vrstva ČSÚ RSO (LAU 1).
+  const districtGroup=new THREE.Group();districtGroup.visible=false;scene.add(districtGroup);
+  const districtButton=document.createElement('button');districtButton.type='button';
+  districtButton.textContent='🧭 Okresy ČR: zapnout';districtButton.style.cssText=regionButton.style.cssText;
+  if(layerControls)layerControls.appendChild(districtButton);
+  districtButton.addEventListener('click',()=>{districtGroup.visible=!districtGroup.visible;districtButton.textContent=districtGroup.visible?'🧭 Okresy ČR: vypnout':'🧭 Okresy ČR: zapnout'});
+  function addDistrictLabel(name,coords){
+   if(!name||!coords?.length)return;
+   const ring=coords[0],valid=ring.filter(p=>Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1]));
+   if(!valid.length)return;
+   const lon=valid.reduce((a,p)=>a+p[0],0)/valid.length,lat=valid.reduce((a,p)=>a+p[1],0)/valid.length;
+   if(lon<12||lon>18.7||lat<48.5||lat>51.1)return;
+   const p=geoPoint(lon,lat),c=document.createElement('canvas'),ctx=c.getContext('2d');c.width=640;c.height=112;
+   ctx.font='bold 34px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=8;ctx.strokeStyle='rgba(2,16,29,.94)';ctx.strokeText(name,320,56);ctx.fillStyle='#fff4d4';ctx.fillText(name,320,56);
+   const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
+   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false,depthWrite:false}));
+   sp.userData.geoPoint=p;sp.position.set(p.x,terrainHeightAt(p.x,p.z)+.22,p.z);sp.scale.set(.78,.14,1);sp.renderOrder=42;districtGroup.add(sp);
+  }
+  async function loadCzechDistricts(){
+   try{
+    districtButton.textContent='🧭 Načítám okresy…';
+    const url='https://geodata.csu.gov.cz/server/rest/services/Hosted/OKRES_LAU/FeatureServer/0/query?where=1%3D1&outFields=*&returnGeometry=true&outSR=4326&f=geojson';
+    const response=await fetch(url,{mode:'cors',headers:{Accept:'application/geo+json, application/json'}});
+    if(!response.ok)throw new Error('ČSÚ RSO HTTP '+response.status);
+    const data=await response.json(),features=data.features||[];
+    if(!features.length)throw new Error('Datová služba nevrátila okresní polygony');
+    let drawn=0;
+    features.forEach(feature=>{
+     const geom=feature.geometry;if(!geom)return;
+     const props=feature.properties||{},name=props.NAZ_OKRES||props.naz_okres||props.NAZEV||props.nazev||props.NAME||props.name||'';
+     const polygons=geom.type==='Polygon'?[geom.coordinates]:geom.type==='MultiPolygon'?geom.coordinates:[];
+     polygons.forEach(poly=>poly.forEach(ring=>{
+      const pts=ring.filter(([lon,lat])=>lon>=12&&lon<=18.7&&lat>=48.5&&lat<=51.1).map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.145,p.z)});
+      if(pts.length<3)return;
+      const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x9de8ff,transparent:true,opacity:.88,depthTest:false}));
+      line.renderOrder=38;districtGroup.add(line);drawn++;
+     }));
+     if(name)addDistrictLabel(name,polygons[0]?.[0]);
+    });
+    if(!drawn)throw new Error('V datech nebyly nalezeny hranice okresů ČR');
+    districtButton.textContent='🧭 Okresy ČR: zapnout';
+    districtButton.title='Okresní hranice ČSÚ RSO (LAU 1), vykreslené segmenty: '+drawn;
+   }catch(err){
+    districtButton.textContent='🧭 Okresy ČR: chyba načtení';districtButton.title=String(err.message||err);
+    console.warn('X-5 okresy ČR:',err);
+   }
+  }
+  loadCzechDistricts();
+
   // Teplotní vrstva kopíruje výškový reliéf, aby se terén a počasí prostorově překrývaly.
   const heatGeo=new THREE.PlaneGeometry(7.4,7.4,160,160);heatGeo.rotateX(-Math.PI/2);clipToCzech(heatGeo);
   const heatPos=heatGeo.attributes.position,heatColor=[];
