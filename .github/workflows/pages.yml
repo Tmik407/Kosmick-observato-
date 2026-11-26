@@ -176,5 +176,9 @@ jobs:
           grep -q 'id="time"' /tmp/x5-weather-map-new.html
           grep -q 'async function loadMetNoFallback' /tmp/x5-weather-map-new.html
           grep -q 'api.met.no/weatherapi/locationforecast/2.0/compact' /tmp/x5-weather-map-new.html
+          grep -q 'x5-newmap-openmeteo-cooldown-until' /tmp/x5-weather-map-new.html
+          grep -q 'čerstvá ≤30 min' /tmp/x5-weather-map-new.html
+          grep -q 'station-clusters' /tmp/x5-weather-map-new.html
+          grep -q 'circle-radius":3.6' /tmp/x5-weather-map-new.html
           echo "Nová mapa X-5: předpověď, vrstvy a stanice ČHMÚ ověřeny."
           echo "Smoke test X-5 dokončen."
