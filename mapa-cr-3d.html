@@ -871,7 +871,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   // Jasná hranice mapy ČR a jemný okraj reliéfu.
   // Zvýrazněná státní hranice s jemným světelným lemem.
   const borderPts=czBorder.map(p=>new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.105,p.z));
-  const borderCurve=new THREE.CatmullRomCurve3(borderPts,true,'centripetal');
+  const borderCurve=new THREE.CurvePath();for(let i=0;i<borderPts.length;i++)borderCurve.add(new THREE.LineCurve3(borderPts[i],borderPts[(i+1)%borderPts.length]));
   const borderOuter=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,420,.038,8,true),new THREE.MeshBasicMaterial({color:0x06283d,transparent:true,opacity:1,depthTest:true}));
   const borderLine=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,420,.021,8,true),new THREE.MeshBasicMaterial({color:0xc5f5ff,transparent:true,opacity:1,depthTest:true}));
   const borderGlow=new THREE.Mesh(new THREE.TubeGeometry(borderCurve,420,.065,8,true),new THREE.MeshBasicMaterial({color:0x20bfff,transparent:true,opacity:.16,depthWrite:false,blending:THREE.AdditiveBlending,depthTest:true}));
