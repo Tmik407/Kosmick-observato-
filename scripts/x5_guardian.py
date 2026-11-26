@@ -16,7 +16,8 @@ PAGE = BASE + "/mapa-cr-3d.html"
 CHMI = BASE + "/data/chmi-stations-latest.json"
 UA = "X5WeatherGuardian/1.0 (https://github.com/Tmik407/Kosmick-observato-)"
 TIMEOUT = 20
-checks: list[tuple[str, str, str]] = []\nchmi_age_h: float | None = None
+checks: list[tuple[str, str, str]] = []
+chmi_age_h: float | None = None
 
 
 def get(url: str, accept: str = "application/json"):
