@@ -180,5 +180,9 @@ jobs:
           grep -q 'čerstvá ≤30 min' /tmp/x5-weather-map-new.html
           grep -q 'station-clusters' /tmp/x5-weather-map-new.html
           grep -q 'circle-radius":3.6' /tmp/x5-weather-map-new.html
+          grep -q 'Stáří měření:' /tmp/x5-weather-map-new.html
+          grep -q 'ČHMÚ /now' /tmp/x5-weather-map-new.html
+          grep -q 'Čerstvé měření' /tmp/x5-weather-map-new.html
+          grep -q 'circle-color.*age_minutes' /tmp/x5-weather-map-new.html
           echo "Nová mapa X-5: předpověď, vrstvy a stanice ČHMÚ ověřeny."
           echo "Smoke test X-5 dokončen."
