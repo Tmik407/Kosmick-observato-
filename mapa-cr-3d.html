@@ -795,20 +795,23 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    geoOverlay.children.forEach(obj=>{
     if(obj.userData.geoPoint){const p=obj.userData.geoPoint;obj.position.y=terrainHeightAt(p.x,p.z)+.13}
     if(obj.userData.geoCoords){const pts=obj.userData.geoCoords.map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.075,p.z)});obj.geometry.setFromPoints(pts)}
-    if(obj.userData.geoPoint&&obj.parent!==geoOverlay){const p=obj.userData.geoPoint;obj.position.y=terrainHeightAt(p.x,p.z)+.18}
    });
+   [regionGroup,cityGroup].forEach(group=>group.children.forEach(obj=>{
+    if(obj.userData.geoPoint){const p=obj.userData.geoPoint;obj.position.y=terrainHeightAt(p.x,p.z)+.18}
+    if(obj.userData.geoCoords){const pts=obj.userData.geoCoords.map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.105,p.z)});obj.geometry.setFromPoints(pts)}
+   }));
   }
 
 
 
   // Správní kraje ČR: oficiální geografická geometrie Eurostat GISCO (NUTS 3).
-  const regionGroup=new THREE.Group();scene.add(regionGroup);let regionsLoaded=false;
+  const regionGroup=new THREE.Group();regionGroup.visible=false;scene.add(regionGroup);let regionsLoaded=false;
   const regionNames={CZ010:'Praha',CZ020:'Středočeský kraj',CZ031:'Jihočeský kraj',CZ032:'Plzeňský kraj',CZ041:'Karlovarský kraj',CZ042:'Ústecký kraj',CZ051:'Liberecký kraj',CZ052:'Královéhradecký kraj',CZ053:'Pardubický kraj',CZ063:'Kraj Vysočina',CZ064:'Jihomoravský kraj',CZ071:'Olomoucký kraj',CZ072:'Zlínský kraj',CZ080:'Moravskoslezský kraj'};
   const regionButton=document.createElement('button');regionButton.type='button';regionButton.textContent='🗺️ Kraje ČR: zapnout';regionButton.style.cssText='margin:6px 6px 6px 0;padding:9px 13px;border:1px solid #328ca8;border-radius:10px;background:#e8f7fc;color:#16465b;font-weight:700;';
   const cityButton=document.createElement('button');cityButton.type='button';cityButton.textContent='🏙️ Krajská města: zapnout';cityButton.style.cssText=regionButton.style.cssText;
   if(layerControls){layerControls.appendChild(regionButton);layerControls.appendChild(cityButton)}
   regionButton.addEventListener('click',()=>{regionGroup.visible=!regionGroup.visible;regionButton.textContent=regionGroup.visible?'🗺️ Kraje ČR: vypnout':'🗺️ Kraje ČR: zapnout'});
-  const cityGroup=new THREE.Group();scene.add(cityGroup);
+  const cityGroup=new THREE.Group();cityGroup.visible=false;scene.add(cityGroup);
   cityButton.addEventListener('click',()=>{cityGroup.visible=!cityGroup.visible;cityButton.textContent=cityGroup.visible?'🏙️ Krajská města: vypnout':'🏙️ Krajská města: zapnout'});
   function makeMapText(name,lon,lat,kind='region'){
    const p=geoPoint(lon,lat),c=document.createElement('canvas'),ctx=c.getContext('2d');c.width=768;c.height=128;
