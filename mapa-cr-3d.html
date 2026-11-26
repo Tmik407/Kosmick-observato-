@@ -232,7 +232,7 @@ const status=(s)=>$("status").textContent=s;
 let forecastPlaybackTimer=0;
 function stopForecastPlayback(){if(forecastPlaybackTimer){clearInterval(forecastPlaybackTimer);forecastPlaybackTimer=0;}const b=$("forecastPlay");if(b){b.textContent="▶ Automaticky přehrávat";b.setAttribute("aria-pressed","false");}}
 function startForecastPlayback(){if(!state.times.length)return;stopForecastPlayback();const b=$("forecastPlay");if(b){b.textContent="Ⅱ Pozastavit přehrávání";b.setAttribute("aria-pressed","true");}forecastPlaybackTimer=setInterval(()=>{if(document.hidden){stopForecastPlayback();return;}if(state.hour>=state.times.length-1){stopForecastPlayback();return;}state.hour++;$("forecastHour").value=String(state.hour);$("forecastTimeline").value=String(state.hour);applyHour();},1400);}
-const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/liberty",center:[15.35,49.82],zoom:6.75,pitch:35,bearing:-8,maxPitch:75,cooperativeGestures:true,attributionControl:true});
+const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/liberty",center:[15.35,49.82],zoom:6.75,pitch:35,bearing:-8,maxPitch:75,cooperativeGestures:true,attributionControl:true,fadeDuration:0,refreshExpiredTiles:false,renderWorldCopies:false,collectResourceTiming:false,maxTileCacheSize:window.matchMedia("(pointer: coarse)").matches?64:128});
 state.map=map;
 // Odolné načítání mapového podkladu: při selhání úvodního vektorového stylu přepni
 // na nezávislý rastrový podklad. Přepnutí stylu znovu spustí níže uvedený load handler,
@@ -275,9 +275,8 @@ const flowCanvas=$("flowCanvas"),ctx=flowCanvas.getContext("2d");
 function sizeCanvas(){const r=$("map").getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);flowCanvas.width=Math.round(r.width*d);flowCanvas.height=Math.round(r.height*d);flowCanvas.style.width=r.width+"px";flowCanvas.style.height=r.height+"px";ctx.setTransform(d,0,0,d,0,0)}
 new ResizeObserver(sizeCanvas).observe($("map"));sizeCanvas();
 map.on("style.load",()=>{
- map.addSource("x5-dem",{type:"raster-dem",url:"https://demotiles.maplibre.org/terrain-tiles/tiles.json",tileSize:256});
- map.setTerrain({source:"x5-dem",exaggeration:1.25});
- map.addLayer({id:"x5-hillshade",source:"x5-dem",type:"hillshade",paint:{"hillshade-exaggeration":.35,"hillshade-shadow-color":"#526b7c","hillshade-highlight-color":"#f5f8fa"}});
+ // Reliéf načteme až po prvním vykreslení mapy; základní mapa a počasí se zobrazí dříve.
+ if(!window.__x5ReliefScheduled){window.__x5ReliefScheduled=true;const enableRelief=()=>{try{if(!map.getSource("x5-dem"))map.addSource("x5-dem",{type:"raster-dem",url:"https://demotiles.maplibre.org/terrain-tiles/tiles.json",tileSize:256});if(!map.getLayer("x5-hillshade"))map.addLayer({id:"x5-hillshade",source:"x5-dem",type:"hillshade",paint:{"hillshade-exaggeration":.35,"hillshade-shadow-color":"#526b7c","hillshade-highlight-color":"#f5f8fa"}});map.setTerrain({source:"x5-dem",exaggeration:1.25});}catch(error){console.warn("X-5: reliéf se nepodařilo aktivovat",error);}};setTimeout(enableRelief,1800);}
  map.addSource("weather-grid",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
  map.addLayer({id:"temperature-circles",type:"circle",source:"weather-grid",paint:{"circle-radius":["interpolate",["linear"],["zoom"],5,19,6.5,27,8,34],"circle-color":["interpolate",["linear"],["get","temp"],-25,"#263b9b",-15,"#286fc4",-8,"#28a9dc",0,"#39c6b5",8,"#78c96b",16,"#e6d34b",24,"#f39a38",30,"#e85c42",36,"#a92f65"],"circle-opacity":.78,"circle-stroke-color":"#ffffff","circle-stroke-opacity":.85,"circle-stroke-width":1.35}});
  map.addLayer({id:"temperature-labels",type:"symbol",source:"weather-grid",layout:{"text-field":["concat",["to-string",["round",["get","temp"]]],"°"],"text-size":11,"text-font":["Open Sans Bold"],"text-allow-overlap":true,"text-ignore-placement":true},paint:{"text-color":"#17364b","text-halo-color":"#ffffff","text-halo-width":1.5}});
