@@ -273,7 +273,8 @@ async function fetchWeatherApi(url,options={}){
   const run=weatherApiQueue.then(async()=>{
    const remaining=Math.max(0,weatherApiCooldownUntil-Date.now());
    if(remaining>0)throw Error("Open-Meteo má aktivní ochrannou pauzu ještě "+Math.ceil(remaining/1000)+" s.");
-   const response=await fetch(url,{...options,cache:options.cache||"default"});
+   const controller=new AbortController();const requestTimer=setTimeout(()=>controller.abort(),20000);
+   let response;try{response=await fetch(url,{...options,cache:options.cache||"default",signal:controller.signal})}catch(err){if(err?.name==="AbortError")throw Error("Open-Meteo: požadavek překročil limit 20 s.");throw err}finally{clearTimeout(requestTimer)}
    if(response.status===429){
     const header=Number(response.headers.get("Retry-After"));
     const pause=Number.isFinite(header)&&header>0?Math.min(120000,header*1000):60000;
@@ -401,15 +402,15 @@ function syncForecastTimeline(){
 }
 function applyHour(){
  const i=state.hour;if(!state.rows.length)return;
- // Odpověď Open-Meteo může dorazit dříve než se dokončí načtení stylu MapLibre.
- // V takovém případě počkáme na zdroje mapy; map load následně znovu spustí načtení.
- if(!map||!map.getSource("weather-grid")||!map.getSource("cities")){status("Předpověď načtena · čekám na zdroje mapy…");map?.once("idle",()=>{if(state.rows.length)applyHour()});return;}
  const features=all.map((p,n)=>weatherFeature(p,state.rows[n],i));
+ // 3D model dostane předpověď nezávisle na načtení dlaždic a stylu MapLibre.
+ window.__weatherVortexSetData?.(features.slice(0,grid.length));
+ // Mapová vrstva může čekat na styl; časová osa a 3D model ale mohou běžet dál.
+ if(!map||!map.getSource("weather-grid")||!map.getSource("cities")){status("Předpověď načtena · čekám na zdroje mapy…");map?.once("idle",()=>{if(state.rows.length)applyHour()});return;}
  map.getSource("weather-grid").setData({type:"FeatureCollection",features:features.slice(0,grid.length)});
  const cityFeatures=features.slice(grid.length).map(f=>{const c=cities.find(x=>x.lat===f.geometry.coordinates[1]&&x.lon===f.geometry.coordinates[0]);return {...f,properties:{...f.properties,name:c.name}}});
  map.getSource("cities").setData({type:"FeatureCollection",features:cityFeatures});
  state.features=features.slice(0,grid.length);
-  window.__weatherVortexSetData?.(state.features);
  const time=state.times[i];window.__weatherVortexCurrentValidTime=time;window.__weatherVortexSetValidTime?.(time);syncForecastTimeline();$("validTime").textContent="Platnost: "+new Date(time).toLocaleString("cs-CZ")+" · modelová předpověď";
  const avg=cityFeatures.reduce((a,f)=>a+f.properties.temp,0)/cityFeatures.length;
  const rainCount=cityFeatures.filter(f=>f.properties.rain>.1).length,snowCount=cityFeatures.filter(f=>f.properties.snow>.1).length;
@@ -753,6 +754,8 @@ window.__weatherVortexTogglePrecipitation=()=>{state.visible.precipitation=!stat
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){if(state.rows.length)loadWeather();if(!state.lastStationsLoad||Date.now()-state.lastStationsLoad>15*60*1000)loadStations()}});
 window.setInterval(()=>{if(!document.hidden){loadWeather();loadStations()}},15*60*1000);
 map.on("load",()=>{if(!state.raf)animateFlow()});
+ // Záložní start předpovědi nezávisí na události load mapových dlaždic.
+ setTimeout(()=>{if(!state.rows.length&&!state.weatherLoading)loadWeather()},5000);
 })();
 </script>
 <script type="module">
