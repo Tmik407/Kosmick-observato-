@@ -795,9 +795,53 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    geoOverlay.children.forEach(obj=>{
     if(obj.userData.geoPoint){const p=obj.userData.geoPoint;obj.position.y=terrainHeightAt(p.x,p.z)+.13}
     if(obj.userData.geoCoords){const pts=obj.userData.geoCoords.map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.075,p.z)});obj.geometry.setFromPoints(pts)}
+    if(obj.userData.geoPoint&&obj.parent!==geoOverlay){const p=obj.userData.geoPoint;obj.position.y=terrainHeightAt(p.x,p.z)+.18}
    });
   }
 
+
+
+  // Správní kraje ČR: oficiální geografická geometrie Eurostat GISCO (NUTS 3).
+  const regionGroup=new THREE.Group();scene.add(regionGroup);let regionsLoaded=false;
+  const regionNames={CZ010:'Praha',CZ020:'Středočeský kraj',CZ031:'Jihočeský kraj',CZ032:'Plzeňský kraj',CZ041:'Karlovarský kraj',CZ042:'Ústecký kraj',CZ051:'Liberecký kraj',CZ052:'Královéhradecký kraj',CZ053:'Pardubický kraj',CZ063:'Kraj Vysočina',CZ064:'Jihomoravský kraj',CZ071:'Olomoucký kraj',CZ072:'Zlínský kraj',CZ080:'Moravskoslezský kraj'};
+  const regionButton=document.createElement('button');regionButton.type='button';regionButton.textContent='🗺️ Kraje ČR: zapnout';regionButton.style.cssText='margin:6px 6px 6px 0;padding:9px 13px;border:1px solid #328ca8;border-radius:10px;background:#e8f7fc;color:#16465b;font-weight:700;';
+  const cityButton=document.createElement('button');cityButton.type='button';cityButton.textContent='🏙️ Krajská města: zapnout';cityButton.style.cssText=regionButton.style.cssText;
+  if(layerControls){layerControls.appendChild(regionButton);layerControls.appendChild(cityButton)}
+  regionButton.addEventListener('click',()=>{regionGroup.visible=!regionGroup.visible;regionButton.textContent=regionGroup.visible?'🗺️ Kraje ČR: vypnout':'🗺️ Kraje ČR: zapnout'});
+  const cityGroup=new THREE.Group();scene.add(cityGroup);
+  cityButton.addEventListener('click',()=>{cityGroup.visible=!cityGroup.visible;cityButton.textContent=cityGroup.visible?'🏙️ Krajská města: vypnout':'🏙️ Krajská města: zapnout'});
+  function makeMapText(name,lon,lat,kind='region'){
+   const p=geoPoint(lon,lat),c=document.createElement('canvas'),ctx=c.getContext('2d');c.width=768;c.height=128;
+   ctx.font=kind==='city'?'bold 42px Arial':'bold 35px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=9;ctx.strokeStyle='rgba(2,16,29,.92)';ctx.strokeText(name,384,64);ctx.fillStyle=kind==='city'?'#ffffff':'#ffe7a6';ctx.fillText(name,384,64);
+   const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
+   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false,depthWrite:false}));
+   sp.userData.geoPoint=p;sp.position.set(p.x,terrainHeightAt(p.x,p.z)+.18,p.z);sp.scale.set(kind==='city'?1.02:1.22,.205,1);sp.renderOrder=40;
+   (kind==='city'?cityGroup:regionGroup).add(sp);
+  }
+  const regionCenters={CZ010:[14.4378,50.0755],CZ020:[14.8,49.9],CZ031:[14.4,49.0],CZ032:[13.35,49.6],CZ041:[12.85,50.15],CZ042:[13.9,50.55],CZ051:[15.1,50.7],CZ052:[15.8,50.35],CZ053:[16.1,49.95],CZ063:[15.55,49.4],CZ064:[16.6,49.15],CZ071:[17.15,49.7],CZ072:[17.65,49.2],CZ080:[18.0,49.85]};
+  Object.entries(regionCenters).forEach(([id,p])=>makeMapText(regionNames[id],p[0],p[1],'region'));
+  const capitals=[['Praha',14.4378,50.0755],['České Budějovice',14.474,48.9757],['Plzeň',13.3776,49.7384],['Karlovy Vary',12.871,50.2319],['Ústí nad Labem',14.0323,50.6611],['Liberec',15.0562,50.7671],['Hradec Králové',15.8328,50.2092],['Pardubice',15.7812,50.0343],['Jihlava',15.5912,49.3961],['Brno',16.6068,49.1951],['Olomouc',17.2518,49.5938],['Zlín',17.666,49.2244],['Ostrava',18.2625,49.8209]];
+  capitals.forEach(v=>makeMapText(v[0],v[1],v[2],'city'));
+  async function loadCzechRegions(){
+   try{
+    const url='https://gisco-services.ec.europa.eu/distribution/v2/nuts/geojson/NUTS_RG_10M_2024_4326_LEVL_3.geojson';
+    const response=await fetch(url,{mode:'cors',headers:{Accept:'application/geo+json, application/json'}});
+    if(!response.ok)throw new Error('GISCO HTTP '+response.status);
+    const data=await response.json(),features=(data.features||[]).filter(f=>f.properties?.CNTR_CODE==='CZ'&&Number(f.properties?.LEVL_CODE)===3);
+    if(features.length!==14)throw new Error('Očekáváno 14 krajů, načteno '+features.length);
+    features.forEach(feature=>{
+     const geom=feature.geometry;if(!geom)return;const polygons=geom.type==='Polygon'?[geom.coordinates]:geom.type==='MultiPolygon'?geom.coordinates:[];
+     polygons.forEach(poly=>poly.forEach(ring=>{
+      const pts=ring.filter(([lon,lat])=>lon>=12.0&&lon<=18.7&&lat>=48.5&&lat<=51.1).map(([lon,lat])=>{const p=geoPoint(lon,lat);return new THREE.Vector3(p.x,terrainHeightAt(p.x,p.z)+.105,p.z)});
+      if(pts.length<3)return;const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xffe39a,transparent:true,opacity:.96,depthTest:false}));
+      line.renderOrder=35;regionGroup.add(line);
+     }));
+    });
+    regionsLoaded=true;regionButton.textContent=regionGroup.visible?'🗺️ Kraje ČR: vypnout':'🗺️ Kraje ČR: zapnout';
+    regionButton.title='Načteno 14 hranic krajů z Eurostat GISCO NUTS 3 (2024)';
+   }catch(err){regionButton.textContent='🗺️ Kraje ČR: chyba načtení';regionButton.title=String(err.message||err);console.warn('X-5 kraje ČR:',err)}
+  }
+  loadCzechRegions();
 
   // Teplotní vrstva kopíruje výškový reliéf, aby se terén a počasí prostorově překrývaly.
   const heatGeo=new THREE.PlaneGeometry(7.4,7.4,160,160);heatGeo.rotateX(-Math.PI/2);clipToCzech(heatGeo);
