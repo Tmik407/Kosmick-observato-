@@ -179,7 +179,7 @@ jobs:
           grep -q 'x5-newmap-openmeteo-cooldown-until' /tmp/x5-weather-map-new.html
           grep -q 'čerstvá ≤30 min' /tmp/x5-weather-map-new.html
           grep -q 'station-clusters' /tmp/x5-weather-map-new.html
-          grep -q 'circle-radius":3.6' /tmp/x5-weather-map-new.html
+          grep -q 'circle-radius":4.2' /tmp/x5-weather-map-new.html
           grep -q 'Stáří měření:' /tmp/x5-weather-map-new.html
           grep -q 'station-hit-target' /tmp/x5-weather-map-new.html
           grep -q 'ČHMÚ /now' /tmp/x5-weather-map-new.html
