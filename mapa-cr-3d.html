@@ -267,7 +267,32 @@ setTimeout(()=>{
  let ready=false;try{ready=map.isStyleLoaded()&&map.areTilesLoaded()}catch(_){}
  if(!ready)activateX5RasterFallback("záložní dlaždice OSM HOT se nenačetly do 12 sekund");
 },22000);
- // Dotykové ovládání: tažení mapy jedním prstem je povoleno; přiblížení funguje gestem dvou prstů.
+ // Dotykové ovládání tabletů: svislé gesto roluje stránku, vodorovné gesto posouvá mapu.
+ // Dvoupalcové přiblížení ponecháváme v nativním ovladači MapLibre.
+ if(window.matchMedia("(pointer: coarse)").matches){
+  map.dragPan.disable();
+  const touchSurface=map.getCanvasContainer();
+  touchSurface.style.touchAction="pan-y";
+  let touchStart=null,touchMode=null,lastTouch=null;
+  touchSurface.addEventListener("touchstart",ev=>{
+   if(ev.touches.length!==1){touchStart=null;touchMode=null;lastTouch=null;return;}
+   const t=ev.touches[0];touchStart={x:t.clientX,y:t.clientY};lastTouch=touchStart;touchMode="pending";
+  },{passive:true});
+  touchSurface.addEventListener("touchmove",ev=>{
+   if(ev.touches.length!==1||!touchStart)return;
+   const t=ev.touches[0],dx=t.clientX-touchStart.x,dy=t.clientY-touchStart.y;
+   if(touchMode==="pending"&&Math.hypot(dx,dy)>9)touchMode=Math.abs(dx)>Math.abs(dy)*1.15?"map":"scroll";
+   if(touchMode==="map"){
+    ev.preventDefault();
+    const stepX=t.clientX-lastTouch.x,stepY=t.clientY-lastTouch.y;
+    map.panBy([stepX,stepY],{animate:false});
+    lastTouch={x:t.clientX,y:t.clientY};
+   }
+  },{passive:false});
+  const finishTouch=()=>{touchStart=null;touchMode=null;lastTouch=null;};
+  touchSurface.addEventListener("touchend",finishTouch,{passive:true});
+  touchSurface.addEventListener("touchcancel",finishTouch,{passive:true});
+ }
 map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),"top-right");
 map.addControl(new maplibregl.ScaleControl({maxWidth:110,unit:"metric"}),"bottom-left");
 const flowCanvas=$("flowCanvas"),ctx=flowCanvas.getContext("2d");
