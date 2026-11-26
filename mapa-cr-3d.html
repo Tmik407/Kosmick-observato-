@@ -227,6 +227,26 @@ function stopForecastPlayback(){if(forecastPlaybackTimer){clearInterval(forecast
 function startForecastPlayback(){if(!state.times.length)return;stopForecastPlayback();const b=$("forecastPlay");if(b){b.textContent="Ⅱ Pozastavit přehrávání";b.setAttribute("aria-pressed","true");}forecastPlaybackTimer=setInterval(()=>{if(document.hidden){stopForecastPlayback();return;}if(state.hour>=state.times.length-1){stopForecastPlayback();return;}state.hour++;$("forecastHour").value=String(state.hour);$("forecastTimeline").value=String(state.hour);applyHour();},1400);}
 const map=new maplibregl.Map({container:"map",style:"https://tiles.openfreemap.org/styles/liberty",center:[15.35,49.82],zoom:6.75,pitch:35,bearing:-8,maxPitch:75,cooperativeGestures:true,attributionControl:true});
 state.map=map;
+// Odolné načítání mapového podkladu: při selhání úvodního vektorového stylu přepni
+// na nezávislý rastrový podklad. Přepnutí stylu znovu spustí níže uvedený load handler,
+// který znovu vytvoří meteorologické vrstvy a terén.
+let x5BaseStyleReady=false,x5RasterFallbackUsed=false,x5StyleErrorCount=0;
+function activateX5RasterFallback(reason){
+ if(x5BaseStyleReady||x5RasterFallbackUsed)return;
+ x5RasterFallbackUsed=true;
+ console.warn("X-5: přepínám na záložní mapový podklad.",reason||"časový limit");
+ try{
+  map.setStyle({version:8,sources:{"x5-voyager":{type:"raster",tiles:["https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors © CARTO"}},layers:[{id:"x5-voyager-base",type:"raster",source:"x5-voyager",minzoom:0,maxzoom:19}]});
+ }catch(error){console.error("X-5: záložní mapa se nepodařila aktivovat",error);}
+}
+map.on("load",()=>{x5BaseStyleReady=true;});
+map.on("error",event=>{
+ if(!x5BaseStyleReady&&!x5RasterFallbackUsed){
+  x5StyleErrorCount++;
+  if(x5StyleErrorCount>=2)activateX5RasterFallback(event?.error?.message||"chyby načítání vektorového stylu");
+ }
+});
+setTimeout(()=>{if(!x5BaseStyleReady)activateX5RasterFallback("vektorový styl se nenačetl do 15 sekund");},15000);
 // Na dotykových zařízeních vypnout tažení mapy jedním prstem, aby gesto patřilo rolování stránky.
 if(window.matchMedia("(pointer: coarse)").matches){map.dragPan.disable();}
 map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),"top-right");
@@ -1090,11 +1110,19 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   let officialBoundaryGroup=null;
   async function loadOfficialCzechGeometry(){
    const badge=document.getElementById('weatherBoundaryBadge');
-   if(badge)badge.textContent='Hranice ČR: načítám GeoJSON…';
+   if(badge)badge.textContent='Hranice ČR: načítám oficiální data…';
+   // Každý externí požadavek má vlastní limit; pomalý poskytovatel nesmí
+   // zablokovat dokončení 3D modelu. Stávající vestavěný obrys zůstává zálohou.
+   const fetchWithTimeout=async(url,timeoutMs=10000)=>{
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
+    try{return await fetch(url,{cache:'force-cache',signal:controller.signal});}
+    finally{clearTimeout(timer);}
+   };
    try{
-    const mr=await fetch('https://www.geoboundaries.org/api/current/gbOpen/CZE/ADM0/',{cache:'force-cache'});if(!mr.ok)throw new Error('geoBoundaries ADM0 HTTP '+mr.status);
+    const mr=await fetchWithTimeout('https://www.geoboundaries.org/api/current/gbOpen/CZE/ADM0/',10000);
+    if(!mr.ok)throw new Error('geoBoundaries ADM0 HTTP '+mr.status);
     const meta=await mr.json();if(!meta.gjDownloadURL)throw new Error('Chybí odkaz na GeoJSON');
-    const gr=await fetch(meta.gjDownloadURL,{cache:'force-cache'});if(!gr.ok)throw new Error('GeoJSON HTTP '+gr.status);
+    const gr=await fetchWithTimeout(meta.gjDownloadURL,12000);if(!gr.ok)throw new Error('GeoJSON HTTP '+gr.status);
     const data=await gr.json(),rings=(data.features||[]).flatMap(f=>{const g=f.geometry;if(!g)return[];return g.type==='Polygon'?[g.coordinates[0]]:g.type==='MultiPolygon'?g.coordinates.map(p=>p[0]):[]}).filter(r=>r&&r.length>30);
     if(!rings.length)throw new Error('GeoJSON neobsahuje obrys ČR');
     const ring=rings.sort((a,b)=>b.length-a.length)[0];czBorderLL=ring.map(c=>[+c[0],+c[1]]).filter(c=>Number.isFinite(c[0])&&Number.isFinite(c[1]));
@@ -1107,7 +1135,14 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
     czBorder=czBorderCurve.getPoints(1200).map(p=>({x:p.x,z:p.z}));rebuildOfficialMask();
     if(badge){badge.textContent='Hranice ČR: oficiální GeoJSON načten · '+czBorderLL.length+' bodů';badge.title='geoBoundaries gbOpen · licence CC BY 4.0';badge.style.borderColor='#54c78b';}
     console.info('X-5: oficiální hranice ČR načtena, '+czBorderLL.length+' vrcholů',bounds);
-   }catch(err){console.warn('X-5: načtení oficiální hranice selhalo',err);if(badge){badge.textContent='Hranice ČR: záložní obrys · GeoJSON se nenačetl';badge.title=String(err.message||err);badge.style.borderColor='#e2a45a';}}
+   }catch(err){
+    console.warn('X-5: načtení oficiální hranice selhalo; používám vestavěný záložní obrys.',err);
+    if(badge){
+     badge.textContent='Hranice ČR: použit záložní obrys';
+     badge.title='Oficiální GeoJSON nebyl dostupný v časovém limitu. '+String(err.message||err);
+     badge.style.borderColor='#e2a45a';
+    }
+   }
   }
   loadOfficialCzechGeometry();
   // Načtení výšek s lokální cache: omezuje opakované dotazy při HTTP 429.
