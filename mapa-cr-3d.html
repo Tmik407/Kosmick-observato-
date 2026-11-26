@@ -731,7 +731,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   const grid=new THREE.GridHelper(9.2,26,0x58b7d5,0x28617d);grid.position.y=-.12;scene.add(grid);
   // 3D reliéf ČR: schematická výšková mapa s polohou hlavních pohoří.
   // Výšky jsou vizualizační aproximace, nikoli naměřený DEM model.
-  const terrainGeo=new THREE.PlaneGeometry(7.4,7.4,220,220);terrainGeo.rotateX(-Math.PI/2);
+  const terrainGeo=new THREE.PlaneGeometry(7.4,7.4,300,300);terrainGeo.rotateX(-Math.PI/2);
   const terrainPos=terrainGeo.attributes.position,terrainColors=[];
   // Zjednodušený obrys státního území ČR (WGS84, kartografická generalizace).
   const czBorderLL=[[12.09,50.26],[12.25,50.55],[12.55,50.75],[12.95,50.82],[13.35,50.90],[13.75,50.74],[14.20,50.86],[14.65,50.95],[15.05,50.88],[15.45,50.92],[15.85,50.78],[16.25,50.82],[16.65,50.75],[17.05,50.70],[17.45,50.55],[17.80,50.45],[18.20,50.25],[18.55,50.18],[18.85,50.05],[18.75,49.78],[18.55,49.55],[18.35,49.32],[18.20,49.05],[17.90,48.88],[17.55,48.78],[17.15,48.82],[16.75,48.72],[16.35,48.65],[15.95,48.70],[15.55,48.78],[15.10,48.72],[14.65,48.68],[14.20,48.72],[13.80,48.78],[13.40,48.75],[13.05,48.85],[12.75,49.05],[12.45,49.25],[12.25,49.55],[12.10,49.85],[12.09,50.26]];
@@ -750,7 +750,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    {x:-3.0,z:1.25,a:.16,sx:.48,sz:.68}, // Český les
    {x:.0,z:1.35,a:.13,sx:1.0,sz:.8} // Českomoravská vrchovina
   ];
-  let demGrid=null;const demSize=25;
+  let demGrid=null;const demSize=49;
   function terrainHeightAt(x,z){
    if(demGrid){const gx=Math.max(0,Math.min(demSize-1,(x+3.6)/7.2*(demSize-1))),gz=Math.max(0,Math.min(demSize-1,(z+3.6)/7.2*(demSize-1))),x0=Math.floor(gx),z0=Math.floor(gz),x1=Math.min(demSize-1,x0+1),z1=Math.min(demSize-1,z0+1),tx=gx-x0,tz=gz-z0;
     const a=demGrid[z0*demSize+x0]*(1-tx)+demGrid[z0*demSize+x1]*tx,b=demGrid[z1*demSize+x0]*(1-tx)+demGrid[z1*demSize+x1]*tx;return (a*(1-tz)+b*tz)*.00040}
@@ -939,7 +939,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   loadCzechDistricts();
 
   // Teplotní vrstva kopíruje výškový reliéf, aby se terén a počasí prostorově překrývaly.
-  const heatGeo=new THREE.PlaneGeometry(7.4,7.4,160,160);heatGeo.rotateX(-Math.PI/2);clipToCzech(heatGeo);
+  const heatGeo=new THREE.PlaneGeometry(7.4,7.4,240,240);heatGeo.rotateX(-Math.PI/2);clipToCzech(heatGeo);
   const heatPos=heatGeo.attributes.position,heatColor=[];
   for(let i=0;i<heatPos.count;i++){const x=heatPos.getX(i),z=heatPos.getZ(i);heatPos.setY(i,terrainHeightAt(x,z)+.018);heatColor.push(.08,.5,.95)}
   heatGeo.setAttribute('color',new THREE.Float32BufferAttribute(heatColor,3));heatGeo.computeVertexNormals();
@@ -948,7 +948,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
   async function loadCopernicusTerrain(){
    const badge=document.getElementById('weatherTerrainBadge');
    const coords=[];for(let j=0;j<demSize;j++)for(let i=0;i<demSize;i++)coords.push({lat:50.95-j/(demSize-1)*2.3,lon:12.15+i/(demSize-1)*6.4});
-   const cacheKey='x5-dem-cz-grid-v7',cooldownKey='x5-dem-cz-cooldown-v1',cacheTtl=30*24*60*60*1000;
+   const cacheKey='x5-dem-cz-grid-v8',cooldownKey='x5-dem-cz-cooldown-v1',cacheTtl=30*24*60*60*1000;
    const applyElevations=values=>{
     if(!Array.isArray(values)||values.length!==demSize*demSize||values.some(v=>!Number.isFinite(Number(v))))throw new Error('Neúplná výšková data');
     demGrid=values.map(Number);
@@ -991,13 +991,13 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
    let primaryError='neznámá chyba';
    try{
     if(badge)badge.textContent='Terén: dotazuji Open-Meteo…';
-    const values=[];for(let start=0;start<coords.length;start+=60){const batch=coords.slice(start,start+60),lat=batch.map(p=>p.lat.toFixed(4)).join(','),lon=batch.map(p=>p.lon.toFixed(4)).join(',');
+    const values=[];for(let start=0;start<coords.length;start+=80){const batch=coords.slice(start,start+80),lat=batch.map(p=>p.lat.toFixed(4)).join(','),lon=batch.map(p=>p.lon.toFixed(4)).join(',');
      const response=await timedFetch('https://api.open-meteo.com/v1/elevation?latitude='+lat+'&longitude='+lon,10000);
      if(!response.ok)throw new Error('Open-Meteo HTTP '+response.status);
      const data=await response.json();if(!Array.isArray(data.elevation)||data.elevation.length!==batch.length)throw new Error('Neúplný výškový vzorek');values.push(...data.elevation)}
     if(cuzkValues){for(let i=0;i<values.length;i++)if(Number.isFinite(cuzkValues[i]))values[i]=cuzkValues[i];}
     saveAndApply(values);
-    if(badge)badge.textContent=cuzkValues?'Terén: DMR 5G ČÚZK ('+cuzkCount+' vzorků) + Open-Meteo · '+demSize+'×'+demSize:'Terén: výšková data načtena · Open-Meteo · '+demSize+'×'+demSize+' bodů';
+    if(badge)badge.textContent=cuzkValues?'Terén: DMR 5G ČÚZK ('+cuzkCount+' vzorků) + Open-Meteo · '+demSize+'×'+demSize:'Terén: Open-Meteo · '+demSize+'×'+demSize+' výškových vzorků';
     return;
    }catch(err){primaryError=String(err&&err.message||err)}
    // Druhá nezávislá výšková služba: globální ArcGIS WorldElevation3D.
@@ -1015,7 +1015,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
      for(const row of rows){const raw=row.value??row.values?.[0]??row.attributes?.value;const value=Number(raw);if(!Number.isFinite(value)||value<-500||value>9000)throw new Error('Neplatná výška ArcGIS');values.push(value)}
     }
     saveAndApply(values);
-    if(badge)badge.textContent='Terén: globální výšková data ArcGIS WorldElevation3D · '+demSize+'×'+demSize+' bodů';
+    if(badge)badge.textContent='Terén: ArcGIS WorldElevation3D · '+demSize+'×'+demSize+' výškových vzorků';
     return;
    }catch(arcErr){primaryError+=' · ArcGIS: '+String(arcErr&&arcErr.message||arcErr)}
    try{
