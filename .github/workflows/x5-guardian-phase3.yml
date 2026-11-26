@@ -1,0 +1,102 @@
+name: X-5 Guardian · sandbox tests and diagnostics
+
+on:
+  push:
+    branches:
+      - x5-ai-guardian-phase1
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions: {}
+
+concurrency:
+  group: x5-ai-guardian-phase3
+  cancel-in-progress: true
+
+jobs:
+  validate-and-diagnose:
+    name: Validate advisor, then diagnose live services
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - name: Checkout trusted branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - name: Restore monitoring history
+        uses: actions/cache/restore@v4
+        with:
+          path: guardian-history/history.json
+          key: x5-guardian-history-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            x5-guardian-history-
+      - name: Run unit tests
+        working-directory: scripts
+        run: python -m unittest -v test_x5_repair_advisor.py test_x5_ai_analyzer.py test_x5_history.py
+      - name: Run live diagnostics
+        run: python3 scripts/x5_guardian.py
+      - name: Update monitoring history
+        if: always() && hashFiles('x5-guardian-diagnostics.json') != ''
+        run: python3 scripts/x5_history.py x5-guardian-diagnostics.json guardian-history/history.json
+      - name: Save monitoring history
+        if: always() && hashFiles('guardian-history/history.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: guardian-history/history.json
+          key: x5-guardian-history-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Generate repair proposals (no changes applied)
+        if: always()
+        run: |
+          if [ -f x5-guardian-diagnostics.json ]; then
+            python3 scripts/x5_repair_advisor.py x5-guardian-diagnostics.json
+          else
+            echo "Diagnostika nevytvořila JSON; návrhy oprav nebyly vygenerovány." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Optional AI analysis (requires OPENAI_API_KEY secret)
+        if: always() && hashFiles('x5-guardian-diagnostics.json') != ''
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: gpt-6.2-astra
+        run: python3 scripts/x5_ai_analyzer.py x5-guardian-diagnostics.json
+      - name: Build self-contained dashboard report
+        if: always() && hashFiles('x5-guardian-diagnostics.json') != ''
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          page = Path('x5-guardian-dashboard.html').read_text(encoding='utf-8')
+          diagnostics = json.loads(Path('x5-guardian-diagnostics.json').read_text(encoding='utf-8'))
+          history_path = Path('guardian-history/history.json')
+          history = json.loads(history_path.read_text(encoding='utf-8')) if history_path.exists() else []
+          def safe_json(value):
+              slash = chr(92)
+              return json.dumps(value, ensure_ascii=False).replace('<', slash + 'u003c').replace('>', slash + 'u003e').replace('&', slash + 'u0026')
+          embedded = ('<script type="application/json" id="x5-embedded-diagnostics">' + safe_json(diagnostics) + '</script>' + chr(10)
+                      + '<script type="application/json" id="x5-embedded-history">' + safe_json(history) + '</script>')
+          page = page.replace('<!-- X5_EMBEDDED_DATA -->', embedded)
+          Path('x5-guardian-dashboard-live.html').write_text(page, encoding='utf-8')
+          print('Self-contained dashboard generated; no secrets are included.')
+          PY
+      - name: Upload diagnostic reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: x5-guardian-report-${{ github.run_id }}
+          path: |
+            x5-guardian-diagnostics.json
+            x5-guardian-dashboard-live.html
+            x5-guardian-dashboard.html
+            x5-repair-proposals.md
+            x5-ai-analysis.md
+            x5-guardian-history.md
+            guardian-history/history.json
+          if-no-files-found: ignore
+          retention-days: 30

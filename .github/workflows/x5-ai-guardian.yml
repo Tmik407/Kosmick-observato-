@@ -1,0 +1,28 @@
+name: X-5 AI System Guardian
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions: {}
+
+concurrency:
+  group: x5-ai-guardian
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    name: Read-only page and data diagnostics
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: Checkout the triggering commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Run X-5 Guardian
+        run: python3 scripts/x5_guardian.py
