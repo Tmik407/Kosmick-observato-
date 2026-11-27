@@ -92,8 +92,14 @@ async function loadMetNoFallback(){
  const cacheTimes=aligned.map(r=>Number(r.__cache?.savedAt)).filter(Number.isFinite);
  return {rows:aligned,times,meta:{savedAt:cacheTimes.length?Math.min(...cacheTimes):Date.now(),cached:aligned.some(r=>r.__cache?.cached)}};
 }
+let forecastPromise=null;
 async function loadForecast(force=false){
- if(state.loading)return;
+ if(forecastPromise)return forecastPromise;
+ forecastPromise=loadForecastInternal(force);
+ try{return await forecastPromise}
+ finally{forecastPromise=null}
+}
+async function loadForecastInternal(force=false){
  if(!force&&state.loadedAt&&Date.now()-state.loadedAt<900000){say("Používám nedávno načtenou předpověď.");return}
  state.loading=true;say("Načítám předpověď pro "+cities.length+" měst…");
  const cooldownKey="x5-newmap-openmeteo-cooldown-until";
@@ -158,11 +164,12 @@ map.on("click",e=>{if(!map.getLayer("chmi-visible-points"))return;const f=map.qu
  new maplibregl.Popup().setLngLat(e.lngLat).setHTML("<b>"+esc(p.name)+"</b><br><span style='display:inline-block;margin:5px 0;padding:3px 7px;border-radius:7px;background:"+status.color+";color:white;font-weight:650'>"+status.label+"</span><br><b>Stáří měření:</b> "+ageText+"<br><b>Čas měření:</b> "+esc(observed)+"<br><b>Zdroj:</b> "+source+"<hr style='border:0;border-top:1px solid #ddd;margin:7px 0'>Teplota: "+fmt(p.temperature_c)+" °C<br>Vítr: "+fmt(p.wind_ms)+" m/s · směr "+fmt(p.wind_direction_deg,0)+"°<br>Vlhkost: "+fmt(p.humidity_pct,0)+" %<br>Tlak: "+fmt(p.pressure_hpa)+" hPa<br>Srážky: "+fmt(p.precipitation_mm)+" mm<br>Sníh: "+fmt(p.snow_depth_cm,0)+" cm").addTo(map);
 });
 map.on("mousemove",e=>{if(!map.getLayer("chmi-visible-points"))return;const hits=map.queryRenderedFeatures(e.point,{layers:["chmi-visible-points"]});map.getCanvas().style.cursor=hits.length?"pointer":""});
+let stationsPromise=null;
 async function loadStations(){
- if(state.stationsLoading)return;
- state.stationsLoading=true;
- try{return await loadStationsInternal()}
- finally{state.stationsLoading=false}
+ if(stationsPromise)return stationsPromise;
+ stationsPromise=loadStationsInternal();
+ try{return await stationsPromise}
+ finally{stationsPromise=null}
 }
 async function loadStationsInternal(){
  const summary=$("stationSummary");
@@ -201,27 +208,34 @@ async function loadStationsInternal(){
     const sourceCount=map.getSource("chmi-visible-source")?stationFeatures.length:0;
     summary.textContent+=" · Přímý zdroj: "+sourceCount+" · vykreslené v okně: "+rendered+". "+(rendered===0?"Diagnostika: zdroj je naplněn, ale body nejsou v aktuálním mapovém výřezu viditelné.":"");
    }catch(err){summary.textContent+=" Diagnostika vykreslení: "+err.message}
-  });;
- }catch(e){summary.textContent="Stanice ČHMÚ nyní nejsou dostupné: "+e.message}
+  });
+  return true;
+ }catch(e){summary.textContent="Stanice ČHMÚ nyní nejsou dostupné: "+e.message;return false}
 }
 map.on("load",()=>{addLayers();applyLayers();map.fitBounds(bounds,{padding:32,duration:0,maxZoom:7.4});say("Mapa připravena · načítám meteorologická data…");loadForecast(true);loadStations()});
 $("home").onclick=()=>{map.stop();map.fitBounds(bounds,{padding:32,duration:500,maxZoom:7.4})};
 $("city").onchange=e=>{let c=cities.find(x=>x.name===e.target.value);if(!c)return;map.flyTo({center:[c.lon,c.lat],zoom:9.5,duration:600});let i=cities.indexOf(c),row=state.rows[i];if(row){let p=feature(c,row,state.hour).properties;new maplibregl.Popup().setLngLat([c.lon,c.lat]).setHTML("<b>"+esc(c.name)+"</b><br>"+fmt(p.temp)+" °C<br>Vítr "+fmt(p.wind)+" km/h<br>Srážky "+fmt(p.precip)+" mm/h").addTo(map)}};
 $("model").onchange=e=>{state.model=e.target.value;state.loadedAt=0;loadForecast(true)};
-$("refresh").addEventListener("click",async()=>{
- const button=$("refresh");
- if(button.dataset.refreshing==="1")return;
- button.dataset.refreshing="1";
- const original=button.textContent;
- button.textContent="↻ Obnovuji…";
- button.setAttribute("aria-busy","true");
- say("Ruční aktualizace: ověřuji měření ČHMÚ…");
+const refreshButton=$("refresh");
+refreshButton.type="button";
+refreshButton.disabled=false;
+refreshButton.style.pointerEvents="auto";
+refreshButton.addEventListener("click",async()=>{
+ if(refreshButton.dataset.refreshing==="1")return;
+ refreshButton.dataset.refreshing="1";
+ const original=refreshButton.textContent;
+ refreshButton.textContent="↻ Obnovuji data…";
+ refreshButton.setAttribute("aria-busy","true");
+ refreshButton.classList.add("is-refreshing");
+ $("status").textContent="Ruční aktualizace: stahuji nová data ČHMÚ a předpověď…";
  try{
-  await loadStations();
-  if(state.loading){say("Měření ČHMÚ obnovena. Předpověď se již načítá; počkejte na její dokončení.");}
-  else{state.loadedAt=0;await loadForecast(true);say("Ruční aktualizace dokončena.");}
- }catch(error){say("Aktualizace se nezdařila: "+error.message)}
- finally{button.textContent=original;button.removeAttribute("aria-busy");delete button.dataset.refreshing}
+  state.loadedAt=0;
+  const results=await Promise.allSettled([loadStations(),loadForecast(true)]);
+  const stationOK=results[0].status==="fulfilled"&&results[0].value!==false;
+  const forecastOK=results[1].status==="fulfilled";
+  $("status").textContent=stationOK&&forecastOK?"Aktualizace dokončena · ČHMÚ a předpověď byly znovu ověřeny.":!stationOK&&!forecastOK?"Aktualizace se nezdařila · zkontrolujte připojení a stav zdrojů.":!stationOK?"Předpověď obnovena, ale data ČHMÚ se nepodařilo načíst.":"Data ČHMÚ obnovena, předpověď se nepodařilo obnovit.";
+ }catch(error){$("status").textContent="Chyba aktualizace: "+error.message}
+ finally{refreshButton.textContent=original;refreshButton.removeAttribute("aria-busy");refreshButton.classList.remove("is-refreshing");delete refreshButton.dataset.refreshing}
 });
 $("time").oninput=e=>{state.hour=Number(e.target.value);draw()};
 $("now").onclick=()=>{let i=state.times.findIndex(t=>Date.parse(t)>=Date.now()-1800000);state.hour=i>=0?i:0;draw()};
