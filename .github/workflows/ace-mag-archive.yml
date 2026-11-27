@@ -13,7 +13,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: repository-main-writes
+  group: ace-mag-archive-writes
   cancel-in-progress: false
 
 jobs:
