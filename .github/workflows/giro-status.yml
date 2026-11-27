@@ -10,7 +10,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: repository-main-writes
+  group: giro-status-writes
   cancel-in-progress: false
 jobs:
   update-giro-status:
@@ -28,6 +28,11 @@ jobs:
             echo "No GIRO snapshot changes"
           else
             git commit -m "Update GIRO provider and station snapshot"
-            git pull --rebase origin main
-            git push origin HEAD:main
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              echo "Push kolidoval, synchronizuji znovu (pokus $attempt)"
+            done
+            echo "Nepodařilo se bezpečně uložit GIRO snapshot po třech pokusech."
+            exit 1
           fi
