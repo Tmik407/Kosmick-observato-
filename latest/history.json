@@ -278,5 +278,55 @@
         "detail": "publikováno 2026-11-27T08:29:15Z; stáří publikace 162 min"
       }
     ]
+  },
+  {
+    "checked_at_utc": "2026-11-27T11:21:34+00:00",
+    "checks": [
+      {
+        "name": "GitHub Pages / HTML",
+        "state": "OK",
+        "detail": "stránka dostupná (171045 B); Last-Modified: Fri, 27 Nov 2026 11:21:21 GMT"
+      },
+      {
+        "name": "Open-Meteo",
+        "state": "OK",
+        "detail": "časová osa dostupná (48 termínů); první termín 2026-11-27T00:00"
+      },
+      {
+        "name": "ECMWF IFS přes Open-Meteo",
+        "state": "OK",
+        "detail": "časová osa dostupná (48 termínů); první termín 2026-11-27T00:00"
+      },
+      {
+        "name": "MET Norway",
+        "state": "OK",
+        "detail": "časová řada dostupná (88 bodů; první 2026-11-27T11:00:00Z)"
+      },
+      {
+        "name": "ČHMÚ archiv",
+        "state": "OK",
+        "detail": "473 stanic; nejnovější měření 2026-11-27T09:50+00:00; stáří 1.5 h; archiv Last-Modified Fri, 27 Nov 2026 11:21:21 GMT"
+      },
+      {
+        "name": "GIRO – ionosférická měření",
+        "state": "OK",
+        "detail": "101 stanic; poslední měření 2026-11-27T11:15+00:00; stáří měření 6 min; staženo před 3 min"
+      },
+      {
+        "name": "NASA ACE MAG archiv",
+        "state": "OK",
+        "detail": "1840 záznamů; poslední měření 2026-11-27T10:58+00:00; stáří měření 24 min; poslední stažení před 3 min"
+      },
+      {
+        "name": "NOAA SWPC – sluneční vítr / IMF / Kp",
+        "state": "OK",
+        "detail": "stavový soubor 3 min starý; wind: fresh (7.6 min); mag: fresh (7.6 min); kp: fresh (141.6 min)"
+      },
+      {
+        "name": "IRTAM – model elektronové hustoty",
+        "state": "OK",
+        "detail": "publikováno 2026-11-27T08:29:15Z; stáří publikace 172 min"
+      }
+    ]
   }
 ]
