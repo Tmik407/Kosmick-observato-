@@ -138,6 +138,39 @@ def check_noaa_status():
             {"freshness": {"status": "unavailable"}})
 
 
+def check_giro_status():
+    try:
+        raw, _ = get(GIRO_STATUS)
+        doc = json.loads(raw)
+        now = datetime.now(timezone.utc)
+        fetched_age = age_minutes(doc.get("fetched_utc"), now)
+        stations = doc.get("stations", [])
+        observed = [parse_utc(item.get("time")) for item in stations if isinstance(item, dict)]
+        observed = [stamp for stamp in observed if stamp is not None]
+        newest = max(observed) if observed else None
+        measurement_age = max(0.0, (now - newest).total_seconds() / 60) if newest else None
+        problems = []
+        if fetched_age is None or fetched_age > 90:
+            problems.append("snapshot nebyl obnoven během posledních 90 minut")
+        if measurement_age is None or measurement_age > 90:
+            problems.append("nejnovější ionosférické měření je starší než 90 minut nebo chybí")
+        state = "WARN" if problems else "OK"
+        detail = f"{len(stations)} stanic; poslední měření {newest.isoformat(timespec='minutes') if newest else 'chybí'}"
+        detail += f"; stáří měření {measurement_age:.0f} min" if measurement_age is not None else ""
+        detail += f"; staženo před {fetched_age:.0f} min" if fetched_age is not None else "; čas stažení chybí"
+        if problems:
+            detail += "; upozornění: " + ", ".join(problems)
+        add("GIRO – ionosférická měření", state, detail, {"freshness": {
+            "status": "fresh" if not problems else "stale",
+            "published_age_minutes": round(fetched_age, 1) if fetched_age is not None else None,
+            "measurement_age_minutes": round(measurement_age, 1) if measurement_age is not None else None,
+            "stations": len(stations),
+        }})
+    except Exception as exc:
+        add("GIRO – ionosférická měření", "WARN", f"snapshot nedostupný nebo neplatný: {type(exc).__name__}: {exc}",
+            {"freshness": {"status": "unavailable"}})
+
+
 def check_ace_archive():
     try:
         raw, _ = get(ACE_ARCHIVE)
@@ -243,7 +276,7 @@ def main() -> int:
     except Exception as exc:
         add("ČHMÚ archiv", "WARN", f"archiv nedostupný nebo neplatný: {type(exc).__name__}: {exc}")
 
-    check_json_freshness("GIRO – ionosférická měření", GIRO_STATUS, "fetched_utc", None, 90)
+    check_giro_status()
     check_ace_archive()
     check_noaa_status()
     check_json_freshness("IRTAM – model elektronové hustoty", IRTAM_STATUS, "generated_utc", None, 1440)
