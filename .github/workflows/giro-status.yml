@@ -16,7 +16,7 @@ jobs:
   update-giro-status:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Fetch GIRO stations and provider status
         run: python scripts/update_giro_status.py
       - name: Commit snapshot
