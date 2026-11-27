@@ -135,28 +135,18 @@ async function loadForecast(force=false){
 }
 function updateStationDisplay(){
  if(!map.isStyleLoaded()||!map.getSource("stations-fallback"))return;
- const zoom=map.getZoom(),cell=72,groups=new Map(),out=[];
- if(zoom>=10.5){stationFeatures.forEach(f=>out.push({type:"Feature",geometry:f.geometry,properties:{...f.properties,kind:"station"}}))}
- else{
-  const world=512*Math.pow(2,zoom);
-  stationFeatures.forEach(f=>{
-   const lon=f.geometry.coordinates[0],lat=f.geometry.coordinates[1],phi=Math.max(-85,Math.min(85,lat))*Math.PI/180;
-   const x=(lon+180)/360*world,y=(1-Math.log(Math.tan(phi)+1/Math.cos(phi))/Math.PI)/2*world,key=Math.floor(x/cell)+":"+Math.floor(y/cell);
-   if(!groups.has(key))groups.set(key,[]);groups.get(key).push(f);
-  });
-  groups.forEach(group=>{
-   if(group.length===1){const f=group[0];out.push({type:"Feature",geometry:f.geometry,properties:{...f.properties,kind:"station"}});return}
-   const lon=group.reduce((a,f)=>a+f.geometry.coordinates[0],0)/group.length,lat=group.reduce((a,f)=>a+f.geometry.coordinates[1],0)/group.length;
-   out.push({type:"Feature",geometry:{type:"Point",coordinates:[lon,lat]},properties:{kind:"cluster",point_count:group.length}});
-  });
- }
+ const out=stationFeatures.map(f=>({type:"Feature",geometry:f.geometry,properties:{...f.properties,kind:"station"}}));
  map.getSource("stations-fallback").setData({type:"FeatureCollection",features:out});
- const clustered=zoom<10.5;
- ["station-fallback-clusters","station-fallback-points"].forEach(id=>{if(map.getLayer(id))map.setLayoutProperty(id,"visibility","none")});
- map.setLayoutProperty("station-fallback-count","visibility",state.visible.stations&&zoom<10.5?"visible":"none");
- map.setLayoutProperty("station-fallback-all","visibility",state.visible.stations?"visible":"none");
+ ["station-fallback-clusters","station-fallback-count"].forEach(id=>{if(map.getLayer(id))map.setLayoutProperty(id,"visibility","none")});
+ if(map.getLayer("station-fallback-all")){
+  map.setPaintProperty("station-fallback-all","circle-radius",["interpolate",["linear"],["zoom"],5,3.2,8,4.5,12,6]);
+  map.setPaintProperty("station-fallback-all","circle-color","#8b3f91");
+  map.setPaintProperty("station-fallback-all","circle-opacity",0.96);
+  map.setLayoutProperty("station-fallback-all","visibility",state.visible.stations?"visible":"none");
+  map.moveLayer("station-fallback-all");
+ }
 }
-map.on("zoomend",()=>{updateStationDisplay();if(map.getLayer("station-fallback-count"))map.setLayoutProperty("station-fallback-count","visibility",state.visible.stations&&map.getZoom()<10.5?"visible":"none")});
+map.on("zoomend",updateStationDisplay);
 map.on("click",e=>{if(!map.getLayer("station-fallback-all"))return;const f=map.queryRenderedFeatures(e.point,{layers:["station-fallback-all"]})[0];if(!f)return;if(f.properties.kind==="cluster"){map.easeTo({center:f.geometry.coordinates,zoom:Math.min(12.5,map.getZoom()+2),duration:450});return}const p=f.properties,age=p.age_minutes===null||p.age_minutes===undefined?null:Number(p.age_minutes);
  const status=age===null?{label:"Čerstvost neznámá",color:"#718096"}:age<=30?{label:"Čerstvé měření",color:"#15966a"}:age<=90?{label:"Opožděné měření",color:"#b7791f"}:{label:"Starší měření",color:"#c44747"};
  const ageText=age===null?"nelze určit":age<60?"před "+age+" min":Math.floor(age/60)+" h "+(age%60)+" min";
@@ -203,7 +193,7 @@ async function loadStations(){
   map.once("idle",()=>{
    try{
     const rendered=map.queryRenderedFeatures({layers:["station-fallback-all"]}).length;
-    summary.textContent+=" · Vykreslené objekty v aktuálním pohledu: "+rendered+" · shlukování: "+(map.getZoom()<10.5?"aktivní":"jednotlivé stanice")+". "+(rendered===0?"VAROVÁNÍ: v mapovém okně není vykreslen žádný objekt ČHMÚ.":"");
+    summary.textContent+=" · Vykreslené značky v aktuálním pohledu: "+rendered+". "+(rendered===0?"VAROVÁNÍ: v mapovém okně není vykreslena žádná stanice ČHMÚ.":"");
    }catch(err){summary.textContent+=" Diagnostika vykreslení: "+err.message}
   });;
  }catch(e){summary.textContent="Stanice ČHMÚ nyní nejsou dostupné: "+e.message}
