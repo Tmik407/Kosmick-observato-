@@ -1,5 +1,5 @@
 <!doctype html><html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f4f8fb"><title>Počasí ČR – meteorologická mapa X-5</title><link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"><style>
-:root{font-family:system-ui,sans-serif;background:#edf4f9;color:#173044}*{box-sizing:border-box}body{margin:0;padding:9px}header,.panel,#mapShell{max-width:1180px;margin:0 auto 11px;background:white;border:1px solid #dce7ee;border-radius:16px;padding:12px 14px;box-shadow:0 3px 14px #1730440a}h1{font-size:clamp(19px,3vw,26px);margin:0 0 4px}h2{font-size:16px;margin:0 0 8px}p,.muted{margin:0;color:#587080;font-size:13px}.toolbar,.layers,.legend,.meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:9px}button,select,input{font:inherit;border:1px solid #c6d8e3;background:#f7fbfd;color:#173044;border-radius:10px;padding:9px 11px;min-height:40px}button{font-weight:650}button[aria-pressed=true]{background:#d9f0fa;border-color:#1684b6}#map{height:min(62vh,690px);min-height:380px;border-radius:12px;overflow:hidden;background:#e5edf1}#mapShell{padding:8px}#status,#stationSummary{font-size:13px;color:#587080;padding:8px 2px 0}.station-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:7px 2px 2px;color:#435d6d;font-size:13px}.station-filter-buttons{display:flex;gap:7px;flex-wrap:wrap}.station-filter-buttons button{border:1px solid #b9cbd6;border-radius:9px;background:#f7fafc;padding:8px 10px;font:600 13px system-ui;color:#233746;cursor:pointer}.station-filter-buttons button[aria-pressed=true]{background:#d9f4e8;border-color:#15966a;box-shadow:inset 0 0 0 1px #15966a}.station-filter-buttons button:disabled{opacity:.48;cursor:not-allowed;background:#eef2f5;color:#788894;border-color:#d7e0e6;box-shadow:none}.station-filter-buttons button:not(:disabled){cursor:pointer}.station-filter-buttons button:focus-visible{outline:3px solid #1684b6;outline-offset:2px}.station-tools #stationStats{flex-basis:100%;line-height:1.5}.station-legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:8px 2px 2px;color:#435d6d;font-size:12px}.station-legend span{display:inline-flex;align-items:center;gap:5px}.station-legend i{display:inline-block;width:10px;height:10px;border:1px solid #fff;box-shadow:0 0 0 1px #b9c8d2;border-radius:50%}.x5-data-monitor{margin-top:12px;padding:12px;border:1px solid #cbd9e2;border-radius:12px;background:#f6fafc;color:#183247}.x5-monitor-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}.x5-monitor-head b{font-size:14px;letter-spacing:.04em}.x5-monitor-head span{font-size:11px;font-weight:800;padding:4px 8px;border-radius:7px;background:#e2e8f0;color:#475569}.x5-monitor-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.x5-monitor-grid>div{padding:8px;border-radius:8px;background:#fff;border:1px solid #e1e9ee}.x5-monitor-grid small{display:block;font-size:11px;color:#617484}.x5-monitor-grid strong{display:block;font-size:20px;margin-top:3px}.x5-monitor-meta{display:flex;flex-wrap:wrap;gap:7px 14px;margin-top:10px;font-size:12px;color:#536777}.x5-monitor-note{font-size:11px;line-height:1.4;color:#667887;margin-top:9px}@media(max-width:520px){.x5-monitor-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}.maplibregl-ctrl-group{border-radius:10px!important}.maplibregl-popup-content{font:14px system-ui;padding:11px;border-radius:10px}@media(max-width:650px){body{padding:6px}header,.panel{padding:10px}#map{height:58vh;min-height:350px}.toolbar button,.toolbar select{flex:1}}
+:root{font-family:system-ui,sans-serif;background:#edf4f9;color:#173044}*{box-sizing:border-box}body{margin:0;padding:9px}header,.panel,#mapShell{max-width:1180px;margin:0 auto 11px;background:white;border:1px solid #dce7ee;border-radius:16px;padding:12px 14px;box-shadow:0 3px 14px #1730440a}h1{font-size:clamp(19px,3vw,26px);margin:0 0 4px}h2{font-size:16px;margin:0 0 8px}p,.muted{margin:0;color:#587080;font-size:13px}.toolbar,.layers,.legend,.meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:9px}button,select,input{font:inherit;border:1px solid #c6d8e3;background:#f7fbfd;color:#173044;border-radius:10px;padding:9px 11px;min-height:40px}button{font-weight:650}button[aria-pressed=true]{background:#d9f0fa;border-color:#1684b6}#map{height:min(62vh,690px);min-height:380px;border-radius:12px;overflow:hidden;background:#e5edf1}#mapShell{padding:8px}#status,#stationSummary{font-size:13px;color:#587080;padding:8px 2px 0}.station-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:7px 2px 2px;color:#435d6d;font-size:13px}.station-filter-buttons{display:flex;gap:7px;flex-wrap:wrap}.station-filter-buttons button{border:1px solid #b9cbd6;border-radius:9px;background:#f7fafc;padding:8px 10px;font:600 13px system-ui;color:#233746;cursor:pointer}.station-filter-buttons button[aria-pressed=true]{background:#d9f4e8;border-color:#15966a;box-shadow:inset 0 0 0 1px #15966a}.station-filter-buttons button:disabled{opacity:.48;cursor:not-allowed;background:#eef2f5;color:#788894;border-color:#d7e0e6;box-shadow:none}.station-filter-buttons button:not(:disabled){cursor:pointer}.station-filter-buttons button:focus-visible{outline:3px solid #1684b6;outline-offset:2px}.station-tools #stationStats{flex-basis:100%;line-height:1.5}.station-legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:8px 2px 2px;color:#435d6d;font-size:12px}.station-legend span{display:inline-flex;align-items:center;gap:5px}.station-legend i{display:inline-block;width:10px;height:10px;border:1px solid #fff;box-shadow:0 0 0 1px #b9c8d2;border-radius:50%}.x5-data-monitor{margin-top:12px;padding:12px;border:1px solid #cbd9e2;border-radius:12px;background:#f6fafc;color:#183247}.x5-monitor-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}.x5-monitor-head b{font-size:14px;letter-spacing:.04em}.x5-monitor-head span{font-size:11px;font-weight:800;padding:4px 8px;border-radius:7px;background:#e2e8f0;color:#475569}.x5-monitor-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.x5-monitor-grid>div{padding:8px;border-radius:8px;background:#fff;border:1px solid #e1e9ee}.x5-monitor-grid small{display:block;font-size:11px;color:#617484}.x5-monitor-grid strong{display:block;font-size:20px;margin-top:3px}.x5-monitor-meta{display:flex;flex-wrap:wrap;gap:7px 14px;margin-top:10px;font-size:12px;color:#536777}.x5-monitor-note{font-size:11px;line-height:1.4;color:#667887;margin-top:9px}.x5-health{margin-top:10px;padding:12px;border:1px solid #cbd9e2;border-radius:12px;background:#f8fbfd}.x5-health h3{font-size:13px;margin:0 0 9px}.x5-health-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.x5-health-item{background:#fff;border:1px solid #e1e9ee;border-radius:8px;padding:9px}.x5-health-item small{display:block;color:#617484;font-size:11px}.x5-health-item b{display:block;margin-top:4px;font-size:13px}.x5-health-meta{font-size:11px;color:#617484;margin-top:8px;line-height:1.5}@media(max-width:520px){.x5-health-grid{grid-template-columns:1fr}}@media(max-width:520px){.x5-monitor-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}.maplibregl-ctrl-group{border-radius:10px!important}.maplibregl-popup-content{font:14px system-ui;padding:11px;border-radius:10px}@media(max-width:650px){body{padding:6px}header,.panel{padding:10px}#map{height:58vh;min-height:350px}.toolbar button,.toolbar select{flex:1}}
 </style></head><body>
 <header><h1>🌦️ Meteorologická mapa České republiky X-5</h1><p>Nové mapové jádro · hodinová předpověď Open-Meteo / ECMWF · přímá měření ČHMÚ</p><div class="toolbar"><button id="home">⌖ Česká republika</button><select id="city" aria-label="Vybrat město"><option value="">Vybrat město…</option></select><select id="model" aria-label="Model"><option value="openmeteo">Open-Meteo · automatický výběr</option><option value="ecmwf">ECMWF IFS</option></select><button id="refresh">↻ Obnovit data</button></div><div class="meta"><span id="modelStatus">Model: čekám na data</span><span id="updated">· Aktualizace: —</span></div></header>
 <main id="mapShell"><div id="map" role="application" aria-label="Interaktivní meteorologická mapa ČR"></div><div id="status" role="status" aria-live="polite">Připravuji mapu…</div><div class="layers" id="layers"><button data-layer="temperature" aria-pressed="true">🌡️ Teplota</button><button data-layer="precipitation" aria-pressed="false">🌧️ Déšť / sníh</button><button data-layer="wind" aria-pressed="true">💨 Vítr</button><button data-layer="cities" aria-pressed="true">📍 Města</button><button data-layer="stations" aria-pressed="true">📡 Stanice ČHMÚ</button></div><div id="legend" class="legend">Teplota v °C · modrá = chladno, oranžová = teplo</div><div class="station-tools"><div id="stationFilters" class="station-filter-buttons" aria-label="Filtr aktuálnosti stanic ČHMÚ"><button type="button" data-station-filter="all" aria-pressed="true">Všechny</button><button type="button" data-station-filter="fresh" aria-pressed="false">🟢 Čerstvé ≤30 min</button><button type="button" data-station-filter="delayed" aria-pressed="false">🟠 Opožděné 30–90 min</button><button type="button" data-station-filter="stale" aria-pressed="false">🔴 Starší &gt;90 min</button><button type="button" data-station-filter="unknown" aria-pressed="false">⚪ Bez času</button></div><span id="stationStats" role="status">Čekám na data stanic…</span></div><div id="stationLegend" class="station-legend" aria-label="Legenda stanic ČHMÚ"><b>ČHMÚ:</b><span><i style="background:#138a55"></i>Čerstvé ≤30 min</span><span><i style="background:#e08b00"></i>Opožděné 30–90 min</span><span><i style="background:#c83e4b"></i>Starší &gt;90 min</span><span><i style="background:#64748b"></i>Čas neznámý</span><span><i style="background:#8b3f91"></i>Fialový kruh = počet stanic</span></div></main>
@@ -15,6 +15,7 @@
  </div>
  <div class="x5-monitor-meta"><span>Publikace dat: <b id="x5Published">—</b></span><span>Nejnovější měření: <b id="x5Newest">—</b></span><span>Zdroj: <b id="x5Source">—</b></span><span>Kontrola stránky: <b id="x5Checked">—</b></span></div>
  <div class="x5-monitor-note">Automatický sběr GitHubu je naplánován každých 15 minut. Panel ověřuje publikaci datového souboru; sám o sobě nepotvrzuje, že proběhl plánovaný běh GitHub Actions.</div>
+ <div class="x5-health" aria-live="polite"><h3>🛡️ X-5 SYSTEM HEALTH</h3><div class="x5-health-grid"><div class="x5-health-item"><small>ČHMÚ · datový soubor</small><b id="x5HealthChmi">ČEKÁM NA KONTROLU</b></div><div class="x5-health-item"><small>Open‑Meteo / ECMWF</small><b id="x5HealthForecast">ČEKÁM NA KONTROLU</b></div><div class="x5-health-item"><small>GitHub Actions · plán</small><b id="x5HealthActions">OVĚŘUJI BĚHY</b></div></div><div class="x5-health-meta" id="x5HealthDetails">Diagnostika se spustí po načtení stránky.</div></div>
 </div></section>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script><script>
 (()=>{"use strict";const $=id=>document.getElementById(id),bounds=[[11.7,48.25],[19.1,51.25]];
@@ -233,6 +234,7 @@ map.on("click","chmi-visible-points",e=>{
 
 map.on("mouseenter","chmi-visible-points",()=>map.getCanvas().style.cursor="pointer");
 map.on("mouseleave","chmi-visible-points",()=>map.getCanvas().style.cursor="");
+let x5ChmiHealth={ok:null,checkedAt:0,error:""};
 let stationsPromise=null;
 async function loadStations(){
  if(stationsPromise)return stationsPromise;
@@ -242,6 +244,7 @@ async function loadStations(){
 }
 async function loadStationsInternal(){
  const summary=$("stationSummary");
+ x5ChmiHealth={ok:null,checkedAt:Date.now(),error:""};
  try{
   const url="./data/chmi-stations-latest.json?v="+Date.now();
   const r=await fetch(url,{cache:"no-store"});
@@ -296,10 +299,49 @@ async function loadStationsInternal(){
     summary.textContent+=" · Přímý zdroj: "+sourceCount+" · vykreslené v okně: "+rendered+". "+(rendered===0?"Diagnostika: zdroj je naplněn, ale body nejsou v aktuálním mapovém výřezu viditelné.":"");
    }catch(err){summary.textContent+=" Diagnostika vykreslení: "+err.message}
   });
+  x5ChmiHealth={ok:true,checkedAt:Date.now(),error:""};
   return true;
- }catch(e){summary.textContent="Stanice ČHMÚ nyní nejsou dostupné: "+e.message;return false}
+ }catch(e){x5ChmiHealth={ok:false,checkedAt:Date.now(),error:e.message};summary.textContent="Stanice ČHMÚ nyní nejsou dostupné: "+e.message;return false}
 }
-map.on("load",()=>{addLayers();applyLayers();map.fitBounds(bounds,{padding:32,duration:0,maxZoom:7.4});say("Mapa připravena · načítám meteorologická data…");loadForecast(true);loadStations()});
+
+async function updateX5SystemHealth(){
+ const put=(id,value,color)=>{const el=$(id);if(el){el.textContent=value;el.style.color=color||"#263b4a"}};
+ const ageText=t=>t?Math.max(0,Math.floor((Date.now()-t)/60000))+" min":"—";
+ let chmi="NEOVĚŘENO",chmiColor="#64748b";
+ if(x5ChmiHealth.ok===true){chmi="DOSTUPNÝ";chmiColor="#137447"}
+ else if(x5ChmiHealth.ok===false){chmi="CHYBA NAČTENÍ";chmiColor="#b42318"}
+ else if(x5ChmiHealth.checkedAt){chmi="NAČÍTÁ SE";chmiColor="#9a6700"}
+ put("x5HealthChmi",chmi,chmiColor);
+ let forecast="NEOVĚŘENO",forecastColor="#64748b";
+ if(state.loadedAt){const age=Date.now()-state.loadedAt;forecast=age<30*60000?"DOSTUPNÁ · "+(state.activeSource||"model"):"STARŠÍ DATA · "+(state.activeSource||"model");forecastColor=age<30*60000?"#137447":"#9a6700"}
+ else if(state.loading){forecast="NAČÍTÁ SE";forecastColor="#9a6700"}
+ put("x5HealthForecast",forecast,forecastColor);
+ let actions="NEOVĚŘENO",actionsColor="#64748b",actionsDetail="GitHub API zatím neposkytlo výsledek.";
+ try{
+  const response=await fetch("https://api.github.com/repos/Tmik407/Kosmick-observato-/actions/workflows/chmi-stations.yml/runs?per_page=20",{cache:"no-store",signal:AbortSignal.timeout(12000),headers:{Accept:"application/vnd.github+json"}});
+  if(!response.ok)throw Error("GitHub API HTTP "+response.status);
+  const data=await response.json(),runs=Array.isArray(data.workflow_runs)?data.workflow_runs:[];
+  const scheduled=runs.filter(run=>run.event==="schedule").sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at));
+  const latest=runs.slice().sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))[0];
+  if(scheduled.length){
+   const last=scheduled[0],age=Date.now()-Date.parse(last.created_at);
+   if(last.status!=="completed"){actions="PLÁNOVANÝ BĚH PROBÍHÁ";actionsColor="#9a6700"}
+   else if(last.conclusion==="success"&&age<3*3600000){actions="PLÁN POTVRZEN · OK";actionsColor="#137447"}
+   else if(last.conclusion==="success"){actions="POSLEDNÍ PLÁN STARŠÍ";actionsColor="#9a6700"}
+   else{actions="PLÁNOVANÝ BĚH SELHAL";actionsColor="#b42318"}
+   actionsDetail="Poslední schedule: "+new Date(last.created_at).toLocaleString("cs-CZ")+" · "+(last.conclusion||last.status)+".";
+  }else{
+   actions="PLÁN NEPOTVRZEN";actionsColor="#9a6700";
+   actionsDetail="V posledních "+runs.length+" bězích není zaznamenán event schedule.";
+  }
+  if(latest)actionsDetail+=" Poslední běh celkem: "+latest.event+" · "+new Date(latest.created_at).toLocaleString("cs-CZ")+" · "+(latest.conclusion||latest.status)+".";
+ }catch(error){actions="API NEDOSTUPNÉ";actionsColor="#b42318";actionsDetail="Stav GitHub Actions nelze ověřit: "+error.message}
+ put("x5HealthActions",actions,actionsColor);
+ const details="Kontrola: "+new Date().toLocaleTimeString("cs-CZ")+" · ČHMÚ kontrola před "+ageText(x5ChmiHealth.checkedAt)+"."+(x5ChmiHealth.error?" Chyba ČHMÚ: "+x5ChmiHealth.error+".":"")+" "+actionsDetail;
+ const el=$("x5HealthDetails");if(el)el.textContent=details;
+}
+
+map.on("load",()=>{addLayers();applyLayers();map.fitBounds(bounds,{padding:32,duration:0,maxZoom:7.4});say("Mapa připravena · načítám meteorologická data…");loadForecast(true);loadStations().finally(updateX5SystemHealth);setTimeout(updateX5SystemHealth,2500);setInterval(updateX5SystemHealth,5*60*1000)});
 $("home").onclick=()=>{map.stop();map.fitBounds(bounds,{padding:32,duration:500,maxZoom:7.4})};
 $("city").onchange=e=>{let c=cities.find(x=>x.name===e.target.value);if(!c)return;map.flyTo({center:[c.lon,c.lat],zoom:9.5,duration:600});let i=cities.indexOf(c),row=state.rows[i];if(row){let p=feature(c,row,state.hour).properties;new maplibregl.Popup().setLngLat([c.lon,c.lat]).setHTML("<b>"+esc(c.name)+"</b><br>"+fmt(p.temp)+" °C<br>Vítr "+fmt(p.wind)+" km/h<br>Srážky "+fmt(p.precip)+" mm/h").addTo(map)}};
 $("model").onchange=e=>{state.model=e.target.value;state.loadedAt=0;loadForecast(true)};
@@ -317,7 +359,7 @@ refreshButton.addEventListener("click",async()=>{
  $("status").textContent="Ruční aktualizace: stahuji nová data ČHMÚ a předpověď…";
  try{
   state.loadedAt=0;
-  const results=await Promise.allSettled([loadStations(),loadForecast(true)]);
+  const results=await Promise.allSettled([loadStations(),loadForecast(true)]);await updateX5SystemHealth();
   const stationOK=results[0].status==="fulfilled"&&results[0].value!==false;
   const forecastOK=results[1].status==="fulfilled";
   $("status").textContent=stationOK&&forecastOK?"Aktualizace dokončena · ČHMÚ a předpověď byly znovu ověřeny.":!stationOK&&!forecastOK?"Aktualizace se nezdařila · zkontrolujte připojení a stav zdrojů.":!stationOK?"Předpověď obnovena, ale data ČHMÚ se nepodařilo načíst.":"Data ČHMÚ obnovena, předpověď se nepodařilo obnovit.";
