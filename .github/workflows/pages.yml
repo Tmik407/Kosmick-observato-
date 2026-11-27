@@ -25,9 +25,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Načíst repozitář
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Nastavit GitHub Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
       - name: Připravit web
         run: |
           mkdir -p _site
@@ -74,12 +74,12 @@ jobs:
           grep -q 'gfs-polarni-3d.js' _site/polarni-vir.html
           echo "Polární vír: tmavý motiv, 3D plátno a JavaScriptové závislosti ověřeny."
       - name: Nahrát kompletní web
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: _site
       - name: Publikovat web
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
       - name: Ověřit nasazený web a datové panely
         env:
           SITE_URL: ${{ steps.deployment.outputs.page_url }}
