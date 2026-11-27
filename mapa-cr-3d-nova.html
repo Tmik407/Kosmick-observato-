@@ -197,9 +197,11 @@ map.on("click","chmi-visible-points",e=>{
  const source=p.data_source==="now"?"ČHMÚ · aktuální data":p.data_source==="recent"?"ČHMÚ · nedávná data":"Zdroj nerozlišen";
  const val=(v,d=1)=>v===null||v===undefined||v===""?"Neměřeno":fmt(v,d);
  const row=(label,value)=>"<div style='display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid #e8edf1'><span style='color:#526574'>"+label+"</span><b style='text-align:right;color:#183247'>"+value+"</b></div>";
- const html="<div style='min-width:220px;max-width:285px;max-height:220px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-right:4px;font:14px/1.4 system-ui,sans-serif;color:#183247'>"+
+ const html="<div style='min-width:220px;max-width:285px;font:14px/1.4 system-ui,sans-serif;color:#183247'>"+
+ "<div style='padding:2px 2px 9px;border-bottom:1px solid #e1e7eb;margin-bottom:6px'>"+
  "<div style='font-size:17px;font-weight:750;margin-bottom:5px'>"+esc(p.name||"Stanice ČHMÚ")+"</div>"+
- "<div style='display:inline-block;margin:0 0 8px;padding:4px 9px;border-radius:8px;background:"+status.color+";color:#fff;font-weight:700'>"+status.label+"</div>"+
+ "<div style='display:inline-block;padding:4px 9px;border-radius:8px;background:"+status.color+";color:#fff;font-weight:700'>"+status.label+"</div></div>"+
+ "<div class='station-popup-scroll' style='max-height:220px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-right:4px'>"+
  row("Teplota",val(p.temperature_c)+" °C")+
  row("Vítr",val(p.wind_ms)+" m/s")+
  row("Směr větru",val(p.wind_direction_deg,0)+"°")+
@@ -210,12 +212,12 @@ map.on("click","chmi-visible-points",e=>{
  row("Sněhové srážky za 10 min",val(p.snowfall_10m_mm)+" mm")+
  row("Výška sněhu",val(p.snow_depth_cm,0)+" cm")+
  row("Nadmořská výška",val(p.elevation_m,0)+" m")+
- "<div style='margin-top:9px;font-size:12px;color:#526574'><b>Čas měření:</b> "+esc(observed)+"<br><b>Stáří dat:</b> "+esc(ageText)+"<br><b>Zdroj:</b> "+source+"</div></div>";
+ "<div style='margin-top:9px;font-size:12px;color:#526574'><b>Čas měření:</b> "+esc(observed)+"<br><b>Stáří dat:</b> "+esc(ageText)+"<br><b>Zdroj:</b> "+source+"</div></div></div>";
  const popupPoint=map.project(f.geometry.coordinates);
  const popupAnchor=popupPoint.y<250?"top":"bottom";
  const stationPopup=new maplibregl.Popup({closeButton:true,closeOnClick:true,maxWidth:"320px",anchor:popupAnchor,offset:12,focusAfterOpen:false});
  stationPopup.setLngLat(f.geometry.coordinates).setHTML(html).addTo(map);
- requestAnimationFrame(()=>{const body=stationPopup.getElement()?.querySelector(".maplibregl-popup-content > div");if(body){body.scrollTop=0;body.addEventListener("touchstart",e=>e.stopPropagation(),{passive:true});body.addEventListener("touchmove",e=>e.stopPropagation(),{passive:true});}});
+ requestAnimationFrame(()=>{const body=stationPopup.getElement()?.querySelector(".station-popup-scroll");if(body){body.scrollTop=0;body.addEventListener("touchstart",e=>e.stopPropagation(),{passive:true});body.addEventListener("touchmove",e=>e.stopPropagation(),{passive:true});}});
 });
 
 map.on("mouseenter","chmi-visible-points",()=>map.getCanvas().style.cursor="pointer");
