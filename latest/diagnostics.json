@@ -1,59 +1,116 @@
 {
-  "checked_at_utc": "2026-11-27T01:50:37+00:00",
+  "checked_at_utc": "2026-11-27T10:13:09+00:00",
   "checks": [
     {
       "name": "GitHub Pages / HTML",
       "state": "OK",
-      "detail": "stránka dostupná (171045 B); Last-Modified: Thu, 26 Nov 2026 23:57:43 GMT"
+      "detail": "stránka dostupná (171045 B); Last-Modified: Fri, 27 Nov 2026 10:04:59 GMT"
     },
     {
       "name": "Open-Meteo",
-      "state": "WARN",
-      "detail": "zdroj nedostupný nebo neplatná odpověď: URLError: <urlopen error _ssl.c:994: The handshake operation timed out>"
+      "state": "OK",
+      "detail": "časová osa dostupná (48 termínů); první termín 2026-11-27T00:00"
     },
     {
       "name": "ECMWF IFS přes Open-Meteo",
-      "state": "WARN",
-      "detail": "zdroj nedostupný nebo neplatná odpověď: URLError: <urlopen error _ssl.c:994: The handshake operation timed out>"
+      "state": "OK",
+      "detail": "časová osa dostupná (48 termínů); první termín 2026-11-27T00:00"
     },
     {
       "name": "MET Norway",
       "state": "OK",
-      "detail": "časová řada dostupná (93 bodů; první 2026-11-27T01:00:00Z)"
+      "detail": "časová řada dostupná (89 bodů; první 2026-11-27T10:00:00Z)"
     },
     {
       "name": "ČHMÚ archiv",
       "state": "OK",
-      "detail": "474 stanic; nejnovější měření 2026-11-26T21:50+00:00; stáří 4.0 h; archiv Last-Modified Thu, 26 Nov 2026 23:57:43 GMT",
+      "detail": "473 stanic; nejnovější měření 2026-11-27T09:50+00:00; stáří 0.4 h; archiv Last-Modified Fri, 27 Nov 2026 10:13:09 GMT",
       "freshness": {
         "status": "fresh",
-        "age_hours": 4.01,
+        "age_hours": 0.39,
         "fresh_threshold_hours": 6,
         "stale_threshold_hours": 12
+      }
+    },
+    {
+      "name": "GIRO – ionosférická měření",
+      "state": "WARN",
+      "detail": "101 stanic; poslední měření 2026-11-27T04:40+00:00; stáří měření 333 min; staženo před 327 min; upozornění: snapshot nebyl obnoven během posledních 90 minut, nejnovější ionosférické měření je starší než 90 minut nebo chybí",
+      "freshness": {
+        "status": "stale",
+        "published_age_minutes": 326.5,
+        "measurement_age_minutes": 333.1,
+        "stations": 101
+      }
+    },
+    {
+      "name": "NASA ACE MAG archiv",
+      "state": "WARN",
+      "detail": "1316 záznamů; poslední měření 2026-11-27T01:58+00:00; stáří měření 495 min; poslední stažení před 445 min; upozornění: archiv nebyl stažen během posledních 120 minut, nejnovější ACE měření je starší než 6 hodin nebo chybí",
+      "freshness": {
+        "status": "stale",
+        "published_age_minutes": 445.3,
+        "measurement_age_minutes": 495.2,
+        "records": 1316
+      }
+    },
+    {
+      "name": "NOAA SWPC – sluneční vítr / IMF / Kp",
+      "state": "WARN",
+      "detail": "stavový soubor 371 min starý; wind: stale_or_unavailable (376.2 min); mag: stale_or_unavailable (376.2 min); kp: stale_or_unavailable (613.2 min); upozornění: stavový soubor je starší než 15 minut nebo nemá čas, wind: měření staré 376 min (limit 10), mag: měření staré 376 min (limit 10), kp: měření staré 613 min (limit 240)",
+      "freshness": {
+        "status": "stale",
+        "published_age_minutes": 371.1,
+        "sources": {
+          "wind": {
+            "status": "stale_or_unavailable",
+            "age_minutes": 376.2,
+            "limit_minutes": 10,
+            "request_status": "success",
+            "error": null
+          },
+          "mag": {
+            "status": "stale_or_unavailable",
+            "age_minutes": 376.2,
+            "limit_minutes": 10,
+            "request_status": "success",
+            "error": null
+          },
+          "kp": {
+            "status": "stale_or_unavailable",
+            "age_minutes": 613.2,
+            "limit_minutes": 240,
+            "request_status": "success",
+            "error": null
+          }
+        }
+      }
+    },
+    {
+      "name": "IRTAM – model elektronové hustoty",
+      "state": "OK",
+      "detail": "publikováno 2026-11-27T08:29:15Z; stáří publikace 104 min",
+      "freshness": {
+        "status": "fresh",
+        "published_age_minutes": 103.9,
+        "published_limit_minutes": 1440,
+        "measurement_age_minutes": null,
+        "measurement_limit_minutes": null
       }
     }
   ],
   "analysis": {
     "engine": "X-5 Guardian Expert Rules 2.0",
     "mode": "explainable_rules_not_llm",
-    "generated_at_utc": "2026-11-27T01:50:37+00:00",
-    "summary": "Zjištěno 2 upozornění; analýza je návrhová a nic automaticky neopravuje.",
+    "generated_at_utc": "2026-11-27T10:13:09+00:00",
+    "summary": "Zjištěno 0 upozornění; analýza je návrhová a nic automaticky neopravuje.",
     "findings": [
       {
-        "severity": "warning",
-        "title": "Primární předpověď Open-Meteo je nedostupná, záloha MET Norway funguje",
-        "likely_cause": "Pravděpodobný je výpadek primárního API, limit požadavků nebo problém konkrétního endpointu; dostupnost samotné stránky je samostatná kontrola.",
-        "impact": "Předpověď může běžet ze záložního globálního modelu a některé proměnné nebo časové kroky se mohou lišit.",
-        "recommendation": "Ponechat MET Norway jako označenou zálohu; zkontrolovat HTTP odpověď Open-Meteo a opakovat kontrolu později.",
-        "confidence": "vysoká",
-        "automatic_repair": false
-      },
-      {
-        "severity": "warning",
-        "title": "Model ECMWF IFS neodpovídá",
-        "likely_cause": "Endpoint ECMWF přes Open-Meteo je nedostupný nebo vrací neplatnou strukturu.",
-        "impact": "Porovnání modelů nemusí být dostupné; ostatní zdroje mohou fungovat nezávisle.",
-        "recommendation": "Prověřit endpoint ECMWF a jeho parametry odděleně od hlavního Open-Meteo.",
+        "severity": "info",
+        "title": "Všechny sledované serverové kontroly jsou v pořádku",
+        "likely_cause": "Pravidlová analýza nenašla známý problém v kontrolovaných zdrojích.",
+        "impact": "Tento výsledek nepotvrzuje vykreslení mapy ani ovládání v Android prohlížeči.",
+        "recommendation": "Pokračovat v běžném monitoringu a provést samostatný vizuální test na tabletu.",
         "confidence": "střední",
         "automatic_repair": false
       }
@@ -68,16 +125,11 @@
     "source_trends": [
       {
         "source": "Open-Meteo",
-        "current_state": "WARN",
-        "samples_in_history": 6,
-        "ok_count": 4,
+        "current_state": "OK",
+        "samples_in_history": 7,
+        "ok_count": 5,
         "warning_or_fail_count": 2,
         "recent": [
-          {
-            "checked_at_utc": "2026-11-26T15:32:31+00:00",
-            "state": "OK",
-            "freshness": null
-          },
           {
             "checked_at_utc": "2026-11-26T15:41:26+00:00",
             "state": "OK",
@@ -91,22 +143,22 @@
           {
             "checked_at_utc": "2026-11-27T01:50:37+00:00",
             "state": "WARN",
+            "freshness": null
+          },
+          {
+            "checked_at_utc": "2026-11-27T10:13:09+00:00",
+            "state": "OK",
             "freshness": null
           }
         ]
       },
       {
         "source": "ECMWF IFS přes Open-Meteo",
-        "current_state": "WARN",
-        "samples_in_history": 6,
-        "ok_count": 5,
+        "current_state": "OK",
+        "samples_in_history": 7,
+        "ok_count": 6,
         "warning_or_fail_count": 1,
         "recent": [
-          {
-            "checked_at_utc": "2026-11-26T15:32:31+00:00",
-            "state": "OK",
-            "freshness": null
-          },
           {
             "checked_at_utc": "2026-11-26T15:41:26+00:00",
             "state": "OK",
@@ -120,6 +172,11 @@
           {
             "checked_at_utc": "2026-11-27T01:50:37+00:00",
             "state": "WARN",
+            "freshness": null
+          },
+          {
+            "checked_at_utc": "2026-11-27T10:13:09+00:00",
+            "state": "OK",
             "freshness": null
           }
         ]
@@ -127,15 +184,10 @@
       {
         "source": "MET Norway",
         "current_state": "OK",
-        "samples_in_history": 6,
-        "ok_count": 6,
+        "samples_in_history": 7,
+        "ok_count": 7,
         "warning_or_fail_count": 0,
         "recent": [
-          {
-            "checked_at_utc": "2026-11-26T15:32:31+00:00",
-            "state": "OK",
-            "freshness": null
-          },
           {
             "checked_at_utc": "2026-11-26T15:41:26+00:00",
             "state": "OK",
@@ -148,6 +200,11 @@
           },
           {
             "checked_at_utc": "2026-11-27T01:50:37+00:00",
+            "state": "OK",
+            "freshness": null
+          },
+          {
+            "checked_at_utc": "2026-11-27T10:13:09+00:00",
             "state": "OK",
             "freshness": null
           }
@@ -156,15 +213,10 @@
       {
         "source": "ČHMÚ archiv",
         "current_state": "OK",
-        "samples_in_history": 6,
-        "ok_count": 1,
+        "samples_in_history": 7,
+        "ok_count": 2,
         "warning_or_fail_count": 5,
         "recent": [
-          {
-            "checked_at_utc": "2026-11-26T15:32:31+00:00",
-            "state": "WARN",
-            "freshness": null
-          },
           {
             "checked_at_utc": "2026-11-26T15:41:26+00:00",
             "state": "WARN",
@@ -177,6 +229,11 @@
           },
           {
             "checked_at_utc": "2026-11-27T01:50:37+00:00",
+            "state": "OK",
+            "freshness": null
+          },
+          {
+            "checked_at_utc": "2026-11-27T10:13:09+00:00",
             "state": "OK",
             "freshness": null
           }
@@ -185,15 +242,10 @@
       {
         "source": "GitHub Pages / HTML",
         "current_state": "OK",
-        "samples_in_history": 6,
-        "ok_count": 6,
+        "samples_in_history": 7,
+        "ok_count": 7,
         "warning_or_fail_count": 0,
         "recent": [
-          {
-            "checked_at_utc": "2026-11-26T15:32:31+00:00",
-            "state": "OK",
-            "freshness": null
-          },
           {
             "checked_at_utc": "2026-11-26T15:41:26+00:00",
             "state": "OK",
@@ -206,6 +258,11 @@
           },
           {
             "checked_at_utc": "2026-11-27T01:50:37+00:00",
+            "state": "OK",
+            "freshness": null
+          },
+          {
+            "checked_at_utc": "2026-11-27T10:13:09+00:00",
             "state": "OK",
             "freshness": null
           }
