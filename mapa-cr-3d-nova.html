@@ -130,25 +130,42 @@ async function loadForecast(force=false){
  }finally{state.loading=false;$("refresh").disabled=false}
 }
 async function loadStations(){
+ const summary=$("stationSummary");
  try{
-  let r=await fetch("./data/chmi-stations-latest.json",{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);
-  let doc=await r.json(),stations=Array.isArray(doc.stations)?doc.stations:[];
+  const url="./data/chmi-stations-latest.json?v="+Date.now();
+  const r=await fetch(url,{cache:"no-store"});
+  if(!r.ok)throw Error("HTTP "+r.status);
+  const doc=await r.json(),stations=Array.isArray(doc.stations)?doc.stations:[];
+  if(!stations.length)throw Error("JSON neobsahuje pole stations");
   const now=Date.now(),freshMs=30*60000,delayedMs=90*60000;
-  let fresh=0,delayed=0,stale=0,unknown=0,nowSource=0,recentSource=0;
-  const features=stations.filter(s=>Number.isFinite(+s.lat)&&Number.isFinite(+s.lon)).map(s=>{
-   const m=s.measurements||{},v=(k,a)=>Number.isFinite(Number(m[k]?.value))?Number(m[k].value):Number.isFinite(Number(s[a]))?Number(s[a]):null;
-   const observed=Date.parse(s.observed_utc||"");let age=Number.isFinite(observed)?Math.max(0,now-observed):null;
+  let fresh=0,delayed=0,stale=0,unknown=0,nowSource=0,recentSource=0,invalid=0;
+  const features=stations.flatMap(s=>{
+   const lat=Number(s.lat),lon=Number(s.lon);
+   if(!Number.isFinite(lat)||!Number.isFinite(lon)||lat<48||lat>52||lon<11||lon>20){invalid++;return []}
+   const m=s.measurements||{},v=(k,a)=>{const mv=m[k]?.value,sv=s[a];return mv!==undefined&&mv!==null&&Number.isFinite(Number(mv))?Number(mv):sv!==undefined&&sv!==null&&Number.isFinite(Number(sv))?Number(sv):null};
+   const observed=Date.parse(s.observed_utc||"");const age=Number.isFinite(observed)?Math.max(0,now-observed):null;
    if(age===null)unknown++;else if(age<=freshMs)fresh++;else if(age<=delayedMs)delayed++;else stale++;
    if(s.data_source==="now")nowSource++;else if(s.data_source==="recent")recentSource++;
-   return {type:"Feature",geometry:{type:"Point",coordinates:[+s.lon,+s.lat]},properties:{name:s.name||"Stanice ČHMÚ",temperature_c:v("T","temperature_c"),humidity_pct:v("H","humidity_pct"),wind_ms:v("F","wind_ms"),wind_direction_deg:v("D","wind_direction_deg"),pressure_hpa:v("P","pressure_hpa"),precipitation_mm:v("RR","precipitation_mm"),snow_depth_cm:v("SCE","snow_depth_cm"),observed_utc:s.observed_utc||"",data_source:s.data_source||"unknown",age_minutes:age===null?null:Math.floor(age/60000)}};
+   return [{type:"Feature",geometry:{type:"Point",coordinates:[lon,lat]},properties:{name:s.name||"Stanice ČHMÚ",temperature_c:v("T","temperature_c"),humidity_pct:v("H","humidity_pct"),wind_ms:v("F","wind_ms"),wind_direction_deg:v("D","wind_direction_deg"),pressure_hpa:v("P","pressure_hpa"),precipitation_mm:v("RR","precipitation_mm"),snow_depth_cm:v("SCE","snow_depth_cm"),observed_utc:s.observed_utc||"",data_source:s.data_source||"unknown",age_minutes:age===null?-1:Math.floor(age/60000)}}];
   });
-  map.getSource("stations").setData({type:"FeatureCollection",features});
-  let newest=Date.parse(doc.latest_observation_utc||"");if(!Number.isFinite(newest))newest=Math.max(0,...stations.map(s=>Date.parse(s.observed_utc||"")||0));
+  const source=map.getSource("stations");
+  if(!source)throw Error("MapLibre zdroj stations neexistuje");
+  source.setData({type:"FeatureCollection",features});
+  ["station-clusters","station-count","station-points","station-hit-target","station-labels"].forEach(id=>{if(map.getLayer(id)){map.setLayoutProperty(id,"visibility",state.visible.stations?"visible":"none");map.moveLayer(id)}});
+  map.triggerRepaint();
+  const newest=Date.parse(doc.latest_observation_utc||"")||Math.max(0,...stations.map(s=>Date.parse(s.observed_utc||"")||0));
   const age=newest?Math.max(0,Math.floor((now-newest)/60000)):null;
   const ageText=age===null?"čas neznámý":age+" min";
   const freshness=age===null?"Nelze ověřit čerstvost.":age<=30?"Nejnovější měření jsou čerstvá.":age<=90?"Pozor: měření jsou opožděná.":"Upozornění: nejnovější měření jsou starší než 90 minut.";
-  $("stationSummary").textContent="ČHMÚ: "+features.length+" stanic · shlukování aktivní do přiblížení 10× · čerstvá ≤30 min: "+fresh+" · opožděná 30–90 min: "+delayed+" · starší >90 min: "+stale+" · nejnovější: "+ageText+" · zdroj /now: "+nowSource+" / /recent: "+recentSource+" · "+freshness+" Publikováno: "+(doc.generated_utc?new Date(doc.generated_utc).toLocaleString("cs-CZ"):"bez času");
- }catch(e){$("stationSummary").textContent="Stanice ČHMÚ nyní nejsou dostupné: "+e.message}
+  summary.textContent="ČHMÚ: "+features.length+"/"+stations.length+" stanic v mapě · souřadnice mimo rozsah: "+invalid+" · čerstvá ≤30 min: "+fresh+" · opožděná 30–90 min: "+delayed+" · starší >90 min: "+stale+" · bez času: "+unknown+" · /now: "+nowSource+" / /recent: "+recentSource+" · nejnovější: "+ageText+" · "+freshness+" Publikováno: "+(doc.generated_utc?new Date(doc.generated_utc).toLocaleString("cs-CZ"):"bez času");
+  map.once("idle",()=>{
+   try{
+    const clusters=map.queryRenderedFeatures({layers:["station-clusters"]}).length;
+    const points=map.queryRenderedFeatures({layers:["station-points"]}).length;
+    summary.textContent+=" Vykresleno nyní: "+clusters+" shluků, "+points+" samostatných značek.";
+   }catch(err){summary.textContent+=" Diagnostika vykreslení: "+err.message}
+  });
+ }catch(e){summary.textContent="Stanice ČHMÚ nyní nejsou dostupné: "+e.message}
 }
 map.on("load",()=>{addLayers();applyLayers();map.fitBounds(bounds,{padding:32,duration:0,maxZoom:7.4});say("Mapa připravena · načítám meteorologická data…");loadForecast(true);loadStations()});
 $("home").onclick=()=>{map.stop();map.fitBounds(bounds,{padding:32,duration:500,maxZoom:7.4})};
