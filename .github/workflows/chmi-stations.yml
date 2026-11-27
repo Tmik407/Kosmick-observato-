@@ -51,8 +51,8 @@ jobs:
           print(summary)
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
               f.write(summary)
-          if age is None or age > 30:
-              print(f"::warning::VAROVÁNÍ ČHMÚ: nejnovější měření je starší než 30 minut (stáří: {age if age is not None else 'neznámé'} minut).")
+          if age is None or age > 90:
+              print(f"::warning::VAROVÁNÍ ČHMÚ: nejnovější měření je starší než 90 minut (stáří: {age if age is not None else 'neznámé'} minut).")
           PY
       - name: Publish station snapshot
         run: |
