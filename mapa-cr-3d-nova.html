@@ -146,7 +146,7 @@ async function loadStations(){
    const observed=Date.parse(s.observed_utc||"");const age=Number.isFinite(observed)?Math.max(0,now-observed):null;
    if(age===null)unknown++;else if(age<=freshMs)fresh++;else if(age<=delayedMs)delayed++;else stale++;
    if(s.data_source==="now")nowSource++;else if(s.data_source==="recent")recentSource++;
-   return [{type:"Feature",geometry:{type:"Point",coordinates:[lon,lat]},properties:{name:s.name||"Stanice ČHMÚ",temperature_c:v("T","temperature_c"),humidity_pct:v("H","humidity_pct"),wind_ms:v("F","wind_ms"),wind_direction_deg:v("D","wind_direction_deg"),pressure_hpa:v("P","pressure_hpa"),precipitation_mm:v("RR","precipitation_mm"),snow_depth_cm:v("SCE","snow_depth_cm"),observed_utc:s.observed_utc||"",data_source:s.data_source||"unknown",age_minutes:age===null?-1:Math.floor(age/60000)}}];
+   return [{type:"Feature",geometry:{type:"Point",coordinates:[lon,lat]},properties:{name:s.name||"Stanice ČHMÚ",temperature_c:v("T","temperature_c"),humidity_pct:v("H","humidity_pct"),wind_ms:v("F","wind_ms"),wind_direction_deg:v("D","wind_direction_deg"),pressure_hpa:v("P","pressure_hpa"),precipitation_mm:v("RR","precipitation_mm"),snow_depth_cm:v("SCE","snow_depth_cm"),observed_utc:s.observed_utc||"",data_source:s.data_source||"unknown",age_minutes:age===null?null:Math.floor(age/60000)}}];
   });
   const source=map.getSource("stations");
   if(!source)throw Error("MapLibre zdroj stations neexistuje");
