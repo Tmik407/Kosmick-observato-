@@ -53,6 +53,13 @@ jobs:
               f.write(summary)
           if age is None or age > 90:
               print(f"::warning::VAROVÁNÍ ČHMÚ: nejnovější měření je starší než 90 minut (stáří: {age if age is not None else 'neznámé'} minut).")
+          if doc.get("freshness_alert"):
+              drop = doc.get("fresh_observation_drop_count", 0)
+              pct = doc.get("fresh_observation_drop_percent", 0)
+              previous = doc.get("previous_fresh_observation_station_count", 0)
+              print(f"::warning::POKLES ČERSTVÝCH STANIC ČHMÚ: {previous} → {fresh} (pokles {drop} stanic, {pct} %).")
+              with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+                  f.write(f"\n> ⚠️ **POZOR: počet čerstvých stanic poklesl o {drop} ({pct} %), z {previous} na {fresh}.**\n")
           PY
       - name: Publish station snapshot
         run: |
