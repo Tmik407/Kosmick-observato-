@@ -6,7 +6,7 @@ on:
     paths:
       - ".github/workflows/ace-mag-archive.yml"
   schedule:
-    - cron: "7 * * * *"
+    - cron: "17 * * * *"
   workflow_dispatch:
 
 permissions:
