@@ -45,7 +45,7 @@ function addLayers(){
  map.on("click","city-points",e=>{let p=e.features[0].properties;new maplibregl.Popup().setLngLat(e.lngLat).setHTML("<b>"+esc(p.name)+"</b><br>"+fmt(p.temp)+" °C<br>Déšť: "+fmt(p.rain)+" mm/h · sníh: "+fmt(p.snow)+" cm/h<br>Vítr: "+fmt(p.wind)+" km/h · nárazy: "+fmt(p.gust)+" km/h").addTo(map)});
  ["station-points","station-hit-target","station-clusters","city-points"].forEach(id=>{map.on("mouseenter",id,()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave",id,()=>map.getCanvas().style.cursor="")});
 }
-function applyLayers(){let v=state.visible;[["temp",v.temperature],["temp-label",v.temperature],["precip",v.precipitation],["wind",v.wind],["city-points",v.cities],["city-labels",v.cities],["station-points",false],["station-hit-target",false],["station-labels",false],["station-clusters",false],["station-count",false],["station-fallback-points",false],["station-fallback-clusters",false],["station-fallback-count",false],["station-fallback-all",v.stations]].forEach(([id,on])=>{if(map.getLayer(id))map.setLayoutProperty(id,"visibility",on?"visible":"none")});$("layers").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(!!v[b.dataset.layer])));$("legend").textContent=v.precipitation?"Déšť · mm/h (modrá) · sněžení · cm/h (světle modrá)":v.temperature?"Orientační teplota v °C · hodnoty jsou převzaty z nejbližšího sledovaného města":"Šipky ukazují směr větru"}
+function applyLayers(){let v=state.visible;[["temp",v.temperature],["temp-label",v.temperature],["precip",v.precipitation],["wind",v.wind],["city-points",v.cities],["city-labels",v.cities],["station-points",v.stations],["station-hit-target",v.stations],["station-labels",v.stations],["station-clusters",v.stations],["station-count",v.stations],["station-fallback-points",false],["station-fallback-clusters",false],["station-fallback-count",false],["station-fallback-all",false]].forEach(([id,on])=>{if(map.getLayer(id))map.setLayoutProperty(id,"visibility",on?"visible":"none")});$("layers").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(!!v[b.dataset.layer])));$("legend").textContent=v.precipitation?"Déšť · mm/h (modrá) · sněžení · cm/h (světle modrá)":v.temperature?"Orientační teplota v °C · hodnoty jsou převzaty z nejbližšího sledovaného města":"Šipky ukazují směr větru"}
 function draw(){if(!state.rows.length)return;let i=state.hour,grid=[];for(let lat=48.65;lat<=50.95;lat+=.48)for(let lon=12.15;lon<=18.55;lon+=.72)grid.push({lat:+lat.toFixed(3),lon:+lon.toFixed(3)});let wf=grid.map(p=>feature(p,state.rows[nearest(p)],i)),cf=cities.map((p,n)=>feature(p,state.rows[n],i));map.getSource("weather")?.setData({type:"FeatureCollection",features:wf});map.getSource("cities")?.setData({type:"FeatureCollection",features:cf});$("time").value=String(i);$("timeLabel").textContent="Platnost předpovědi: "+new Date(state.times[i]).toLocaleString("cs-CZ",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});let avg=cf.reduce((s,f)=>s+f.properties.temp,0)/cf.length,wet=cf.filter(f=>f.properties.precip>.1).length,maxwind=Math.max(...cf.map(f=>f.properties.wind));$("summary").textContent="Průměrná teplota ve "+cities.length+" městech: "+avg.toFixed(1)+" °C. Srážky očekávány v "+wet+" městech. Nejvyšší vítr: "+maxwind.toFixed(1)+" km/h. Prostorové pole je orientační a používá hodnoty nejbližšího sledovaného města."}
 async function fetchMetNoCity(place){
  const lat=Number(place.lat.toFixed(4)),lon=Number(place.lon.toFixed(4)),key=lat+","+lon,cacheKey="x5-newmap-metno:"+key;
@@ -192,8 +192,8 @@ async function loadStations(){
   stationFeatures=features;
   fallbackSource.setData({type:"FeatureCollection",features:[]});
   updateStationDisplay();
-  ["station-clusters","station-count","station-points","station-hit-target","station-labels"].forEach(id=>{if(map.getLayer(id))map.setLayoutProperty(id,"visibility","none")});
-  ["station-fallback-clusters","station-fallback-count","station-fallback-points","station-fallback-all"].forEach(id=>{if(map.getLayer(id))map.moveLayer(id)});
+  ["station-clusters","station-count","station-points","station-hit-target","station-labels"].forEach(id=>{if(map.getLayer(id))map.setLayoutProperty(id,"visibility",state.visible.stations?"visible":"none")});
+  ["station-clusters","station-count","station-points","station-hit-target","station-labels"].forEach(id=>{if(map.getLayer(id))map.moveLayer(id)});
   map.triggerRepaint();
   const newest=Date.parse(doc.latest_observation_utc||"")||Math.max(0,...stations.map(s=>Date.parse(s.observed_utc||"")||0));
   const age=newest?Math.max(0,Math.floor((now-newest)/60000)):null;
@@ -202,7 +202,7 @@ async function loadStations(){
   summary.textContent="ČHMÚ: "+features.length+"/"+stations.length+" stanic načteno · souřadnice mimo rozsah: "+invalid+" · čerstvá ≤30 min: "+fresh+" · opožděná 30–90 min: "+delayed+" · starší >90 min: "+stale+" · bez času: "+unknown+" · /now: "+nowSource+" / /recent: "+recentSource+" · nejnovější: "+ageText+" · "+freshness+" Publikováno: "+(doc.generated_utc?new Date(doc.generated_utc).toLocaleString("cs-CZ"):"bez času");
   map.once("idle",()=>{
    try{
-    const rendered=map.queryRenderedFeatures({layers:["station-fallback-all"]}).length;
+    const rendered=map.queryRenderedFeatures({layers:["station-clusters","station-points"]}).length;
     summary.textContent+=" · Vykreslené objekty v aktuálním pohledu: "+rendered+" · shlukování: "+(map.getZoom()<10.5?"aktivní":"jednotlivé stanice")+". "+(rendered===0?"VAROVÁNÍ: v mapovém okně není vykreslen žádný objekt ČHMÚ.":"");
    }catch(err){summary.textContent+=" Diagnostika vykreslení: "+err.message}
   });;
