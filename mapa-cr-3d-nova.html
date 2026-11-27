@@ -223,7 +223,9 @@ async function loadStationsInternal(){
   const age=newest?Math.max(0,Math.floor((now-newest)/60000)):null;
   const ageText=age===null?"čas neznámý":age+" min";
   const freshness=age===null?"Nelze ověřit čerstvost.":age<=30?"Nejnovější měření jsou čerstvá.":age<=90?"Pozor: měření jsou opožděná.":"Upozornění: nejnovější měření jsou starší než 90 minut.";
-  summary.textContent="ČHMÚ: "+features.length+"/"+stations.length+" stanic načteno · souřadnice mimo rozsah: "+invalid+" · čerstvá ≤30 min: "+fresh+" · opožděná 30–90 min: "+delayed+" · starší >90 min: "+stale+" · bez času: "+unknown+" · /now: "+nowSource+" / /recent: "+recentSource+" · nejnovější: "+ageText+" · "+freshness+" Publikováno: "+(doc.generated_utc?new Date(doc.generated_utc).toLocaleString("cs-CZ"):"bez času");
+  const dropAlert=doc.freshness_alert?" ⚠️ POKLES ČERSTVÝCH STANIC: "+(doc.previous_fresh_observation_station_count||0)+" → "+fresh+" (−"+(doc.fresh_observation_drop_count||0)+" stanic, "+(doc.fresh_observation_drop_percent||0)+" %).":"";
+  summary.textContent="ČHMÚ: "+features.length+"/"+stations.length+" stanic načteno · souřadnice mimo rozsah: "+invalid+" · čerstvá ≤30 min: "+fresh+" · opožděná 30–90 min: "+delayed+" · starší >90 min: "+stale+" · bez času: "+unknown+" · /now: "+nowSource+" / /recent: "+recentSource+" · nejnovější: "+ageText+" · "+freshness+dropAlert+" Publikováno: "+(doc.generated_utc?new Date(doc.generated_utc).toLocaleString("cs-CZ"):"bez času");
+  summary.style.color=doc.freshness_alert?"#b42318":"";summary.style.fontWeight=doc.freshness_alert?"700":"";
   map.once("idle",()=>{
    try{
     const rendered=map.queryRenderedFeatures({layers:["chmi-visible-points"]}).length;
