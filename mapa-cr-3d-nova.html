@@ -46,7 +46,7 @@ function addLayers(){
  ["station-points","station-hit-target","station-clusters","city-points"].forEach(id=>{map.on("mouseenter",id,()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave",id,()=>map.getCanvas().style.cursor="")});
  map.addSource("chmi-visible-source",{type:"geojson",data:empty()});
  map.addLayer({id:"chmi-visible-points",type:"circle",source:"chmi-visible-source",paint:{
-  "circle-radius":["interpolate",["linear"],["zoom"],5,4.5,8,6,12,8],
+  "circle-radius":["interpolate",["linear"],["zoom"],5,7,8,9,12,12],
   "circle-color":["case",["==",["get","age_minutes"],null],"#718096",["<=",["get","age_minutes"],30],"#15966a",["<=",["get","age_minutes"],90],"#d18a16","#c44747"],
   "circle-opacity":1,"circle-stroke-color":"#ffffff","circle-stroke-width":1.8
  }});
@@ -188,14 +188,35 @@ $("stationFilters").addEventListener("click",e=>{
  const labels={all:"Všechny stanice ČHMÚ",fresh:"Pouze čerstvá měření do 30 minut",delayed:"Pouze opožděná měření 30–90 minut",stale:"Pouze starší měření nad 90 minut",unknown:"Pouze stanice bez známého času měření"};
  $("status").textContent="Filtr ČHMÚ: "+labels[state.stationFilter]+".";
 });
-map.on("click",e=>{if(!map.getLayer("chmi-visible-points"))return;const f=map.queryRenderedFeatures(e.point,{layers:["chmi-visible-points"]})[0];if(!f)return;if(f.properties.kind==="cluster"){map.easeTo({center:f.geometry.coordinates,zoom:Math.min(12.5,map.getZoom()+2),duration:450});return}const p=f.properties,age=p.age_minutes===null||p.age_minutes===undefined?null:Number(p.age_minutes);
- const status=age===null?{label:"Čerstvost neznámá",color:"#718096"}:age<=30?{label:"Čerstvé měření",color:"#15966a"}:age<=90?{label:"Opožděné měření",color:"#b7791f"}:{label:"Starší měření",color:"#c44747"};
+map.on("click","chmi-visible-points",e=>{
+ const f=e.features&&e.features[0];if(!f)return;
+ const p=f.properties||{},age=p.age_minutes===null||p.age_minutes===undefined?null:Number(p.age_minutes);
+ const status=age===null?{label:"Čas měření neznámý",color:"#718096"}:age<=30?{label:"Čerstvé měření",color:"#15966a"}:age<=90?{label:"Opožděné měření",color:"#b7791f"}:{label:"Starší měření",color:"#c44747"};
  const ageText=age===null?"nelze určit":age<60?"před "+age+" min":Math.floor(age/60)+" h "+(age%60)+" min";
- const observed=p.observed_utc?new Date(p.observed_utc).toLocaleString("cs-CZ",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"čas neuveden";
- const source=p.data_source==="now"?"ČHMÚ /now":p.data_source==="recent"?"ČHMÚ /recent":"Zdroj nerozlišen";
- new maplibregl.Popup().setLngLat(e.lngLat).setHTML("<b>"+esc(p.name)+"</b><br><span style='display:inline-block;margin:5px 0;padding:3px 7px;border-radius:7px;background:"+status.color+";color:white;font-weight:650'>"+status.label+"</span><br><b>Stáří měření:</b> "+ageText+"<br><b>Čas měření:</b> "+esc(observed)+"<br><b>Zdroj:</b> "+source+"<hr style='border:0;border-top:1px solid #ddd;margin:7px 0'>Teplota: "+fmt(p.temperature_c)+" °C<br>Vítr: "+fmt(p.wind_ms)+" m/s · směr "+fmt(p.wind_direction_deg,0)+"°<br>Vlhkost: "+fmt(p.humidity_pct,0)+" %<br>Tlak: "+fmt(p.pressure_hpa)+" hPa<br>Srážky: "+fmt(p.precipitation_mm)+" mm<br>Sníh: "+fmt(p.snow_depth_cm,0)+" cm").addTo(map);
+ const observed=p.observed_utc?new Date(p.observed_utc).toLocaleString("cs-CZ",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"čas neuveden";
+ const source=p.data_source==="now"?"ČHMÚ · aktuální data":p.data_source==="recent"?"ČHMÚ · nedávná data":"Zdroj nerozlišen";
+ const val=(v,d=1)=>v===null||v===undefined||v===""?"Neměřeno":fmt(v,d);
+ const row=(label,value)=>"<div style='display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid #e8edf1'><span style='color:#526574'>"+label+"</span><b style='text-align:right;color:#183247'>"+value+"</b></div>";
+ const html="<div style='min-width:235px;max-width:285px;font:14px/1.4 system-ui,sans-serif;color:#183247'>"+
+ "<div style='font-size:17px;font-weight:750;margin-bottom:5px'>"+esc(p.name||"Stanice ČHMÚ")+"</div>"+
+ "<div style='display:inline-block;margin:0 0 8px;padding:4px 9px;border-radius:8px;background:"+status.color+";color:#fff;font-weight:700'>"+status.label+"</div>"+
+ row("Teplota",val(p.temperature_c)+" °C")+
+ row("Vítr",val(p.wind_ms)+" m/s")+
+ row("Směr větru",val(p.wind_direction_deg,0)+"°")+
+ row("Nárazy větru",val(p.wind_gust_ms)+" m/s")+
+ row("Vlhkost",val(p.humidity_pct,0)+" %")+
+ row("Tlak",val(p.pressure_hpa)+" hPa")+
+ row("Srážky za 10 min",val(p.precipitation_mm)+" mm")+
+ row("Sněhové srážky za 10 min",val(p.snowfall_10m_mm)+" mm")+
+ row("Výška sněhu",val(p.snow_depth_cm,0)+" cm")+
+ row("Nadmořská výška",val(p.elevation_m,0)+" m")+
+ "<div style='margin-top:9px;font-size:12px;color:#526574'><b>Čas měření:</b> "+esc(observed)+"<br><b>Stáří dat:</b> "+esc(ageText)+"<br><b>Zdroj:</b> "+source+"</div></div>";
+ new maplibregl.Popup({closeButton:true,closeOnClick:true,maxWidth:"320px",offset:12})
+  .setLngLat(f.geometry.coordinates).setHTML(html).addTo(map);
 });
-map.on("mousemove",e=>{if(!map.getLayer("chmi-visible-points"))return;const hits=map.queryRenderedFeatures(e.point,{layers:["chmi-visible-points"]});map.getCanvas().style.cursor=hits.length?"pointer":""});
+
+map.on("mouseenter","chmi-visible-points",()=>map.getCanvas().style.cursor="pointer");
+map.on("mouseleave","chmi-visible-points",()=>map.getCanvas().style.cursor="");
 let stationsPromise=null;
 async function loadStations(){
  if(stationsPromise)return stationsPromise;
@@ -220,7 +241,7 @@ async function loadStationsInternal(){
    const observed=Date.parse(s.observed_utc||"");const age=Number.isFinite(observed)?Math.max(0,now-observed):null;
    if(age===null)unknown++;else if(age<=freshMs)fresh++;else if(age<=delayedMs)delayed++;else stale++;
    if(s.data_source==="now")nowSource++;else if(s.data_source==="recent")recentSource++;
-   return [{type:"Feature",geometry:{type:"Point",coordinates:[lon,lat]},properties:{name:s.name||"Stanice ČHMÚ",temperature_c:v("T","temperature_c"),humidity_pct:v("H","humidity_pct"),wind_ms:v("F","wind_ms"),wind_direction_deg:v("D","wind_direction_deg"),pressure_hpa:v("P","pressure_hpa"),precipitation_mm:v("RR","precipitation_mm"),snow_depth_cm:v("SCE","snow_depth_cm"),observed_utc:s.observed_utc||"",data_source:s.data_source||"unknown",age_minutes:age===null?null:Math.floor(age/60000)}}];
+   return [{type:"Feature",geometry:{type:"Point",coordinates:[lon,lat]},properties:{name:s.name||"Stanice ČHMÚ",elevation_m:Number.isFinite(Number(s.elevation_m))?Number(s.elevation_m):null,temperature_c:v("T","temperature_c"),humidity_pct:v("H","humidity_pct"),wind_ms:v("F","wind_ms"),wind_gust_ms:v("Fmax","wind_gust_ms"),wind_direction_deg:v("D","wind_direction_deg"),pressure_hpa:v("P","pressure_hpa"),precipitation_mm:v("SRA10M","precipitation_mm"),snowfall_10m_mm:v("SSV10M","snowfall_10m_mm"),snow_depth_cm:v("SCEa","snow_depth_cm"),observed_utc:s.observed_utc||"",data_source:s.data_source||"unknown",age_minutes:age===null?null:Math.floor(age/60000)}}];
   });
   const source=map.getSource("chmi-visible-source");
   if(!source)throw Error("Přímý zdroj vykreslení ČHMÚ neexistuje");
