@@ -1,10 +1,10 @@
 {
-  "checked_at_utc": "2026-11-27T11:21:34+00:00",
+  "checked_at_utc": "2026-11-27T11:22:19+00:00",
   "checks": [
     {
       "name": "GitHub Pages / HTML",
       "state": "OK",
-      "detail": "stránka dostupná (171045 B); Last-Modified: Fri, 27 Nov 2026 11:21:21 GMT"
+      "detail": "stránka dostupná (171045 B); Last-Modified: Fri, 27 Nov 2026 11:21:46 GMT"
     },
     {
       "name": "Open-Meteo",
@@ -24,10 +24,10 @@
     {
       "name": "ČHMÚ archiv",
       "state": "OK",
-      "detail": "473 stanic; nejnovější měření 2026-11-27T09:50+00:00; stáří 1.5 h; archiv Last-Modified Fri, 27 Nov 2026 11:21:21 GMT",
+      "detail": "473 stanic; nejnovější měření 2026-11-27T09:50+00:00; stáří 1.5 h; archiv Last-Modified Fri, 27 Nov 2026 11:21:46 GMT",
       "freshness": {
         "status": "fresh",
-        "age_hours": 1.53,
+        "age_hours": 1.54,
         "fresh_threshold_hours": 6,
         "stale_threshold_hours": 12
       }
@@ -35,11 +35,11 @@
     {
       "name": "GIRO – ionosférická měření",
       "state": "OK",
-      "detail": "101 stanic; poslední měření 2026-11-27T11:15+00:00; stáří měření 6 min; staženo před 3 min",
+      "detail": "101 stanic; poslední měření 2026-11-27T11:15+00:00; stáří měření 7 min; staženo před 3 min",
       "freshness": {
         "status": "fresh",
-        "published_age_minutes": 2.6,
-        "measurement_age_minutes": 6.5,
+        "published_age_minutes": 3.3,
+        "measurement_age_minutes": 7.2,
         "stations": 101
       }
     },
@@ -49,36 +49,36 @@
       "detail": "1840 záznamů; poslední měření 2026-11-27T10:58+00:00; stáří měření 24 min; poslední stažení před 3 min",
       "freshness": {
         "status": "fresh",
-        "published_age_minutes": 2.6,
-        "measurement_age_minutes": 23.6,
+        "published_age_minutes": 3.4,
+        "measurement_age_minutes": 24.3,
         "records": 1840
       }
     },
     {
       "name": "NOAA SWPC – sluneční vítr / IMF / Kp",
       "state": "OK",
-      "detail": "stavový soubor 3 min starý; wind: fresh (7.6 min); mag: fresh (7.6 min); kp: fresh (141.6 min)",
+      "detail": "stavový soubor 3 min starý; wind: fresh (8.3 min); mag: fresh (8.3 min); kp: fresh (142.3 min)",
       "freshness": {
         "status": "fresh",
-        "published_age_minutes": 2.7,
+        "published_age_minutes": 3.4,
         "sources": {
           "wind": {
             "status": "fresh",
-            "age_minutes": 7.6,
+            "age_minutes": 8.3,
             "limit_minutes": 10,
             "request_status": "success",
             "error": null
           },
           "mag": {
             "status": "fresh",
-            "age_minutes": 7.6,
+            "age_minutes": 8.3,
             "limit_minutes": 10,
             "request_status": "success",
             "error": null
           },
           "kp": {
             "status": "fresh",
-            "age_minutes": 141.6,
+            "age_minutes": 142.3,
             "limit_minutes": 240,
             "request_status": "success",
             "error": null
@@ -89,10 +89,10 @@
     {
       "name": "IRTAM – model elektronové hustoty",
       "state": "OK",
-      "detail": "publikováno 2026-11-27T08:29:15Z; stáří publikace 172 min",
+      "detail": "publikováno 2026-11-27T11:21:20Z; stáří publikace 1 min",
       "freshness": {
         "status": "fresh",
-        "published_age_minutes": 172.3,
+        "published_age_minutes": 1.0,
         "published_limit_minutes": 1440,
         "measurement_age_minutes": null,
         "measurement_limit_minutes": null
@@ -102,7 +102,7 @@
   "analysis": {
     "engine": "X-5 Guardian Expert Rules 2.0",
     "mode": "explainable_rules_not_llm",
-    "generated_at_utc": "2026-11-27T11:21:34+00:00",
+    "generated_at_utc": "2026-11-27T11:22:20+00:00",
     "summary": "Zjištěno 0 upozornění; analýza je návrhová a nic automaticky neopravuje.",
     "findings": [
       {
@@ -118,7 +118,7 @@
     "recurring_issues": [
       {
         "source": "ČHMÚ archiv",
-        "non_ok_in_last_8": 4,
+        "non_ok_in_last_8": 3,
         "recommendation": "Prověřit opakující se problém a historii běhů GitHub Actions."
       }
     ],
@@ -127,14 +127,9 @@
         "source": "Open-Meteo",
         "current_state": "OK",
         "samples_in_history": 8,
-        "ok_count": 6,
-        "warning_or_fail_count": 2,
+        "ok_count": 7,
+        "warning_or_fail_count": 1,
         "recent": [
-          {
-            "checked_at_utc": "2026-11-27T01:50:37+00:00",
-            "state": "WARN",
-            "freshness": null
-          },
           {
             "checked_at_utc": "2026-11-27T10:13:09+00:00",
             "state": "OK",
@@ -147,6 +142,11 @@
           },
           {
             "checked_at_utc": "2026-11-27T11:21:34+00:00",
+            "state": "OK",
+            "freshness": null
+          },
+          {
+            "checked_at_utc": "2026-11-27T11:22:19+00:00",
             "state": "OK",
             "freshness": null
           }
@@ -160,11 +160,6 @@
         "warning_or_fail_count": 1,
         "recent": [
           {
-            "checked_at_utc": "2026-11-27T01:50:37+00:00",
-            "state": "WARN",
-            "freshness": null
-          },
-          {
             "checked_at_utc": "2026-11-27T10:13:09+00:00",
             "state": "OK",
             "freshness": null
@@ -176,6 +171,11 @@
           },
           {
             "checked_at_utc": "2026-11-27T11:21:34+00:00",
+            "state": "OK",
+            "freshness": null
+          },
+          {
+            "checked_at_utc": "2026-11-27T11:22:19+00:00",
             "state": "OK",
             "freshness": null
           }
@@ -189,11 +189,6 @@
         "warning_or_fail_count": 0,
         "recent": [
           {
-            "checked_at_utc": "2026-11-27T01:50:37+00:00",
-            "state": "OK",
-            "freshness": null
-          },
-          {
             "checked_at_utc": "2026-11-27T10:13:09+00:00",
             "state": "OK",
             "freshness": null
@@ -205,6 +200,11 @@
           },
           {
             "checked_at_utc": "2026-11-27T11:21:34+00:00",
+            "state": "OK",
+            "freshness": null
+          },
+          {
+            "checked_at_utc": "2026-11-27T11:22:19+00:00",
             "state": "OK",
             "freshness": null
           }
@@ -214,14 +214,9 @@
         "source": "ČHMÚ archiv",
         "current_state": "OK",
         "samples_in_history": 8,
-        "ok_count": 4,
-        "warning_or_fail_count": 4,
+        "ok_count": 5,
+        "warning_or_fail_count": 3,
         "recent": [
-          {
-            "checked_at_utc": "2026-11-27T01:50:37+00:00",
-            "state": "OK",
-            "freshness": null
-          },
           {
             "checked_at_utc": "2026-11-27T10:13:09+00:00",
             "state": "OK",
@@ -234,6 +229,11 @@
           },
           {
             "checked_at_utc": "2026-11-27T11:21:34+00:00",
+            "state": "OK",
+            "freshness": null
+          },
+          {
+            "checked_at_utc": "2026-11-27T11:22:19+00:00",
             "state": "OK",
             "freshness": null
           }
@@ -247,11 +247,6 @@
         "warning_or_fail_count": 0,
         "recent": [
           {
-            "checked_at_utc": "2026-11-27T01:50:37+00:00",
-            "state": "OK",
-            "freshness": null
-          },
-          {
             "checked_at_utc": "2026-11-27T10:13:09+00:00",
             "state": "OK",
             "freshness": null
@@ -263,6 +258,11 @@
           },
           {
             "checked_at_utc": "2026-11-27T11:21:34+00:00",
+            "state": "OK",
+            "freshness": null
+          },
+          {
+            "checked_at_utc": "2026-11-27T11:22:19+00:00",
             "state": "OK",
             "freshness": null
           }
