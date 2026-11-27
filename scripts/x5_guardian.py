@@ -109,7 +109,10 @@ def check_noaa_status():
         source_summary = {}
         for key in ("wind", "mag", "kp"):
             item = sources.get(key, {})
-            measured_age = age_minutes(item.get("last_measurement_utc"), now)
+            # Kp is a 3-hour interval: freshness is measured from its
+            # interval end, while last_measurement_utc remains the interval start.
+            reference_time = item.get("freshness_reference_utc") or item.get("last_measurement_utc")
+            measured_age = age_minutes(reference_time, now)
             limit = int(item.get("freshness_limit_minutes", 10 if key != "kp" else 240))
             ok = item.get("request_status") == "success" and measured_age is not None and measured_age <= limit
             source_summary[key] = {
