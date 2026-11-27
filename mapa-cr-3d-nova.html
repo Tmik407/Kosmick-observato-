@@ -156,7 +156,7 @@ async function loadForecastInternal(force=false){
     $("summary").textContent="Hlavní zdroj: "+err.message+". MET Norway: "+fallbackError.message+". Stanice ČHMÚ zůstávají dostupné.";
    }
   }
- }finally{state.loading=false}
+ }finally{state.loading=false;updateX5SystemHealth()}
 }
 function updateStationDisplay(){
  const source=map.getSource("chmi-visible-source");
