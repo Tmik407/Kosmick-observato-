@@ -127,12 +127,18 @@ def main():
  def source_meta(key, items, limit):
   measured=max((x["dt"] for x in items),default=None) if fetch_state[key]["ok"] else None
   if measured is None: measured=latest_cached(kept,key)
-  age=(now-measured).total_seconds() if measured else None
+  # NOAA planetary Kp timestamps mark the start of a 3-hour interval.
+  # For freshness, compare against the interval end; keep the original start
+  # timestamp separately so the observation is never relabelled.
+  reference=measured+timedelta(hours=3) if key=="kp" and measured else measured
+  age=(now-reference).total_seconds() if reference else None
   if fetch_state[key]["ok"]:
    state="fresh" if age is not None and age<=limit*60 else "stale_or_missing"
   else:
    state="fetch_failed_cached_data" if age is not None else "fetch_failed_no_data"
   return {"last_measurement_utc":measured.isoformat().replace("+00:00","Z") if measured else None,
+          "freshness_reference_utc":reference.isoformat().replace("+00:00","Z") if reference else None,
+          "measurement_interval_minutes":180 if key=="kp" else 1,
           "fetched_utc":now.isoformat().replace("+00:00","Z") if fetch_state[key]["ok"] else None,
           "last_attempt_utc":now.isoformat().replace("+00:00","Z"),
           "request_status":"success" if fetch_state[key]["ok"] else "failed",
