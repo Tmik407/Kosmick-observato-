@@ -8,7 +8,7 @@
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script><script>
 (()=>{"use strict";const $=id=>document.getElementById(id),bounds=[[11.7,48.25],[19.1,51.25]];
 const cities=[["Praha",50.0755,14.4378],["Most",50.503,13.636],["Ústí nad Labem",50.661,14.032],["Chomutov",50.46,13.417],["Litvínov",50.60,13.608],["Jirkov",50.499,13.447],["Kadaň",50.375,13.266],["Teplice",50.640,13.824],["Liberec",50.767,15.056],["Karlovy Vary",50.231,12.871],["Plzeň",49.738,13.373],["České Budějovice",48.975,14.48],["Jihlava",49.396,15.591],["Hradec Králové",50.21,15.832],["Pardubice",50.034,15.781],["Brno",49.195,16.608],["Olomouc",49.593,17.25],["Ostrava",49.82,18.262],["Zlín",49.224,17.662]].map(([name,lat,lon])=>({name,lat,lon}));
-const state={rows:[],times:[],hour:0,model:"openmeteo",activeSource:"",loadedAt:0,loading:false,visible:{temperature:true,precipitation:false,wind:true,cities:true,stations:true}};let stationFeatures=[];
+const state={rows:[],times:[],hour:0,model:"openmeteo",activeSource:"",loadedAt:0,loading:false,stationsLoading:false,visible:{temperature:true,precipitation:false,wind:true,cities:true,stations:true}};let stationFeatures=[];
 cities.forEach(c=>{let o=document.createElement("option");o.value=c.name;o.textContent=c.name;$("city").append(o)});
 const map=new maplibregl.Map({container:"map",style:{version:8,glyphs:"https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",sources:{osm:{type:"raster",tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors"}},layers:[{id:"osm",type:"raster",source:"osm"}]},center:[15.45,49.82],zoom:7.1,minZoom:5.4,maxZoom:13,maxBounds:bounds,pitch:0,bearing:0,renderWorldCopies:false,cooperativeGestures:true,fadeDuration:0});
 map.addControl(new maplibregl.NavigationControl({showCompass:false}),"top-right");map.addControl(new maplibregl.ScaleControl({maxWidth:110,unit:"metric"}),"bottom-left");
@@ -95,7 +95,7 @@ async function loadMetNoFallback(){
 async function loadForecast(force=false){
  if(state.loading)return;
  if(!force&&state.loadedAt&&Date.now()-state.loadedAt<900000){say("Používám nedávno načtenou předpověď.");return}
- state.loading=true;$("refresh").disabled=true;say("Načítám předpověď pro "+cities.length+" měst…");
+ state.loading=true;say("Načítám předpověď pro "+cities.length+" měst…");
  const cooldownKey="x5-newmap-openmeteo-cooldown-until";
  let url=(state.model==="ecmwf"?"https://api.open-meteo.com/v1/ecmwf?":"https://api.open-meteo.com/v1/forecast?")+"latitude="+cities.map(c=>c.lat).join(",")+"&longitude="+cities.map(c=>c.lon).join(",")+"&hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m&forecast_days=4&timezone=Europe%2FPrague";
  try{
@@ -138,7 +138,7 @@ async function loadForecast(force=false){
     $("summary").textContent="Hlavní zdroj: "+err.message+". MET Norway: "+fallbackError.message+". Stanice ČHMÚ zůstávají dostupné.";
    }
   }
- }finally{state.loading=false;$("refresh").disabled=false}
+ }finally{state.loading=false}
 }
 function updateStationDisplay(){
  const source=map.getSource("chmi-visible-source");
@@ -159,6 +159,12 @@ map.on("click",e=>{if(!map.getLayer("chmi-visible-points"))return;const f=map.qu
 });
 map.on("mousemove",e=>{if(!map.getLayer("chmi-visible-points"))return;const hits=map.queryRenderedFeatures(e.point,{layers:["chmi-visible-points"]});map.getCanvas().style.cursor=hits.length?"pointer":""});
 async function loadStations(){
+ if(state.stationsLoading)return;
+ state.stationsLoading=true;
+ try{return await loadStationsInternal()}
+ finally{state.stationsLoading=false}
+}
+async function loadStationsInternal(){
  const summary=$("stationSummary");
  try{
   const url="./data/chmi-stations-latest.json?v="+Date.now();
@@ -202,7 +208,21 @@ map.on("load",()=>{addLayers();applyLayers();map.fitBounds(bounds,{padding:32,du
 $("home").onclick=()=>{map.stop();map.fitBounds(bounds,{padding:32,duration:500,maxZoom:7.4})};
 $("city").onchange=e=>{let c=cities.find(x=>x.name===e.target.value);if(!c)return;map.flyTo({center:[c.lon,c.lat],zoom:9.5,duration:600});let i=cities.indexOf(c),row=state.rows[i];if(row){let p=feature(c,row,state.hour).properties;new maplibregl.Popup().setLngLat([c.lon,c.lat]).setHTML("<b>"+esc(c.name)+"</b><br>"+fmt(p.temp)+" °C<br>Vítr "+fmt(p.wind)+" km/h<br>Srážky "+fmt(p.precip)+" mm/h").addTo(map)}};
 $("model").onchange=e=>{state.model=e.target.value;state.loadedAt=0;loadForecast(true)};
-$("refresh").onclick=()=>{state.loadedAt=0;loadForecast(true);loadStations()};
+$("refresh").addEventListener("click",async()=>{
+ const button=$("refresh");
+ if(button.dataset.refreshing==="1")return;
+ button.dataset.refreshing="1";
+ const original=button.textContent;
+ button.textContent="↻ Obnovuji…";
+ button.setAttribute("aria-busy","true");
+ say("Ruční aktualizace: ověřuji měření ČHMÚ…");
+ try{
+  await loadStations();
+  if(state.loading){say("Měření ČHMÚ obnovena. Předpověď se již načítá; počkejte na její dokončení.");}
+  else{state.loadedAt=0;await loadForecast(true);say("Ruční aktualizace dokončena.");}
+ }catch(error){say("Aktualizace se nezdařila: "+error.message)}
+ finally{button.textContent=original;button.removeAttribute("aria-busy");delete button.dataset.refreshing}
+});
 $("time").oninput=e=>{state.hour=Number(e.target.value);draw()};
 $("now").onclick=()=>{let i=state.times.findIndex(t=>Date.parse(t)>=Date.now()-1800000);state.hour=i>=0?i:0;draw()};
 $("layers").onclick=e=>{let b=e.target.closest("button[data-layer]");if(!b)return;state.visible[b.dataset.layer]=!state.visible[b.dataset.layer];applyLayers()};
