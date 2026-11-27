@@ -211,7 +211,9 @@ map.on("click","chmi-visible-points",e=>{
  row("Výška sněhu",val(p.snow_depth_cm,0)+" cm")+
  row("Nadmořská výška",val(p.elevation_m,0)+" m")+
  "<div style='margin-top:9px;font-size:12px;color:#526574'><b>Čas měření:</b> "+esc(observed)+"<br><b>Stáří dat:</b> "+esc(ageText)+"<br><b>Zdroj:</b> "+source+"</div></div>";
- new maplibregl.Popup({closeButton:true,closeOnClick:true,maxWidth:"320px",maxHeight:"240px",anchor:"bottom",offset:12,focusAfterOpen:false})
+ const popupPoint=map.project(f.geometry.coordinates);
+ const popupAnchor=popupPoint.y<250?"top":"bottom";
+ new maplibregl.Popup({closeButton:true,closeOnClick:true,maxWidth:"320px",maxHeight:"240px",anchor:popupAnchor,offset:12,focusAfterOpen:false})
   .setLngLat(f.geometry.coordinates).setHTML(html).addTo(map);
 });
 
