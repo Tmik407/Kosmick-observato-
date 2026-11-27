@@ -141,6 +141,17 @@ def main():
     result.sort(key=lambda item: item["name"])
     if not result:
         raise RuntimeError("No station observations retrieved")
+    previous_fresh_count = None
+    previous_total_count = None
+    if OUT.exists():
+        try:
+            previous_payload = json.loads(OUT.read_text(encoding="utf-8"))
+            previous_fresh_count = int(previous_payload.get("fresh_observation_station_count", 0))
+            previous_total_count = int(previous_payload.get("station_count", 0))
+        except (OSError, ValueError, TypeError):
+            previous_fresh_count = None
+            previous_total_count = None
+
     generated = dt.datetime.now(dt.timezone.utc)
     newest = max((s.get("observed_utc") or "") for s in result)
     def observation_age(station):
@@ -160,6 +171,11 @@ def main():
     stale_count = sum(age is not None and age > 90 for age in ages)
     unknown_count = sum(age is None for age in ages)
     newest_age = min((age for age in ages if age is not None), default=None)
+    fresh_drop_count = (previous_fresh_count - fresh_count) if previous_fresh_count is not None else 0
+    fresh_drop_percent = (100.0 * fresh_drop_count / previous_fresh_count) if previous_fresh_count else 0.0
+    # Alert only for a material regression: at least 10 stations and 25% of
+    # the previous fresh count. First run has no baseline and does not alert.
+    freshness_alert = bool(previous_fresh_count is not None and fresh_drop_count >= 10 and fresh_drop_percent >= 25.0)
     payload = {
         "source": "ČHMÚ Open Data · meteorology/climate/now/data (fallback: recent/data/10min)",
         "license": "CC BY 4.0",
@@ -175,6 +191,12 @@ def main():
         "stale_observation_station_count": stale_count,
         "unknown_observation_station_count": unknown_count,
         "latest_observation_age_minutes": newest_age,
+        "previous_fresh_observation_station_count": previous_fresh_count,
+        "previous_station_count": previous_total_count,
+        "fresh_observation_station_count_delta": (fresh_count - previous_fresh_count) if previous_fresh_count is not None else None,
+        "fresh_observation_drop_count": fresh_drop_count,
+        "fresh_observation_drop_percent": round(fresh_drop_percent, 1),
+        "freshness_alert": freshness_alert,
         "station_networks": {prefix: sum(1 for s in result if s["id"].startswith(prefix)) for prefix in SUPPORTED_WSI_PREFIXES},
         "stations": result,
         "latest_observation_utc": newest,
