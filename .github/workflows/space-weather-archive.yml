@@ -6,7 +6,7 @@ on:
       - "scripts/update_space_weather_archive.py"
       - ".github/workflows/space-weather-archive.yml"
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "2-57/5 * * * *"
   workflow_dispatch:
 permissions:
   contents: write
