@@ -88,16 +88,27 @@ def fetch_station_with_fallback(station, today_stamp, yesterday_stamp):
 def main():
     meta = None
     meta_date = None
-    for day in (TODAY, TODAY - dt.timedelta(days=1)):
+    meta_source = None
+    # Metadata for the live feed belongs to /now/metadata, not /recent/metadata.
+    # Try today's live catalogue first; use yesterday's live catalogue only as
+    # a temporary fallback if CHMI has not published today's metadata yet.
+    metadata_candidates = [
+        (NOW_BASE, TODAY),
+        (NOW_BASE, TODAY - dt.timedelta(days=1)),
+        (BASE, TODAY - dt.timedelta(days=1)),
+    ]
+    for base, day in metadata_candidates:
         stamp = day.strftime("%Y%m%d")
         try:
-            meta = get_json(f"{BASE}/metadata/meta1-{stamp}.json")
+            meta = get_json(f"{base}/metadata/meta1-{stamp}.json")
             meta_date = stamp
+            meta_source = "now" if base == NOW_BASE else "recent-fallback"
+            print(f"Using CHMI station metadata: {meta_source} {stamp}", flush=True)
             break
         except Exception as exc:
-            print(f"Metadata {stamp}: {exc}", flush=True)
+            print(f"Metadata {base} {stamp}: {exc}", flush=True)
     if not meta:
-        raise RuntimeError("CHMI station metadata unavailable")
+        raise RuntimeError("CHMI station metadata unavailable from /now and fallback")
 
     stations = {}
     for row in meta.get("data", {}).get("data", {}).get("values", []):
@@ -150,10 +161,11 @@ def main():
     unknown_count = sum(age is None for age in ages)
     newest_age = min((age for age in ages if age is not None), default=None)
     payload = {
-        "source": "ČHMÚ Open Data · meteorology/climate/recent/data/10min",
+        "source": "ČHMÚ Open Data · meteorology/climate/now/data (fallback: recent/data/10min)",
         "license": "CC BY 4.0",
         "generated_utc": generated.isoformat(timespec="seconds"),
         "metadata_date": meta_date,
+        "metadata_source": meta_source,
         "observation_date": today_stamp,
         "station_count": len(result),
         "fresh_now_station_count": sum(1 for s in result if s.get("data_source") == "now"),
