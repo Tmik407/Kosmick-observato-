@@ -76,34 +76,10 @@ jobs:
       - name: Nahrát kompletní web
         uses: actions/upload-pages-artifact@v3
         with:
-          name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
           path: _site
-      - name: Počkat na dostupnost balíčku GitHub Pages
-        env:
-          GH_TOKEN: ${{ github.token }}
-          ARTIFACT_NAME: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
-        run: |
-          set -euo pipefail
-          api_url="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts?per_page=100"
-          for attempt in $(seq 1 18); do
-            response=$(curl --fail --silent --show-error \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              "${api_url}")
-            if printf '%s' "$response" | ARTIFACT_NAME="$ARTIFACT_NAME" python -c 'import json,os,sys; d=json.load(sys.stdin); sys.exit(0 if any(a.get("name")==os.environ["ARTIFACT_NAME"] and not a.get("expired",False) for a in d.get("artifacts",[])) else 1)'; then
-              echo "Balíček ${ARTIFACT_NAME} je dostupný přes GitHub API."
-              exit 0
-            fi
-            echo "Balíček zatím není dostupný (pokus ${attempt}/18); čekám 5 sekund."
-            sleep 5
-          done
-          echo "Balíček ${ARTIFACT_NAME} nebyl po 90 sekundách dostupný."
-          exit 1
       - name: Publikovat web
         id: deployment
         uses: actions/deploy-pages@v4
-        with:
-          artifact_name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Ověřit nasazený web a datové panely
         env:
           SITE_URL: ${{ steps.deployment.outputs.page_url }}
