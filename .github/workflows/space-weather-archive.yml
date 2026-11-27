@@ -11,7 +11,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: repository-main-writes
+  group: noaa-space-weather-archive-writes
   cancel-in-progress: false
 jobs:
   archive:
