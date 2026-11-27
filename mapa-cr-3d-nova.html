@@ -152,7 +152,8 @@ function updateStationDisplay(){
  }
  map.getSource("stations-fallback").setData({type:"FeatureCollection",features:out});
  const clustered=zoom<10.5;
- ["station-fallback-clusters","station-fallback-points","station-fallback-count"].forEach(id=>{if(map.getLayer(id))map.setLayoutProperty(id,"visibility","none")});
+ ["station-fallback-clusters","station-fallback-points"].forEach(id=>{if(map.getLayer(id))map.setLayoutProperty(id,"visibility","none")});
+ map.setLayoutProperty("station-fallback-count","visibility",state.visible.stations&&zoom<10.5?"visible":"none");
  map.setLayoutProperty("station-fallback-all","visibility",state.visible.stations?"visible":"none");
 }
 map.on("zoomend",updateStationDisplay);
