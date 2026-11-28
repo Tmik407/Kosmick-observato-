@@ -45,7 +45,12 @@ def main():
     print("NASA SSCWeb GOES-18/19 diagnostic")
     catalog = get_json(BASE + "/observatories")
     print("Catalog top-level:", list(catalog) if isinstance(catalog, dict) else type(catalog).__name__)
-    print("Catalog sample:", json.dumps(catalog[:3] if isinstance(catalog, list) else catalog, ensure_ascii=False)[:10000])
+    print("Catalog sample:", json.dumps(catalog[:3] if isinstance(catalog, list) else catalog, ensure_ascii=False)[:3000])
+    flat = json.dumps(catalog, ensure_ascii=False).lower()
+    for token in ("goes18", "goes-18", "goes 18", "goes19", "goes-19", "goes 19"):
+        pos = flat.find(token)
+        excerpt = flat[max(0, pos-180):pos+350] if pos >= 0 else "NOT PRESENT"
+        print(f"catalog search {token}: {excerpt}")
     failures = 0
     end = datetime.now(timezone.utc).replace(second=0, microsecond=0)
     start = end - timedelta(minutes=10)
