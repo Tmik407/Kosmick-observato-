@@ -239,15 +239,35 @@ def collect(source, now):
 
 
 
+def parse_kp_value(value):
+    """Convert numeric GFZ Kp values and conventional thirds notation to 0..9."""
+    if isinstance(value, (int, float)):
+        number = float(value)
+    else:
+        text = str(value).strip().lower()
+        try:
+            number = float(text)
+        except ValueError:
+            # GFZ/geomagnetic notation: 3-, 3o (or 3), 3+ represent thirds.
+            import re
+            match = re.fullmatch(r"([0-9])\\s*([+-]|o)?", text)
+            if not match:
+                return None
+            number = float(match.group(1))
+            suffix = match.group(2)
+            if suffix == "+":
+                number += 1 / 3
+            elif suffix == "-":
+                number -= 1 / 3
+    return number if 0 <= number <= 9 else None
+
+
 def extract_kp_series(payload):
     found = {}
     def add(stamp, value):
         parsed = parse_utc(stamp)
-        try:
-            number = float(value)
-        except (TypeError, ValueError):
-            return
-        if parsed and 0 <= number <= 9:
+        number = parse_kp_value(value)
+        if parsed and number is not None:
             found[parsed] = number
     def walk(value):
         if isinstance(value, list):
