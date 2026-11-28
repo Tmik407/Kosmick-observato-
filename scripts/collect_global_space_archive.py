@@ -36,7 +36,7 @@ def parse_utc(value):
         return None
 
 
-def latest_time(payload):
+def latest_time(payload, reference_time):
     candidates = []
     def walk(value):
         if isinstance(value, dict):
