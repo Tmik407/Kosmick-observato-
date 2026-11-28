@@ -117,7 +117,7 @@ def collect(source, now):
                 result["record_count"] = len(payload)
             elif isinstance(payload, dict):
                 result["record_count"] = len(payload)
-            result["latest_data_time"] = latest_time(payload)
+            result["latest_data_time"] = latest_time(payload, now)
 
         result["ok"] = True
         result["access_state"] = "available"
