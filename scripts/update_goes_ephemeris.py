@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Extract the latest daily GOES-R ephemeris records from NOAA NCEI."""
 from __future__ import annotations
-import io, json, re
+import json, re
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.request import Request, urlopen
@@ -27,7 +27,7 @@ def latest_file(sat: int) -> tuple[str, str]:
             month += 12
         months.append(f"{base}/{year:04d}/{month:02d}/")
     candidates = []
-    pattern = re.compile(r'href=["\\']([^"\\']*dn_ephe-l2-orb1m_g' + str(sat) + r'_d(\\d{8})_v[^"\\']+\\.nc)["\\']', re.I)
+    pattern = re.compile(r"(dn_ephe-l2-orb1m_g" + str(sat) + r"_d(\\d{8})_v[\\w.-]+\\.nc)", re.I)
     for folder in months:
         html = get(folder).decode("utf-8", "replace")
         for href, day in pattern.findall(html):
@@ -101,7 +101,7 @@ def main():
         },
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+    OUT.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({k: v["time_utc"] for k, v in result["satellites"].items()}, indent=2))
     print(f"Wrote {OUT}")
 
