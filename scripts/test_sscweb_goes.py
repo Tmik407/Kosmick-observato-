@@ -34,7 +34,7 @@ def walk(obj):
 def find_observatory_id(catalog, satellite):
     aliases = {f"goes{satellite}", f"goes-{satellite}", f"goes {satellite}"}
     for item in walk(catalog):
-        text = " ".join(str(item.get(k, "")) for k in ("id", "name", "observatory", "description", "label")).lower()
+        text = json.dumps(item, ensure_ascii=False).lower()
         if any(alias in text for alias in aliases):
             ident = next((item[k] for k in ("id", "observatoryId", "observatory") if isinstance(item.get(k), str)), None)
             if ident:
@@ -44,7 +44,7 @@ def find_observatory_id(catalog, satellite):
 def main():
     print("NASA SSCWeb GOES-18/19 diagnostic")
     catalog = get_json(BASE + "/observatories")
-    print("Catalog top-level:", list(catalog) if isinstance(catalog, dict) else type(catalog).__name__)
+    print("Catalog top-level:", list(catalog) if isinstance(catalog, dict) else type(catalog).__name__)\n    print("Catalog sample:", json.dumps(catalog[:3] if isinstance(catalog, list) else catalog, ensure_ascii=False)[:10000])
     failures = 0
     end = datetime.now(timezone.utc).replace(second=0, microsecond=0)
     start = end - timedelta(minutes=10)
