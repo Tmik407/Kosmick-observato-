@@ -43,11 +43,14 @@ footer{color:#71849a;padding:28px 10px}
 #completenessNote,#reliabilityNote{background:#f4f8fc;border-radius:10px;padding:11px 13px;margin-top:12px}
 @media(max-width:650px){body{padding:9px}.panel{padding:14px;border-radius:15px}header{border-radius:18px;padding:25px 20px}header:after{right:-210px}.topnav{gap:6px}.topnav a{font-size:12px;padding:8px 10px}.row h2{font-size:19px}canvas{height:205px}}
 
+
+.map-layout{display:grid;grid-template-columns:2fr 1fr;gap:14px}.map-layout #globalMap{height:420px;border:1px solid #d6e4ef;border-radius:15px;overflow:hidden}.map-legend{display:grid;gap:10px;align-content:start}.legend-item,.quality-card{background:#f4f8fc;border:1px solid #dce8f2;border-radius:13px;padding:12px;color:#31516b}.quality-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:11px}.quality-value{font-size:22px;font-weight:800;color:#087eaf}@media(max-width:760px){.map-layout{grid-template-columns:1fr}.map-layout #globalMap{height:340px}}
 </style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 </head>
 <body><main class="wrap">
 <header><div class="tag">SAMOSTATNÝ PROJEKT · X-5 / GLOBAL MONITORING</div><h1>🌐 X-5 GLOBAL SPACE DATA ARCHIVE</h1><div class="sub">Globální přehled kosmických a geofyzikálních dat.<br>Nezávislý katalog zdrojů · automatický sběr · analytika kvality a čerstvosti měření</div></header>
-<nav class="topnav" aria-label="Navigace archivu"><a href="#monitor">Přehled</a><a href="#analytics">Analytika</a><a href="#quality">Kvalita dat</a><a href="#catalog">Datové zdroje</a><a href="#method">Metodika</a></nav>
+<nav class="topnav" aria-label="Navigace archivu"><a href="#monitor">Přehled</a><a href="#analytics">Analytika</a><a href="#map">Globální mapa</a><a href="#quality">Kvalita dat</a><a href="#catalog">Datové zdroje</a><a href="#method">Metodika</a></nav>
 <section class="panel" id="monitor"><div class="row"><h2>Monitor archivu</h2><button id="refresh">↻ Zkontrolovat zdroje</button></div><div id="overall" class="status">Připraveno ke kontrole. Výsledek závisí na dostupnosti zdrojů a podpoře přístupu z prohlížeče.</div>
 <div class="grid">
 <div><div class="small">Prověřené zdroje</div><div class="metric" id="total">—</div></div>
@@ -67,6 +70,7 @@ footer{color:#71849a;padding:28px 10px}
 <div style="overflow-x:auto"><table id="qualityTable" style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:8px">Zdroj</th><th style="text-align:left;padding:8px">Poslední měření (UTC)</th><th style="text-align:left;padding:8px">Stáří</th><th style="text-align:left;padding:8px">Vyhodnocení</th><th style="text-align:left;padding:8px">Počet záznamů</th></tr></thead><tbody></tbody></table></div>
 <div class="small" id="completenessNote">Úplnost časových řad a mezery v jednotlivých vzorcích zatím nejsou vyhodnoceny. Samotný počet záznamů nestačí k průkazu chybějících měření.</div>
 <div class="small" id="reliabilityNote">Spolehlivost se počítá z automatických kontrol v uložené historii; zdroje vyžadující registraci jsou z procent vyloučeny.</div></section>
+<section class="panel" id="map"><h2>Globální mapa observatoří a datových center</h2><p class="small">Orientační polohy institucí poskytujících data do archivu. Značky představují sídla institucí, nikoli přesné polohy jednotlivých měřicích stanic nebo satelitů.</p><div class="map-layout"><div id="globalMap"><div class="status">Načítám mapu…</div></div><div class="map-legend"><div class="legend-item">🔵 Veřejné datové centrum</div><div class="legend-item">🟠 Zdroj s omezeným přístupem</div><div class="small" id="mapStatus">Připraveno.</div></div></div></section><section class="panel" id="qualityPanel"><h2>Panel kvality globálních zdrojů</h2><p class="small">Dostupnost endpointu, čerstvost měření a úplnost časové řady jsou rozdílné vlastnosti.</p><div class="quality-grid" id="qualityCards"><div class="quality-card">Načítání dat kvality…</div></div><div class="small" id="qualitySummary"></div></section>
 <section class="panel" id="catalog"><h2>Globální katalog datových zdrojů</h2><p class="small">Katalog uvádí instituci, typ dat, jednotky a oficiální vstupní adresu. Stav se mění až po skutečném pokusu o načtení. Historická dostupnost a úplnost archivů se bude doplňovat v dalších etapách.</p><div id="sources" class="grid"></div></section>
 <section class="panel" id="method"><h2>Metodika a pravidla kvality</h2><ul>
 <li><strong>Naměřená data:</strong> hodnoty získané z přístrojů nebo observatoří; vždy se uchovává zdroj a čas měření.</li>
