@@ -395,7 +395,8 @@ if not sources:
 now_dt = dt.datetime.now(dt.timezone.utc)
 now = now_dt.isoformat()
 rows = [collect(source, now_dt) for source in sources]
-archived_samples_added = persist_timeseries(PAYLOADS, now_dt)\ncross_source = compare_kp_sources(PAYLOADS)
+archived_samples_added = persist_timeseries(PAYLOADS, now_dt)
+cross_source = compare_kp_sources(PAYLOADS)
 checked = [row for row in rows if row["ok"] is not None]
 available = sum(1 for row in checked if row["ok"] is True)
 unavailable = sum(1 for row in checked if row["ok"] is False)
