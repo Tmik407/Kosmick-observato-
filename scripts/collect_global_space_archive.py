@@ -305,24 +305,43 @@ def archive_samples(source_id, payload):
 
 
 def persist_timeseries(payloads, now):
-    """Merge normalized samples into UTC-day JSON files; repeated polls do not duplicate rows."""
+    """Merge samples by UTC day and write each changed daily file only once."""
     archive_dir = ROOT / "timeseries"
     archive_dir.mkdir(parents=True, exist_ok=True)
     additions = 0
+    pending_by_day = {}
     for source_id, payload in payloads.items():
         for sample in archive_samples(source_id, payload):
-            day = sample["time_utc"][:10]
-            path = archive_dir / f"{day}.json"
-            try:
-                existing = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
-            except (json.JSONDecodeError, OSError):
+            pending_by_day.setdefault(sample["time_utc"][:10], []).append(sample)
+
+    for day, incoming in pending_by_day.items():
+        path = archive_dir / f"{day}.json"
+        try:
+            existing = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
+            if not isinstance(existing, list):
                 existing = []
-            key = (sample["source"], sample["time_utc"], json.dumps(sample["values"], sort_keys=True))
-            known = {(row.get("source"), row.get("time_utc"), json.dumps(row.get("values", {}), sort_keys=True)) for row in existing}
+        except (json.JSONDecodeError, OSError):
+            existing = []
+
+        known = {
+            (row.get("source"), row.get("time_utc"),
+             json.dumps(row.get("values", {}), sort_keys=True))
+            for row in existing if isinstance(row, dict)
+        }
+        for sample in incoming:
+            key = (sample["source"], sample["time_utc"],
+                   json.dumps(sample["values"], sort_keys=True))
             if key not in known:
                 existing.append(sample)
+                known.add(key)
                 additions += 1
-                path.write_text(json.dumps(sorted(existing, key=lambda row: (row.get("time_utc", ""), row.get("source", ""))), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+        if additions:
+            existing.sort(key=lambda row: (row.get("time_utc", ""), row.get("source", "")))
+            path.write_text(
+                json.dumps(existing, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8"
+            )
     return additions
 
 
@@ -388,8 +407,6 @@ now = now_dt.isoformat()
 with ThreadPoolExecutor(max_workers=5) as pool:
     rows = list(pool.map(lambda source: collect(source, now_dt), sources))
 archived_samples_added = persist_timeseries(PAYLOADS, now_dt)
-# Build the manifest after writing samples and before publishing status metadata.
-timeseries_index = build_timeseries_index()
 cross_source = compare_kp_sources(PAYLOADS)
 checked = [row for row in rows if row["ok"] is not None]
 available = sum(1 for row in checked if row["ok"] is True)
@@ -400,7 +417,7 @@ freshness_assessed = [row for row in rows if row["freshness_state"] in ("fresh",
 fresh_count = sum(1 for row in freshness_assessed if row["freshness_state"] == "fresh")
 stale_count = sum(1 for row in freshness_assessed if row["freshness_state"] == "stale")
 
-# Rebuild immediately before status serialization so the manifest is always in scope.
+# Build the manifest once, after all daily files have been updated.
 timeseries_index = build_timeseries_index()
 status = {
     "schema_version": "1.3",
