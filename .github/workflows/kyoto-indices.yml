@@ -1,0 +1,38 @@
+name: WDC Kyoto geomagnetic indices
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/update_kyoto_indices.py"
+      - ".github/workflows/kyoto-indices.yml"
+permissions:
+  contents: write
+concurrency:
+  group: kyoto-indices
+  cancel-in-progress: false
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Collect WDC Kyoto Best Available indices
+        run: python scripts/update_kyoto_indices.py
+      - name: Commit data snapshot
+        run: |
+          if git diff --quiet -- data/space-weather/kyoto-indices.json; then
+            echo "Kyoto snapshot unchanged."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/space-weather/kyoto-indices.json
+          git commit -m "Update WDC Kyoto geomagnetic indices"
+          git push
