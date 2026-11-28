@@ -177,6 +177,14 @@ def main():
             result["errors"][key] = str(exc)
             print(f"{dataset}: ERROR {exc}", file=sys.stderr)
     OUT.parent.mkdir(parents=True, exist_ok=True)
+    # Avoid a repository commit every polling cycle when Kyoto has not published new records.
+    if OUT.exists():
+        try:
+            previous = json.loads(OUT.read_text(encoding="utf-8"))
+            if previous.get("datasets") == result["datasets"] and previous.get("errors", {}) == result["errors"]:
+                result["generatedAt"] = previous.get("generatedAt", result["generatedAt"])
+        except (OSError, json.JSONDecodeError):
+            pass
     OUT.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     # Keep workflow successful when one dataset is temporarily unavailable; the JSON reports it explicitly.
     print(f"Wrote {OUT}")
