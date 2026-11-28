@@ -7,6 +7,7 @@ import json
 import time
 import urllib.request
 import urllib.error
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path("data/global-archive")
@@ -48,12 +49,23 @@ def collect(source):
             raw = response.read()
             result["http_status"] = response.status
         result["latency_ms"] = round((time.monotonic() - started) * 1000)
-        payload = json.loads(raw.decode("utf-8-sig"))
+        text = raw.decode("utf-8-sig", errors="replace").strip()
+        if text.startswith("<"):
+            # SSCWeb catalogue responds with XML, not JSON.
+            root = ET.fromstring(text)
+            result["record_count"] = sum(
+                1 for node in root.iter()
+                if node.tag.split("}")[-1].lower() in ("observatory", "observatoryid")
+            )
+            result["record_count"] = result["record_count"] or sum(1 for node in root if len(node))
+            result["latest_data_time"] = None
+        else:
+            payload = json.loads(text)
+            result["record_count"] = len(payload) if isinstance(payload, list) else (
+                len(payload.get("observatories", [])) if isinstance(payload, dict) and isinstance(payload.get("observatories"), list) else 1
+            )
+            result["latest_data_time"] = latest_time(payload)
         result["ok"] = True
-        result["record_count"] = len(payload) if isinstance(payload, list) else (
-            len(payload.get("observatories", [])) if isinstance(payload, dict) and isinstance(payload.get("observatories"), list) else 1
-        )
-        result["latest_data_time"] = latest_time(payload)
     except Exception as exc:
         result["latency_ms"] = round((time.monotonic() - started) * 1000)
         result["error"] = f"{type(exc).__name__}: {exc}"[:300]
