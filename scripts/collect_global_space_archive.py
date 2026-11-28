@@ -168,7 +168,7 @@ def collect(source, now):
     try:
         request = urllib.request.Request(
             request_url(source, now),
-            headers={"User-Agent": "X5-Global-Space-Archive/1.2",
+            headers={"User-Agent": "X5-Global-Space-Archive/1.3",
                      "Accept": "application/json, application/xml, text/plain"}
         )
         with urllib.request.urlopen(request, timeout=25) as response:
@@ -243,7 +243,7 @@ fresh_count = sum(1 for row in freshness_assessed if row["freshness_state"] == "
 stale_count = sum(1 for row in freshness_assessed if row["freshness_state"] == "stale")
 
 status = {
-    "schema_version": "1.2",
+    "schema_version": "1.3",
     "project": "X-5 GLOBAL SPACE DATA ARCHIVE",
     "checked_at_utc": now,
     "collector": "GitHub Actions / scripts/collect_global_space_archive.py",
@@ -294,7 +294,7 @@ history.setdefault("runs", []).append({
 })
 history["runs"] = history["runs"][-1000:]
 history["updated_at_utc"] = now
-history["schema_version"] = "1.2"
+history["schema_version"] = "1.3"
 history_path.write_text(json.dumps(history, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 print(json.dumps(status["summary"], ensure_ascii=False))
 for row in rows:
