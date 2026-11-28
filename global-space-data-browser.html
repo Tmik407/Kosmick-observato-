@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101827">
+<title>X-5 | Prohlížeč uložených dat</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#131e30;--line:#26364d;--text:#e8eef8;--muted:#9aabc2;--accent:#63c7e8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,Arial,sans-serif}
+header{padding:22px max(18px,calc((100% - 1180px)/2));background:#101b2c;border-bottom:1px solid var(--line)}
+header small{color:var(--accent);letter-spacing:.12em;font-weight:700}h1{font-size:clamp(24px,4vw,36px);margin:7px 0}header p{margin:0;color:var(--muted)}
+main{max-width:1180px;margin:22px auto;padding:0 16px 40px}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.card,.panel{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:16px}.stat b{display:block;font-size:25px;margin-top:5px}.muted{color:var(--muted);font-size:13px}
+.controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}
+label{display:block;color:var(--muted);font-size:13px;margin-bottom:6px}select,button{width:100%;padding:11px;background:#0d1727;color:var(--text);border:1px solid #344760;border-radius:8px;font:inherit}
+button{cursor:pointer;background:#17334a;border-color:#2d6079}button:disabled{opacity:.45;cursor:not-allowed}
+.panel{margin-top:14px}.panel h2{font-size:18px;margin:0 0 12px}.chart-wrap{height:300px;position:relative}canvas{width:100%;height:100%}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.actions button{width:auto}
+.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:9px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--muted)}
+#message{padding:12px;border-radius:8px;background:#17263a;color:var(--muted);margin:14px 0}a{color:var(--accent)}
+@media(max-width:700px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.controls{grid-template-columns:1fr}.chart-wrap{height:240px}}
+</style>
+</head>
+<body>
+<header><small>KOSMICKÁ OBSERVATOŘ X-5 · SAMOSTATNÝ ARCHIV</small><h1>Prohlížeč uložených dat</h1><p>Práce s lokálně archivovanými časovými řadami · UTC · zdrojová data zůstávají beze změny</p></header>
+<main>
+<section class="stats">
+<div class="card stat"><span class="muted">Archivované dny</span><b id="days">—</b></div>
+<div class="card stat"><span class="muted">Uložené vzorky</span><b id="samples">—</b></div>
+<div class="card stat"><span class="muted">Datové zdroje</span><b id="sources">—</b></div>
+<div class="card stat"><span class="muted">Aktualizace indexu (UTC)</span><b id="updated" style="font-size:15px">—</b></div>
+</section>
+<div id="message">Načítám katalog časových řad…</div>
+<section class="controls">
+<div><label for="day">Den (UTC)</label><select id="day" disabled><option>Čekám na archiv</option></select></div>
+<div><label for="source">Datový zdroj</label><select id="source" disabled><option>Všechny zdroje</option></select></div>
+<div><label for="field">Veličina / parametr</label><select id="field" disabled><option>Načítám…</option></select></div>
+</section>
+<section class="panel"><h2>Časový průběh</h2><div class="chart-wrap"><canvas id="chart"></canvas></div><div class="muted" id="chartInfo">Vyber den a zdroj pro zobrazení hodnot.</div>
+<div class="actions"><button id="csv" disabled>Export CSV</button><button id="json" disabled>Export JSON</button><button id="refresh">Obnovit archiv</button></div></section>
+<section class="panel"><h2>Vzorky v archivu</h2><div class="table-wrap"><table><thead><tr><th>Čas UTC</th><th>Zdroj</th><th>Parametr</th><th>Hodnota</th></tr></thead><tbody id="rows"><tr><td colspan="4" class="muted">Zatím nejsou načtena žádná data.</td></tr></tbody></table></div></section>
+<p class="muted">Prohlížeč zobrazuje pouze soubory uložené v archivu. Neprovádí přímé dotazy na poskytovatele a neobsahuje přístupové klíče.</p>
+</main>
+<script>
+const base='data/global-archive/timeseries/';
+const $=id=>document.getElementById(id);
+let manifest=null,records=[],visible=[];
+function say(t){$('message').textContent=t}
+function download(name,text,type){const a=document.createElement('a'),u=URL.createObjectURL(new Blob([text],{type}));a.href=u;a.download=name;a.click();URL.revokeObjectURL(u)}
+function valText(v){return v===null?'null':typeof v==='object'?JSON.stringify(v):String(v)}
+async function loadIndex(){
+say('Načítám index archivu…');
+try{const r=await fetch(base+'index.json',{cache:'no-store'});if(!r.ok)throw Error('Index zatím není publikován ('+r.status+').');manifest=await r.json();
+$('days').textContent=manifest.total_days??manifest.days.length;$('samples').textContent=manifest.total_samples??0;
+const srcs=[...new Set(manifest.days.flatMap(d=>Object.keys(d.sources||{})))];$('sources').textContent=srcs.length;$('updated').textContent=(manifest.updated_at_utc||'—').replace('T',' ').slice(0,16);
+$('day').innerHTML='';for(const d of [...manifest.days].reverse())$('day').add(new Option(d.date+' · '+d.samples+' vzorků',d.file));
+$('day').disabled=!manifest.days.length;$('source').innerHTML='';$('source').add(new Option('Všechny zdroje','*'));srcs.forEach(x=>$('source').add(new Option(x,x)));$('source').disabled=!srcs.length;
+if(!manifest.days.length){say('Index je připraven, ale zatím nejsou uloženy žádné časové řady. Spustí se po prvním sběru dat na této větvi.');return}
+say('Archivní index načten. Vyber den a zdroj.');await loadDay();
+}catch(e){say('Archiv zatím nemá publikovaný index časových řad. '+e.message+' Až proběhne první sběr na této větvi, prohlížeč data automaticky načte.')}
+}
+async function loadDay(){if(!$('day').value)return;try{const r=await fetch(base+$('day').value,{cache:'no-store'});if(!r.ok)throw Error('Soubor dne nelze načíst.');records=await r.json();const keys=[...new Set(records.flatMap(x=>Object.keys(x.values||{})))];$('field').innerHTML='';$('field').add(new Option('Všechny parametry','*'));keys.forEach(k=>$('field').add(new Option(k,k)));$('field').disabled=!keys.length;filter();}catch(e){say(e.message)}}
+function filter(){const src=$('source').value||'*',field=$('field').value||'*';visible=[];for(const r of records){if(src!=='*'&&r.source!==src)continue;for(const [k,v] of Object.entries(r.values||{})){if(field!=='*'&&k!==field)continue;if(typeof v==='number'||(typeof v==='string'&&v.trim()!==''&&!Number.isNaN(Number(v))))visible.push({time:r.time_utc,source:r.source,key:k,value:Number(v)});}}
+visible.sort((a,b)=>a.time.localeCompare(b.time));$('rows').innerHTML='';for(const x of visible.slice(0,500)){const tr=document.createElement('tr');[x.time,x.source,x.key,valText(x.value)].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.appendChild(td)});$('rows').appendChild(tr)}
+if(!visible.length)$('rows').innerHTML='<tr><td colspan="4" class="muted">Pro tento výběr nejsou číselné vzorky.</td></tr>';
+$('chartInfo').textContent=visible.length+' vzorků · zobrazeno nejvýše 500 řádků v tabulce';$('csv').disabled=!visible.length;$('json').disabled=!visible.length;draw();
+}
+function draw(){const c=$('chart'),ctx=c.getContext('2d'),w=c.clientWidth,h=c.clientHeight,dpr=window.devicePixelRatio||1;c.width=w*dpr;c.height=h*dpr;ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);ctx.strokeStyle='#34465e';ctx.fillStyle='#a9b9ce';ctx.font='12px system-ui';if(!visible.length){ctx.fillText('Pro zvolený výběr nejsou dostupné číselné hodnoty.',12,25);return}
+const vals=visible.map(x=>x.value),min=Math.min(...vals),max=Math.max(...vals),lo=min===max?min-1:min,hi=min===max?max+1:max,pad={l:42,r:12,t:12,b:30},cw=w-pad.l-pad.r,ch=h-pad.t-pad.b;
+for(let i=0;i<5;i++){const y=pad.t+ch*i/4;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke();ctx.fillText((hi-(hi-lo)*i/4).toPrecision(4),3,y+4)}
+ctx.strokeStyle='#63c7e8';ctx.lineWidth=2;ctx.beginPath();visible.forEach((p,i)=>{const x=pad.l+(visible.length===1?cw/2:cw*i/(visible.length-1)),y=pad.t+ch*(hi-p.value)/(hi-lo);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();ctx.fillText(visible[0].time.slice(11,16),pad.l,h-7);ctx.fillText(visible[visible.length-1].time.slice(11,16),Math.max(pad.l,w-55),h-7)}
+$('day').addEventListener('change',loadDay);$('source').addEventListener('change',filter);$('field').addEventListener('change',filter);$('refresh').addEventListener('click',loadIndex);
+$('csv').addEventListener('click',()=>download('x5-timeseries.csv','time_utc,source,parameter,value\n'+visible.map(x=>[x.time,x.source,x.key,x.value].join(',')).join('\n'),'text/csv'));
+$('json').addEventListener('click',()=>download('x5-timeseries.json',JSON.stringify(visible,null,2),'application/json'));
+window.addEventListener('resize',draw);loadIndex();
+</script></body></html>

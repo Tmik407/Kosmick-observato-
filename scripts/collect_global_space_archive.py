@@ -7,6 +7,7 @@ import json
 import time
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -147,8 +148,11 @@ def request_url(source, now):
     if source["id"] == "gfz-kp":
         start = (now - dt.timedelta(days=2)).date().isoformat() + "T00:00:00Z"
         end = now.isoformat(timespec="seconds").replace("+00:00", "Z")
+        # Do not request status=def here: GFZ definitive Kp values are
+        # published with a multi-week delay. The archive window is recent,
+        # so the default API response is needed to include current nowcast data.
         url += "?" + urllib.parse.urlencode({
-            "start": start, "end": end, "index": "Kp", "status": "def"
+            "start": start, "end": end, "index": "Kp"
         })
     return url
 
@@ -180,9 +184,11 @@ def collect(source, now):
             headers={"User-Agent": "X5-Global-Space-Archive/1.3",
                      "Accept": "application/json, application/xml, text/plain"}
         )
-        with urllib.request.urlopen(request, timeout=25) as response:
-            raw = response.read()
+        with urllib.request.urlopen(request, timeout=8) as response:
+            raw = response.read(8 * 1024 * 1024 + 1)
             result["http_status"] = response.status
+        if len(raw) > 8 * 1024 * 1024:
+            raise ValueError("Response exceeds 8 MiB safety limit")
         result["latency_ms"] = round((time.monotonic() - started) * 1000)
         text = raw.decode("utf-8-sig", errors="replace").strip()
         if not text:
@@ -236,45 +242,137 @@ def collect(source, now):
 
 
 
-def extract_kp_series(payload):
-    found = {}
-    def add(stamp, value):
+from archive_parsers import extract_kp_series
+
+
+def archive_samples(source_id, payload):
+    """Normalize timestamped observations without changing the provider payload."""
+    samples = []
+    def add(stamp, values):
         parsed = parse_utc(stamp)
-        try:
-            number = float(value)
-        except (TypeError, ValueError):
+        if not parsed:
             return
-        if parsed and 0 <= number <= 9:
-            found[parsed] = number
+        clean = {}
+        for key, value in values.items():
+            if key.lower() in ("time", "time_tag", "timestamp", "datetime", "date"):
+                continue
+            if isinstance(value, (str, int, float, bool)) or value is None:
+                clean[key] = value
+        if clean:
+            samples.append({"source": source_id, "time_utc": parsed.isoformat().replace("+00:00", "Z"),
+                            "values": clean})
     def walk(value):
-        if isinstance(value, list):
-            if value and isinstance(value[0], str) and any(str(x).lower() in ("time_tag", "datetime", "time", "date") for x in value):
-                headers = [str(x).lower() for x in value]
-                ti = next((i for i, x in enumerate(headers) if x in ("time_tag", "datetime", "time", "date")), None)
-                ki = next((i for i, x in enumerate(headers) if x in ("kp", "kp_index", "kpvalue")), None)
-                if ti is not None and ki is not None:
-                    for row in value[1:]:
-                        if isinstance(row, list) and max(ti, ki) < len(row):
-                            add(row[ti], row[ki])
-            else:
-                for item in value:
-                    if isinstance(item, (dict, list)):
-                        walk(item)
-        elif isinstance(value, dict):
+        if isinstance(value, dict):
             lower = {str(k).lower(): k for k in value}
-            tk = next((lower[k] for k in ("datetime", "time_tag", "time", "date") if k in lower), None)
-            kk = next((lower[k] for k in ("kp", "kp_index", "kpvalue") if k in lower), None)
-            if tk is not None and kk is not None:
-                if isinstance(value[tk], list) and isinstance(value[kk], list):
-                    for stamp, val in zip(value[tk], value[kk]):
-                        add(stamp, val)
-                else:
-                    add(value[tk], value[kk])
+            time_key = next((lower[k] for k in ("time_tag", "datetime", "time", "timestamp", "date") if k in lower), None)
+            if time_key is not None and not isinstance(value[time_key], list):
+                add(value[time_key], value)
+            # GFZ API documents parallel datetime and index arrays.
+            if "datetime" in lower and isinstance(value[lower["datetime"]], list):
+                time_values = value[lower["datetime"]]
+                for key, original in lower.items():
+                    if key in ("datetime", "status") or not isinstance(value[original], list):
+                        continue
+                    vals = value[original]
+                    status_key = lower.get("status")
+                    statuses = value[status_key] if status_key and isinstance(value[status_key], list) else []
+                    for i, (stamp, val) in enumerate(zip(time_values, vals)):
+                        row = {original: val}
+                        if i < len(statuses):
+                            row["status"] = statuses[i]
+                        add(stamp, row)
             for item in value.values():
                 if isinstance(item, (dict, list)):
                     walk(item)
+        elif isinstance(value, list):
+            # NOAA table endpoints use a header row followed by positional rows.
+            if value and isinstance(value[0], list) and value[0] and all(isinstance(x, str) for x in value[0]):
+                headers = value[0]
+                normalized = [str(x).lower() for x in headers]
+                ti = next((i for i, x in enumerate(normalized) if x in ("time_tag", "datetime", "time", "date")), None)
+                if ti is not None:
+                    for row in value[1:]:
+                        if isinstance(row, list) and ti < len(row):
+                            add(row[ti], {headers[i]: row[i] for i in range(min(len(headers), len(row)))})
+                    return
+            for item in value:
+                if isinstance(item, (dict, list)):
+                    walk(item)
     walk(payload)
-    return found
+    # Deduplicate within a single collection pass, preserving the last occurrence.
+    unique = {}
+    for sample in samples:
+        key = (sample["source"], sample["time_utc"], json.dumps(sample["values"], sort_keys=True))
+        unique[key] = sample
+    return list(unique.values())
+
+
+def persist_timeseries(payloads, now):
+    """Merge samples by UTC day and write each changed daily file only once."""
+    archive_dir = ROOT / "timeseries"
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    additions = 0
+    pending_by_day = {}
+    for source_id, payload in payloads.items():
+        for sample in archive_samples(source_id, payload):
+            pending_by_day.setdefault(sample["time_utc"][:10], []).append(sample)
+
+    for day, incoming in pending_by_day.items():
+        path = archive_dir / f"{day}.json"
+        try:
+            existing = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
+            if not isinstance(existing, list):
+                existing = []
+        except (json.JSONDecodeError, OSError):
+            existing = []
+
+        known = {
+            (row.get("source"), row.get("time_utc"),
+             json.dumps(row.get("values", {}), sort_keys=True))
+            for row in existing if isinstance(row, dict)
+        }
+        day_additions = 0
+        for sample in incoming:
+            key = (sample["source"], sample["time_utc"],
+                   json.dumps(sample["values"], sort_keys=True))
+            if key not in known:
+                existing.append(sample)
+                known.add(key)
+                additions += 1
+                day_additions += 1
+
+        if day_additions:
+            existing.sort(key=lambda row: (row.get("time_utc", ""), row.get("source", "")))
+            path.write_text(
+                json.dumps(existing, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8"
+            )
+    return additions
+
+
+def build_timeseries_index():
+    """Create a compact manifest for static archive browsers."""
+    archive_dir = ROOT / "timeseries"
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    days = []
+    for path in sorted(archive_dir.glob("????-??-??.json")):
+        try:
+            rows = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        by_source = {}
+        for row in rows if isinstance(rows, list) else []:
+            source = row.get("source", "unknown")
+            by_source[source] = by_source.get(source, 0) + 1
+        days.append({"date": path.stem, "file": path.name,
+                     "samples": sum(by_source.values()), "sources": by_source})
+    manifest = {"schema_version": "1.0", "project": "X-5 GLOBAL SPACE DATA ARCHIVE",
+                "updated_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                "days": days, "total_days": len(days),
+                "total_samples": sum(day["samples"] for day in days)}
+    (archive_dir / "index.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return manifest
 
 
 def compare_kp_sources(payloads):
@@ -310,7 +408,10 @@ if not sources:
 
 now_dt = dt.datetime.now(dt.timezone.utc)
 now = now_dt.isoformat()
-rows = [collect(source, now_dt) for source in sources]
+# Fetch independent providers concurrently so one slow endpoint cannot delay every other source.
+with ThreadPoolExecutor(max_workers=5) as pool:
+    rows = list(pool.map(lambda source: collect(source, now_dt), sources))
+archived_samples_added = persist_timeseries(PAYLOADS, now_dt)
 cross_source = compare_kp_sources(PAYLOADS)
 checked = [row for row in rows if row["ok"] is not None]
 available = sum(1 for row in checked if row["ok"] is True)
@@ -321,6 +422,8 @@ freshness_assessed = [row for row in rows if row["freshness_state"] in ("fresh",
 fresh_count = sum(1 for row in freshness_assessed if row["freshness_state"] == "fresh")
 stale_count = sum(1 for row in freshness_assessed if row["freshness_state"] == "stale")
 
+# Build the manifest once, after all daily files have been updated.
+timeseries_index = build_timeseries_index()
 status = {
     "schema_version": "1.3",
     "project": "X-5 GLOBAL SPACE DATA ARCHIVE",
@@ -343,6 +446,7 @@ status = {
     },
     "sources": rows,
     "cross_source_checks": [cross_source],
+    "timeseries_archive": {"format": "UTC daily JSON", "samples_added_this_run": archived_samples_added, "directory": "data/global-archive/timeseries/", "index_file": "data/global-archive/timeseries/index.json", "total_days": timeseries_index["total_days"], "total_samples": timeseries_index["total_samples"]},
 }
 (ROOT / "latest-status.json").write_text(
     json.dumps(status, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"

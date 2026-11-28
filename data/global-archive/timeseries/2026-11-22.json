@@ -1,0 +1,74 @@
+[
+  {
+    "source": "noaa-kp",
+    "time_utc": "2026-11-22T00:00:00Z",
+    "values": {
+      "Kp": 0.67,
+      "a_running": 3,
+      "station_count": 8
+    }
+  },
+  {
+    "source": "noaa-kp",
+    "time_utc": "2026-11-22T03:00:00Z",
+    "values": {
+      "Kp": 1.0,
+      "a_running": 4,
+      "station_count": 8
+    }
+  },
+  {
+    "source": "noaa-kp",
+    "time_utc": "2026-11-22T06:00:00Z",
+    "values": {
+      "Kp": 2.33,
+      "a_running": 9,
+      "station_count": 8
+    }
+  },
+  {
+    "source": "noaa-kp",
+    "time_utc": "2026-11-22T09:00:00Z",
+    "values": {
+      "Kp": 0.33,
+      "a_running": 2,
+      "station_count": 8
+    }
+  },
+  {
+    "source": "noaa-kp",
+    "time_utc": "2026-11-22T12:00:00Z",
+    "values": {
+      "Kp": 0.0,
+      "a_running": 0,
+      "station_count": 8
+    }
+  },
+  {
+    "source": "noaa-kp",
+    "time_utc": "2026-11-22T15:00:00Z",
+    "values": {
+      "Kp": 0.33,
+      "a_running": 2,
+      "station_count": 8
+    }
+  },
+  {
+    "source": "noaa-kp",
+    "time_utc": "2026-11-22T18:00:00Z",
+    "values": {
+      "Kp": 0.67,
+      "a_running": 3,
+      "station_count": 8
+    }
+  },
+  {
+    "source": "noaa-kp",
+    "time_utc": "2026-11-22T21:00:00Z",
+    "values": {
+      "Kp": 1.67,
+      "a_running": 6,
+      "station_count": 8
+    }
+  }
+]
