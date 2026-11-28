@@ -1,0 +1,65 @@
+name: X-5 Global Space Data Archive
+
+on:
+  schedule:
+    - cron: "13,43 * * * *"
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/global-space-data-archive
+    paths:
+      - ".github/workflows/global-space-data-archive.yml"
+      - "scripts/collect_global_space_archive.py"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: x5-global-space-archive
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Sběr a validace veřejných datových endpointů
+        run: python scripts/collect_global_space_archive.py
+
+      - name: Ověřit výstup archivu
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          status = json.loads(Path("data/global-archive/latest-status.json").read_text(encoding="utf-8"))
+          history = json.loads(Path("data/global-archive/history.json").read_text(encoding="utf-8"))
+          assert len(status.get("sources", [])) == 5, "Expected five source checks"
+          assert history.get("runs"), "History must contain at least one run"
+          assert history["runs"][-1]["checked_at_utc"] == status["checked_at_utc"]
+          print("Archive OK:", len(status["sources"]), "sources;", len(history["runs"]), "runs")
+          PY
+
+      - name: Uložit historii do stejné větve
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/global-archive/latest-status.json data/global-archive/history.json
+          if git diff --cached --quiet; then
+            echo "Historie beze změny"
+            exit 0
+          fi
+          git commit -m "Aktualizace historie globálního archivu X-5"
+          for attempt in 1 2 3; do
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              exit 0
+            fi
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+          done
+          echo "Nepodařilo se uložit historii po třech pokusech."
+          exit 1

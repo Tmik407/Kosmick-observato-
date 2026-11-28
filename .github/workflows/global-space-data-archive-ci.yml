@@ -1,0 +1,76 @@
+name: X-5 Global Archive CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/global-space-data-archive-ci.yml"
+      - ".github/workflows/global-space-data-archive.yml"
+      - "data/global-archive/**"
+      - "scripts/collect_global_space_archive.py"
+      - "global-space-data-archive.html"
+  push:
+    branches:
+      - feature/global-space-data-archive
+    paths:
+      - ".github/workflows/global-space-data-archive-ci.yml"
+      - ".github/workflows/global-space-data-archive.yml"
+      - "data/global-archive/**"
+      - "scripts/collect_global_space_archive.py"
+      - "global-space-data-archive.html"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: x5-global-archive-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Ověřit syntaxi Pythonu
+        run: python -m py_compile scripts/collect_global_space_archive.py
+
+      - name: Ověřit JSON, katalog a historii
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("data/global-archive")
+          sources = json.loads((root / "sources.json").read_text(encoding="utf-8"))
+          latest = json.loads((root / "latest-status.json").read_text(encoding="utf-8"))
+          history = json.loads((root / "history.json").read_text(encoding="utf-8"))
+
+          catalogue = sources.get("sources", [])
+          rows = latest.get("sources", [])
+          summary = latest.get("summary", {})
+          runs = history.get("runs", [])
+
+          assert len(catalogue) == 5, f"Expected 5 catalogue sources, got {len(catalogue)}"
+          assert len(rows) == summary.get("total") == 5, "Latest status source count mismatch"
+          assert summary.get("available", 0) + summary.get("unavailable", 0) == summary.get("total"), "Latest summary totals mismatch"
+          assert {item["id"] for item in catalogue} == {item["id"] for item in rows}, "Catalogue and latest source IDs differ"
+          assert runs, "History must contain at least one run"
+          assert len(runs) <= 1000, "History exceeds the 1,000-run retention limit"
+          assert runs[-1].get("checked_at_utc") == latest.get("checked_at_utc"), "Latest history timestamp does not match latest status"
+
+          for index, run in enumerate(runs, start=1):
+              run_sources = run.get("sources", [])
+              assert len(run_sources) == run.get("total"), f"History run {index}: source count mismatch"
+              available = sum(1 for item in run_sources if item.get("ok") is True)
+              assert available == run.get("available"), f"History run {index}: available count mismatch"
+              assert run.get("available", 0) + run.get("unavailable", 0) == run.get("total"), f"History run {index}: totals mismatch"
+
+          print(f"Archive validation OK: {len(catalogue)} sources, {len(runs)} history runs.")
+          PY
+
+      - name: Kontrola whitespace změn
+        run: git diff --check
