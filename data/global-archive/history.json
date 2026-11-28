@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.2",
   "runs": [
     {
       "checked_at_utc": "2026-11-28T10:42:53.653805+00:00",
@@ -162,8 +162,129 @@
           "error": null
         }
       ]
+    },
+    {
+      "checked_at_utc": "2026-11-28T10:57:19.114505+00:00",
+      "total": 9,
+      "checked": 7,
+      "available": 7,
+      "unavailable": 0,
+      "requires_registration": 2,
+      "average_latency_ms": 481,
+      "fresh": 4,
+      "stale": 0,
+      "sources": [
+        {
+          "id": "noaa-wind",
+          "ok": true,
+          "access_state": "available",
+          "http_status": 200,
+          "latency_ms": 1076,
+          "record_count": 3506,
+          "latest_data_time": "2026-11-28T10:54:00",
+          "latest_data_age_seconds": 199,
+          "freshness_state": "fresh",
+          "error": null
+        },
+        {
+          "id": "noaa-mag",
+          "ok": true,
+          "access_state": "available",
+          "http_status": 200,
+          "latency_ms": 44,
+          "record_count": 3533,
+          "latest_data_time": "2026-11-28T10:53:00",
+          "latest_data_age_seconds": 259,
+          "freshness_state": "fresh",
+          "error": null
+        },
+        {
+          "id": "noaa-kp",
+          "ok": true,
+          "access_state": "available",
+          "http_status": 200,
+          "latency_ms": 21,
+          "record_count": 59,
+          "latest_data_time": "2026-11-28T06:00:00",
+          "latest_data_age_seconds": 17839,
+          "freshness_state": "fresh",
+          "error": null
+        },
+        {
+          "id": "goes-xray",
+          "ok": true,
+          "access_state": "available",
+          "http_status": 200,
+          "latency_ms": 40,
+          "record_count": 2876,
+          "latest_data_time": "2026-11-28T10:54:00Z",
+          "latest_data_age_seconds": 199,
+          "freshness_state": "fresh",
+          "error": null
+        },
+        {
+          "id": "nasa-ssc",
+          "ok": true,
+          "access_state": "available",
+          "http_status": 200,
+          "latency_ms": 437,
+          "record_count": 2,
+          "latest_data_time": null,
+          "latest_data_age_seconds": null,
+          "freshness_state": "not_applicable",
+          "error": null
+        },
+        {
+          "id": "intermagnet-hapi",
+          "ok": true,
+          "access_state": "available",
+          "http_status": 200,
+          "latency_ms": 766,
+          "record_count": 3,
+          "latest_data_time": null,
+          "latest_data_age_seconds": null,
+          "freshness_state": "not_applicable",
+          "error": null
+        },
+        {
+          "id": "gfz-kp",
+          "ok": true,
+          "access_state": "available",
+          "http_status": 200,
+          "latency_ms": 982,
+          "record_count": 4,
+          "latest_data_time": null,
+          "latest_data_age_seconds": null,
+          "freshness_state": "unknown",
+          "error": null
+        },
+        {
+          "id": "esa-swe-hapi",
+          "ok": null,
+          "access_state": "requires_registration",
+          "http_status": null,
+          "latency_ms": null,
+          "record_count": null,
+          "latest_data_time": null,
+          "latest_data_age_seconds": null,
+          "freshness_state": "requires_registration",
+          "error": "Automatická kontrola vyžaduje přístupové údaje; tajemství nejsou uložena v repozitáři."
+        },
+        {
+          "id": "isgi-indices",
+          "ok": null,
+          "access_state": "requires_registration",
+          "http_status": null,
+          "latency_ms": null,
+          "record_count": null,
+          "latest_data_time": null,
+          "latest_data_age_seconds": null,
+          "freshness_state": "requires_registration",
+          "error": "Automatická kontrola vyžaduje přístupové údaje; tajemství nejsou uložena v repozitáři."
+        }
+      ]
     }
   ],
   "note": "Automatická historie kontrol. První běh ji naplní; hodnoty nejsou předvyplněné.",
-  "updated_at_utc": "2026-11-28T10:43:28.544854+00:00"
+  "updated_at_utc": "2026-11-28T10:57:19.114505+00:00"
 }
