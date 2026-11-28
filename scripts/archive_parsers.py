@@ -26,7 +26,7 @@ def parse_kp_value(value):
         try:
             number = float(text)
         except ValueError:
-            match = re.fullmatch(r"([0-9])\\s*([+-]|o)?", text)
+            match = re.fullmatch(r"([0-9])\s*([+-]|o)?", text)
             if not match:
                 return None
             number = float(match.group(1))
