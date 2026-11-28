@@ -7,6 +7,7 @@ import json
 import time
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -180,7 +181,7 @@ def collect(source, now):
             headers={"User-Agent": "X5-Global-Space-Archive/1.3",
                      "Accept": "application/json, application/xml, text/plain"}
         )
-        with urllib.request.urlopen(request, timeout=25) as response:
+        with urllib.request.urlopen(request, timeout=15) as response:
             raw = response.read()
             result["http_status"] = response.status
         result["latency_ms"] = round((time.monotonic() - started) * 1000)
@@ -394,7 +395,9 @@ if not sources:
 
 now_dt = dt.datetime.now(dt.timezone.utc)
 now = now_dt.isoformat()
-rows = [collect(source, now_dt) for source in sources]
+# Fetch independent providers concurrently so one slow endpoint cannot delay every other source.
+with ThreadPoolExecutor(max_workers=5) as pool:
+    rows = list(pool.map(lambda source: collect(source, now_dt), sources))
 archived_samples_added = persist_timeseries(PAYLOADS, now_dt)
 cross_source = compare_kp_sources(PAYLOADS)
 checked = [row for row in rows if row["ok"] is not None]
