@@ -113,13 +113,13 @@ else{paired.className='status';paired.textContent='Není zjištěn souběžný v
 
 $('hp').textContent=fmt(hp);$('he').textContent=fmt(he);$('hn').textContent=fmt(hn);$('bz').textContent=fmt(bz);$('bt').textContent=fmt(bt);$('speed').textContent=fmt(speed,0);
 $('hp18').textContent=fmt(gr18?num(gr18.Hp):null);$('he18').textContent=fmt(gr18?num(gr18.He):null);$('hn18').textContent=fmt(gr18?num(gr18.Hn):null);
-const t18=gr18?(gr18.time_tag||gr18.time||''):'—';$('time18').textContent=t18;$('fresh18').textContent='Stáří dat GOES-18: '+go18Fresh.label+'. Zdroj: NOAA SWPC secondary magnetometer.';
+const t18=gr18?(gr18.time_tag||gr18.time||''):'—';$('time18').textContent=t18;const age18=go18Fresh.age===null?'věk neznámý':fmt(go18Fresh.age,1)+' min';$('fresh18').textContent='Stáří dat GOES-18: '+go18Fresh.label+' ('+age18+'). Čas měření UTC: '+(t18||'neuveden')+'. Limit aktuálnosti: 30 min. Zdroj: NOAA SWPC secondary magnetometer.';
 const rows18=gh18.map(x=>({time:x.time_tag||'',hp:num(x.Hp)}));draw(rows18,'plot18','plotInfo18','GOES-18');
 const time=gr?(gr.time_tag||gr.time||''):'';
 const magTime=mr?(mr.time_tag||mr.time||''):'čas neuveden',windTime=pr?(pr.time_tag||pr.time||''):'čas neuveden';
 $('updated').textContent='GOES-19: '+(time||'čas neuveden')+' · GOES-18: '+(t18||'čas neuveden')+' · IMF: '+magTime+' · sluneční vítr: '+windTime+' · obnoveno '+new Date().toLocaleString('cs-CZ');
-const ageText=(name,f)=>name+': '+f.label;
-$('freshness').textContent='Stáří dat (limity: GOES-19 30 min, IMF a sluneční vítr 15 min) — '+[ageText('GOES-19',goFresh),ageText('GOES-18',go18Fresh),ageText('IMF',magFresh),ageText('sluneční vítr',windFresh)].join(' · ')+'.';
+const ageText=(name,row,f,limit)=>{const age=f.age===null?'věk neznámý':fmt(f.age,1)+' min';const stamp=sampleTime(row);const utc=stamp===null?'čas UTC neuveden':new Date(stamp).toISOString().replace('T',' ').replace('.000Z',' UTC');return name+': '+f.label+' ('+age+'; limit '+limit+' min; '+utc+')';};
+$('freshness').textContent='Kontrola aktuálnosti zdrojových měření — '+[ageText('GOES-19',gr,goFresh,30),ageText('GOES-18',gr18,go18Fresh,30),ageText('IMF',mr,magFresh,15),ageText('sluneční vítr',pr,windFresh,15)].join(' · ')+'.';
 const rows=gh.map(x=>({time:x.time_tag||'',hp:num(x.Hp)}));draw(rows);
 const screeningReady=goFresh.ok&&magFresh.ok&&windFresh.ok;
 const south=magFresh.ok&&bz!==null&&bz<=-5,fast=windFresh.ok&&speed!==null&&speed>=500,goes=goFresh.ok?rows.filter(x=>x.hp!==null).slice(-30):[];
