@@ -277,6 +277,90 @@ def extract_kp_series(payload):
     return found
 
 
+def archive_samples(source_id, payload):
+    """Normalize timestamped observations without changing the provider payload."""
+    samples = []
+    def add(stamp, values):
+        parsed = parse_utc(stamp)
+        if not parsed:
+            return
+        clean = {}
+        for key, value in values.items():
+            if key.lower() in ("time", "time_tag", "timestamp", "datetime", "date"):
+                continue
+            if isinstance(value, (str, int, float, bool)) or value is None:
+                clean[key] = value
+        if clean:
+            samples.append({"source": source_id, "time_utc": parsed.isoformat().replace("+00:00", "Z"),
+                            "values": clean})
+    def walk(value):
+        if isinstance(value, dict):
+            lower = {str(k).lower(): k for k in value}
+            time_key = next((lower[k] for k in ("time_tag", "datetime", "time", "timestamp", "date") if k in lower), None)
+            if time_key is not None and not isinstance(value[time_key], list):
+                add(value[time_key], value)
+            # GFZ API documents parallel datetime and index arrays.
+            if "datetime" in lower and isinstance(value[lower["datetime"]], list):
+                time_values = value[lower["datetime"]]
+                for key, original in lower.items():
+                    if key in ("datetime", "status") or not isinstance(value[original], list):
+                        continue
+                    vals = value[original]
+                    status_key = lower.get("status")
+                    statuses = value[status_key] if status_key and isinstance(value[status_key], list) else []
+                    for i, (stamp, val) in enumerate(zip(time_values, vals)):
+                        row = {original: val}
+                        if i < len(statuses):
+                            row["status"] = statuses[i]
+                        add(stamp, row)
+            for item in value.values():
+                if isinstance(item, (dict, list)):
+                    walk(item)
+        elif isinstance(value, list):
+            # NOAA table endpoints use a header row followed by positional rows.
+            if value and isinstance(value[0], list) and value[0] and all(isinstance(x, str) for x in value[0]):
+                headers = value[0]
+                normalized = [str(x).lower() for x in headers]
+                ti = next((i for i, x in enumerate(normalized) if x in ("time_tag", "datetime", "time", "date")), None)
+                if ti is not None:
+                    for row in value[1:]:
+                        if isinstance(row, list) and ti < len(row):
+                            add(row[ti], {headers[i]: row[i] for i in range(min(len(headers), len(row)))})
+                    return
+            for item in value:
+                if isinstance(item, (dict, list)):
+                    walk(item)
+    walk(payload)
+    # Deduplicate within a single collection pass, preserving the last occurrence.
+    unique = {}
+    for sample in samples:
+        key = (sample["source"], sample["time_utc"], json.dumps(sample["values"], sort_keys=True))
+        unique[key] = sample
+    return list(unique.values())
+
+
+def persist_timeseries(payloads, now):
+    """Merge normalized samples into UTC-day JSON files; repeated polls do not duplicate rows."""
+    archive_dir = ROOT / "timeseries"
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    additions = 0
+    for source_id, payload in payloads.items():
+        for sample in archive_samples(source_id, payload):
+            day = sample["time_utc"][:10]
+            path = archive_dir / f"{day}.json"
+            try:
+                existing = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
+            except (json.JSONDecodeError, OSError):
+                existing = []
+            key = (sample["source"], sample["time_utc"], json.dumps(sample["values"], sort_keys=True))
+            known = {(row.get("source"), row.get("time_utc"), json.dumps(row.get("values", {}), sort_keys=True)) for row in existing}
+            if key not in known:
+                existing.append(sample)
+                additions += 1
+                path.write_text(json.dumps(sorted(existing, key=lambda row: (row.get("time_utc", ""), row.get("source", ""))), ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+    return additions
+
+
 def compare_kp_sources(payloads):
     result = {"comparison": "NOAA SWPC Kp vs GFZ Kp", "state": "not_assessed",
               "matched_samples": 0, "mean_absolute_difference": None,
@@ -311,7 +395,7 @@ if not sources:
 now_dt = dt.datetime.now(dt.timezone.utc)
 now = now_dt.isoformat()
 rows = [collect(source, now_dt) for source in sources]
-cross_source = compare_kp_sources(PAYLOADS)
+archived_samples_added = persist_timeseries(PAYLOADS, now_dt)\ncross_source = compare_kp_sources(PAYLOADS)
 checked = [row for row in rows if row["ok"] is not None]
 available = sum(1 for row in checked if row["ok"] is True)
 unavailable = sum(1 for row in checked if row["ok"] is False)
@@ -342,7 +426,7 @@ status = {
         "quality_scores_available": sum(1 for row in rows if row.get("quality_score") is not None),
     },
     "sources": rows,
-    "cross_source_checks": [cross_source],
+    "cross_source_checks": [cross_source],\n    "timeseries_archive": {"format": "UTC daily JSON", "samples_added_this_run": archived_samples_added, "directory": "data/global-archive/timeseries/"},
 }
 (ROOT / "latest-status.json").write_text(
     json.dumps(status, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
