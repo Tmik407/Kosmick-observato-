@@ -1,0 +1,85 @@
+{
+  "schema_version": "1.0",
+  "project": "X-5 GLOBAL SPACE DATA ARCHIVE",
+  "independence": "Samostatný katalog. V této etapě není propojen s ostatními stránkami ani datovými workflow observatoře X-5.",
+  "created_utc": "2026-11-28",
+  "status": "catalogue_and_browser_probe",
+  "note": "Endpoint checks run from the visitor browser. CORS/network failures are not proof that the source service itself is down. No persistent history is collected in this first phase.",
+  "sources": [
+    {
+      "id": "noaa-wind",
+      "institution": "NOAA SWPC",
+      "name": "RTSW solar wind",
+      "category": "solar_wind",
+      "kind": "measurement",
+      "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+      "units": [
+        "km/s",
+        "cm^-3"
+      ],
+      "nominal_resolution": "1 minute",
+      "official": "https://www.swpc.noaa.gov/products/real-time-solar-wind"
+    },
+    {
+      "id": "noaa-mag",
+      "institution": "NOAA SWPC",
+      "name": "RTSW interplanetary magnetic field",
+      "category": "imf",
+      "kind": "measurement",
+      "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json",
+      "units": [
+        "nT"
+      ],
+      "nominal_resolution": "1 minute",
+      "official": "https://www.swpc.noaa.gov/products/real-time-solar-wind"
+    },
+    {
+      "id": "noaa-kp",
+      "institution": "NOAA SWPC",
+      "name": "Planetary Kp index",
+      "category": "geomagnetic",
+      "kind": "index",
+      "endpoint": "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",
+      "units": [
+        "Kp"
+      ],
+      "nominal_resolution": "3 hours",
+      "official": "https://www.swpc.noaa.gov/products/planetary-k-index"
+    },
+    {
+      "id": "goes-xray",
+      "institution": "NOAA GOES",
+      "name": "GOES X-ray flux",
+      "category": "solar_activity",
+      "kind": "measurement",
+      "endpoint": "https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json",
+      "units": [
+        "W/m^2"
+      ],
+      "nominal_resolution": "product dependent",
+      "official": "https://www.swpc.noaa.gov/products/goes-x-ray-flux"
+    },
+    {
+      "id": "nasa-ssc",
+      "institution": "NASA GSFC",
+      "name": "SSCWeb observatory catalogue",
+      "category": "satellite_data",
+      "kind": "metadata",
+      "endpoint": "https://sscweb.gsfc.nasa.gov/WS/sscr/2/observatories",
+      "units": [
+        "catalogue identifiers",
+        "metadata"
+      ],
+      "nominal_resolution": "catalogue endpoint",
+      "official": "https://sscweb.gsfc.nasa.gov/"
+    }
+  ],
+  "planned_analytics": [
+    "endpoint availability",
+    "response latency",
+    "freshness of measurement timestamps",
+    "record counts and gaps",
+    "collection job success rate",
+    "cross-source consistency"
+  ]
+}
