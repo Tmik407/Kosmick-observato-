@@ -11,7 +11,7 @@ from urllib.request import Request, urlopen
 BASES = ["https://wdc.kugi.kyoto-u.ac.jp/hapi", "https://wdcvmweb.kugi.kyoto-u.ac.jp/hapi"]
 OUT = Path("data/space-weather/kyoto-indices.json")
 UTC = timezone.utc
-ISO_RE = re.compile(r"\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d+)?)?Z")
+ISO_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?Z")
 
 def iso(dt: datetime) -> str:
     return dt.astimezone(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
@@ -177,7 +177,7 @@ def main():
             result["errors"][key] = str(exc)
             print(f"{dataset}: ERROR {exc}", file=sys.stderr)
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+    OUT.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     # Keep workflow successful when one dataset is temporarily unavailable; the JSON reports it explicitly.
     print(f"Wrote {OUT}")
     if not result["datasets"]:
