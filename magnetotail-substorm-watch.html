@@ -37,7 +37,7 @@ const time=gr?(gr.time_tag||gr.time||''):'';
 const magTime=mr?(mr.time_tag||mr.time||''):'čas neuveden',windTime=pr?(pr.time_tag||pr.time||''):'čas neuveden';
 $('updated').textContent='GOES-19: '+(time||'čas neuveden')+' · GOES-18: '+(t18||'čas neuveden')+' · IMF: '+magTime+' · sluneční vítr: '+windTime+' · obnoveno '+new Date().toLocaleString('cs-CZ');
 const ageText=(name,f)=>name+': '+f.label;
-$('freshness').textContent='Stáří dat (limity: GOES-19 30 min, IMF a sluneční vítr 15 min) — '+[ageText('GOES-19',goFresh),ageText('IMF',magFresh),ageText('sluneční vítr',windFresh)].join(' · ')+'.';
+$('freshness').textContent='Stáří dat (limity: GOES-19 30 min, IMF a sluneční vítr 15 min) — '+[ageText('GOES-19',goFresh),ageText('GOES-18',go18Fresh),ageText('IMF',magFresh),ageText('sluneční vítr',windFresh)].join(' · ')+'.';
 const rows=gh.map(x=>({time:x.time_tag||'',hp:num(x.Hp)}));draw(rows);
 const screeningReady=goFresh.ok&&magFresh.ok&&windFresh.ok;
 const south=magFresh.ok&&bz!==null&&bz<=-5,fast=windFresh.ok&&speed!==null&&speed>=500,goes=goFresh.ok?rows.filter(x=>x.hp!==null).slice(-30):[];
