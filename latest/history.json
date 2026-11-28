@@ -428,5 +428,55 @@
         "detail": "publikováno 2026-11-27T11:21:20Z; stáří publikace 330 min"
       }
     ]
+  },
+  {
+    "checked_at_utc": "2026-11-28T01:31:44+00:00",
+    "checks": [
+      {
+        "name": "GitHub Pages / HTML",
+        "state": "OK",
+        "detail": "stránka dostupná (171045 B); Last-Modified: Sat, 28 Nov 2026 01:26:36 GMT"
+      },
+      {
+        "name": "Open-Meteo",
+        "state": "OK",
+        "detail": "časová osa dostupná (48 termínů); první termín 2026-11-28T00:00"
+      },
+      {
+        "name": "ECMWF IFS přes Open-Meteo",
+        "state": "OK",
+        "detail": "časová osa dostupná (48 termínů); první termín 2026-11-28T00:00"
+      },
+      {
+        "name": "MET Norway",
+        "state": "OK",
+        "detail": "časová řada dostupná (93 bodů; první 2026-11-28T01:00:00Z)"
+      },
+      {
+        "name": "ČHMÚ archiv",
+        "state": "OK",
+        "detail": "253 stanic; nejnovější měření 2026-11-27T23:50+00:00; stáří 1.7 h; archiv Last-Modified Sat, 28 Nov 2026 01:26:36 GMT"
+      },
+      {
+        "name": "GIRO – ionosférická měření",
+        "state": "WARN",
+        "detail": "101 stanic; poslední měření 2026-11-27T19:30+00:00; stáří měření 362 min; staženo před 354 min; upozornění: snapshot nebyl obnoven během posledních 90 minut, nejnovější ionosférické měření je starší než 90 minut nebo chybí"
+      },
+      {
+        "name": "NASA ACE MAG archiv",
+        "state": "WARN",
+        "detail": "2303 záznamů; poslední měření 2026-11-27T18:57+00:00; stáří měření 395 min; poslední stažení před 335 min; upozornění: archiv nebyl stažen během posledních 120 minut, nejnovější ACE měření je starší než 6 hodin nebo chybí"
+      },
+      {
+        "name": "NOAA SWPC – sluneční vítr / IMF / Kp",
+        "state": "WARN",
+        "detail": "stavový soubor 360 min starý; wind: stale_or_unavailable (365.7 min); mag: stale_or_unavailable (364.7 min); kp: stale_or_unavailable (451.7 min); upozornění: stavový soubor je starší než 15 minut nebo nemá čas, wind: měření staré 366 min (limit 10), mag: měření staré 365 min (limit 10), kp: měření staré 452 min (limit 240)"
+      },
+      {
+        "name": "IRTAM – model elektronové hustoty",
+        "state": "OK",
+        "detail": "publikováno 2026-11-27T21:16:33Z; stáří publikace 255 min"
+      }
+    ]
   }
 ]
