@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "project": "X-5 GLOBAL SPACE DATA ARCHIVE",
+  "checked_at_utc": "2026-11-28T10:42:53.653805+00:00",
+  "collector": "GitHub Actions / scripts/collect_global_space_archive.py",
+  "summary": {
+    "total": 5,
+    "available": 4,
+    "unavailable": 1,
+    "average_latency_ms": 145
+  },
+  "sources": [
+    {
+      "id": "noaa-wind",
+      "name": "NOAA SWPC RTSW solar wind",
+      "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json",
+      "checked_at_utc": "2026-11-28T10:42:53.653826+00:00",
+      "ok": true,
+      "http_status": 200,
+      "latency_ms": 277,
+      "record_count": 3506,
+      "latest_data_time": "2026-11-27T10:41:00",
+      "error": null
+    },
+    {
+      "id": "noaa-mag",
+      "name": "NOAA SWPC RTSW IMF",
+      "endpoint": "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json",
+      "checked_at_utc": "2026-11-28T10:42:53.950431+00:00",
+      "ok": true,
+      "http_status": 200,
+      "latency_ms": 113,
+      "record_count": 3532,
+      "latest_data_time": "2026-11-27T10:40:02",
+      "error": null
+    },
+    {
+      "id": "noaa-kp",
+      "name": "NOAA planetary Kp",
+      "endpoint": "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",
+      "checked_at_utc": "2026-11-28T10:42:54.075871+00:00",
+      "ok": true,
+      "http_status": 200,
+      "latency_ms": 40,
+      "record_count": 59,
+      "latest_data_time": "2026-11-28T06:00:00",
+      "error": null
+    },
+    {
+      "id": "goes-xray",
+      "name": "GOES X-ray flux",
+      "endpoint": "https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json",
+      "checked_at_utc": "2026-11-28T10:42:54.116185+00:00",
+      "ok": true,
+      "http_status": 200,
+      "latency_ms": 93,
+      "record_count": 2874,
+      "latest_data_time": "2026-11-28T10:38:00Z",
+      "error": null
+    },
+    {
+      "id": "nasa-ssc",
+      "name": "NASA SSCWeb observatory catalogue",
+      "endpoint": "https://sscweb.gsfc.nasa.gov/WS/sscr/2/observatories",
+      "checked_at_utc": "2026-11-28T10:42:54.215220+00:00",
+      "ok": false,
+      "http_status": 200,
+      "latency_ms": 203,
+      "record_count": null,
+      "latest_data_time": null,
+      "error": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
+    }
+  ]
+}
