@@ -69,6 +69,7 @@ def analyze_completeness(payload, source_id):
         result["state"] = "cadence_unknown"
         return result
     groups = {}
+    duplicate_supported = [True]
     def walk(value):
         if isinstance(value, dict):
             stamp = None
@@ -78,7 +79,10 @@ def analyze_completeness(payload, source_id):
                     if stamp:
                         break
             if stamp:
-                series = tuple(str(value.get(k, "")) for k in SERIES_KEYS if value.get(k) is not None)
+                series_fields = [(k, value.get(k)) for k in SERIES_KEYS if value.get(k) not in (None, "")]
+                if not series_fields:
+                    duplicate_supported[0] = False
+                series = tuple((k, str(v)) for k, v in series_fields)
                 groups.setdefault(series, []).append(stamp)
             for item in value.values():
                 if isinstance(item, (dict, list)):
@@ -97,7 +101,8 @@ def analyze_completeness(payload, source_id):
         distinct = sorted(set(ordered))
         total += len(ordered)
         unique += len(distinct)
-        duplicates += len(ordered) - len(distinct)
+        if duplicate_supported[0]:
+            duplicates += len(ordered) - len(distinct)
         if len(distinct) < 2:
             continue
         expected_slots += max(1, round((distinct[-1] - distinct[0]).total_seconds() / cadence)) + 1
@@ -108,7 +113,7 @@ def analyze_completeness(payload, source_id):
                 gaps += 1
                 missing += max(0, round(delta / cadence) - 1)
     result.update({"state": "assessed", "timestamped_samples": total,
-        "unique_samples": unique, "duplicate_samples": duplicates, "gap_count": gaps,
+        "unique_samples": unique, "duplicate_samples": duplicates if duplicate_supported[0] else None, "duplicate_detection": "assessed" if duplicate_supported[0] else "not_assessed_missing_series_identifier", "gap_count": gaps,
         "missing_samples_estimate": missing,
         "completeness_percent_estimate": round(max(0, 100 * (1 - missing / max(1, expected_slots))), 2) if expected_slots else None,
         "max_gap_seconds": max_gap or None})
@@ -130,9 +135,10 @@ def quality_score(row):
     pct = completeness.get("completeness_percent_estimate")
     if pct is not None:
         score += 30 * pct / 100
-    duplicates = completeness.get("duplicate_samples", 0)
+    duplicates = completeness.get("duplicate_samples")
     samples = max(1, completeness.get("timestamped_samples", 0))
-    score += 10 * max(0, 1 - duplicates / samples)
+    if duplicates is not None:
+        score += 10 * max(0, 1 - duplicates / samples)
     return round(score, 1)
 
 
@@ -145,6 +151,9 @@ def request_url(source, now):
             "start": start, "end": end, "index": "Kp", "status": "def"
         })
     return url
+
+
+PAYLOADS = {}
 
 
 def collect(source, now):
@@ -200,6 +209,7 @@ def collect(source, now):
                 result["record_count"] = len(payload)
             elif isinstance(payload, dict):
                 result["record_count"] = len(payload)
+            PAYLOADS[sid] = payload
             result["latest_data_time"] = latest_time(payload, now)
             result["completeness"] = analyze_completeness(payload, sid)
 
