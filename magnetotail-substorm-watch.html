@@ -26,13 +26,18 @@ function draw(rows,canvasId='plot',infoId='plotInfo',satellite='GOES-19'){const 
 async function load(){const a=$('assessment');a.className='status';a.textContent='Načítám NOAA SWPC…';try{
 const [g,m,p,g18data]=await Promise.all([json(urls.goes),json(urls.mag),json(urls.plasma),json(urls.goes18).catch(()=>null)]);
 const gh=Array.isArray(g)?g.filter(x=>String(x.satellite)==='19'):[];
-const gr=latest(gh,x=>num(x.Hp)!==null&&num(x.He)!==null&&num(x.Hn)!==null);\nconst gh18=Array.isArray(g18data)?g18data.filter(x=>String(x.satellite)==='18'):[];\nconst gr18=latest(gh18,x=>num(x.Hp)!==null&&num(x.He)!==null&&num(x.Hn)!==null);
+const gr=latest(gh,x=>num(x.Hp)!==null&&num(x.He)!==null&&num(x.Hn)!==null);
+const gh18=Array.isArray(g18data)?g18data.filter(x=>String(x.satellite)==='18'):[];
+const gr18=latest(gh18,x=>num(x.Hp)!==null&&num(x.He)!==null&&num(x.Hn)!==null);
 const magRows=records(m),plRows=records(p);
 const mr=activeLatest(magRows,x=>num(x.bz_gsm)!==null),pr=activeLatest(plRows,x=>num(x.proton_speed)!==null);
 const bz=mr?num(mr.bz_gsm):null,bt=mr?num(mr.bt):null,speed=pr?num(pr.proton_speed):null;
 const hp=gr?num(gr.Hp):null,he=gr?num(gr.He):null,hn=gr?num(gr.Hn):null;
 $('hp').textContent=fmt(hp);$('he').textContent=fmt(he);$('hn').textContent=fmt(hn);$('bz').textContent=fmt(bz);$('bt').textContent=fmt(bt);$('speed').textContent=fmt(speed,0);
-const goFresh=freshness(gr,30),go18Fresh=freshness(gr18,30),magFresh=freshness(mr,15),windFresh=freshness(pr,15);\n$('hp18').textContent=fmt(gr18?num(gr18.Hp):null);$('he18').textContent=fmt(gr18?num(gr18.He):null);$('hn18').textContent=fmt(gr18?num(gr18.Hn):null);\nconst t18=gr18?(gr18.time_tag||gr18.time||''):'—';$('time18').textContent=t18;$('fresh18').textContent='Stáří dat GOES-18: '+go18Fresh.label+'. Zdroj: NOAA SWPC secondary magnetometer.';\nconst rows18=gh18.map(x=>({time:x.time_tag||'',hp:num(x.Hp)}));draw(rows18,'plot18','plotInfo18','GOES-18');
+const goFresh=freshness(gr,30),go18Fresh=freshness(gr18,30),magFresh=freshness(mr,15),windFresh=freshness(pr,15);
+$('hp18').textContent=fmt(gr18?num(gr18.Hp):null);$('he18').textContent=fmt(gr18?num(gr18.He):null);$('hn18').textContent=fmt(gr18?num(gr18.Hn):null);
+const t18=gr18?(gr18.time_tag||gr18.time||''):'—';$('time18').textContent=t18;$('fresh18').textContent='Stáří dat GOES-18: '+go18Fresh.label+'. Zdroj: NOAA SWPC secondary magnetometer.';
+const rows18=gh18.map(x=>({time:x.time_tag||'',hp:num(x.Hp)}));draw(rows18,'plot18','plotInfo18','GOES-18');
 const time=gr?(gr.time_tag||gr.time||''):'';
 const magTime=mr?(mr.time_tag||mr.time||''):'čas neuveden',windTime=pr?(pr.time_tag||pr.time||''):'čas neuveden';
 $('updated').textContent='GOES-19: '+(time||'čas neuveden')+' · GOES-18: '+(t18||'čas neuveden')+' · IMF: '+magTime+' · sluneční vítr: '+windTime+' · obnoveno '+new Date().toLocaleString('cs-CZ');
