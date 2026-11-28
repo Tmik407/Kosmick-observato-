@@ -328,6 +328,7 @@ def persist_timeseries(payloads, now):
              json.dumps(row.get("values", {}), sort_keys=True))
             for row in existing if isinstance(row, dict)
         }
+        day_additions = 0
         for sample in incoming:
             key = (sample["source"], sample["time_utc"],
                    json.dumps(sample["values"], sort_keys=True))
@@ -335,8 +336,9 @@ def persist_timeseries(payloads, now):
                 existing.append(sample)
                 known.add(key)
                 additions += 1
+                day_additions += 1
 
-        if additions:
+        if day_additions:
             existing.sort(key=lambda row: (row.get("time_utc", ""), row.get("source", "")))
             path.write_text(
                 json.dumps(existing, ensure_ascii=False, indent=2) + "\n",
