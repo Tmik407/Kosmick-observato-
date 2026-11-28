@@ -181,9 +181,11 @@ def collect(source, now):
             headers={"User-Agent": "X5-Global-Space-Archive/1.3",
                      "Accept": "application/json, application/xml, text/plain"}
         )
-        with urllib.request.urlopen(request, timeout=15) as response:
-            raw = response.read()
+        with urllib.request.urlopen(request, timeout=8) as response:
+            raw = response.read(8 * 1024 * 1024 + 1)
             result["http_status"] = response.status
+        if len(raw) > 8 * 1024 * 1024:
+            raise ValueError("Response exceeds 8 MiB safety limit")
         result["latency_ms"] = round((time.monotonic() - started) * 1000)
         text = raw.decode("utf-8-sig", errors="replace").strip()
         if not text:
