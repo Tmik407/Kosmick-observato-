@@ -44,7 +44,8 @@ def find_observatory_id(catalog, satellite):
 def main():
     print("NASA SSCWeb GOES-18/19 diagnostic")
     catalog = get_json(BASE + "/observatories")
-    print("Catalog top-level:", list(catalog) if isinstance(catalog, dict) else type(catalog).__name__)\n    print("Catalog sample:", json.dumps(catalog[:3] if isinstance(catalog, list) else catalog, ensure_ascii=False)[:10000])
+    print("Catalog top-level:", list(catalog) if isinstance(catalog, dict) else type(catalog).__name__)
+    print("Catalog sample:", json.dumps(catalog[:3] if isinstance(catalog, list) else catalog, ensure_ascii=False)[:10000])
     failures = 0
     end = datetime.now(timezone.utc).replace(second=0, microsecond=0)
     start = end - timedelta(minutes=10)
