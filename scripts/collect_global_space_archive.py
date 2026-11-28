@@ -14,6 +14,8 @@ ROOT = Path("data/global-archive")
 ROOT.mkdir(parents=True, exist_ok=True)
 CATALOG_PATH = ROOT / "sources.json"
 TIME_KEYS = ("time_tag", "time", "timestamp", "date", "eventTime", "ObservationTime")
+EXPECTED_CADENCE_SECONDS = {"noaa-wind": 60, "noaa-mag": 60, "goes-xray": 60, "noaa-kp": 10800}
+SERIES_KEYS = ("satellite", "satellite_id", "energy", "energy_range", "channel", "parameter", "instrument", "flux_type")
 # Conservative freshness limits. Metadata catalogues intentionally have no age limit.
 FRESHNESS_LIMITS_SECONDS = {
     "noaa-wind": 15 * 60,
@@ -54,6 +56,86 @@ def latest_time(payload, reference_time):
     return max(candidates, default=(None, None), key=lambda item: item[0])[1]
 
 
+
+def analyze_completeness(payload, source_id):
+    """Estimate gaps/duplicates in returned timestamped samples where cadence is configured."""
+    cadence = EXPECTED_CADENCE_SECONDS.get(source_id)
+    result = {"state": "not_assessed", "expected_cadence_seconds": cadence,
+              "timestamped_samples": 0, "unique_samples": 0, "duplicate_samples": 0,
+              "gap_count": None, "missing_samples_estimate": None,
+              "completeness_percent_estimate": None, "max_gap_seconds": None,
+              "method": "Returned-window estimate only; not full-archive completeness."}
+    if cadence is None:
+        result["state"] = "cadence_unknown"
+        return result
+    groups = {}
+    def walk(value):
+        if isinstance(value, dict):
+            stamp = None
+            for key in TIME_KEYS:
+                if value.get(key):
+                    stamp = parse_utc(value[key])
+                    if stamp:
+                        break
+            if stamp:
+                series = tuple(str(value.get(k, "")) for k in SERIES_KEYS if value.get(k) is not None)
+                groups.setdefault(series, []).append(stamp)
+            for item in value.values():
+                if isinstance(item, (dict, list)):
+                    walk(item)
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, (dict, list)):
+                    walk(item)
+    walk(payload)
+    if not groups:
+        result["state"] = "no_timestamps"
+        return result
+    total = unique = duplicates = gaps = missing = max_gap = expected_slots = 0
+    for stamps in groups.values():
+        ordered = sorted(stamps)
+        distinct = sorted(set(ordered))
+        total += len(ordered)
+        unique += len(distinct)
+        duplicates += len(ordered) - len(distinct)
+        if len(distinct) < 2:
+            continue
+        expected_slots += max(1, round((distinct[-1] - distinct[0]).total_seconds() / cadence)) + 1
+        for left, right in zip(distinct, distinct[1:]):
+            delta = (right - left).total_seconds()
+            max_gap = max(max_gap, round(delta))
+            if delta > cadence * 1.5:
+                gaps += 1
+                missing += max(0, round(delta / cadence) - 1)
+    result.update({"state": "assessed", "timestamped_samples": total,
+        "unique_samples": unique, "duplicate_samples": duplicates, "gap_count": gaps,
+        "missing_samples_estimate": missing,
+        "completeness_percent_estimate": round(max(0, 100 * (1 - missing / max(1, expected_slots))), 2) if expected_slots else None,
+        "max_gap_seconds": max_gap or None})
+    return result
+
+
+def quality_score(row):
+    """Provisional operational score, not a scientific validity score."""
+    if row.get("access_state") == "requires_registration" or row.get("ok") is None:
+        return None
+    completeness = row.get("completeness") or {}
+    if completeness.get("state") != "assessed":
+        return None
+    score = 30 if row.get("ok") else 0
+    if row.get("freshness_state") == "fresh":
+        score += 30
+    elif row.get("freshness_state") == "not_applicable":
+        score += 15
+    pct = completeness.get("completeness_percent_estimate")
+    if pct is not None:
+        score += 30 * pct / 100
+    duplicates = completeness.get("duplicate_samples", 0)
+    samples = max(1, completeness.get("timestamped_samples", 0))
+    score += 10 * max(0, 1 - duplicates / samples)
+    return round(score, 1)
+
+
 def request_url(source, now):
     url = source["endpoint"]
     if source["id"] == "gfz-kp":
@@ -73,19 +155,20 @@ def collect(source, now):
         "ok": None, "access_state": "not_checked", "http_status": None,
         "latency_ms": None, "record_count": None, "latest_data_time": None,
         "latest_data_age_seconds": None, "freshness_limit_seconds": FRESHNESS_LIMITS_SECONDS.get(sid),
-        "freshness_state": "not_assessed", "error": None,
+        "freshness_state": "not_assessed", "completeness": {"state": "not_assessed"}, "quality_score": None, "error": None,
     }
     if source.get("access_mode") == "registration_required":
         result["access_state"] = "requires_registration"
         result["error"] = "Automatická kontrola vyžaduje přístupové údaje; tajemství nejsou uložena v repozitáři."
         result["freshness_state"] = "requires_registration"
+        result["completeness"] = {"state": "requires_registration"}
         return result
 
     started = time.monotonic()
     try:
         request = urllib.request.Request(
             request_url(source, now),
-            headers={"User-Agent": "X5-Global-Space-Archive/1.2",
+            headers={"User-Agent": "X5-Global-Space-Archive/1.3",
                      "Accept": "application/json, application/xml, text/plain"}
         )
         with urllib.request.urlopen(request, timeout=25) as response:
@@ -118,6 +201,7 @@ def collect(source, now):
             elif isinstance(payload, dict):
                 result["record_count"] = len(payload)
             result["latest_data_time"] = latest_time(payload, now)
+            result["completeness"] = analyze_completeness(payload, sid)
 
         result["ok"] = True
         result["access_state"] = "available"
@@ -137,6 +221,7 @@ def collect(source, now):
         result["access_state"] = "unavailable_or_blocked"
         result["freshness_state"] = "not_assessed"
         result["error"] = f"{type(exc).__name__}: {exc}"[:300]
+    result["quality_score"] = quality_score(result)
     return result
 
 
@@ -158,13 +243,14 @@ fresh_count = sum(1 for row in freshness_assessed if row["freshness_state"] == "
 stale_count = sum(1 for row in freshness_assessed if row["freshness_state"] == "stale")
 
 status = {
-    "schema_version": "1.2",
+    "schema_version": "1.3",
     "project": "X-5 GLOBAL SPACE DATA ARCHIVE",
     "checked_at_utc": now,
     "collector": "GitHub Actions / scripts/collect_global_space_archive.py",
     "methodology": {
         "freshness": "Age is calculated from the newest parseable source timestamp and compared with conservative per-source limits.",
-        "completeness": "Not assessed in this collector version; record counts alone do not prove missing samples or gaps.",
+        "completeness": "Estimated only for returned timestamped samples where a conservative cadence is configured; does not establish completeness of the provider full archive.",
+        "quality_score": "Provisional operational score from availability, freshness, estimated completeness and duplicates; not scientific validity or calibration.",
         "availability": "HTTP/API response from the collector runner; not a guarantee of scientific data quality.",
     },
     "summary": {
@@ -173,6 +259,8 @@ status = {
         "average_latency_ms": round(sum(latencies) / len(latencies)) if latencies else None,
         "freshness_assessed": len(freshness_assessed),
         "fresh": fresh_count, "stale": stale_count,
+        "completeness_assessed": sum(1 for row in rows if row.get("completeness", {}).get("state") == "assessed"),
+        "quality_scores_available": sum(1 for row in rows if row.get("quality_score") is not None),
     },
     "sources": rows,
 }
@@ -199,14 +287,14 @@ history.setdefault("runs", []).append({
         {key: row.get(key) for key in (
             "id", "ok", "access_state", "http_status", "latency_ms",
             "record_count", "latest_data_time", "latest_data_age_seconds",
-            "freshness_state", "error"
+            "freshness_state", "completeness", "quality_score", "error"
         )}
         for row in rows
     ],
 })
 history["runs"] = history["runs"][-1000:]
 history["updated_at_utc"] = now
-history["schema_version"] = "1.2"
+history["schema_version"] = "1.3"
 history_path.write_text(json.dumps(history, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 print(json.dumps(status["summary"], ensure_ascii=False))
 for row in rows:

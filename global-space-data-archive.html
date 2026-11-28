@@ -70,7 +70,7 @@ footer{color:#71849a;padding:28px 10px}
 <div style="overflow-x:auto"><table id="qualityTable" style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:8px">Zdroj</th><th style="text-align:left;padding:8px">Poslední měření (UTC)</th><th style="text-align:left;padding:8px">Stáří</th><th style="text-align:left;padding:8px">Vyhodnocení</th><th style="text-align:left;padding:8px">Počet záznamů</th></tr></thead><tbody></tbody></table></div>
 <div class="small" id="completenessNote">Úplnost časových řad a mezery v jednotlivých vzorcích zatím nejsou vyhodnoceny. Samotný počet záznamů nestačí k průkazu chybějících měření.</div>
 <div class="small" id="reliabilityNote">Spolehlivost se počítá z automatických kontrol v uložené historii; zdroje vyžadující registraci jsou z procent vyloučeny.</div></section>
-<section class="panel" id="map"><h2>Globální mapa observatoří a datových center</h2><p class="small">Orientační polohy institucí poskytujících data do archivu. Značky představují sídla institucí, nikoli přesné polohy jednotlivých měřicích stanic nebo satelitů.</p><div class="map-layout"><div id="globalMap"><div class="status">Načítám mapu…</div></div><div class="map-legend"><div class="legend-item">🔵 Veřejné datové centrum</div><div class="legend-item">🟠 Zdroj s omezeným přístupem</div><div class="small" id="mapStatus">Připraveno.</div></div></div></section><section class="panel" id="qualityPanel"><h2>Panel kvality globálních zdrojů</h2><p class="small">Dostupnost endpointu, čerstvost měření a úplnost časové řady jsou rozdílné vlastnosti.</p><div class="quality-grid" id="qualityCards"><div class="quality-card">Načítání dat kvality…</div></div><div class="small" id="qualitySummary"></div></section>
+<section class="panel" id="map"><h2>Globální mapa observatoří a datových center</h2><p class="small">Orientační polohy institucí poskytujících data do archivu. Značky představují sídla institucí, nikoli přesné polohy jednotlivých měřicích stanic nebo satelitů.</p><div class="map-layout"><div id="globalMap"><div class="status">Načítám mapu…</div></div><div class="map-legend"><div class="legend-item">🔵 Veřejné datové centrum</div><div class="legend-item">🟠 Zdroj s omezeným přístupem</div><div class="small" id="mapStatus">Připraveno.</div></div></div></section><section class="panel" id="qualityPanel"><h2>Panel kvality globálních zdrojů</h2><p class="small">Dostupnost endpointu, čerstvost měření, mezery a duplicity ve vráceném časovém okně jsou rozdílné vlastnosti. Skóre je provozní indikátor, nikoli vědecké ověření.</p><div class="quality-grid" id="qualityCards"><div class="quality-card">Načítání dat kvality…</div></div><div class="small" id="qualitySummary"></div><div style="overflow-x:auto;margin-top:12px"><table id="qualityDetailTable" style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:8px">Zdroj</th><th style="text-align:left;padding:8px">Vzorky</th><th style="text-align:left;padding:8px">Mezery</th><th style="text-align:left;padding:8px">Duplicitní</th><th style="text-align:left;padding:8px">Úplnost odhadem</th><th style="text-align:left;padding:8px">Skóre</th></tr></thead><tbody></tbody></table></div></section>
 <section class="panel" id="catalog"><h2>Globální katalog datových zdrojů</h2><p class="small">Katalog uvádí instituci, typ dat, jednotky a oficiální vstupní adresu. Stav se mění až po skutečném pokusu o načtení. Historická dostupnost a úplnost archivů se bude doplňovat v dalších etapách.</p><div id="sources" class="grid"></div></section>
 <section class="panel" id="method"><h2>Metodika a pravidla kvality</h2><ul>
 <li><strong>Naměřená data:</strong> hodnoty získané z přístrojů nebo observatoří; vždy se uchovává zdroj a čas měření.</li>
@@ -136,10 +136,42 @@ const links=p.ids.map(id=>{const src=catalog.find(x=>x.id===id);return src?"<br>
 L.marker([p.lat,p.lon],{icon:icon}).addTo(map).bindPopup("<strong>"+esc(p.name)+"</strong><br>"+esc(p.city)+"<p>"+esc(p.info)+"</p>"+links+"<p><a href=\""+esc(p.url)+"\" target=\"_blank\" rel=\"noopener\">Oficiální web</a></p>");});
 $("mapStatus").textContent="Zobrazeno "+archiveLocations.length+" orientačních poloh institucí, nikoli přesných poloh měřicích stanic.";setTimeout(()=>map.invalidateSize(),300);
 }
-async function loadQualityPanel(){try{const r=await fetch("data/global-archive/latest-status.json?quality="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);const d=await r.json(),s=d.summary||{},rows=d.sources||[];
-const available=rows.filter(x=>x.access_state==="available").length,unavailable=rows.filter(x=>x.access_state==="unavailable_or_blocked").length,restricted=rows.filter(x=>x.access_state==="requires_registration").length;
-const cards=[["Dostupné endpointy",available+" / "+(s.checked||rows.length),"Nedostupné nebo blokované: "+unavailable],["Čerstvost měření",(s.fresh||0)+" čerstvá · "+(s.stale||0)+" zastaralá","Vyhodnocený čas u "+(s.freshness_assessed||0)+" zdrojů"],["Přístupová omezení",String(restricted),"Registrace se nepočítá jako výpadek"],["Úplnost časových řad","Nevyhodnocena","Kontrola mezer a duplicit bude další etapou"]];
-$("qualityCards").innerHTML=cards.map(c=>"<article class=\"quality-card\"><strong>"+esc(c[0])+"</strong><div class=\"quality-value\">"+esc(c[1])+"</div><p class=\"small\">"+esc(c[2])+"</p></article>").join("");
-$("qualitySummary").textContent="Poslední automatický běh: "+(d.checked_at_utc||"—")+" · průměrná odezva: "+(s.average_latency_ms??"—")+" ms. Počet záznamů není skóre vědecké kvality."; }catch(e){$("qualityCards").textContent="Kvalita dat není dostupná: "+e.message;}}
+async function loadQualityPanel(){
+ try{
+  const response=await fetch("data/global-archive/latest-status.json?quality="+Date.now(),{cache:"no-store"});
+  if(!response.ok)throw Error("HTTP "+response.status);
+  const data=await response.json(),sum=data.summary||{},rows=data.sources||[];
+  const available=rows.filter(x=>x.access_state==="available").length;
+  const unavailable=rows.filter(x=>x.access_state==="unavailable_or_blocked").length;
+  const restricted=rows.filter(x=>x.access_state==="requires_registration").length;
+  const assessed=rows.filter(x=>x.completeness&&x.completeness.state==="assessed");
+  const scored=rows.filter(x=>Number.isFinite(x.quality_score));
+  const avgScore=scored.length?Math.round(scored.reduce((a,x)=>a+x.quality_score,0)/scored.length):null;
+  const gaps=assessed.reduce((a,x)=>a+(x.completeness.gap_count||0),0);
+  const duplicates=assessed.reduce((a,x)=>a+(x.completeness.duplicate_samples||0),0);
+  const missing=assessed.reduce((a,x)=>a+(x.completeness.missing_samples_estimate||0),0);
+  const cards=[
+   ["Dostupné endpointy",available+" / "+(sum.checked??rows.length),"Nedostupné nebo blokované: "+unavailable],
+   ["Čerstvost měření",(sum.fresh??0)+" čerstvá · "+(sum.stale??0)+" zastaralá","Vyhodnocený čas u "+(sum.freshness_assessed??0)+" zdrojů"],
+   ["Časové řady",assessed.length+" vyhodnocené","Odhadované mezery: "+gaps+" · chybějící vzorky: "+missing],
+   ["Duplicitní vzorky",String(duplicates),"Zjištěno v načtených časových oknech"],
+   ["Provozní skóre",avgScore===null?"Nedostupné":avgScore+" / 100","Pouze "+scored.length+" zdrojů má dost podkladů pro skóre"],
+   ["Přístupová omezení",String(restricted),"Registrace se nepočítá jako výpadek"]
+  ];
+  $("qualityCards").innerHTML=cards.map(c=>"<article class=\"quality-card\"><strong>"+esc(c[0])+"</strong><div class=\"quality-value\">"+esc(c[1])+"</div><p class=\"small\">"+esc(c[2])+"</p></article>").join("");
+  $("qualitySummary").textContent="Poslední automatický běh: "+(data.checked_at_utc||"—")+" · průměrná odezva: "+(sum.average_latency_ms??"—")+" ms. Skóre je orientační provozní ukazatel, nikoli vědecká validace.";
+  const body=$("qualityDetailTable").querySelector("tbody");
+  body.innerHTML=rows.map(row=>{
+   const c=row.completeness||{},name=catalog.find(x=>x.id===row.id)?.name||row.id;
+   const samples=c.timestamped_samples??"—",gap=c.gap_count??"—",dup=c.duplicate_samples??"—";
+   const pct=Number.isFinite(c.completeness_percent_estimate)?c.completeness_percent_estimate.toFixed(1)+" %":"Nevyhodnoceno";
+   const score=Number.isFinite(row.quality_score)?row.quality_score+" / 100":"—";
+   return "<tr style='border-top:1px solid #dce6f0'><td style='padding:8px'>"+esc(name)+"</td><td style='padding:8px'>"+esc(samples)+"</td><td style='padding:8px'>"+esc(gap)+"</td><td style='padding:8px'>"+esc(dup)+"</td><td style='padding:8px'>"+esc(pct)+"</td><td style='padding:8px'>"+esc(score)+"</td></tr>";
+  }).join("");
+ }catch(e){
+  $("qualityCards").textContent="Kvalita dat není dostupná: "+e.message;
+  $("qualitySummary").textContent="Podrobnosti nebylo možné načíst.";
+ }
+}
 loadQualityPanel();
 </script><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" onload="initGlobalMap()"></script></body></html>

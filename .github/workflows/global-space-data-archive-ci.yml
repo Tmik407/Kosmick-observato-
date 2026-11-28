@@ -64,6 +64,18 @@ jobs:
           assert summary.get("requires_registration", 0) == 2, "Expected two registration-gated providers"
           assert summary.get("fresh", 0) + summary.get("stale", 0) == summary.get("freshness_assessed", 0), "Freshness totals mismatch"
           assert all(item.get("freshness_state") for item in rows), "Missing freshness classification"
+          assert all("completeness" in item and "quality_score" in item for item in rows), "Missing quality engine fields"
+          assert summary.get("completeness_assessed", 0) <= summary.get("checked", 0), "Completeness count exceeds checked sources"
+          for item in rows:
+              quality = item.get("completeness", {})
+              if quality.get("state") == "assessed":
+                  assert quality.get("timestamped_samples", 0) >= quality.get("unique_samples", 0)
+                  assert quality.get("duplicate_samples", 0) == quality.get("timestamped_samples", 0) - quality.get("unique_samples", 0)
+                  assert quality.get("gap_count", 0) >= 0
+                  if quality.get("completeness_percent_estimate") is not None:
+                      assert 0 <= quality["completeness_percent_estimate"] <= 100
+              if item.get("quality_score") is not None:
+                  assert 0 <= item["quality_score"] <= 100, "Quality score out of range"
           assert {item["id"] for item in catalogue} == {item["id"] for item in rows}, "Catalogue and latest source IDs differ"
           assert runs, "History must contain at least one run"
           assert len(runs) <= 1000, "History exceeds the 1,000-run retention limit"
