@@ -27,7 +27,7 @@ def latest_file(sat: int) -> tuple[str, str]:
             month += 12
         months.append(f"{base}/{year:04d}/{month:02d}/")
     candidates = []
-    pattern = re.compile(r"(dn_ephe-l2-orb1m_g" + str(sat) + r"_d(\\d{8})_v[\\w.-]+\\.nc)", re.I)
+    pattern = re.compile(r"(dn_ephe-l2-orb1m_g" + str(sat) + r"_d(\d{8})_v[\w.-]+\.nc)", re.I)
     for folder in months:
         html = get(folder).decode("utf-8", "replace")
         for href, day in pattern.findall(html):
