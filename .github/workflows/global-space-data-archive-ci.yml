@@ -21,7 +21,10 @@ on:
       - ".github/workflows/global-space-data-archive.yml"
       - "data/global-archive/**"
       - "scripts/collect_global_space_archive.py"
+      - "scripts/archive_parsers.py"
+      - "tests/test_global_archive_parsers.py"
       - "global-space-data-archive.html"
+      - "global-space-data-browser.html"
 
 permissions:
   contents: read
@@ -41,7 +44,10 @@ jobs:
       - name: Ověřit syntaxi Pythonu
         run: python -m py_compile scripts/collect_global_space_archive.py scripts/archive_parsers.py
 
-      - name: Jednotkové testy parseru GFZ Kp\n        run: python -m unittest discover -s tests -p 'test_global_archive_parsers.py'\n\n      # Pull-request CI stays deterministic and offline. Live endpoint polling
+      - name: Jednotkové testy parseru GFZ Kp
+        run: python -m unittest discover -s tests -p 'test_global_archive_parsers.py'
+
+      # Pull-request CI stays deterministic and offline. Live endpoint polling
       # belongs to the scheduled/manual archive collector workflow.
       - name: Ověřit JSON, katalog a historii
         run: |
