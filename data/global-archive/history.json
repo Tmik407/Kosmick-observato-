@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.2",
+  "schema_version": "1.3",
   "runs": [
     {
       "checked_at_utc": "2026-11-28T10:42:53.653805+00:00",
@@ -283,8 +283,228 @@
           "error": "Automatická kontrola vyžaduje přístupové údaje; tajemství nejsou uložena v repozitáři."
         }
       ]
+    },
+    {
+      "checked_at_utc": "2026-11-28T11:10:57.493865+00:00",
+      "total": 9,
+      "checked": 7,
+      "available": 7,
+      "unavailable": 0,
+      "requires_registration": 2,
+      "average_latency_ms": 395,
+      "fresh": 4,
+      "stale": 0,
+      "sources": [
+        {
+          "id": "noaa-wind",
+          "ok": true,
+          "access_state": "available",
+          "http_status": 200,
+          "latency_ms": 249,
+          "record_count": 3505,
+          "latest_data_time": "2026-11-28T11:07:00",
+          "latest_data_age_seconds": 237,
+          "freshness_state": "fresh",
+          "completeness": {
+            "state": "assessed",
+            "expected_cadence_seconds": 60,
+            "timestamped_samples": 3505,
+            "unique_samples": 1443,
+            "duplicate_samples": 2062,
+            "gap_count": 0,
+            "missing_samples_estimate": 0,
+            "completeness_percent_estimate": 100.0,
+            "max_gap_seconds": 60,
+            "method": "Returned-window estimate only; not full-archive completeness."
+          },
+          "quality_score": 94.1,
+          "error": null
+        },
+        {
+          "id": "noaa-mag",
+          "ok": true,
+          "access_state": "available",
+          "http_status": 200,
+          "latency_ms": 20,
+          "record_count": 3533,
+          "latest_data_time": "2026-11-28T11:07:00",
+          "latest_data_age_seconds": 237,
+          "freshness_state": "fresh",
+          "completeness": {
+            "state": "assessed",
+            "expected_cadence_seconds": 60,
+            "timestamped_samples": 3533,
+            "unique_samples": 2196,
+            "duplicate_samples": 1337,
+            "gap_count": 0,
+            "missing_samples_estimate": 0,
+            "completeness_percent_estimate": 100.0,
+            "max_gap_seconds": 60,
+            "method": "Returned-window estimate only; not full-archive completeness."
+          },
+          "quality_score": 96.2,
+          "error": null
+        },
+        {
+          "id": "noaa-kp",
+          "ok": true,
+          "access_state": "available",
+          "http_status": 200,
+          "latency_ms": 8,
+          "record_count": 59,
+          "latest_data_time": "2026-11-28T06:00:00",
+          "latest_data_age_seconds": 18657,
+          "freshness_state": "fresh",
+          "completeness": {
+            "state": "assessed",
+            "expected_cadence_seconds": 10800,
+            "timestamped_samples": 59,
+            "unique_samples": 59,
+            "duplicate_samples": 0,
+            "gap_count": 0,
+            "missing_samples_estimate": 0,
+            "completeness_percent_estimate": 100.0,
+            "max_gap_seconds": 10800,
+            "method": "Returned-window estimate only; not full-archive completeness."
+          },
+          "quality_score": 100.0,
+          "error": null
+        },
+        {
+          "id": "goes-xray",
+          "ok": true,
+          "access_state": "available",
+          "http_status": 200,
+          "latency_ms": 22,
+          "record_count": 2876,
+          "latest_data_time": "2026-11-28T11:08:00Z",
+          "latest_data_age_seconds": 177,
+          "freshness_state": "fresh",
+          "completeness": {
+            "state": "assessed",
+            "expected_cadence_seconds": 60,
+            "timestamped_samples": 2876,
+            "unique_samples": 2876,
+            "duplicate_samples": 0,
+            "gap_count": 0,
+            "missing_samples_estimate": 0,
+            "completeness_percent_estimate": 100.0,
+            "max_gap_seconds": 60,
+            "method": "Returned-window estimate only; not full-archive completeness."
+          },
+          "quality_score": 100.0,
+          "error": null
+        },
+        {
+          "id": "nasa-ssc",
+          "ok": true,
+          "access_state": "available",
+          "http_status": 200,
+          "latency_ms": 440,
+          "record_count": 2,
+          "latest_data_time": null,
+          "latest_data_age_seconds": null,
+          "freshness_state": "not_applicable",
+          "completeness": {
+            "state": "cadence_unknown",
+            "expected_cadence_seconds": null,
+            "timestamped_samples": 0,
+            "unique_samples": 0,
+            "duplicate_samples": 0,
+            "gap_count": null,
+            "missing_samples_estimate": null,
+            "completeness_percent_estimate": null,
+            "max_gap_seconds": null,
+            "method": "Returned-window estimate only; not full-archive completeness."
+          },
+          "quality_score": null,
+          "error": null
+        },
+        {
+          "id": "intermagnet-hapi",
+          "ok": true,
+          "access_state": "available",
+          "http_status": 200,
+          "latency_ms": 760,
+          "record_count": 3,
+          "latest_data_time": null,
+          "latest_data_age_seconds": null,
+          "freshness_state": "not_applicable",
+          "completeness": {
+            "state": "cadence_unknown",
+            "expected_cadence_seconds": null,
+            "timestamped_samples": 0,
+            "unique_samples": 0,
+            "duplicate_samples": 0,
+            "gap_count": null,
+            "missing_samples_estimate": null,
+            "completeness_percent_estimate": null,
+            "max_gap_seconds": null,
+            "method": "Returned-window estimate only; not full-archive completeness."
+          },
+          "quality_score": null,
+          "error": null
+        },
+        {
+          "id": "gfz-kp",
+          "ok": true,
+          "access_state": "available",
+          "http_status": 200,
+          "latency_ms": 1265,
+          "record_count": 4,
+          "latest_data_time": null,
+          "latest_data_age_seconds": null,
+          "freshness_state": "unknown",
+          "completeness": {
+            "state": "cadence_unknown",
+            "expected_cadence_seconds": null,
+            "timestamped_samples": 0,
+            "unique_samples": 0,
+            "duplicate_samples": 0,
+            "gap_count": null,
+            "missing_samples_estimate": null,
+            "completeness_percent_estimate": null,
+            "max_gap_seconds": null,
+            "method": "Returned-window estimate only; not full-archive completeness."
+          },
+          "quality_score": null,
+          "error": null
+        },
+        {
+          "id": "esa-swe-hapi",
+          "ok": null,
+          "access_state": "requires_registration",
+          "http_status": null,
+          "latency_ms": null,
+          "record_count": null,
+          "latest_data_time": null,
+          "latest_data_age_seconds": null,
+          "freshness_state": "requires_registration",
+          "completeness": {
+            "state": "requires_registration"
+          },
+          "quality_score": null,
+          "error": "Automatická kontrola vyžaduje přístupové údaje; tajemství nejsou uložena v repozitáři."
+        },
+        {
+          "id": "isgi-indices",
+          "ok": null,
+          "access_state": "requires_registration",
+          "http_status": null,
+          "latency_ms": null,
+          "record_count": null,
+          "latest_data_time": null,
+          "latest_data_age_seconds": null,
+          "freshness_state": "requires_registration",
+          "completeness": {
+            "state": "requires_registration"
+          },
+          "quality_score": null,
+          "error": "Automatická kontrola vyžaduje přístupové údaje; tajemství nejsou uložena v repozitáři."
+        }
+      ]
     }
   ],
   "note": "Automatická historie kontrol. První běh ji naplní; hodnoty nejsou předvyplněné.",
-  "updated_at_utc": "2026-11-28T10:57:19.114505+00:00"
+  "updated_at_utc": "2026-11-28T11:10:57.493865+00:00"
 }
