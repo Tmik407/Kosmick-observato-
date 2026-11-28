@@ -13,21 +13,23 @@
 <footer>POLAR VORTEX 3D X-5 · MAGNETOTAIL MODULE</footer></main>
 <script>
 (()=>{'use strict';
-const urls={goes:'https://services.swpc.noaa.gov/json/goes/primary/magnetometers-6-hour.json',mag:'https://services.swpc.noaa.gov/products/solar-wind/mag-1-day.json',plasma:'https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json'};
+const urls={goes:'https://services.swpc.noaa.gov/json/goes/primary/magnetometers-6-hour.json',mag:'https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json',plasma:'https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json'};
 const $=id=>document.getElementById(id),num=v=>{const n=Number(v);return Number.isFinite(n)?n:null},fmt=(v,d=2)=>v===null?'—':v.toFixed(d).replace('.',',');
 async function json(url){const r=await fetch(url+'?x='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);return r.json();}
 function latest(rows,filter){if(!Array.isArray(rows))return null;for(let i=rows.length-1;i>=0;i--){const r=rows[i];if(filter(r))return r;}return null;}
+function records(data){if(!Array.isArray(data))return[];if(data.length&&Array.isArray(data[0])){const keys=data[0];return data.slice(1).map(row=>Object.fromEntries(keys.map((key,i)=>[key,row[i]])));}return data.filter(x=>x&&typeof x==='object'&&!Array.isArray(x));}
+function activeLatest(rows,valid){return latest(rows.filter(x=>x.active===true),valid)||latest(rows,valid);}
 function draw(rows){const c=$('plot'),ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='#071426';ctx.fillRect(0,0,c.width,c.height);const valid=rows.filter(x=>x.hp!==null).slice(-120);if(valid.length<2){$('plotInfo').textContent='Nedostatek platných bodů GOES-19 pro graf.';return;}const vals=valid.map(x=>x.hp),lo=Math.min(...vals),hi=Math.max(...vals),span=Math.max(1,hi-lo);ctx.strokeStyle='#31516a';ctx.lineWidth=1;for(let i=0;i<5;i++){const y=20+i*52;ctx.beginPath();ctx.moveTo(50,y);ctx.lineTo(980,y);ctx.stroke();}ctx.strokeStyle='#50d5ff';ctx.lineWidth=2;ctx.beginPath();valid.forEach((p,i)=>{const x=50+i*930/(valid.length-1),y=20+(hi-p.hp)*208/span;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();ctx.fillStyle='#d9e9f5';ctx.font='14px Arial';ctx.fillText('Hp (nT)',12,16);ctx.fillText(fmt(hi,1),8,30);ctx.fillText(fmt(lo,1),8,230);$('plotInfo').textContent=valid.length+' platných bodů · rozsah Hp '+fmt(lo,2)+' až '+fmt(hi,2)+' nT · poslední bod '+valid[valid.length-1].time;}
 async function load(){const a=$('assessment');a.className='status';a.textContent='Načítám NOAA SWPC…';try{
 const [g,m,p]=await Promise.all([json(urls.goes),json(urls.mag),json(urls.plasma)]);
 const gh=Array.isArray(g)?g.filter(x=>String(x.satellite)==='19'):[];
 const gr=latest(gh,x=>num(x.Hp)!==null&&num(x.He)!==null&&num(x.Hn)!==null);
-const magRows=Array.isArray(m)?m.slice(1):[],plRows=Array.isArray(p)?p.slice(1):[];
-const mr=latest(magRows,x=>num(x[3])!==null),pr=latest(plRows,x=>num(x[1])!==null);
-const bz=mr?num(mr[3]):null,bt=mr?num(mr[6]):null,speed=pr?num(pr[1]):null;
+const magRows=records(m),plRows=records(p);
+const mr=activeLatest(magRows,x=>num(x.bz_gsm)!==null),pr=activeLatest(plRows,x=>num(x.proton_speed)!==null);
+const bz=mr?num(mr.bz_gsm):null,bt=mr?num(mr.bt):null,speed=pr?num(pr.proton_speed):null;
 const hp=gr?num(gr.Hp):null,he=gr?num(gr.He):null,hn=gr?num(gr.Hn):null;
 $('hp').textContent=fmt(hp);$('he').textContent=fmt(he);$('hn').textContent=fmt(hn);$('bz').textContent=fmt(bz);$('bt').textContent=fmt(bt);$('speed').textContent=fmt(speed,0);
-const time=gr?(gr.time_tag||gr.time||''):'';$('updated').textContent='GOES-19 měření: '+(time||'čas neuveden')+' · obnoveno '+new Date().toLocaleString('cs-CZ');
+const time=gr?(gr.time_tag||gr.time||''):'';const solarTime=(mr&&mr.time_tag)||(pr&&pr.time_tag)||'čas neuveden';const solarSource=(mr&&mr.source)||(pr&&pr.source)||'zdroj neuveden';$('updated').textContent='GOES-19: '+(time||'čas neuveden')+' · sluneční vítr: '+solarTime+' ('+solarSource+') · obnoveno '+new Date().toLocaleString('cs-CZ');
 const rows=gh.map(x=>({time:x.time_tag||'',hp:num(x.Hp)}));draw(rows);
 const south=bz!==null&&bz<=-5,fast=speed!==null&&speed>=500,goes=rows.filter(x=>x.hp!==null).slice(-30);
 let variation=false;if(goes.length>=10){const v=goes.map(x=>x.hp),mean=v.reduce((s,x)=>s+x,0)/v.length,sd=Math.sqrt(v.reduce((s,x)=>s+(x-mean)**2,0)/v.length);variation=sd>=5;}
