@@ -4,7 +4,7 @@
   "independence": "Samostatný katalog. V této etapě není propojen s ostatními stránkami ani datovými workflow observatoře X-5.",
   "created_utc": "2026-11-28",
   "status": "catalogue_and_browser_probe",
-  "note": "Endpoint checks run from the visitor browser. CORS/network failures are not proof that the source service itself is down. No persistent history is collected in this first phase.",
+  "note": "Katalog zahrnuje veřejné endpointy i zdroje vyžadující registraci. U zdrojů s přístupem registration_required se automatická kontrola dostupnosti neprovádí, dokud nejsou bezpečně nakonfigurovány přístupové údaje. CORS a síťové chyby nejsou důkazem výpadku zdroje.",
   "sources": [
     {
       "id": "noaa-wind",
@@ -72,6 +72,80 @@
       ],
       "nominal_resolution": "catalogue endpoint",
       "official": "https://sscweb.gsfc.nasa.gov/"
+    },
+    {
+      "id": "intermagnet-hapi",
+      "institution": "INTERMAGNET / British Geological Survey Edinburgh GIN",
+      "name": "HAPI katalog geomagnetických observatoří",
+      "category": "ground_magnetometers",
+      "kind": "metadata_api",
+      "endpoint": "https://imag-data.bgs.ac.uk/GIN_V1/hapi/capabilities",
+      "units": [
+        "HAPI capabilities",
+        "observatory time-series catalogue"
+      ],
+      "nominal_resolution": "1 second / 1 minute datasets",
+      "access_mode": "public_api",
+      "official": "https://imag-data.bgs.ac.uk/GIN_V1/"
+    },
+    {
+      "id": "gfz-kp",
+      "institution": "GFZ Helmholtz Centre for Geosciences",
+      "name": "Kp, ap, Ap, Cp, C9 and Hp indices",
+      "category": "geomagnetic_indices",
+      "kind": "index_api",
+      "endpoint": "https://kp.gfz.de/app/json/",
+      "endpoint_parameters": "start=<UTC ISO8601>&end=<UTC ISO8601>&index=Kp",
+      "units": [
+        "Kp",
+        "ap",
+        "Ap",
+        "Cp",
+        "C9",
+        "Hp30",
+        "Hp60"
+      ],
+      "nominal_resolution": "3 hours for Kp; product dependent for Hp",
+      "access_mode": "public_api",
+      "official": "https://kp.gfz.de/en/data"
+    },
+    {
+      "id": "esa-swe-hapi",
+      "institution": "ESA Space Safety Programme",
+      "name": "Space Weather Data Repository / SWE HAPI",
+      "category": "space_weather",
+      "kind": "authenticated_hapi_api",
+      "endpoint": "https://swe.ssa.esa.int/hapi/catalog",
+      "units": [
+        "dataset metadata",
+        "space-weather time series"
+      ],
+      "nominal_resolution": "dataset dependent",
+      "access_mode": "registration_required",
+      "access_note": "Vyžaduje účet ESA SWE a autentizaci; pro automatizaci jsou potřeba M2M credentials a token.",
+      "official": "https://swe.ssa.esa.int/swe-hapi-server"
+    },
+    {
+      "id": "isgi-indices",
+      "institution": "ISGI / EOST Strasbourg",
+      "name": "Mezinárodní geomagnetické indexy a události",
+      "category": "geomagnetic_indices",
+      "kind": "authenticated_web_service",
+      "endpoint": "https://isgi.unistra.fr/ws",
+      "endpoint_parameters": "index=Dst|Kp|aa|am&format=json&StartTime=YYYY-MM-DD&EndTime=YYYY-MM-DD",
+      "units": [
+        "Dst",
+        "Kp",
+        "aa",
+        "am",
+        "AE",
+        "PCN",
+        "PCS"
+      ],
+      "nominal_resolution": "index dependent",
+      "access_mode": "registration_required",
+      "access_note": "Webová služba vyžaduje institucionální přístup a uživatelské jméno vydané ISGI.",
+      "official": "https://isgi.unistra.fr/ws_documentation.php"
     }
   ],
   "planned_analytics": [
@@ -81,5 +155,6 @@
     "record counts and gaps",
     "collection job success rate",
     "cross-source consistency"
-  ]
+  ],
+  "updated_utc": "2026-11-28"
 }
