@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-11-28T09:00:49.993306Z",
+  "source": "NOAA NCEI GOES-R Level-2 Ephemeris, 1-minute daily files",
+  "cadence": "PT1M",
+  "note": "Produkt poskytuje GEO a GSE souřadnice a GEO místní čas; neobsahuje MLT ani geomagnetickou šířku.",
+  "satellites": {
+    "18": {
+      "satellite": 18,
+      "time_utc": "2026-11-27T23:59:00Z",
+      "geo_lat_deg": -0.016482819582914948,
+      "geo_lon_deg": -136.97355127177386,
+      "geo_radius_km": 42158.839197168156,
+      "geo_local_time_hours": 14.85176324854841,
+      "gse_x_km": 27379.23905059215,
+      "gse_y_km": 27908.099269566737,
+      "gse_z_km": 15779.566117188202,
+      "gse_local_time_hours": 15.036537038746577,
+      "source_file": "dn_ephe-l2-orb1m_g18_d20261127_v0-0-3.nc",
+      "source_url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes18/l2/data/ephe-l2-orb1m/2026/11/dn_ephe-l2-orb1m_g18_d20261127_v0-0-3.nc",
+      "source_day": "20261127"
+    },
+    "19": {
+      "satellite": 19,
+      "time_utc": "2026-11-27T23:59:00Z",
+      "geo_lat_deg": -0.0005061835833356828,
+      "geo_lon_deg": -75.16712082751413,
+      "geo_radius_km": 42162.3428497679,
+      "geo_local_time_hours": 18.972191944832392,
+      "gse_x_km": -11906.492842819804,
+      "gse_y_km": 40371.04686307221,
+      "gse_z_km": 2481.26540455547,
+      "gse_local_time_hours": 19.095479115688732,
+      "source_file": "dn_ephe-l2-orb1m_g19_d20261127_v0-0-3.nc",
+      "source_url": "https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes19/l2/data/ephe-l2-orb1m/2026/11/dn_ephe-l2-orb1m_g19_d20261127_v0-0-3.nc",
+      "source_day": "20261127"
+    }
+  }
+}
