@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-28T10:01:17Z",
+  "source": "WDC Kyoto HAPI · Best Available datasets",
+  "citation": {
+    "AE": "doi:10.17593/15031-54800",
+    "ASY_SYM": "doi:10.14989/267216"
+  },
+  "datasets": {
+    "ae": {
+      "dataset": "min_ae",
+      "base": "https://wdc.kugi.kyoto-u.ac.jp/hapi",
+      "last": {
+        "Time": "2026-11-15T23:59:00Z",
+        "aeValue": 26,
+        "alValue": -11,
+        "auValue": 15,
+        "aoValue": 2,
+        "versionCode": 0,
+        "_time": "2026-11-15T23:59:00Z"
+      },
+      "count": 10080,
+      "availability": "dostupnost ověřena",
+      "intervalStart": "1990-01-01T00:00:00Z",
+      "intervalStop": "2026-11-16T00:00:00Z",
+      "requestedHours": 168,
+      "metadataStart": "1975-01-01T00:00:00Z",
+      "metadataStop": "2026-11-28T11:00:00Z",
+      "latest": {
+        "Time": "2026-11-15T23:59:00Z",
+        "aeValue": 26,
+        "alValue": -11,
+        "auValue": 15,
+        "aoValue": 2,
+        "versionCode": 0,
+        "_time": "2026-11-15T23:59:00Z"
+      }
+    },
+    "asysym": {
+      "dataset": "min_asysym",
+      "base": "https://wdc.kugi.kyoto-u.ac.jp/hapi",
+      "last": {
+        "Time": "2026-10-31T23:59:00Z",
+        "asyDValue": 16,
+        "asyHValue": 32,
+        "symDValue": -7,
+        "symHValue": -53,
+        "versionCode": 10,
+        "_time": "2026-10-31T23:59:00Z"
+      },
+      "count": 10080,
+      "availability": "dostupnost ověřena",
+      "intervalStart": "1981-01-01T00:00:00Z",
+      "intervalStop": "2026-11-01T00:00:00Z",
+      "requestedHours": 168,
+      "metadataStart": "1981-01-01T00:00:00Z",
+      "metadataStop": "2026-11-28T11:00:00Z",
+      "latest": {
+        "Time": "2026-10-31T23:59:00Z",
+        "asyDValue": 16,
+        "asyHValue": 32,
+        "symDValue": -7,
+        "symHValue": -53,
+        "versionCode": 10,
+        "_time": "2026-10-31T23:59:00Z"
+      }
+    }
+  },
+  "errors": {}
+}
