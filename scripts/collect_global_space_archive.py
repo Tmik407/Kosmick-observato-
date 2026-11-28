@@ -93,8 +93,9 @@ def collect(source, now):
                 if sid == "gfz-kp":
                     raise ValueError("GFZ response was not valid JSON; check API response format")
                 raise
-            if isinstance(payload, dict) and payload.get("status", {}).get("code") not in (None, 1200):
-                raise ValueError(f"API status: {payload['status']}")
+            api_status = payload.get("status") if isinstance(payload, dict) else None
+            if isinstance(api_status, dict) and api_status.get("code") not in (None, 1200):
+                raise ValueError(f"API status: {api_status}")
             if isinstance(payload, dict) and "catalog" in payload:
                 result["record_count"] = len(payload["catalog"])
             elif isinstance(payload, dict) and "data" in payload and isinstance(payload["data"], list):
