@@ -70,7 +70,7 @@ footer{color:#71849a;padding:28px 10px}
 <div style="overflow-x:auto"><table id="qualityTable" style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:8px">Zdroj</th><th style="text-align:left;padding:8px">Poslední měření (UTC)</th><th style="text-align:left;padding:8px">Stáří</th><th style="text-align:left;padding:8px">Vyhodnocení</th><th style="text-align:left;padding:8px">Počet záznamů</th></tr></thead><tbody></tbody></table></div>
 <div class="small" id="completenessNote">Úplnost časových řad a mezery v jednotlivých vzorcích zatím nejsou vyhodnoceny. Samotný počet záznamů nestačí k průkazu chybějících měření.</div>
 <div class="small" id="reliabilityNote">Spolehlivost se počítá z automatických kontrol v uložené historii; zdroje vyžadující registraci jsou z procent vyloučeny.</div></section>
-<section class="panel" id="map"><h2>Globální mapa observatoří a datových center</h2><p class="small">Orientační polohy institucí poskytujících data do archivu. Značky představují sídla institucí, nikoli přesné polohy jednotlivých měřicích stanic nebo satelitů.</p><div class="map-layout"><div id="globalMap"><div class="status">Načítám mapu…</div></div><div class="map-legend"><div class="legend-item">🔵 Veřejné datové centrum</div><div class="legend-item">🟠 Zdroj s omezeným přístupem</div><div class="small" id="mapStatus">Připraveno.</div></div></div></section><section class="panel" id="qualityPanel"><h2>Panel kvality globálních zdrojů</h2><p class="small">Dostupnost endpointu, čerstvost měření, mezery a duplicity ve vráceném časovém okně jsou rozdílné vlastnosti. Skóre je provozní indikátor, nikoli vědecké ověření.</p><div class="quality-grid" id="qualityCards"><div class="quality-card">Načítání dat kvality…</div></div><div class="small" id="qualitySummary"></div><div style="overflow-x:auto;margin-top:12px"><table id="qualityDetailTable" style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:8px">Zdroj</th><th style="text-align:left;padding:8px">Vzorky</th><th style="text-align:left;padding:8px">Mezery</th><th style="text-align:left;padding:8px">Duplicitní</th><th style="text-align:left;padding:8px">Úplnost odhadem</th><th style="text-align:left;padding:8px">Skóre</th></tr></thead><tbody></tbody></table></div></section>
+<section class="panel" id="map"><h2>Globální mapa observatoří a datových center</h2><p class="small">Orientační polohy institucí poskytujících data do archivu. Značky představují sídla institucí, nikoli přesné polohy jednotlivých měřicích stanic nebo satelitů.</p><div class="map-layout"><div id="globalMap"><div class="status">Načítám mapu…</div></div><div class="map-legend"><div class="legend-item">🔵 Veřejné datové centrum</div><div class="legend-item">🟠 Zdroj s omezeným přístupem</div><div class="small" id="mapStatus">Připraveno.</div></div></div></section><section class="panel" id="qualityPanel"><h2>Panel kvality globálních zdrojů</h2><p class="small">Dostupnost endpointu, čerstvost měření, mezery a duplicity ve vráceném časovém okně jsou rozdílné vlastnosti. Skóre je provozní indikátor, nikoli vědecké ověření.</p><div class="quality-grid" id="qualityCards"><div class="quality-card">Načítání dat kvality…</div></div><div class="small" id="qualitySummary"></div><article class="quality-card" id="crossSourcePanel" style="margin-top:12px"><strong>Porovnání nezávislých indexů Kp – NOAA SWPC × GFZ</strong><div class="quality-value" id="crossSourceValue">Čekám na data…</div><p class="small" id="crossSourceNote">Porovnávají se pouze vzorky se shodným časem UTC. Rozdíl není automaticky chybou poskytovatele.</p></article><div style="overflow-x:auto;margin-top:12px"><table id="qualityDetailTable" style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th style="text-align:left;padding:8px">Zdroj</th><th style="text-align:left;padding:8px">Vzorky</th><th style="text-align:left;padding:8px">Mezery</th><th style="text-align:left;padding:8px">Duplicitní</th><th style="text-align:left;padding:8px">Úplnost odhadem</th><th style="text-align:left;padding:8px">Skóre</th></tr></thead><tbody></tbody></table></div></section>
 <section class="panel" id="catalog"><h2>Globální katalog datových zdrojů</h2><p class="small">Katalog uvádí instituci, typ dat, jednotky a oficiální vstupní adresu. Stav se mění až po skutečném pokusu o načtení. Historická dostupnost a úplnost archivů se bude doplňovat v dalších etapách.</p><div id="sources" class="grid"></div></section>
 <section class="panel" id="method"><h2>Metodika a pravidla kvality</h2><ul>
 <li><strong>Naměřená data:</strong> hodnoty získané z přístrojů nebo observatoří; vždy se uchovává zdroj a čas měření.</li>
@@ -148,18 +148,27 @@ async function loadQualityPanel(){
   const scored=rows.filter(x=>Number.isFinite(x.quality_score));
   const avgScore=scored.length?Math.round(scored.reduce((a,x)=>a+x.quality_score,0)/scored.length):null;
   const gaps=assessed.reduce((a,x)=>a+(x.completeness.gap_count||0),0);
-  const duplicates=assessed.reduce((a,x)=>a+(x.completeness.duplicate_samples||0),0);
+  const duplicateAssessments=assessed.filter(x=>Number.isFinite(x.completeness.duplicate_samples));
+  const duplicates=duplicateAssessments.reduce((a,x)=>a+x.completeness.duplicate_samples,0);
   const missing=assessed.reduce((a,x)=>a+(x.completeness.missing_samples_estimate||0),0);
   const cards=[
    ["Dostupné endpointy",available+" / "+(sum.checked??rows.length),"Nedostupné nebo blokované: "+unavailable],
    ["Čerstvost měření",(sum.fresh??0)+" čerstvá · "+(sum.stale??0)+" zastaralá","Vyhodnocený čas u "+(sum.freshness_assessed??0)+" zdrojů"],
    ["Časové řady",assessed.length+" vyhodnocené","Odhadované mezery: "+gaps+" · chybějící vzorky: "+missing],
-   ["Duplicitní vzorky",String(duplicates),"Zjištěno v načtených časových oknech"],
+   ["Duplicitní vzorky",duplicateAssessments.length?String(duplicates):"Neověřeno","Spolehlivé určení jen tam, kde zdroj rozlišuje datové řady"],
    ["Provozní skóre",avgScore===null?"Nedostupné":avgScore+" / 100","Pouze "+scored.length+" zdrojů má dost podkladů pro skóre"],
    ["Přístupová omezení",String(restricted),"Registrace se nepočítá jako výpadek"]
   ];
   $("qualityCards").innerHTML=cards.map(c=>"<article class=\"quality-card\"><strong>"+esc(c[0])+"</strong><div class=\"quality-value\">"+esc(c[1])+"</div><p class=\"small\">"+esc(c[2])+"</p></article>").join("");
   $("qualitySummary").textContent="Poslední automatický běh: "+(data.checked_at_utc||"—")+" · průměrná odezva: "+(sum.average_latency_ms??"—")+" ms. Skóre je orientační provozní ukazatel, nikoli vědecká validace.";
+  const cross=(data.cross_source_checks||[])[0];
+  if(cross&&cross.state==="assessed"){
+   $("crossSourceValue").textContent=cross.matched_samples+" shodných vzorků · průměrný rozdíl "+cross.mean_absolute_difference+" Kp";
+   $("crossSourceNote").textContent="Největší rozdíl: "+cross.max_absolute_difference+" Kp · rozdíly nad 0,33: "+cross.disagreements_over_0_33+" · poslední společný čas: "+cross.latest_common_time_utc+". Jde o porovnání hodnot, ne automatické určení správného zdroje.";
+  }else{
+   $("crossSourceValue").textContent="Zatím nevyhodnoceno";
+   $("crossSourceNote").textContent=(cross&&cross.state==="no_common_timestamps_or_unrecognized_format"?"Nebyly nalezeny společné časové značky nebo nebyl rozpoznán formát dat.":"Porovnání čeká na dostupnost obou zdrojů.")+" NOAA a GFZ zůstávají samostatnými zdroji.";
+  }
   const body=$("qualityDetailTable").querySelector("tbody");
   body.innerHTML=rows.map(row=>{
    const c=row.completeness||{},name=catalog.find(x=>x.id===row.id)?.name||row.id;
