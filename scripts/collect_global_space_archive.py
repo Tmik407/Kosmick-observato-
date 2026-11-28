@@ -357,7 +357,7 @@ def persist_timeseries(payloads, now):
             if key not in known:
                 existing.append(sample)
                 additions += 1
-                path.write_text(json.dumps(sorted(existing, key=lambda row: (row.get("time_utc", ""), row.get("source", ""))), ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+                path.write_text(json.dumps(sorted(existing, key=lambda row: (row.get("time_utc", ""), row.get("source", ""))), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return additions
 
 
@@ -427,7 +427,8 @@ status = {
         "quality_scores_available": sum(1 for row in rows if row.get("quality_score") is not None),
     },
     "sources": rows,
-    "cross_source_checks": [cross_source],\n    "timeseries_archive": {"format": "UTC daily JSON", "samples_added_this_run": archived_samples_added, "directory": "data/global-archive/timeseries/"},
+    "cross_source_checks": [cross_source],
+    "timeseries_archive": {"format": "UTC daily JSON", "samples_added_this_run": archived_samples_added, "directory": "data/global-archive/timeseries/"},
 }
 (ROOT / "latest-status.json").write_text(
     json.dumps(status, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
