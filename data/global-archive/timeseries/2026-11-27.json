@@ -1,11 +1,27 @@
 [
   {
+    "source": "gfz-kp",
+    "time_utc": "2026-11-27T00:00:00Z",
+    "values": {
+      "Kp": 2.0,
+      "status": "pre"
+    }
+  },
+  {
     "source": "noaa-kp",
     "time_utc": "2026-11-27T00:00:00Z",
     "values": {
       "Kp": 2.0,
       "a_running": 7,
       "station_count": 8
+    }
+  },
+  {
+    "source": "gfz-kp",
+    "time_utc": "2026-11-27T03:00:00Z",
+    "values": {
+      "Kp": 0.667,
+      "status": "pre"
     }
   },
   {
@@ -18,6 +34,14 @@
     }
   },
   {
+    "source": "gfz-kp",
+    "time_utc": "2026-11-27T06:00:00Z",
+    "values": {
+      "Kp": 0.0,
+      "status": "pre"
+    }
+  },
+  {
     "source": "noaa-kp",
     "time_utc": "2026-11-27T06:00:00Z",
     "values": {
@@ -27,12 +51,28 @@
     }
   },
   {
+    "source": "gfz-kp",
+    "time_utc": "2026-11-27T09:00:00Z",
+    "values": {
+      "Kp": 0.0,
+      "status": "pre"
+    }
+  },
+  {
     "source": "noaa-kp",
     "time_utc": "2026-11-27T09:00:00Z",
     "values": {
       "Kp": 0.33,
       "a_running": 2,
       "station_count": 8
+    }
+  },
+  {
+    "source": "gfz-kp",
+    "time_utc": "2026-11-27T12:00:00Z",
+    "values": {
+      "Kp": 0.0,
+      "status": "pre"
     }
   },
   {
@@ -36306,6 +36346,14 @@
       "max_telemetry_flag": 0,
       "max_data_flag": 0,
       "overall_quality": 0
+    }
+  },
+  {
+    "source": "gfz-kp",
+    "time_utc": "2026-11-27T15:00:00Z",
+    "values": {
+      "Kp": 0.0,
+      "status": "pre"
     }
   },
   {
@@ -73893,6 +73941,14 @@
     }
   },
   {
+    "source": "gfz-kp",
+    "time_utc": "2026-11-27T18:00:00Z",
+    "values": {
+      "Kp": 0.667,
+      "status": "pre"
+    }
+  },
+  {
     "source": "goes-xray",
     "time_utc": "2026-11-27T18:00:00Z",
     "values": {
@@ -107766,6 +107822,14 @@
       "max_sample_count_flag": 0,
       "max_telemetry_flag": 0,
       "overall_quality": 0
+    }
+  },
+  {
+    "source": "gfz-kp",
+    "time_utc": "2026-11-27T21:00:00Z",
+    "values": {
+      "Kp": 2.333,
+      "status": "pre"
     }
   },
   {

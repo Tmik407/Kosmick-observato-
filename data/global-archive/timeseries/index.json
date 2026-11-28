@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "project": "X-5 GLOBAL SPACE DATA ARCHIVE",
-  "updated_at_utc": "2026-11-28T12:12:41.795546+00:00",
+  "updated_at_utc": "2026-11-28T12:26:23.075617+00:00",
   "days": [
     {
       "date": "2026-11-21",
@@ -46,16 +46,18 @@
     {
       "date": "2026-11-26",
       "file": "2026-11-26.json",
-      "samples": 8,
+      "samples": 16,
       "sources": {
+        "gfz-kp": 8,
         "noaa-kp": 8
       }
     },
     {
       "date": "2026-11-27",
       "file": "2026-11-27.json",
-      "samples": 5026,
+      "samples": 5034,
       "sources": {
+        "gfz-kp": 8,
         "noaa-kp": 8,
         "noaa-mag": 1798,
         "goes-xray": 1426,
@@ -65,15 +67,16 @@
     {
       "date": "2026-11-28",
       "file": "2026-11-28.json",
-      "samples": 4942,
+      "samples": 5051,
       "sources": {
-        "goes-xray": 1458,
+        "gfz-kp": 4,
+        "goes-xray": 1486,
         "noaa-kp": 4,
-        "noaa-mag": 1748,
-        "noaa-wind": 1732
+        "noaa-mag": 1790,
+        "noaa-wind": 1767
       }
     }
   ],
   "total_days": 8,
-  "total_samples": 10016
+  "total_samples": 10141
 }
