@@ -385,7 +385,7 @@ def build_timeseries_index():
                 "days": days, "total_days": len(days),
                 "total_samples": sum(day["samples"] for day in days)}
     (archive_dir / "index.json").write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return manifest
 
 
