@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - main
+      - feature/global-timeseries-storage
     paths:
       - ".github/workflows/global-space-data-archive.yml"
       - "scripts/collect_global_space_archive.py"
