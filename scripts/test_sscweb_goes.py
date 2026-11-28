@@ -36,7 +36,7 @@ def find_observatory_id(catalog, satellite):
     for item in walk(catalog):
         text = json.dumps(item, ensure_ascii=False).lower()
         if any(alias in text for alias in aliases):
-            ident = next((item[k] for k in ("id", "observatoryId", "observatory") if isinstance(item.get(k), str)), None)
+            ident = next((item[k] for k in ("Id", "id", "observatoryId", "observatory") if isinstance(item.get(k), str)), None)
             if ident:
                 return ident, item
     return None, None
