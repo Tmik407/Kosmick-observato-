@@ -50,14 +50,17 @@ def extract_kp_series(payload):
 
     def walk(value):
         if isinstance(value, list):
-            if value and isinstance(value[0], str) and any(
-                str(x).lower() in ("time_tag", "datetime", "time", "date") for x in value
-            ):
-                headers = [str(x).lower() for x in value]
+            header = value[0] if value and isinstance(value[0], list) else value
+            is_table = bool(header) and all(isinstance(x, str) for x in header) and any(
+                str(x).lower() in ("time_tag", "datetime", "time", "date") for x in header
+            )
+            if is_table:
+                headers = [str(x).lower() for x in header]
                 ti = next((i for i, x in enumerate(headers) if x in ("time_tag", "datetime", "time", "date")), None)
                 ki = next((i for i, x in enumerate(headers) if x in ("kp", "kp_index", "kpvalue")), None)
                 if ti is not None and ki is not None:
-                    for row in value[1:]:
+                    rows = value[1:] if isinstance(value[0], list) else []
+                    for row in rows:
                         if isinstance(row, list) and max(ti, ki) < len(row):
                             add(row[ti], row[ki])
             else:
