@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - feature/global-space-data-archive
+      - main
     paths:
       - ".github/workflows/global-space-data-archive.yml"
       - "scripts/collect_global_space_archive.py"
@@ -39,9 +39,12 @@ jobs:
           from pathlib import Path
           status = json.loads(Path("data/global-archive/latest-status.json").read_text(encoding="utf-8"))
           history = json.loads(Path("data/global-archive/history.json").read_text(encoding="utf-8"))
-          assert len(status.get("sources", [])) == 5, "Expected five source checks"
+          assert len(status.get("sources", [])) == 9, "Expected nine source checks"
           assert history.get("runs"), "History must contain at least one run"
           assert history["runs"][-1]["checked_at_utc"] == status["checked_at_utc"]
+          assert status.get("summary", {}).get("total") == 9
+          assert status.get("schema_version") == "1.2"
+          assert all(row.get("freshness_state") for row in status["sources"])
           print("Archive OK:", len(status["sources"]), "sources;", len(history["runs"]), "runs")
           PY
 
