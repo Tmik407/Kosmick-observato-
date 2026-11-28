@@ -264,9 +264,12 @@ def extract_kp_series(payload):
             lower = {str(k).lower(): k for k in value}
             tk = next((lower[k] for k in ("datetime", "time_tag", "time", "date") if k in lower), None)
             kk = next((lower[k] for k in ("kp", "kp_index", "kpvalue") if k in lower), None)
-            if tk is not None and kk is not None and isinstance(value[tk], list) and isinstance(value[kk], list):
-                for stamp, val in zip(value[tk], value[kk]):
-                    add(stamp, val)
+            if tk is not None and kk is not None:
+                if isinstance(value[tk], list) and isinstance(value[kk], list):
+                    for stamp, val in zip(value[tk], value[kk]):
+                        add(stamp, val)
+                else:
+                    add(value[tk], value[kk])
             for item in value.values():
                 if isinstance(item, (dict, list)):
                     walk(item)
