@@ -148,8 +148,11 @@ def request_url(source, now):
     if source["id"] == "gfz-kp":
         start = (now - dt.timedelta(days=2)).date().isoformat() + "T00:00:00Z"
         end = now.isoformat(timespec="seconds").replace("+00:00", "Z")
+        # Do not request status=def here: GFZ definitive Kp values are
+        # published with a multi-week delay. The archive window is recent,
+        # so the default API response is needed to include current nowcast data.
         url += "?" + urllib.parse.urlencode({
-            "start": start, "end": end, "index": "Kp", "status": "def"
+            "start": start, "end": end, "index": "Kp"
         })
     return url
 
