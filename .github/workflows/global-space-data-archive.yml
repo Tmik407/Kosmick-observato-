@@ -48,6 +48,12 @@ jobs:
           assert all(row.get("freshness_state") for row in status["sources"])
           assert status.get("timeseries_archive", {}).get("format") == "UTC daily JSON"
           Path("data/global-archive/timeseries").mkdir(parents=True, exist_ok=True)
+          index_path = Path("data/global-archive/timeseries/index.json")
+          if index_path.exists():
+            index = json.loads(index_path.read_text(encoding="utf-8"))
+            assert index.get("schema_version") == "1.0"
+            assert isinstance(index.get("days"), list)
+          print("Timeseries browser index validation OK")
           print("Archive OK:", len(status["sources"]), "sources;", len(history["runs"]), "runs")
           PY
 
