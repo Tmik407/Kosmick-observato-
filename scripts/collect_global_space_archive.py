@@ -209,3 +209,5 @@ history["updated_at_utc"] = now
 history["schema_version"] = "1.2"
 history_path.write_text(json.dumps(history, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 print(json.dumps(status["summary"], ensure_ascii=False))
+for row in rows:
+    print(f"{row['id']}: ok={row['ok']} state={row['access_state']} latency_ms={row['latency_ms']} error={row['error']}")
