@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-28T10:01:17Z",
+  "generatedAt": "2026-11-28T18:06:07Z",
   "source": "WDC Kyoto HAPI · Best Available datasets",
   "citation": {
     "AE": "doi:10.17593/15031-54800",
@@ -25,7 +25,7 @@
       "intervalStop": "2026-11-16T00:00:00Z",
       "requestedHours": 168,
       "metadataStart": "1975-01-01T00:00:00Z",
-      "metadataStop": "2026-11-28T11:00:00Z",
+      "metadataStop": "2026-11-28T19:00:00Z",
       "latest": {
         "Time": "2026-11-15T23:59:00Z",
         "aeValue": 26,
@@ -54,7 +54,7 @@
       "intervalStop": "2026-11-01T00:00:00Z",
       "requestedHours": 168,
       "metadataStart": "1981-01-01T00:00:00Z",
-      "metadataStop": "2026-11-28T11:00:00Z",
+      "metadataStop": "2026-11-28T19:00:00Z",
       "latest": {
         "Time": "2026-10-31T23:59:00Z",
         "asyDValue": 16,
