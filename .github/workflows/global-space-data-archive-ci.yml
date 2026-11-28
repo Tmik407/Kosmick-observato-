@@ -12,7 +12,7 @@ on:
       - "global-space-data-archive.html"
   push:
     branches:
-      - feature/global-archive-world-sources
+      - main
     paths:
       - ".github/workflows/global-space-data-archive-ci.yml"
       - ".github/workflows/global-space-data-archive.yml"
@@ -61,7 +61,7 @@ jobs:
           assert len(rows) == summary.get("total") == 9, "Latest status source count mismatch"
           assert summary.get("available", 0) + summary.get("unavailable", 0) + summary.get("requires_registration", 0) == summary.get("total"), "Latest summary totals mismatch"
           assert summary.get("checked", 0) == summary.get("available", 0) + summary.get("unavailable", 0), "Checked source count mismatch"
-          assert summary.get("requires_registration", 0) == 2, "Expected two registration-gated providers"
+          assert summary.get("requires_registration", 0) == 2, "Expected two registration-gated providers"\n          assert summary.get("fresh", 0) + summary.get("stale", 0) == summary.get("freshness_assessed", 0), "Freshness totals mismatch"\n          assert all(item.get("freshness_state") for item in rows), "Missing freshness classification"
           assert {item["id"] for item in catalogue} == {item["id"] for item in rows}, "Catalogue and latest source IDs differ"
           assert runs, "History must contain at least one run"
           assert len(runs) <= 1000, "History exceeds the 1,000-run retention limit"
