@@ -27,12 +27,12 @@ jobs:
         run: python scripts/update_kyoto_indices.py
       - name: Commit data snapshot
         run: |
-          if git diff --quiet -- data/space-weather/kyoto-indices.json; then
+          git add data/space-weather/kyoto-indices.json
+          if git diff --cached --quiet -- data/space-weather/kyoto-indices.json; then
             echo "Kyoto snapshot unchanged."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/space-weather/kyoto-indices.json
           git commit -m "Update WDC Kyoto geomagnetic indices"
           git push
