@@ -400,6 +400,8 @@ freshness_assessed = [row for row in rows if row["freshness_state"] in ("fresh",
 fresh_count = sum(1 for row in freshness_assessed if row["freshness_state"] == "fresh")
 stale_count = sum(1 for row in freshness_assessed if row["freshness_state"] == "stale")
 
+# Rebuild immediately before status serialization so the manifest is always in scope.
+timeseries_index = build_timeseries_index()
 status = {
     "schema_version": "1.3",
     "project": "X-5 GLOBAL SPACE DATA ARCHIVE",
