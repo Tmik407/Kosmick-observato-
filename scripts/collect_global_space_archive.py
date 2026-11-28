@@ -388,6 +388,8 @@ now = now_dt.isoformat()
 with ThreadPoolExecutor(max_workers=5) as pool:
     rows = list(pool.map(lambda source: collect(source, now_dt), sources))
 archived_samples_added = persist_timeseries(PAYLOADS, now_dt)
+# Build the manifest after writing samples and before publishing status metadata.
+timeseries_index = build_timeseries_index()
 cross_source = compare_kp_sources(PAYLOADS)
 checked = [row for row in rows if row["ok"] is not None]
 available = sum(1 for row in checked if row["ok"] is True)
