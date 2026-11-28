@@ -12,7 +12,7 @@ on:
       - "global-space-data-archive.html"
   push:
     branches:
-      - feature/global-space-data-archive
+      - feature/global-archive-world-sources
     paths:
       - ".github/workflows/global-space-data-archive-ci.yml"
       - ".github/workflows/global-space-data-archive.yml"
@@ -38,6 +38,9 @@ jobs:
       - name: Ověřit syntaxi Pythonu
         run: python -m py_compile scripts/collect_global_space_archive.py
 
+      - name: Spustit kontrolní sběr všech veřejných zdrojů
+        run: python scripts/collect_global_space_archive.py
+
       - name: Ověřit JSON, katalog a historii
         run: |
           python - <<'PY'
@@ -54,9 +57,11 @@ jobs:
           summary = latest.get("summary", {})
           runs = history.get("runs", [])
 
-          assert len(catalogue) == 5, f"Expected 5 catalogue sources, got {len(catalogue)}"
-          assert len(rows) == summary.get("total") == 5, "Latest status source count mismatch"
-          assert summary.get("available", 0) + summary.get("unavailable", 0) == summary.get("total"), "Latest summary totals mismatch"
+          assert len(catalogue) == 9, f"Expected 9 catalogue sources, got {len(catalogue)}"
+          assert len(rows) == summary.get("total") == 9, "Latest status source count mismatch"
+          assert summary.get("available", 0) + summary.get("unavailable", 0) + summary.get("requires_registration", 0) == summary.get("total"), "Latest summary totals mismatch"
+          assert summary.get("checked", 0) == summary.get("available", 0) + summary.get("unavailable", 0), "Checked source count mismatch"
+          assert summary.get("requires_registration", 0) == 2, "Expected two registration-gated providers"
           assert {item["id"] for item in catalogue} == {item["id"] for item in rows}, "Catalogue and latest source IDs differ"
           assert runs, "History must contain at least one run"
           assert len(runs) <= 1000, "History exceeds the 1,000-run retention limit"
@@ -66,8 +71,13 @@ jobs:
               run_sources = run.get("sources", [])
               assert len(run_sources) == run.get("total"), f"History run {index}: source count mismatch"
               available = sum(1 for item in run_sources if item.get("ok") is True)
+              unavailable = sum(1 for item in run_sources if item.get("ok") is False)
+              gated = sum(1 for item in run_sources if item.get("access_state") == "requires_registration")
               assert available == run.get("available"), f"History run {index}: available count mismatch"
-              assert run.get("available", 0) + run.get("unavailable", 0) == run.get("total"), f"History run {index}: totals mismatch"
+              assert unavailable == run.get("unavailable"), f"History run {index}: unavailable count mismatch"
+              if "requires_registration" in run:
+                  assert gated == run.get("requires_registration"), f"History run {index}: registration count mismatch"
+              assert run.get("available", 0) + run.get("unavailable", 0) + run.get("requires_registration", 0) == run.get("total"), f"History run {index}: totals mismatch"
 
           print(f"Archive validation OK: {len(catalogue)} sources, {len(runs)} history runs.")
           PY
