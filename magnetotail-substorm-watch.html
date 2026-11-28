@@ -37,6 +37,8 @@ const gr18=latest(gh18,x=>num(x.Hp)!==null&&num(x.He)!==null&&num(x.Hn)!==null);
 const magRows=records(m),plRows=records(p);
 const mr=activeLatest(magRows,x=>num(x.bz_gsm)!==null),pr=activeLatest(plRows,x=>num(x.proton_speed)!==null);
 const bz=mr?num(mr.bz_gsm):null,bt=mr?num(mr.bt):null,speed=pr?num(pr.proton_speed):null;
+const hp=gr?num(gr.Hp):null,he=gr?num(gr.He):null,hn=gr?num(gr.Hn):null;
+const goFresh=freshness(gr,30),go18Fresh=freshness(gr18,30),magFresh=freshness(mr,15),windFresh=freshness(pr,15);
 const southMinutes=southwardDuration(magRows,-2,mr?mr.source:null),d18=go18Fresh.ok?hpChange(gh18):null,d19=goFresh.ok?hpChange(gh):null;
 $('bzDirection').textContent=bz===null?'—':(bz<0?(bz<=-2?'Jižní':'Slabě jižní'):'Severní');
 $('bzSouth').textContent=bz===null?'—':fmt(Math.max(0,-bz));
@@ -51,9 +53,7 @@ else if(d18.delta>=5&&d19.delta>=5){paired.className='status warn';paired.textCo
 else if(d18.delta<=-5&&d19.delta<=-5){paired.className='status warn';paired.textContent='Obě družice zaznamenaly výrazný souběžný pokles Hp. Změnu je vhodné porovnat s polohou družic a dalšími geomagnetickými daty.';}
 else{paired.className='status';paired.textContent='Není zjištěn souběžný výrazný růst Hp na obou družicích podle orientačního prahu X-5.';}
 
-const hp=gr?num(gr.Hp):null,he=gr?num(gr.He):null,hn=gr?num(gr.Hn):null;
 $('hp').textContent=fmt(hp);$('he').textContent=fmt(he);$('hn').textContent=fmt(hn);$('bz').textContent=fmt(bz);$('bt').textContent=fmt(bt);$('speed').textContent=fmt(speed,0);
-const goFresh=freshness(gr,30),go18Fresh=freshness(gr18,30),magFresh=freshness(mr,15),windFresh=freshness(pr,15);
 $('hp18').textContent=fmt(gr18?num(gr18.Hp):null);$('he18').textContent=fmt(gr18?num(gr18.He):null);$('hn18').textContent=fmt(gr18?num(gr18.Hn):null);
 const t18=gr18?(gr18.time_tag||gr18.time||''):'—';$('time18').textContent=t18;$('fresh18').textContent='Stáří dat GOES-18: '+go18Fresh.label+'. Zdroj: NOAA SWPC secondary magnetometer.';
 const rows18=gh18.map(x=>({time:x.time_tag||'',hp:num(x.Hp)}));draw(rows18,'plot18','plotInfo18','GOES-18');
