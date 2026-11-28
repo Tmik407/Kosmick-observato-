@@ -12,7 +12,7 @@ on:
       - "global-space-data-archive.html"
   push:
     branches:
-      - feature/global-space-data-archive
+      - feature/global-archive-world-sources
     paths:
       - ".github/workflows/global-space-data-archive-ci.yml"
       - ".github/workflows/global-space-data-archive.yml"
