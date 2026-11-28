@@ -72,7 +72,7 @@ jobs:
               if quality.get("state") == "assessed":
                   assert quality.get("timestamped_samples", 0) >= quality.get("unique_samples", 0)
                   if quality.get("duplicate_samples") is not None:
-                  assert quality.get("duplicate_samples") == quality.get("timestamped_samples", 0) - quality.get("unique_samples", 0)
+                      assert quality.get("duplicate_samples") == quality.get("timestamped_samples", 0) - quality.get("unique_samples", 0)
                   assert quality.get("gap_count", 0) >= 0
                   if quality.get("completeness_percent_estimate") is not None:
                       assert 0 <= quality["completeness_percent_estimate"] <= 100
