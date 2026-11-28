@@ -42,7 +42,10 @@ jobs:
           assert len(status.get("sources", [])) == 9, "Expected nine source checks"
           assert history.get("runs"), "History must contain at least one run"
           assert history["runs"][-1]["checked_at_utc"] == status["checked_at_utc"]
-          assert status.get("summary", {}).get("total") == 9\n          assert status.get("schema_version") == "1.2"\n          assert all(row.get("freshness_state") for row in status["sources"])\n          print("Archive OK:", len(status["sources"]), "sources;", len(history["runs"]), "runs")
+          assert status.get("summary", {}).get("total") == 9
+                    assert status.get("schema_version") == "1.2"
+                    assert all(row.get("freshness_state") for row in status["sources"])
+                    print("Archive OK:", len(status["sources"]), "sources;", len(history["runs"]), "runs")
           PY
 
       - name: Uložit historii do stejné větve
