@@ -364,6 +364,31 @@ def persist_timeseries(payloads, now):
     return additions
 
 
+def build_timeseries_index():
+    """Create a compact manifest for static archive browsers."""
+    archive_dir = ROOT / "timeseries"
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    days = []
+    for path in sorted(archive_dir.glob("????-??-??.json")):
+        try:
+            rows = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        by_source = {}
+        for row in rows if isinstance(rows, list) else []:
+            source = row.get("source", "unknown")
+            by_source[source] = by_source.get(source, 0) + 1
+        days.append({"date": path.stem, "file": path.name,
+                     "samples": sum(by_source.values()), "sources": by_source})
+    manifest = {"schema_version": "1.0", "project": "X-5 GLOBAL SPACE DATA ARCHIVE",
+                "updated_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                "days": days, "total_days": len(days),
+                "total_samples": sum(day["samples"] for day in days)}
+    (archive_dir / "index.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+    return manifest
+
+
 def compare_kp_sources(payloads):
     result = {"comparison": "NOAA SWPC Kp vs GFZ Kp", "state": "not_assessed",
               "matched_samples": 0, "mean_absolute_difference": None,
@@ -433,7 +458,7 @@ status = {
     },
     "sources": rows,
     "cross_source_checks": [cross_source],
-    "timeseries_archive": {"format": "UTC daily JSON", "samples_added_this_run": archived_samples_added, "directory": "data/global-archive/timeseries/"},
+    "timeseries_archive": {"format": "UTC daily JSON", "samples_added_this_run": archived_samples_added, "directory": "data/global-archive/timeseries/", "index_file": "data/global-archive/timeseries/index.json", "total_days": timeseries_index["total_days"], "total_samples": timeseries_index["total_samples"]},
 }
 (ROOT / "latest-status.json").write_text(
     json.dumps(status, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
