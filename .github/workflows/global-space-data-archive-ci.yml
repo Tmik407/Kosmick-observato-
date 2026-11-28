@@ -38,9 +38,8 @@ jobs:
       - name: Ověřit syntaxi Pythonu
         run: python -m py_compile scripts/collect_global_space_archive.py
 
-      - name: Spustit kontrolní sběr všech veřejných zdrojů
-        run: python scripts/collect_global_space_archive.py
-
+      # Pull-request CI stays deterministic and offline. Live endpoint polling
+      # belongs to the scheduled/manual archive collector workflow.
       - name: Ověřit JSON, katalog a historii
         run: |
           python - <<'PY'
