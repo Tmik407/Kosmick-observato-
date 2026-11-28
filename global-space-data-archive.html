@@ -118,5 +118,28 @@ const body=$("qualityTable").querySelector("tbody");body.innerHTML=(status.sourc
 const sum=status.summary||{};$("freshnessNote").textContent="Poslední automatická kontrola: "+status.checked_at_utc+". Čerstvá měření: "+(sum.fresh??"—")+" · zastaralá: "+(sum.stale??"—")+" · s vyhodnotitelným časem: "+(sum.freshness_assessed??"—")+".";
 $("completenessNote").textContent="Úplnost časových řad a mezery v jednotlivých vzorcích zatím nejsou vyhodnoceny. Počet záznamů z katalogového endpointu není zaměňován za počet časových vzorků.";
 }catch(e){$("historyNote").textContent="Historická analytika se nepodařila načíst: "+e.message;$("freshnessNote").textContent="Data čerstvosti nejsou k dispozici."}}
-renderCatalog();$("refresh").addEventListener("click",refresh);refresh();loadHistory();
-</script></body></html>
+renderCatalog();$("refresh").addEventListener("click",refresh);refresh();loadHistory();loadQualityPanel();
+const archiveLocations=[
+{name:"NOAA SWPC",city:"Boulder, Colorado, USA",lat:40.015,lon:-105.270,ids:["noaa-wind","noaa-mag","noaa-kp"],url:"https://www.swpc.noaa.gov/",restricted:false,info:"Sluneční vítr, meziplanetární magnetické pole a Kp"},
+{name:"NASA GSFC / SSCWeb",city:"Greenbelt, Maryland, USA",lat:38.991,lon:-76.848,ids:["nasa-ssc"],url:"https://sscweb.gsfc.nasa.gov/",restricted:false,info:"Katalog satelitních observatoří"},
+{name:"GFZ Helmholtz Centre",city:"Potsdam, Německo",lat:52.382,lon:13.064,ids:["gfz-kp"],url:"https://kp.gfz.de/en/data",restricted:false,info:"Geomagnetické indexy"},
+{name:"INTERMAGNET / BGS GIN",city:"Edinburgh, Spojené království",lat:55.953,lon:-3.189,ids:["intermagnet-hapi"],url:"https://imag-data.bgs.ac.uk/GIN_V1/",restricted:false,info:"Síť geomagnetických observatoří"},
+{name:"ESA Space Safety",city:"Darmstadt, Německo",lat:49.872,lon:8.651,ids:["esa-swe-hapi"],url:"https://swe.ssa.esa.int/",restricted:true,info:"Evropské kosmické počasí"},
+{name:"ISGI / EOST",city:"Štrasburk, Francie",lat:48.580,lon:7.768,ids:["isgi-indices"],url:"https://isgi.unistra.fr/",restricted:true,info:"Mezinárodní geomagnetické indexy"}
+];
+function initGlobalMap(){
+const el=$("globalMap");if(!el)return;if(!window.L){el.innerHTML="<div class=\"status\">Mapová knihovna není dostupná. Zkontroluj internetové připojení.</div>";$("mapStatus").textContent="Mapu se nepodařilo načíst.";return;}
+const map=L.map("globalMap",{scrollWheelZoom:false}).setView([45,8],2);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:8,attribution:"© OpenStreetMap contributors"}).addTo(map);
+archiveLocations.forEach(p=>{const color=p.restricted?"#d18b28":"#0787b8";const icon=L.divIcon({className:"",html:"<div style=\"width:17px;height:17px;border-radius:50%;background:"+color+";border:3px solid white;box-shadow:0 1px 7px #17344c99\"></div>",iconSize:[17,17],iconAnchor:[8,8]});
+const links=p.ids.map(id=>{const src=catalog.find(x=>x.id===id);return src?"<br><a href=\""+esc(src.url)+"\" target=\"_blank\" rel=\"noopener\">"+esc(src.name)+"</a>":"";}).join("");
+L.marker([p.lat,p.lon],{icon:icon}).addTo(map).bindPopup("<strong>"+esc(p.name)+"</strong><br>"+esc(p.city)+"<p>"+esc(p.info)+"</p>"+links+"<p><a href=\""+esc(p.url)+"\" target=\"_blank\" rel=\"noopener\">Oficiální web</a></p>");});
+$("mapStatus").textContent="Zobrazeno "+archiveLocations.length+" orientačních poloh institucí, nikoli přesných poloh měřicích stanic.";setTimeout(()=>map.invalidateSize(),300);
+}
+async function loadQualityPanel(){try{const r=await fetch("data/global-archive/latest-status.json?quality="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);const d=await r.json(),s=d.summary||{},rows=d.sources||[];
+const available=rows.filter(x=>x.access_state==="available").length,unavailable=rows.filter(x=>x.access_state==="unavailable_or_blocked").length,restricted=rows.filter(x=>x.access_state==="requires_registration").length;
+const cards=[["Dostupné endpointy",available+" / "+(s.checked||rows.length),"Nedostupné nebo blokované: "+unavailable],["Čerstvost měření",(s.fresh||0)+" čerstvá · "+(s.stale||0)+" zastaralá","Vyhodnocený čas u "+(s.freshness_assessed||0)+" zdrojů"],["Přístupová omezení",String(restricted),"Registrace se nepočítá jako výpadek"],["Úplnost časových řad","Nevyhodnocena","Kontrola mezer a duplicit bude další etapou"]];
+$("qualityCards").innerHTML=cards.map(c=>"<article class=\"quality-card\"><strong>"+esc(c[0])+"</strong><div class=\"quality-value\">"+esc(c[1])+"</div><p class=\"small\">"+esc(c[2])+"</p></article>").join("");
+$("qualitySummary").textContent="Poslední automatický běh: "+(d.checked_at_utc||"—")+" · průměrná odezva: "+(s.average_latency_ms??"—")+" ms. Počet záznamů není skóre vědecké kvality."; }catch(e){$("qualityCards").textContent="Kvalita dat není dostupná: "+e.message;}}
+loadQualityPanel();
+</script><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" onload="initGlobalMap()"></script></body></html>
