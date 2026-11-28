@@ -235,6 +235,71 @@ def collect(source, now):
     return result
 
 
+
+def extract_kp_series(payload):
+    found = {}
+    def add(stamp, value):
+        parsed = parse_utc(stamp)
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return
+        if parsed and 0 <= number <= 9:
+            found[parsed] = number
+    def walk(value):
+        if isinstance(value, list):
+            if value and isinstance(value[0], str) and any(str(x).lower() in ("time_tag", "datetime", "time", "date") for x in value):
+                headers = [str(x).lower() for x in value]
+                ti = next((i for i, x in enumerate(headers) if x in ("time_tag", "datetime", "time", "date")), None)
+                ki = next((i for i, x in enumerate(headers) if x in ("kp", "kp_index", "kpvalue")), None)
+                if ti is not None and ki is not None:
+                    for row in value[1:]:
+                        if isinstance(row, list) and max(ti, ki) < len(row):
+                            add(row[ti], row[ki])
+            else:
+                for item in value:
+                    if isinstance(item, (dict, list)):
+                        walk(item)
+        elif isinstance(value, dict):
+            lower = {str(k).lower(): k for k in value}
+            tk = next((lower[k] for k in ("datetime", "time_tag", "time", "date") if k in lower), None)
+            kk = next((lower[k] for k in ("kp", "kp_index", "kpvalue") if k in lower), None)
+            if tk is not None and kk is not None and isinstance(value[tk], list) and isinstance(value[kk], list):
+                for stamp, val in zip(value[tk], value[kk]):
+                    add(stamp, val)
+            for item in value.values():
+                if isinstance(item, (dict, list)):
+                    walk(item)
+    walk(payload)
+    return found
+
+
+def compare_kp_sources(payloads):
+    result = {"comparison": "NOAA SWPC Kp vs GFZ Kp", "state": "not_assessed",
+              "matched_samples": 0, "mean_absolute_difference": None,
+              "max_absolute_difference": None, "disagreements_over_0_33": None,
+              "method": "Exact UTC timestamp matches only; differences > 0.33 are flagged, not treated as source failure."}
+    if "noaa-kp" not in payloads or "gfz-kp" not in payloads:
+        result["state"] = "source_unavailable"
+        return result
+    noaa = extract_kp_series(payloads["noaa-kp"])
+    gfz = extract_kp_series(payloads["gfz-kp"])
+    common = sorted(set(noaa) & set(gfz))
+    if not common:
+        result["state"] = "no_common_timestamps_or_unrecognized_format"
+        result["noaa_samples_parsed"] = len(noaa)
+        result["gfz_samples_parsed"] = len(gfz)
+        return result
+    diffs = [abs(noaa[t] - gfz[t]) for t in common]
+    result.update({"state": "assessed", "matched_samples": len(common),
+        "noaa_samples_parsed": len(noaa), "gfz_samples_parsed": len(gfz),
+        "mean_absolute_difference": round(sum(diffs) / len(diffs), 3),
+        "max_absolute_difference": round(max(diffs), 3),
+        "disagreements_over_0_33": sum(1 for x in diffs if x > 0.33),
+        "latest_common_time_utc": common[-1].isoformat()})
+    return result
+
+
 catalogue = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
 sources = catalogue.get("sources", [])
 if not sources:
@@ -243,6 +308,7 @@ if not sources:
 now_dt = dt.datetime.now(dt.timezone.utc)
 now = now_dt.isoformat()
 rows = [collect(source, now_dt) for source in sources]
+cross_source = compare_kp_sources(PAYLOADS)
 checked = [row for row in rows if row["ok"] is not None]
 available = sum(1 for row in checked if row["ok"] is True)
 unavailable = sum(1 for row in checked if row["ok"] is False)
@@ -273,6 +339,7 @@ status = {
         "quality_scores_available": sum(1 for row in rows if row.get("quality_score") is not None),
     },
     "sources": rows,
+    "cross_source_checks": [cross_source],
 }
 (ROOT / "latest-status.json").write_text(
     json.dumps(status, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
@@ -293,6 +360,7 @@ history.setdefault("runs", []).append({
     "requires_registration": requires_registration,
     "average_latency_ms": status["summary"]["average_latency_ms"],
     "fresh": fresh_count, "stale": stale_count,
+    "cross_source_checks": [cross_source],
     "sources": [
         {key: row.get(key) for key in (
             "id", "ok", "access_state", "http_status", "latency_ms",
