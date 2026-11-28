@@ -45,7 +45,7 @@ jobs:
           assert status.get("summary", {}).get("total") == 9
           assert status.get("schema_version") == "1.3"
           assert all("completeness" in row and "quality_score" in row for row in status["sources"])
-          assert all(row.get("freshness_state") for row in status["sources"])
+          assert all(row.get("freshness_state") for row in status["sources"])\n          assert status.get("timeseries_archive", {}).get("format") == "UTC daily JSON"\n          Path("data/global-archive/timeseries").mkdir(parents=True, exist_ok=True)
           print("Archive OK:", len(status["sources"]), "sources;", len(history["runs"]), "runs")
           PY
 
@@ -53,7 +53,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/global-archive/latest-status.json data/global-archive/history.json
+          git add data/global-archive/latest-status.json data/global-archive/history.json data/global-archive/timeseries/
           if git diff --cached --quiet; then
             echo "Historie beze změny"
             exit 0
