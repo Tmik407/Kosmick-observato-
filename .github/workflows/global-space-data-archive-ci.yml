@@ -64,13 +64,15 @@ jobs:
           assert summary.get("requires_registration", 0) == 2, "Expected two registration-gated providers"
           assert summary.get("fresh", 0) + summary.get("stale", 0) == summary.get("freshness_assessed", 0), "Freshness totals mismatch"
           assert all(item.get("freshness_state") for item in rows), "Missing freshness classification"
-          assert all("completeness" in item and "quality_score" in item for item in rows), "Missing quality engine fields"\n          assert latest.get("cross_source_checks"), "Missing cross-source comparison result"
+          assert all("completeness" in item and "quality_score" in item for item in rows), "Missing quality engine fields"
+          assert latest.get("cross_source_checks"), "Missing cross-source comparison result"
           assert summary.get("completeness_assessed", 0) <= summary.get("checked", 0), "Completeness count exceeds checked sources"
           for item in rows:
               quality = item.get("completeness", {})
               if quality.get("state") == "assessed":
                   assert quality.get("timestamped_samples", 0) >= quality.get("unique_samples", 0)
-                  if quality.get("duplicate_samples") is not None:\n                  assert quality.get("duplicate_samples") == quality.get("timestamped_samples", 0) - quality.get("unique_samples", 0)
+                  if quality.get("duplicate_samples") is not None:
+                  assert quality.get("duplicate_samples") == quality.get("timestamped_samples", 0) - quality.get("unique_samples", 0)
                   assert quality.get("gap_count", 0) >= 0
                   if quality.get("completeness_percent_estimate") is not None:
                       assert 0 <= quality["completeness_percent_estimate"] <= 100
